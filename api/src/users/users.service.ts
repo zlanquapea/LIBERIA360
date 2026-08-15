@@ -18,12 +18,19 @@ export class UsersService {
     return this.userRepo.findOne({ where: { id } });
   }
 
-  create(data: Partial<User>): Promise<User> {
+  async create(data: Partial<User>): Promise<User> {
     const user = this.userRepo.create({
       ...data,
       email: data.email?.toLowerCase(),
     });
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    // save() returns the entity as constructed, not re-fetched — eager
+    // relations (homeCounty) aren't populated on it the way they would be
+    // on a fresh find (they come back `undefined`, not `null`, for a
+    // registration with no home county set). Re-fetch so callers — e.g.
+    // AuthService.register — get the same shape whether the user just
+    // registered or was looked up afterward.
+    return (await this.findById(saved.id))!;
   }
 
   /** Used to target "events nearby" push notifications (Tech Spec §3.2) at
