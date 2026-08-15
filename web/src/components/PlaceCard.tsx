@@ -13,7 +13,7 @@ export function PlaceCard({ place }: { place: Place }) {
     >
       <div
         aria-hidden
-        className="flex h-32 items-center justify-center bg-gradient-to-br from-brand-500 to-brand-700 text-4xl"
+        className="flex h-32 items-center justify-center bg-gradient-to-br from-accent-500 to-accent-800 text-4xl"
       >
         {place.category.icon ?? '📍'}
       </div>

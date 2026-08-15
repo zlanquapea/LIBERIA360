@@ -9,13 +9,12 @@ export const metadata: Metadata = {
   description:
     "Discover Liberia's destinations, food, stays, and experiences — map-first, WhatsApp-first, built county by county.",
   manifest: '/manifest.webmanifest',
-  icons: {
-    icon: '/icon.svg',
-  },
+  // Favicon/app icon comes from the app/icon.png file convention (Next.js
+  // auto-generates the <link rel="icon"> tags from it).
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1f7c57',
+  themeColor: '#081a50',
   width: 'device-width',
   initialScale: 1,
 };

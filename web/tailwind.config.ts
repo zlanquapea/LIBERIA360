@@ -5,26 +5,48 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Placeholder brand palette — "National Geographic × Airbnb × Google
-        // Maps" positioning (Tech Spec §1.1). Swap for real brand colors
-        // once defined.
+        // Palette sampled directly from public/logo.png (the LIBERIA360
+        // mark). Navy is the dominant color (the wordmark, capitol
+        // silhouette, and arc) so it's the primary/interactive color —
+        // links, nav, buttons. `accent` (green) comes from the palm tree /
+        // waterfall / "O" and is used for imagery placeholders and the
+        // occasional CTA where a warmer, more "nature" tone reads better
+        // than navy. `gold` and `flag` are the sun and Liberian-flag-red
+        // details in the mark — used sparingly as accents, not for
+        // functional states (red already means "error" in UI convention).
         brand: {
-          50: '#eefaf4',
-          100: '#d6f2e2',
-          200: '#aee4c8',
-          300: '#7ccfa8',
-          400: '#4bb586',
-          500: '#2c9a6c',
-          600: '#1f7c57',
-          700: '#1c6347',
-          800: '#1a4f3b',
-          900: '#174232',
+          50: '#f1f3fa',
+          100: '#dfe4f3',
+          200: '#c0c9e8',
+          300: '#93a1d6',
+          400: '#6478c2',
+          500: '#3355ad',
+          600: '#223f95',
+          700: '#16307a',
+          800: '#0e2361',
+          900: '#081a50',
         },
-        sand: {
-          50: '#fdfaf4',
-          100: '#f8f0e0',
-          200: '#f0dfbe',
-          300: '#e4c78f',
+        accent: {
+          50: '#f1faed',
+          100: '#ddf2d3',
+          200: '#bfe6ae',
+          300: '#8ed177',
+          400: '#5fbb42',
+          500: '#3aa01e',
+          600: '#2b8a12',
+          700: '#237610',
+          800: '#1c5c0c',
+          900: '#123f08',
+        },
+        gold: {
+          400: '#ffc63d',
+          500: '#fbb308',
+          600: '#d99400',
+        },
+        flag: {
+          500: '#e21f22',
+          600: '#c80305',
+          700: '#a10204',
         },
       },
       fontFamily: {

@@ -38,7 +38,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
       <div
         aria-hidden
-        className="flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-6xl"
+        className="flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-800 text-6xl"
       >
         {place.category.icon ?? '📍'}
       </div>

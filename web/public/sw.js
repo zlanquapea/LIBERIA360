@@ -5,8 +5,8 @@
 // viewing (the fuller §6.3 goal) is wired up alongside the Save/Bucket List
 // feature, not here.
 
-const CACHE_NAME = 'liberia360-shell-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icon.svg'];
+const CACHE_NAME = 'liberia360-shell-v2';
+const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
