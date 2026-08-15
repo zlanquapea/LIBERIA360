@@ -86,3 +86,17 @@ npm run dev:web                                # terminal 2 — http://localhost
 Open http://localhost:3000 — Home, Explore, Counties, Search, and a Destination Profile should all load with real seeded data. (In Codespaces, use the **Ports** tab to open the forwarded URL for port 3000 rather than typing `localhost` into a browser outside the Codespace.)
 
 Root `package.json` also exposes `build:api`, `build:web`, `test:api`, and `lint:api`/`lint:web` for CI-style checks; see `web/package.json` for the frontend's own `lint`/`build` scripts.
+
+### Codespaces: one more step before signup/login (and anything else Phase 2) will work
+
+Phase 1's pages fetch data from the Next.js **server**, which runs inside the Codespace container — `http://localhost:3001` correctly reaches the API from there, so Home/Explore/Search/etc. work with `web/.env.example`'s defaults untouched.
+
+Phase 2's auth and every write (signup, login, reviews, business claims, posting an event, ...) run **client-side**, in your actual browser, after the page has already loaded. Your browser is *not* inside the container, so a client-side `fetch('http://localhost:3001/...')` asks **your own machine's** port 3001 — not the Codespace's — and fails outright. Symptom: every Phase 2 form (starting with signup) fails with a generic "Something went wrong" no matter what you enter.
+
+Fix, once both dev servers are running:
+
+1. **Ports** tab → find port `3001` → right-click → **Port Visibility** → **Public**.
+2. Copy its forwarded URL (`https://<something>-3001.app.github.dev`).
+3. `web/.env.local`: set `NEXT_PUBLIC_API_URL` to that URL + `/api/v1`.
+4. `api/.env`: set `CORS_ORIGIN` to your forwarded **port 3000** URL (same pattern).
+5. Restart `npm run dev:api` and `npm run dev:web` so they pick up the new env vars.
