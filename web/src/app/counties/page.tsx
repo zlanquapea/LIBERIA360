@@ -29,6 +29,9 @@ export default async function CountiesPage() {
                 live ? 'border-slate-200 hover:border-brand-500' : 'border-slate-100'
               }`}
             >
+              <span aria-hidden className={`text-xl ${live ? '' : 'opacity-40 grayscale'}`}>
+                {county.icon ?? '📍'}
+              </span>
               <span className={`font-medium ${live ? 'text-slate-900' : 'text-slate-400'}`}>{county.name}</span>
               <span className={`text-xs ${live ? 'text-slate-500' : 'text-slate-400'}`}>
                 {live ? `${county.placeCount} place${county.placeCount === 1 ? '' : 's'}` : `Stage ${county.rolloutStage}`}

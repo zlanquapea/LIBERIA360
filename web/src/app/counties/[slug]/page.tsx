@@ -23,7 +23,12 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">{county.name} County</h1>
+        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+          <span aria-hidden className="text-2xl">
+            {county.icon ?? '📍'}
+          </span>
+          {county.name} County
+        </h1>
         <p className="text-sm text-slate-500">
           {placesResult.meta.total} place{placesResult.meta.total === 1 ? '' : 's'} in the catalog
           {county.rolloutStage > 1 && ' (rollout in progress)'}

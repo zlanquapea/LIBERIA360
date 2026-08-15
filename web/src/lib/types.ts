@@ -29,6 +29,7 @@ export interface County {
   name: string;
   slug: string;
   rolloutStage: number;
+  icon: string | null;
   placeCount?: number;
 }
 
