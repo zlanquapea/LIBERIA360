@@ -1,11 +1,16 @@
 import Link from 'next/link';
-import { getCategories, getPlaces } from '@/lib/api';
+import { getCategories, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { formatEventDateRange } from '@/lib/format';
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, trending] = await Promise.all([getCategories(), getPlaces({ sort: 'featured', limit: 6 })]);
+  const [categories, trending, upcomingEvents] = await Promise.all([
+    getCategories(),
+    getPlaces({ sort: 'featured', limit: 6 }),
+    getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
+  ]);
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
@@ -88,6 +93,34 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      {upcomingEvents.data.length > 0 && (
+        <section aria-labelledby="events-heading" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 id="events-heading" className="text-lg font-semibold text-slate-900">
+              Upcoming events
+            </h2>
+            <Link href="/events" className="text-sm font-medium text-brand-700 hover:underline">
+              See all
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {upcomingEvents.data.map((event) => (
+              <li key={event.id}>
+                <Link
+                  href={`/events/${event.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 hover:border-brand-500"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-900">{event.name}</p>
+                    <p className="text-xs text-slate-500">{formatEventDateRange(event.startDate, event.endDate)}</p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="flex items-center justify-between rounded-xl border border-dashed border-slate-300 px-5 py-4">
         <div>

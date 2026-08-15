@@ -181,6 +181,38 @@ export interface PaginatedCreators {
   };
 }
 
+// Mirrors api/src/events/entities/event.enums.ts.
+export type EventCategory = 'concert' | 'festival' | 'sports' | 'nightlife' | 'seasonal' | 'other';
+
+// Mirrors api/src/events/entities/event.entity.ts (sanitized — createdBy is
+// the public user shape).
+export interface Event {
+  id: string;
+  name: string;
+  category: EventCategory;
+  place: Place | null;
+  placeId: string | null;
+  locationText: string | null;
+  county: County;
+  startDate: string;
+  endDate: string | null;
+  description: string | null;
+  images: string[];
+  ticketInfo: string | null;
+  createdBy: AuthUser | null;
+  createdAt: string;
+}
+
+export interface PaginatedEvents {
+  data: Event[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
 
 export interface PlacesQuery {

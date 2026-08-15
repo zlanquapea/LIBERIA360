@@ -1,4 +1,4 @@
-import type { BusinessType, PlaceType, RecommendedVisitLength } from './types';
+import type { BusinessType, EventCategory, PlaceType, RecommendedVisitLength } from './types';
 
 const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   attraction: 'Attraction',
@@ -60,4 +60,33 @@ export function formatCost(amount: number | null): string {
 export function formatRating(rating: number, reviewCount: number): string {
   if (reviewCount === 0) return 'Not yet rated';
   return `${rating.toFixed(1)} (${reviewCount} review${reviewCount === 1 ? '' : 's'})`;
+}
+
+const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
+  concert: 'Concert',
+  festival: 'Festival',
+  sports: 'Sports',
+  nightlife: 'Nightlife',
+  seasonal: 'Seasonal',
+  other: 'Other',
+};
+
+export function formatEventCategory(category: EventCategory): string {
+  return EVENT_CATEGORY_LABELS[category] ?? category;
+}
+
+export function formatEventDateRange(startDate: string, endDate: string | null): string {
+  const start = new Date(startDate);
+  const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  if (!endDate) return `${startLabel} · ${startTime}`;
+
+  const end = new Date(endDate);
+  const sameDay = start.toDateString() === end.toDateString();
+  if (sameDay) {
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${startLabel} · ${startTime}–${endTime}`;
+  }
+  const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startLabel} – ${endLabel}`;
 }

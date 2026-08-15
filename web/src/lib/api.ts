@@ -3,7 +3,10 @@ import type {
   Category,
   County,
   Creator,
+  Event,
+  EventCategory,
   PaginatedCreators,
+  PaginatedEvents,
   PaginatedPlaces,
   PaginatedReviews,
   Place,
@@ -87,6 +90,23 @@ export function getCreators(query: { page?: number; limit?: number } = {}): Prom
 
 export function getCreatorByUsername(username: string): Promise<Creator> {
   return apiFetch<Creator>(`/creators/${username}`);
+}
+
+export interface EventsQuery {
+  category?: EventCategory;
+  county?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
+  return apiFetch<PaginatedEvents>('/events', query as Record<string, string | number | undefined>);
+}
+
+export function getEvent(id: string): Promise<Event> {
+  return apiFetch<Event>(`/events/${id}`);
 }
 
 export { ApiError };
