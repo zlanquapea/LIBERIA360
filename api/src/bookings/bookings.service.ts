@@ -1,0 +1,154 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Booking } from "./entities/booking.entity";
+import { BookingStatus } from "./entities/booking.enums";
+import { Business } from "../businesses/entities/business.entity";
+import { CreateBookingDto } from "./dto/create-booking.dto";
+import { RespondBookingDto } from "./dto/respond-booking.dto";
+
+@Injectable()
+export class BookingsService {
+  constructor(
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
+    @InjectRepository(Business)
+    private readonly businessRepo: Repository<Business>,
+  ) {}
+
+  async create(userId: string, dto: CreateBookingDto): Promise<Booking> {
+    const business = await this.businessRepo.findOne({
+      where: { id: dto.businessId },
+    });
+    if (!business) {
+      throw new NotFoundException(`Business "${dto.businessId}" not found`);
+    }
+
+    if (new Date(dto.requestedDate) < startOfToday()) {
+      throw new BadRequestException("requestedDate cannot be in the past");
+    }
+    if (
+      dto.requestedEndDate &&
+      new Date(dto.requestedEndDate) < new Date(dto.requestedDate)
+    ) {
+      throw new BadRequestException(
+        "requestedEndDate cannot be before requestedDate",
+      );
+    }
+
+    const booking = await this.bookingRepo.save(
+      this.bookingRepo.create({
+        businessId: dto.businessId,
+        guestUserId: userId,
+        requestedDate: dto.requestedDate,
+        requestedEndDate: dto.requestedEndDate ?? null,
+        partySize: dto.partySize ?? null,
+        notes: dto.notes ?? null,
+      }),
+    );
+    return this.bookingRepo.findOneOrFail({ where: { id: booking.id } });
+  }
+
+  /** Business owner confirms or declines a pending request. */
+  async respond(
+    userId: string,
+    bookingId: string,
+    dto: RespondBookingDto,
+  ): Promise<Booking> {
+    const booking = await this.findWithBusiness(bookingId);
+    if (booking.business.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        "Only the business owner can respond to this booking",
+      );
+    }
+    if (booking.status !== BookingStatus.PENDING) {
+      throw new ConflictException(
+        `This booking has already been ${booking.status}`,
+      );
+    }
+
+    booking.status =
+      dto.action === "confirm"
+        ? BookingStatus.CONFIRMED
+        : BookingStatus.DECLINED;
+    booking.businessResponse = dto.message ?? null;
+    booking.respondedAt = new Date();
+    await this.bookingRepo.save(booking);
+    return this.bookingRepo.findOneOrFail({ where: { id: bookingId } });
+  }
+
+  /** Guest cancels their own pending or confirmed request. */
+  async cancel(userId: string, bookingId: string): Promise<Booking> {
+    const booking = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+    });
+    if (!booking) {
+      throw new NotFoundException(`Booking "${bookingId}" not found`);
+    }
+    if (booking.guestUserId !== userId) {
+      throw new ForbiddenException("You can only cancel your own bookings");
+    }
+    if (
+      booking.status !== BookingStatus.PENDING &&
+      booking.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new ConflictException(
+        `This booking is already ${booking.status} and can't be cancelled`,
+      );
+    }
+
+    booking.status = BookingStatus.CANCELLED;
+    await this.bookingRepo.save(booking);
+    return this.bookingRepo.findOneOrFail({ where: { id: bookingId } });
+  }
+
+  findMine(userId: string): Promise<Booking[]> {
+    return this.bookingRepo.find({
+      where: { guestUserId: userId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async findForBusiness(
+    userId: string,
+    businessId: string,
+  ): Promise<Booking[]> {
+    const business = await this.businessRepo.findOne({
+      where: { id: businessId },
+    });
+    if (!business) {
+      throw new NotFoundException(`Business "${businessId}" not found`);
+    }
+    if (business.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        "Only the business owner can view its bookings",
+      );
+    }
+
+    return this.bookingRepo.find({
+      where: { businessId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  private async findWithBusiness(bookingId: string): Promise<Booking> {
+    const booking = await this.bookingRepo.findOne({
+      where: { id: bookingId },
+    });
+    if (!booking) {
+      throw new NotFoundException(`Booking "${bookingId}" not found`);
+    }
+    return booking;
+  }
+}
+
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}

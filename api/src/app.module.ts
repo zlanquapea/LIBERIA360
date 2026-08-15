@@ -26,6 +26,8 @@ import { Itinerary } from "./itineraries/entities/itinerary.entity";
 import { ItinerariesModule } from "./itineraries/itineraries.module";
 import { PushSubscription } from "./push/entities/push-subscription.entity";
 import { PushModule } from "./push/push.module";
+import { Booking } from "./bookings/entities/booking.entity";
+import { BookingsModule } from "./bookings/bookings.module";
 
 @Module({
   imports: [
@@ -54,6 +56,7 @@ import { PushModule } from "./push/push.module";
             Event,
             Itinerary,
             PushSubscription,
+            Booking,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -73,6 +76,7 @@ import { PushModule } from "./push/push.module";
     EventsModule,
     ItinerariesModule,
     PushModule,
+    BookingsModule,
   ],
 })
 export class AppModule {}
