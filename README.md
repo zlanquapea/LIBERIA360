@@ -20,7 +20,9 @@ See `api/README.md` and `web/README.md` for service-specific setup (including ea
 
 **Phase 2** (Tech Spec §3.2 — accounts and everything that depends on them): JWT auth; reviews + rating recalculation; business self-claim; creator directory/profiles; events (with push notifications for events in a user's home county); "Near Me" radius search; "Build My Liberia Trip" + Weekend Explorer itinerary generation; push notification opt-in. All backend modules and their frontend screens are built and tested — see `api/README.md`'s and `web/README.md`'s "Phase 2" sections for the module-by-module breakdown.
 
-What's deliberately **not** here yet: bookings/payments (Phase 3 — the Business Plan's marketplace/monetization layer). See the Technical Specification for the full phased plan.
+**Phase 3** (Tech Spec §3.3 / Business Plan §8 — the marketplace layer): request-to-book bookings (hotel/tour/restaurant/transport, one entity for all four) with MTN Mobile Money as the schema-ready-but-not-yet-wired-up payment provider; a per-business analytics dashboard (views/saves/contact-clicks/booking-requests); time-boxed "Featured this week" sponsored placements and featured creators; and a net-new admin dashboard (verification/moderation, content management, sponsored-placement management, B2B aggregate tourism analytics), gated on a manually-promoted `User.isAdmin` flag. See `api/README.md`'s and `web/README.md`'s "Phase 3" sections for the module-by-module breakdown, including how to grant admin access.
+
+What's deliberately **not** here yet: real payment capture (a live MTN MoMo merchant integration is a follow-up this environment can't create credentials for) and a self-service external-stakeholder account system for the B2B analytics product (surfaced through the admin dashboard instead — see the Technical Specification for the full phased plan).
 
 ## Local development
 
@@ -87,11 +89,11 @@ Open http://localhost:3000 — Home, Explore, Counties, Search, and a Destinatio
 
 Root `package.json` also exposes `build:api`, `build:web`, `test:api`, and `lint:api`/`lint:web` for CI-style checks; see `web/package.json` for the frontend's own `lint`/`build` scripts.
 
-### Codespaces: one more step before signup/login (and anything else Phase 2) will work
+### Codespaces: one more step before signup/login (and anything else Phase 2 or 3) will work
 
 Phase 1's pages fetch data from the Next.js **server**, which runs inside the Codespace container — `http://localhost:3001` correctly reaches the API from there, so Home/Explore/Search/etc. work with `web/.env.example`'s defaults untouched.
 
-Phase 2's auth and every write (signup, login, reviews, business claims, posting an event, ...) run **client-side**, in your actual browser, after the page has already loaded. Your browser is *not* inside the container, so a client-side `fetch('http://localhost:3001/...')` asks **your own machine's** port 3001 — not the Codespace's — and fails outright. Symptom: every Phase 2 form (starting with signup) fails with a generic "Something went wrong" no matter what you enter.
+Phase 2's auth and every write (signup, login, reviews, business claims, posting an event, ...) — and everything in Phase 3 that follows the same pattern (booking requests, analytics events, the whole admin dashboard) — run **client-side**, in your actual browser, after the page has already loaded. Your browser is *not* inside the container, so a client-side `fetch('http://localhost:3001/...')` asks **your own machine's** port 3001 — not the Codespace's — and fails outright. Symptom: every such form (starting with signup) fails with a generic "Something went wrong" no matter what you enter.
 
 Fix, once both dev servers are running:
 

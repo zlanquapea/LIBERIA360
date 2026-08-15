@@ -172,7 +172,68 @@ export interface Creator {
   locationsCovered: string[];
   contentLinks: string[];
   verified: boolean;
+  featured: boolean;
   createdAt: string;
+}
+
+// Mirrors api/src/analytics/entities/analytics-event.enums.ts.
+export type AnalyticsEventType = 'view' | 'save' | 'contact_click' | 'booking_request';
+
+// Mirrors api/src/analytics/analytics.service.ts's AnalyticsTotals/BusinessAnalytics.
+export interface AnalyticsTotals {
+  view: number;
+  save: number;
+  contact_click: number;
+  booking_request: number;
+}
+
+export interface BusinessAnalytics {
+  totals: AnalyticsTotals;
+  byDay: (AnalyticsTotals & { date: string })[];
+}
+
+// Mirrors api/src/sponsored-placements/entities/sponsored-placement.entity.ts
+// (sanitized — createdBy is the public user shape). "Featured this week" —
+// a time-boxed paid campaign, distinct from Place.featured (Phase 1's
+// general editorial curation, no start/end date).
+export interface SponsoredPlacement {
+  id: string;
+  place: Place;
+  placeId: string;
+  startDate: string;
+  endDate: string;
+  createdBy: AuthUser | null;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Mirrors api/src/bookings/entities/booking.enums.ts.
+export type BookingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled';
+export type PaymentProvider = 'mtn_momo';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'refunded';
+
+// Mirrors api/src/bookings/entities/booking.entity.ts (sanitized — guest
+// and business.owner are the public user shape). Request-to-book only —
+// paymentStatus stays 'unpaid' until a real MTN MoMo integration exists.
+export interface Booking {
+  id: string;
+  business: Business;
+  businessId: string;
+  guest: AuthUser | null;
+  guestUserId: string;
+  requestedDate: string;
+  requestedEndDate: string | null;
+  partySize: number | null;
+  notes: string | null;
+  status: BookingStatus;
+  businessResponse: string | null;
+  respondedAt: string | null;
+  paymentProvider: PaymentProvider;
+  paymentStatus: PaymentStatus;
+  paymentReference: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PaginatedCreators {
@@ -268,4 +329,118 @@ export interface PlacesQuery {
   lat?: number;
   lng?: number;
   radiusKm?: number;
+}
+
+// --- Admin dashboard (Tech Spec §7/§8) — mirrors api/src/admin/dto/*. ---
+
+export interface CreatePlaceInput {
+  name: string;
+  slug: string;
+  description: string;
+  type: PlaceType;
+  categoryId: string;
+  countyId: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  tags?: string[];
+  distanceFromMonroviaKm?: number;
+  recommendedVisitLength?: RecommendedVisitLength;
+  estimatedCostEntry?: number;
+  estimatedCostGuide?: number;
+  estimatedCostTransport?: number;
+  images?: string[];
+  videos?: string[];
+  openingHours?: string;
+  contactPhone?: string;
+  whatsapp?: string;
+  website?: string;
+  instagram?: string;
+  facebook?: string;
+  featured?: boolean;
+}
+
+export type UpdatePlaceInput = Partial<CreatePlaceInput>;
+
+export interface CreateActivityInput {
+  placeId: string;
+  name: string;
+  description?: string;
+  duration?: string;
+  price?: number;
+  difficulty?: ActivityDifficulty;
+  ageRange?: string;
+  guideRequired?: boolean;
+}
+
+export type UpdateActivityInput = Partial<Omit<CreateActivityInput, 'placeId'>>;
+
+export interface CreateBusinessAdminInput {
+  placeId: string;
+  name: string;
+  type: BusinessType;
+  ownerUserId?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  website?: string;
+  socialLinks?: string[];
+  description?: string;
+  images?: string[];
+}
+
+export interface UpdateBusinessAdminInput {
+  name?: string;
+  type?: BusinessType;
+  ownerUserId?: string | null;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  website?: string;
+  socialLinks?: string[];
+  description?: string;
+  images?: string[];
+}
+
+export interface UpdateEventInput {
+  name?: string;
+  category?: EventCategory;
+  placeId?: string;
+  locationText?: string;
+  countyId?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  images?: string[];
+  ticketInfo?: string;
+}
+
+// Mirrors api/src/admin/admin.service.ts's ModerationQueue (sanitized).
+export interface ModerationQueue {
+  pendingBusinesses: Business[];
+  recentReviews: Review[];
+}
+
+// Mirrors api/src/admin/admin-analytics.service.ts.
+export interface TopPlace {
+  placeId: string;
+  name: string;
+  slug: string;
+  views: number;
+  saves: number;
+  contactClicks: number;
+  bookingRequests: number;
+  total: number;
+}
+
+export interface InterestBreakdown {
+  id: string;
+  name: string;
+  totalEvents: number;
+}
+
+export interface AggregateAnalytics {
+  topPlaces: TopPlace[];
+  byCategory: InterestBreakdown[];
+  byCounty: InterestBreakdown[];
 }

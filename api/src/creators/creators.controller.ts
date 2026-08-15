@@ -11,7 +11,9 @@ import {
 import { CreatorsService } from "./creators.service";
 import { CreateCreatorDto } from "./dto/create-creator.dto";
 import { UpdateCreatorDto } from "./dto/update-creator.dto";
+import { SetFeaturedDto } from "./dto/set-featured.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
@@ -56,5 +58,11 @@ export class CreatorsController {
   @Get(":username")
   async findByUsername(@Param("username") username: string) {
     return sanitize(await this.creatorsService.findByUsername(username));
+  }
+
+  @Patch(":id/featured")
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  async setFeatured(@Param("id") id: string, @Body() dto: SetFeaturedDto) {
+    return sanitize(await this.creatorsService.setFeatured(id, dto));
   }
 }

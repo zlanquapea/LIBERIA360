@@ -9,6 +9,9 @@ import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { SaveButton } from '@/components/SaveButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { BusinessClaimSection } from '@/components/BusinessClaimSection';
+import { BookingRequestSection } from '@/components/BookingRequestSection';
+import { PlaceViewTracker } from '@/components/PlaceViewTracker';
+import { ContactLink } from '@/components/ContactLink';
 import type { BusinessType, Place, PlaceType } from '@/lib/types';
 
 const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
@@ -54,6 +57,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
+      <PlaceViewTracker placeId={place.id} />
       <div
         aria-hidden
         className="flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-800 text-6xl"
@@ -147,22 +151,24 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         {place.contactPhone || place.whatsapp ? (
           <div className="flex flex-wrap gap-2">
             {place.contactPhone && (
-              <a
+              <ContactLink
+                placeId={place.id}
                 href={`tel:${place.contactPhone}`}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500"
               >
                 📞 Call
-              </a>
+              </ContactLink>
             )}
             {place.whatsapp && (
-              <a
+              <ContactLink
+                placeId={place.id}
                 href={whatsappLink(place.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
               >
                 💬 WhatsApp
-              </a>
+              </ContactLink>
             )}
           </div>
         ) : (
@@ -177,6 +183,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
           suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
           initialBusiness={business}
         />
+        {business && <BookingRequestSection business={business} />}
       </section>
 
       <section className="flex flex-col gap-2">
@@ -208,7 +215,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       )}
 
       <section className="flex gap-3 border-t border-slate-200 pt-4">
-        <SaveButton slug={place.slug} className="flex-1 justify-center" />
+        <SaveButton slug={place.slug} placeId={place.id} className="flex-1 justify-center" />
         <button
           type="button"
           disabled

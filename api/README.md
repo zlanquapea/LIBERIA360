@@ -64,6 +64,26 @@ Accounts and everything that depends on them (Tech Spec §3.2). All 8 modules be
   ```
   Without it, `PushService` logs a warning at boot and silently no-ops sends — the app still runs fine. `GET /push/vapid-public-key` is public (the frontend needs it to create a browser subscription); `POST /push/subscribe`/`/unsubscribe` are authenticated.
 
+## Phase 3
+
+The marketplace layer (Tech Spec §3.3 / Business Plan §8). All 7 modules below are migrated, unit/e2e tested (`test/phase3.e2e-spec.ts`), and have a matching frontend in `../web`.
+
+- **Bookings**: `POST /bookings` (request), `GET /bookings/mine`, `GET /bookings/business/:businessId` (owner-only), `PATCH /bookings/:id/respond` (`{action: "confirm"|"decline"}`, business owner only, one response per booking), `PATCH /bookings/:id/cancel` (guest only, while pending/confirmed). One entity covers hotel/tour/restaurant/transport bookings uniformly — `Business.type` already tells you which kind it is. **Payment**: request-to-book only — no real money moves through the API yet. `Booking.paymentProvider`/`paymentStatus`/`paymentReference` exist in the schema (provider defaults to `mtn_momo`, the intended real-world provider for Liberia) but are never called against a live payment API; wiring up real MTN Mobile Money capture is a follow-up that needs an actual merchant relationship this environment can't create.
+- **Analytics**: `POST /analytics/events` (public, fire-and-forget — `{placeId, eventType: "view"|"save"|"contact_click"|"booking_request"}`, `204` on success), `GET /analytics/business/:businessId` (owner-only — totals + a 30-day daily breakdown). An anonymous append-only event log; no per-visitor data, no user tie.
+- **Sponsored placements** ("Featured this week", Business Plan §8.3): `GET /sponsored-placements/active` (public), `GET /sponsored-placements` (admin, full history), `POST /sponsored-placements` (admin), `DELETE /sponsored-placements/:id` (admin). Time-boxed (`startDate`/`endDate`), distinct from Phase 1's `Place.featured` (general editorial curation, no dates).
+- **Featured creators**: `PATCH /creators/:id/featured` (admin) — `Creator.findAll()` sorts featured creators first.
+- **Admin verification**: `PATCH /admin/places/:id/verification`, `PATCH /admin/businesses/:id/verification` (both `{status: VerificationStatus}`, stamp `verifiedByUserId`/`verifiedAt`), `GET /admin/moderation-queue` (unverified businesses + the 20 most recent reviews).
+- **Admin content management**: `POST`/`PATCH /admin/places`, `POST`/`PATCH /admin/activities`, `POST`/`PATCH /admin/businesses`, `PATCH /admin/events/:id`. The first way to create a Place through the API at all (Phase 1/2 only ever read the seeded catalog). `POST /admin/businesses` lets an admin seed an unowned "shell" business record (`ownerUserId` omitted) that a real owner can later claim via the existing `POST /businesses/:id/claim` — the Business Plan's "seed the catalog directly via outreach before relying on self-service claiming" mitigation.
+- **B2B aggregate tourism analytics** (Business Plan §8.4): `GET /admin/analytics/aggregate?limit=10` — top places by visitor interest, and breakdowns by category/county, all built on the same analytics event log with no per-visitor data in the output.
+
+All `/admin/*` and admin-only routes above are gated by `AdminGuard` (`src/auth/guards/admin.guard.ts`), which checks `req.user.isAdmin`. There's no self-service admin signup — promote a user directly in the database:
+
+```bash
+psql -U liberia360 -d liberia360 -c "UPDATE users SET is_admin = true WHERE email = 'you@example.com';"
+```
+
+Takes effect immediately without re-login: the JWT strategy re-fetches the full `User` row from the DB on every request rather than trusting a stale claim baked into the token.
+
 ## Notes
 
 - Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. Phase 2's "Near Me" radius search uses a Haversine expression in SQL instead; fine at this catalog size, worth revisiting if it grows a lot.

@@ -1,4 +1,4 @@
-import type { BudgetBand, BusinessType, EventCategory, PlaceType, RecommendedVisitLength } from './types';
+import type { BookingStatus, BudgetBand, BusinessType, EventCategory, PlaceType, RecommendedVisitLength } from './types';
 
 const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   attraction: 'Attraction',
@@ -83,6 +83,17 @@ const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
 
 export function formatBudgetBand(band: BudgetBand): string {
   return BUDGET_BAND_LABELS[band] ?? band;
+}
+
+const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
+  pending: 'Awaiting response',
+  confirmed: 'Confirmed',
+  declined: 'Declined',
+  cancelled: 'Cancelled',
+};
+
+export function formatBookingStatus(status: BookingStatus): string {
+  return BOOKING_STATUS_LABELS[status] ?? status;
 }
 
 export function formatEventDateRange(startDate: string, endDate: string | null): string {

@@ -78,6 +78,14 @@ export class Business {
   })
   verificationStatus: VerificationStatus;
 
+  // Audit trail (Tech Spec §7) — see Place.verifiedByUserId for why this is
+  // a plain id, not an eager relation.
+  @Column({ name: "verified_by_user_id", type: "uuid", nullable: true })
+  verifiedByUserId: string | null;
+
+  @Column({ name: "verified_at", type: "timestamptz", nullable: true })
+  verifiedAt: Date | null;
+
   @Column({
     name: "subscription_tier",
     type: "enum",

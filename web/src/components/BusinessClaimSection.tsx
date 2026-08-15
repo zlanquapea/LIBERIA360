@@ -8,6 +8,7 @@ import { HttpError } from '@/lib/http';
 import { formatBusinessType } from '@/lib/format';
 import { whatsappLink } from '@/lib/contact';
 import { VerificationBadge } from './VerificationBadge';
+import { ContactLink } from './ContactLink';
 import type { Business, BusinessType } from '@/lib/types';
 
 const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'tour_operator', 'transport'];
@@ -78,32 +79,35 @@ export function BusinessClaimSection({
         {business.description && <p className="text-sm text-slate-600">{business.description}</p>}
         <div className="flex flex-wrap gap-2 pt-1">
           {business.phone && (
-            <a
+            <ContactLink
+              placeId={placeId}
               href={`tel:${business.phone}`}
               className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500"
             >
               📞 Call
-            </a>
+            </ContactLink>
           )}
           {business.whatsapp && (
-            <a
+            <ContactLink
+              placeId={placeId}
               href={whatsappLink(business.whatsapp)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
             >
               💬 WhatsApp
-            </a>
+            </ContactLink>
           )}
           {business.website && (
-            <a
+            <ContactLink
+              placeId={placeId}
               href={business.website}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500"
             >
               🌐 Website
-            </a>
+            </ContactLink>
           )}
         </div>
         {isOwner && <p className="text-xs text-slate-400">You manage this listing.</p>}

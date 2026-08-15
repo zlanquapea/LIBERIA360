@@ -26,6 +26,13 @@ import { Itinerary } from "./itineraries/entities/itinerary.entity";
 import { ItinerariesModule } from "./itineraries/itineraries.module";
 import { PushSubscription } from "./push/entities/push-subscription.entity";
 import { PushModule } from "./push/push.module";
+import { Booking } from "./bookings/entities/booking.entity";
+import { BookingsModule } from "./bookings/bookings.module";
+import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
+import { AnalyticsModule } from "./analytics/analytics.module";
+import { SponsoredPlacement } from "./sponsored-placements/entities/sponsored-placement.entity";
+import { SponsoredPlacementsModule } from "./sponsored-placements/sponsored-placements.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -54,6 +61,9 @@ import { PushModule } from "./push/push.module";
             Event,
             Itinerary,
             PushSubscription,
+            Booking,
+            AnalyticsEvent,
+            SponsoredPlacement,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -73,6 +83,10 @@ import { PushModule } from "./push/push.module";
     EventsModule,
     ItinerariesModule,
     PushModule,
+    BookingsModule,
+    AnalyticsModule,
+    SponsoredPlacementsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

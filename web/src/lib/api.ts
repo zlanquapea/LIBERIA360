@@ -11,6 +11,7 @@ import type {
   PaginatedReviews,
   Place,
   PlacesQuery,
+  SponsoredPlacement,
 } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
@@ -82,6 +83,10 @@ export function getReviews(placeId: string, query: { page?: number; limit?: numb
 // been claimed yet — apiFetch's throw-on-!res.ok path never fires for it.
 export function getBusinessByPlace(placeId: string): Promise<Business | null> {
   return apiFetch<Business | null>('/businesses', { placeId });
+}
+
+export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
+  return apiFetch<SponsoredPlacement[]>('/sponsored-placements/active');
 }
 
 export function getCreators(query: { page?: number; limit?: number } = {}): Promise<PaginatedCreators> {
