@@ -95,6 +95,15 @@ export default function AccountPage() {
         Manage creator profile
       </Link>
 
+      {user.isAdmin && (
+        <Link
+          href="/admin"
+          className="rounded-full border-2 border-gold-400 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-gold-600"
+        >
+          ⭐ Admin dashboard
+        </Link>
+      )}
+
       <button
         type="button"
         onClick={handleLogout}

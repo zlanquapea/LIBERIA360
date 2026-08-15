@@ -330,3 +330,117 @@ export interface PlacesQuery {
   lng?: number;
   radiusKm?: number;
 }
+
+// --- Admin dashboard (Tech Spec §7/§8) — mirrors api/src/admin/dto/*. ---
+
+export interface CreatePlaceInput {
+  name: string;
+  slug: string;
+  description: string;
+  type: PlaceType;
+  categoryId: string;
+  countyId: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  tags?: string[];
+  distanceFromMonroviaKm?: number;
+  recommendedVisitLength?: RecommendedVisitLength;
+  estimatedCostEntry?: number;
+  estimatedCostGuide?: number;
+  estimatedCostTransport?: number;
+  images?: string[];
+  videos?: string[];
+  openingHours?: string;
+  contactPhone?: string;
+  whatsapp?: string;
+  website?: string;
+  instagram?: string;
+  facebook?: string;
+  featured?: boolean;
+}
+
+export type UpdatePlaceInput = Partial<CreatePlaceInput>;
+
+export interface CreateActivityInput {
+  placeId: string;
+  name: string;
+  description?: string;
+  duration?: string;
+  price?: number;
+  difficulty?: ActivityDifficulty;
+  ageRange?: string;
+  guideRequired?: boolean;
+}
+
+export type UpdateActivityInput = Partial<Omit<CreateActivityInput, 'placeId'>>;
+
+export interface CreateBusinessAdminInput {
+  placeId: string;
+  name: string;
+  type: BusinessType;
+  ownerUserId?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  website?: string;
+  socialLinks?: string[];
+  description?: string;
+  images?: string[];
+}
+
+export interface UpdateBusinessAdminInput {
+  name?: string;
+  type?: BusinessType;
+  ownerUserId?: string | null;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  website?: string;
+  socialLinks?: string[];
+  description?: string;
+  images?: string[];
+}
+
+export interface UpdateEventInput {
+  name?: string;
+  category?: EventCategory;
+  placeId?: string;
+  locationText?: string;
+  countyId?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  images?: string[];
+  ticketInfo?: string;
+}
+
+// Mirrors api/src/admin/admin.service.ts's ModerationQueue (sanitized).
+export interface ModerationQueue {
+  pendingBusinesses: Business[];
+  recentReviews: Review[];
+}
+
+// Mirrors api/src/admin/admin-analytics.service.ts.
+export interface TopPlace {
+  placeId: string;
+  name: string;
+  slug: string;
+  views: number;
+  saves: number;
+  contactClicks: number;
+  bookingRequests: number;
+  total: number;
+}
+
+export interface InterestBreakdown {
+  id: string;
+  name: string;
+  totalEvents: number;
+}
+
+export interface AggregateAnalytics {
+  topPlaces: TopPlace[];
+  byCategory: InterestBreakdown[];
+  byCounty: InterestBreakdown[];
+}
