@@ -1,15 +1,16 @@
 import Link from 'next/link';
-import { getCategories, getEvents, getPlaces } from '@/lib/api';
+import { getActiveSponsoredPlacements, getCategories, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { formatEventDateRange } from '@/lib/format';
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, trending, upcomingEvents] = await Promise.all([
+  const [categories, trending, upcomingEvents, sponsoredPlacements] = await Promise.all([
     getCategories(),
     getPlaces({ sort: 'featured', limit: 6 }),
     getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
+    getActiveSponsoredPlacements(),
   ]);
 
   return (
@@ -51,6 +52,21 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      {sponsoredPlacements.length > 0 && (
+        <section aria-labelledby="featured-heading" className="flex flex-col gap-3">
+          <h2 id="featured-heading" className="flex items-center gap-1.5 text-lg font-semibold text-slate-900">
+            ⭐ Featured this week
+          </h2>
+          <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
+            {sponsoredPlacements.map((placement) => (
+              <div key={placement.id} className="w-64 shrink-0">
+                <PlaceCard place={placement.place} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="flex flex-col gap-2 rounded-xl bg-gradient-to-br from-accent-600 to-accent-800 px-5 py-4 text-white">
         <Link href="/trips/new" className="flex items-center justify-between">

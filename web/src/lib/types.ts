@@ -172,6 +172,7 @@ export interface Creator {
   locationsCovered: string[];
   contentLinks: string[];
   verified: boolean;
+  featured: boolean;
   createdAt: string;
 }
 
@@ -189,6 +190,22 @@ export interface AnalyticsTotals {
 export interface BusinessAnalytics {
   totals: AnalyticsTotals;
   byDay: (AnalyticsTotals & { date: string })[];
+}
+
+// Mirrors api/src/sponsored-placements/entities/sponsored-placement.entity.ts
+// (sanitized — createdBy is the public user shape). "Featured this week" —
+// a time-boxed paid campaign, distinct from Place.featured (Phase 1's
+// general editorial curation, no start/end date).
+export interface SponsoredPlacement {
+  id: string;
+  place: Place;
+  placeId: string;
+  startDate: string;
+  endDate: string;
+  createdBy: AuthUser | null;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Mirrors api/src/bookings/entities/booking.enums.ts.

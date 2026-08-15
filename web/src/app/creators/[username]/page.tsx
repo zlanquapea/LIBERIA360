@@ -30,7 +30,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
           {creator.name.trim().charAt(0).toUpperCase() || '?'}
         </span>
         <div>
-          <h1 className="flex items-center gap-1.5 text-xl font-bold text-slate-900">
+          <h1 className="flex flex-wrap items-center gap-1.5 text-xl font-bold text-slate-900">
             {creator.name}
             {creator.verified && (
               <span
@@ -38,6 +38,14 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 className="inline-flex items-center rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white"
               >
                 ✓ Verified
+              </span>
+            )}
+            {creator.featured && (
+              <span
+                aria-label="Featured creator"
+                className="inline-flex items-center rounded-full bg-gold-500 px-2 py-0.5 text-xs font-medium text-white"
+              >
+                ⭐ Featured
               </span>
             )}
           </h1>

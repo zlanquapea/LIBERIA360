@@ -42,7 +42,9 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
             <Link
               key={creator.id}
               href={`/creators/${creator.username}`}
-              className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 hover:border-brand-500"
+              className={`flex items-start gap-3 rounded-xl border p-3 hover:border-brand-500 ${
+                creator.featured ? 'border-gold-400 bg-gold-400/10' : 'border-slate-200'
+              }`}
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg font-semibold text-white">
                 {creator.name.trim().charAt(0).toUpperCase() || '?'}
@@ -52,6 +54,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
                   {creator.name}
                   {creator.verified && <span aria-label="Verified creator">✓</span>}
                 </p>
+                {creator.featured && <p className="text-xs font-medium text-gold-600">⭐ Featured creator</p>}
                 <p className="truncate text-xs text-slate-500">@{creator.username}</p>
                 {creator.specialties.length > 0 && (
                   <p className="mt-1 truncate text-xs text-slate-500">{creator.specialties.join(' · ')}</p>
