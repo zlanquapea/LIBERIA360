@@ -82,6 +82,28 @@ export class User {
   @Column({ type: "text", array: true, default: () => "'{}'" })
   interests: string[];
 
+  // AES-256-GCM encrypted (see auth/two-factor-crypto.ts) — never stored
+  // or returned as plaintext. Null until the user starts 2FA setup.
+  @Column({ name: "two_factor_secret", type: "text", nullable: true })
+  twoFactorSecret: string | null;
+
+  // True only once setup has been confirmed with a valid code — a secret
+  // can exist mid-setup without this being true yet, so login only branches
+  // on this flag, never on twoFactorSecret being non-null.
+  @Column({ name: "two_factor_enabled", type: "boolean", default: false })
+  twoFactorEnabled: boolean;
+
+  // bcrypt hashes of one-time recovery codes (same treatment as
+  // passwords) — plaintext codes are shown to the user once, at
+  // generation time, and never stored.
+  @Column({
+    name: "two_factor_recovery_codes",
+    type: "text",
+    array: true,
+    nullable: true,
+  })
+  twoFactorRecoveryCodes: string[] | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import * as authApi from '@/lib/auth-api';
-import type { RegisterInput, UpdateProfileInput } from '@/lib/auth-api';
+import type { RegisterInput, TwoFactorRequiredResult, UpdateProfileInput } from '@/lib/auth-api';
 import { clearStoredAuth, getStoredAuth, setStoredAuth, subscribeToAuth } from '@/lib/auth-storage';
 import type { AuthUser } from '@/lib/types';
 
@@ -25,8 +25,20 @@ export function useAuth() {
     return subscribeToAuth(sync);
   }, []);
 
+  // Returns the signed-in user directly, or a TwoFactorRequiredResult if
+  // the account has 2FA enabled — nothing is stored in that case until
+  // verifyTwoFactor succeeds. Callers (LoginPage) branch on the shape.
   const login = useCallback(async (email: string, password: string) => {
     const result = await authApi.login({ email, password });
+    if ('twoFactorRequired' in result) {
+      return result;
+    }
+    setStoredAuth({ token: result.accessToken, user: result.user });
+    return result.user;
+  }, []);
+
+  const verifyTwoFactor = useCallback(async (pendingToken: string, code: string) => {
+    const result = await authApi.verifyTwoFactor({ pendingToken, code });
     setStoredAuth({ token: result.accessToken, user: result.user });
     return result.user;
   }, []);
@@ -47,9 +59,52 @@ export function useAuth() {
     [token],
   );
 
+  const setupTwoFactor = useCallback(async () => {
+    if (!token) throw new Error('Not signed in');
+    return authApi.setupTwoFactor(token);
+  }, [token]);
+
+  const enableTwoFactor = useCallback(
+    async (code: string) => {
+      if (!token) throw new Error('Not signed in');
+      const result = await authApi.enableTwoFactor(token, code);
+      // Refresh the cached user so `twoFactorEnabled` flips immediately,
+      // instead of waiting for AuthRefresher's next full page load.
+      const refreshed = await authApi.fetchMe(token);
+      setStoredAuth({ token, user: refreshed });
+      return result.recoveryCodes;
+    },
+    [token],
+  );
+
+  const disableTwoFactor = useCallback(
+    async (password: string) => {
+      if (!token) throw new Error('Not signed in');
+      await authApi.disableTwoFactor(token, password);
+      const refreshed = await authApi.fetchMe(token);
+      setStoredAuth({ token, user: refreshed });
+    },
+    [token],
+  );
+
   const logout = useCallback(() => {
     clearStoredAuth();
   }, []);
 
-  return { user, token, ready, isAuthenticated: Boolean(token), login, register, updateProfile, logout };
+  return {
+    user,
+    token,
+    ready,
+    isAuthenticated: Boolean(token),
+    login,
+    verifyTwoFactor,
+    register,
+    updateProfile,
+    setupTwoFactor,
+    enableTwoFactor,
+    disableTwoFactor,
+    logout,
+  };
 }
+
+export type { TwoFactorRequiredResult };

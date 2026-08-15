@@ -96,6 +96,7 @@ export interface AuthUser {
   isSuperAdmin: boolean;
   travelerType: TravelerType | null;
   interests: string[];
+  twoFactorEnabled: boolean;
   createdAt: string;
 }
 

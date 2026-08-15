@@ -11,10 +11,12 @@ export interface PublicUser {
   isSuperAdmin: boolean;
   travelerType: User["travelerType"];
   interests: string[];
+  twoFactorEnabled: boolean;
   createdAt: Date;
 }
 
-/** Strips passwordHash (and anything else internal) before a User ever leaves the API. */
+/** Strips passwordHash, twoFactorSecret, twoFactorRecoveryCodes (and anything
+ * else internal) before a User ever leaves the API. */
 export function toPublicUser(user: User): PublicUser {
   return {
     id: user.id,
@@ -27,6 +29,7 @@ export function toPublicUser(user: User): PublicUser {
     isSuperAdmin: user.isSuperAdmin,
     travelerType: user.travelerType,
     interests: user.interests,
+    twoFactorEnabled: user.twoFactorEnabled,
     createdAt: user.createdAt,
   };
 }
