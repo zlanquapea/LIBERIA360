@@ -1,0 +1,24 @@
+{
+  "name": "liberia360",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LIBERIA360 — Everything Liberia. One Place. Monorepo (api + web).",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace=api",
+    "dev:web": "npm run dev --workspace=web",
+    "build:api": "npm run build --workspace=api",
+    "build:web": "npm run build --workspace=web",
+    "test:api": "npm run test --workspace=api",
+    "lint:api": "npm run lint --workspace=api",
+    "lint:web": "npm run lint --workspace=web",
+    "seed:api": "npm run seed --workspace=api",
+    "migrate:api": "npm run migration:run --workspace=api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
