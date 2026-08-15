@@ -7,6 +7,7 @@ import { Activity } from "../activities/entities/activity.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Event } from "../events/entities/event.entity";
 import { Review } from "../reviews/entities/review.entity";
+import { User } from "../users/entities/user.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 import { AdminService } from "./admin.service";
 import { AdminController } from "./admin.controller";
@@ -14,6 +15,8 @@ import { AdminContentService } from "./admin-content.service";
 import { AdminContentController } from "./admin-content.controller";
 import { AdminAnalyticsService } from "./admin-analytics.service";
 import { AdminAnalyticsController } from "./admin-analytics.controller";
+import { AdminTeamService } from "./admin-team.service";
+import { AdminTeamController } from "./admin-team.controller";
 
 @Module({
   imports: [
@@ -25,6 +28,7 @@ import { AdminAnalyticsController } from "./admin-analytics.controller";
       Business,
       Event,
       Review,
+      User,
       AnalyticsEvent,
     ]),
   ],
@@ -32,7 +36,13 @@ import { AdminAnalyticsController } from "./admin-analytics.controller";
     AdminController,
     AdminContentController,
     AdminAnalyticsController,
+    AdminTeamController,
   ],
-  providers: [AdminService, AdminContentService, AdminAnalyticsService],
+  providers: [
+    AdminService,
+    AdminContentService,
+    AdminAnalyticsService,
+    AdminTeamService,
+  ],
 })
 export class AdminModule {}

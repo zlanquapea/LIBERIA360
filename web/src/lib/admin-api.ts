@@ -1,6 +1,7 @@
 import type {
   Activity,
   AggregateAnalytics,
+  AuthUser,
   Business,
   CreateActivityInput,
   CreateBusinessAdminInput,
@@ -129,4 +130,29 @@ export function setCreatorFeatured(token: string, creatorId: string, featured: b
 export function getAggregateAnalytics(token: string, limit?: number): Promise<AggregateAnalytics> {
   const query = limit ? `?limit=${limit}` : '';
   return apiRequest<AggregateAnalytics>(`/admin/analytics/aggregate${query}`, { headers: authHeader(token) });
+}
+
+// Team & Access — super admin only. See api/src/admin/admin-team.service.ts:
+// the first self-service way to grant admin access (previously only a raw
+// SQL UPDATE against the users table).
+export function getTeamRoster(token: string): Promise<AuthUser[]> {
+  return apiRequest<AuthUser[]>('/admin/team', { headers: authHeader(token) });
+}
+
+export function searchTeamMember(token: string, email: string): Promise<AuthUser> {
+  return apiRequest<AuthUser>(`/admin/team/search?email=${encodeURIComponent(email)}`, {
+    headers: authHeader(token),
+  });
+}
+
+export function setTeamRoles(
+  token: string,
+  userId: string,
+  roles: { isAdmin: boolean; isSuperAdmin: boolean },
+): Promise<AuthUser> {
+  return apiRequest<AuthUser>(`/admin/team/${userId}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(roles),
+  });
 }

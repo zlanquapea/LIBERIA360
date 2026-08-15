@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Place } from '@/lib/types';
+import { gradientForCategory } from '@/lib/category-colors';
 import { formatDistance, formatPlaceType, formatRating } from '@/lib/format';
 import { VerificationBadge } from './VerificationBadge';
 
@@ -16,7 +17,8 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
     >
       <div
         aria-hidden
-        className="flex h-32 items-center justify-center bg-gradient-to-br from-accent-500 to-accent-800 text-4xl"
+        className="flex h-32 items-center justify-center text-4xl"
+        style={{ backgroundImage: gradientForCategory(place.category.slug) }}
       >
         {place.category.icon ?? '📍'}
       </div>

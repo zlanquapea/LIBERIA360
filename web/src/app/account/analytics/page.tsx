@@ -104,7 +104,7 @@ function BusinessAnalyticsSection({ business, analytics }: { business: Business;
         {byDay.length === 0 ? (
           <p className="text-sm text-slate-500">No activity yet in this window.</p>
         ) : (
-          <div className="flex h-32 items-end gap-1 overflow-x-auto rounded-xl border border-slate-200 p-3">
+          <div className="flex h-32 gap-1 overflow-x-auto rounded-xl border border-slate-200 p-3">
             {byDay.map((day) => {
               const dayTotal = day.view + day.save + day.contact_click + day.booking_request;
               const heightPct = Math.max(4, Math.round((dayTotal / maxDayTotal) * 100));
@@ -112,7 +112,12 @@ function BusinessAnalyticsSection({ business, analytics }: { business: Business;
                 <div
                   key={day.date}
                   title={`${day.date}: ${day.view} views, ${day.save} saves, ${day.contact_click} contact clicks, ${day.booking_request} booking requests`}
-                  className="flex w-3 shrink-0 flex-col justify-end"
+                  // h-full is what actually makes the bar's height:X% below
+                  // resolve to something nonzero — a percentage height needs
+                  // an ancestor with a defined (not auto/content-sized)
+                  // height, and a flex item under `items-end` sizes to its
+                  // content by default, not the container's cross-axis size.
+                  className="flex h-full w-3 shrink-0 flex-col justify-end"
                 >
                   <div className="rounded-t bg-brand-500" style={{ height: `${heightPct}%` }} />
                 </div>

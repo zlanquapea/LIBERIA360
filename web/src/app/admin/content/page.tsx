@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { AdminGate } from '@/components/AdminGate';
 import { useAuth } from '@/hooks/useAuth';
 import {
   createActivity,
@@ -41,14 +40,6 @@ const inputClass =
 // user-facing endpoints (e.g. Business's self-claim flow), since an admin
 // is seeding or correcting the catalog, not claiming a listing.
 export default function AdminContentPage() {
-  return (
-    <AdminGate>
-      <AdminContentDashboard />
-    </AdminGate>
-  );
-}
-
-function AdminContentDashboard() {
   const { token } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [counties, setCounties] = useState<County[]>([]);
@@ -67,13 +58,13 @@ function AdminContentDashboard() {
   if (!token) return null;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-10 px-4 py-6">
+    <div className="flex flex-col gap-10">
       <h1 className="text-xl font-bold text-slate-900">Content Management</h1>
 
       <CreatePlaceSection token={token} categories={categories} counties={counties} onCreated={reloadPlaces} />
       <ManagePlaceSection token={token} categories={categories} counties={counties} places={places} onChanged={reloadPlaces} />
       <ManageEventsSection token={token} counties={counties} />
-    </main>
+    </div>
   );
 }
 

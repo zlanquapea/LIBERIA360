@@ -1,4 +1,24 @@
-import type { BookingStatus, BudgetBand, BusinessType, EventCategory, PlaceType, RecommendedVisitLength } from './types';
+import type {
+  BookingStatus,
+  BudgetBand,
+  BusinessType,
+  EventCategory,
+  PlaceType,
+  RecommendedVisitLength,
+  TravelerType,
+} from './types';
+
+const TRAVELER_TYPE_LABELS: Record<TravelerType, string> = {
+  diaspora: 'Liberian diaspora',
+  tourist: 'Tourist / visitor',
+  expat: 'Expat living in Liberia',
+  business_traveler: 'Business traveler',
+  local_resident: 'Local resident',
+};
+
+export function formatTravelerType(type: TravelerType): string {
+  return TRAVELER_TYPE_LABELS[type] ?? type;
+}
 
 const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   attraction: 'Attraction',

@@ -2,8 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
+import { InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
+import { getCategories } from '@/lib/api';
+import { formatTravelerType } from '@/lib/format';
+import { HttpError } from '@/lib/http';
+import type { Category, TravelerType } from '@/lib/types';
 
 // Account screen — shows the signed-in profile, or prompts to log in.
 // No server-side gate: auth state lives in localStorage (see auth-storage.ts),
@@ -58,12 +64,30 @@ export default function AccountPage() {
           <dd className="font-medium text-slate-900">{user.homeCounty?.name ?? 'Not set'}</dd>
         </div>
         <div className="flex justify-between px-4 py-3">
+          <dt className="text-slate-500">Traveler type</dt>
+          <dd className="font-medium text-slate-900">
+            {user.travelerType ? formatTravelerType(user.travelerType) : 'Not set'}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1.5 px-4 py-3">
+          <dt className="text-slate-500">Interests</dt>
+          <dd>
+            {user.interests.length === 0 ? (
+              <span className="font-medium text-slate-900">Not set</span>
+            ) : (
+              <span className="text-slate-700">{user.interests.join(', ')}</span>
+            )}
+          </dd>
+        </div>
+        <div className="flex justify-between px-4 py-3">
           <dt className="text-slate-500">Member since</dt>
           <dd className="font-medium text-slate-900">
             {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </dd>
         </div>
       </dl>
+
+      <ProfileEditor />
 
       <PushNotificationToggle />
 
@@ -112,5 +136,96 @@ export default function AccountPage() {
         Log out
       </button>
     </main>
+  );
+}
+
+// Traveler type and interests weren't editable after signup at all before
+// this — the account page's only lever was "log out." A compact inline
+// editor keeps that fixed without a whole separate settings page.
+function ProfileEditor() {
+  const { user, updateProfile } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [travelerType, setTravelerType] = useState<TravelerType | ''>(user?.travelerType ?? '');
+  const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (open && categories.length === 0) {
+      getCategories().then(setCategories);
+    }
+  }, [open, categories.length]);
+
+  function toggleInterest(slug: string) {
+    setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      await updateProfile({ travelerType: travelerType || undefined, interests });
+      setSuccess(true);
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="self-start text-sm font-medium text-brand-700 hover:underline"
+        >
+          Edit traveler type &amp; interests
+        </button>
+        {success && <p className="text-xs text-emerald-700">Saved.</p>}
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Traveler type
+        <TravelerTypeSelect value={travelerType} onChange={setTravelerType} />
+      </label>
+      {categories.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-medium text-slate-700">Interests</p>
+          <InterestChips categories={categories} selected={interests} onToggle={toggleInterest} />
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {submitting ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

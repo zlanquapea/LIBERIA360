@@ -28,6 +28,12 @@ export class County {
   @Column({ name: "rollout_stage", type: "smallint" })
   rolloutStage: number;
 
+  // A single symbol representing what the county is locally known for —
+  // same pattern as Category.icon, one level up. Editorial, not derived
+  // from anything in the schema; set by hand in seed-data.ts.
+  @Column({ type: "varchar", length: 50, nullable: true })
+  icon: string | null;
+
   @OneToMany(() => Place, (place) => place.county)
   places: Place[];
 

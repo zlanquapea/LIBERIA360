@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { County } from "../../counties/entities/county.entity";
-import { AuthProvider } from "./user.enums";
+import { AuthProvider, TravelerType } from "./user.enums";
 
 /** Phase 2 account (Tech Spec §5 User + §3.2). */
 @Entity("users")
@@ -51,10 +51,36 @@ export class User {
   @Column({ name: "home_county_id", nullable: true })
   homeCountyId: string | null;
 
-  // Minimal admin flag backing the verification-badge workflow (Tech Spec
-  // §7/§8). Not a full role system — Phase 2 doesn't need one yet.
+  // Admin flag backing the verification-badge workflow (Tech Spec §7/§8).
   @Column({ name: "is_admin", type: "boolean", default: false })
   isAdmin: boolean;
+
+  // Two-tier admin (Tech Spec §7/§8): a super admin can grant/revoke admin
+  // access on other accounts (see AdminTeamService) and gets first claim on
+  // anything platform-sensitive as that surfaces later (pricing, payouts).
+  // A super admin is conceptually also an admin — SuperAdminGuard doesn't
+  // additionally require isAdmin, but every admin.controller.ts endpoint
+  // checks isAdmin, which the team-management flow always sets alongside
+  // isSuperAdmin — see AdminTeamService.setRoles.
+  @Column({ name: "is_super_admin", type: "boolean", default: false })
+  isSuperAdmin: boolean;
+
+  // Optional, editable after signup (PATCH /auth/me) — see TravelerType's
+  // doc comment for why this exists.
+  @Column({
+    name: "traveler_type",
+    type: "enum",
+    enum: TravelerType,
+    nullable: true,
+  })
+  travelerType: TravelerType | null;
+
+  // Reuses Category.slug as its vocabulary — the same tags the Trip
+  // Planner already uses (Tech Spec §4.3), captured once at signup so it
+  // can pre-fill trip generation and (later) personalize what's surfaced
+  // on Home, instead of being asked again every time.
+  @Column({ type: "text", array: true, default: () => "'{}'" })
+  interests: string[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

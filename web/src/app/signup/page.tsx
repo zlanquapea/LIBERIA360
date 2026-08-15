@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { HttpError } from '@/lib/http';
 import { useAuth } from '@/hooks/useAuth';
+import { getCategories } from '@/lib/api';
+import { InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
+import type { Category, TravelerType } from '@/lib/types';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -12,15 +15,32 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [travelerType, setTravelerType] = useState<TravelerType | ''>('');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getCategories().then(setCategories);
+  }, []);
+
+  function toggleInterest(slug: string) {
+    setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await register(name, email, password);
+      await register({
+        name,
+        email,
+        password,
+        travelerType: travelerType || undefined,
+        interests: interests.length > 0 ? interests : undefined,
+      });
       router.push('/account');
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
@@ -75,6 +95,23 @@ export default function SignupPage() {
           />
           <span className="text-xs font-normal text-slate-400">At least 8 characters.</span>
         </label>
+
+        <div className="flex flex-col gap-2 border-t border-slate-100 pt-4">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            Which best describes you? <span className="font-normal text-slate-400">(optional)</span>
+            <TravelerTypeSelect value={travelerType} onChange={setTravelerType} />
+          </label>
+          <p className="text-xs text-slate-400">Helps us show you (and businesses) more relevant places.</p>
+        </div>
+
+        {categories.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium text-slate-700">
+              What are you into? <span className="font-normal text-slate-400">(optional)</span>
+            </p>
+            <InterestChips categories={categories} selected={interests} onToggle={toggleInterest} />
+          </div>
+        )}
 
         {error && (
           <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">

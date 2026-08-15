@@ -29,6 +29,7 @@ export interface County {
   name: string;
   slug: string;
   rolloutStage: number;
+  icon: string | null;
   placeCount?: number;
 }
 
@@ -79,6 +80,9 @@ export interface Place {
   distanceKm?: number | null;
 }
 
+// Mirrors api/src/users/entities/user.enums.ts's TravelerType.
+export type TravelerType = 'diaspora' | 'tourist' | 'expat' | 'business_traveler' | 'local_resident';
+
 // Mirrors api/src/users/user.serializer.ts's PublicUser — passwordHash is
 // never sent to the client, so it has no field for it here either.
 export interface AuthUser {
@@ -89,6 +93,9 @@ export interface AuthUser {
   authProvider: string;
   homeCounty: County | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  travelerType: TravelerType | null;
+  interests: string[];
   createdAt: string;
 }
 

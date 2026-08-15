@@ -33,25 +33,36 @@ export interface CountySeed {
   name: string;
   slug: string;
   rolloutStage: number;
+  // One symbol for what the county is locally known for — editorial, not
+  // derived from anything else in the schema. Confidence varies: solid for
+  // Montserrado/Margibi/Grand Cape Mount/Nimba; a reasonable best guess for
+  // the rest, expected to get corrected over time rather than researched
+  // to certainty up front.
+  icon: string;
 }
 
 // All 15 counties, staged per Business Plan §9.1.
 export const COUNTY_SEEDS: CountySeed[] = [
-  { name: "Montserrado", slug: "montserrado", rolloutStage: 1 },
-  { name: "Margibi", slug: "margibi", rolloutStage: 1 },
-  { name: "Bong", slug: "bong", rolloutStage: 2 },
-  { name: "Grand Bassa", slug: "grand-bassa", rolloutStage: 2 },
-  { name: "Grand Cape Mount", slug: "grand-cape-mount", rolloutStage: 2 },
-  { name: "Nimba", slug: "nimba", rolloutStage: 3 },
-  { name: "Sinoe", slug: "sinoe", rolloutStage: 3 },
-  { name: "Maryland", slug: "maryland", rolloutStage: 3 },
-  { name: "Grand Kru", slug: "grand-kru", rolloutStage: 3 },
-  { name: "Bomi", slug: "bomi", rolloutStage: 4 },
-  { name: "Gbarpolu", slug: "gbarpolu", rolloutStage: 4 },
-  { name: "Grand Gedeh", slug: "grand-gedeh", rolloutStage: 4 },
-  { name: "Lofa", slug: "lofa", rolloutStage: 4 },
-  { name: "River Cess", slug: "river-cess", rolloutStage: 4 },
-  { name: "River Gee", slug: "river-gee", rolloutStage: 4 },
+  { name: "Montserrado", slug: "montserrado", rolloutStage: 1, icon: "🏛️" }, // the capital county — Monrovia
+  { name: "Margibi", slug: "margibi", rolloutStage: 1, icon: "✈️" }, // Roberts International Airport
+  { name: "Bong", slug: "bong", rolloutStage: 2, icon: "🎓" }, // Cuttington University, Gbarnga
+  { name: "Grand Bassa", slug: "grand-bassa", rolloutStage: 2, icon: "⚓" }, // Buchanan — Liberia's 2nd-largest port
+  {
+    name: "Grand Cape Mount",
+    slug: "grand-cape-mount",
+    rolloutStage: 2,
+    icon: "🏄",
+  }, // Robertsport — internationally known surf spot
+  { name: "Nimba", slug: "nimba", rolloutStage: 3, icon: "⛰️" }, // Mount Nimba, Liberia's highest peak; iron ore
+  { name: "Sinoe", slug: "sinoe", rolloutStage: 3, icon: "🌳" }, // Sapo National Park — largest rainforest reserve
+  { name: "Maryland", slug: "maryland", rolloutStage: 3, icon: "🗼" }, // Cape Palmas Lighthouse, historic Harper
+  { name: "Grand Kru", slug: "grand-kru", rolloutStage: 3, icon: "⛵" }, // Kru people — historically famed West African seafarers
+  { name: "Bomi", slug: "bomi", rolloutStage: 4, icon: "⛏️" }, // Tubmanburg / Bomi Hills — early iron-ore mining
+  { name: "Gbarpolu", slug: "gbarpolu", rolloutStage: 4, icon: "💎" }, // artisanal gold/diamond mining
+  { name: "Grand Gedeh", slug: "grand-gedeh", rolloutStage: 4, icon: "🌲" }, // dense forest, Zwedru
+  { name: "Lofa", slug: "lofa", rolloutStage: 4, icon: "☕" }, // coffee/cocoa, Liberia's agricultural heartland
+  { name: "River Cess", slug: "river-cess", rolloutStage: 4, icon: "🌴" }, // palm oil, rural rainforest
+  { name: "River Gee", slug: "river-gee", rolloutStage: 4, icon: "🌊" }, // newest county, coastal/forest border area
 ];
 
 export interface CategorySeed {

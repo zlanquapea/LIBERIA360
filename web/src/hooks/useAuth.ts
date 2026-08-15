@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import * as authApi from '@/lib/auth-api';
+import type { RegisterInput, UpdateProfileInput } from '@/lib/auth-api';
 import { clearStoredAuth, getStoredAuth, setStoredAuth, subscribeToAuth } from '@/lib/auth-storage';
 import type { AuthUser } from '@/lib/types';
 
@@ -30,15 +31,25 @@ export function useAuth() {
     return result.user;
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const result = await authApi.register({ name, email, password });
+  const register = useCallback(async (input: RegisterInput) => {
+    const result = await authApi.register(input);
     setStoredAuth({ token: result.accessToken, user: result.user });
     return result.user;
   }, []);
+
+  const updateProfile = useCallback(
+    async (input: UpdateProfileInput) => {
+      if (!token) throw new Error('Not signed in');
+      const updated = await authApi.updateProfile(token, input);
+      setStoredAuth({ token, user: updated });
+      return updated;
+    },
+    [token],
+  );
 
   const logout = useCallback(() => {
     clearStoredAuth();
   }, []);
 
-  return { user, token, ready, isAuthenticated: Boolean(token), login, register, logout };
+  return { user, token, ready, isAuthenticated: Boolean(token), login, register, updateProfile, logout };
 }
