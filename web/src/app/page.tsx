@@ -60,6 +60,19 @@ export default async function Home() {
         </span>
       </Link>
 
+      <Link
+        href="/creators"
+        className="flex items-center justify-between rounded-xl border border-accent-200 bg-accent-50 px-5 py-4 hover:border-accent-400"
+      >
+        <div>
+          <p className="font-semibold text-accent-800">Meet Liberia&apos;s creators</p>
+          <p className="text-sm text-accent-700">Videos, photos, and guides from local storytellers</p>
+        </div>
+        <span aria-hidden className="text-2xl">
+          🎥
+        </span>
+      </Link>
+
       <section aria-labelledby="trending-heading" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 id="trending-heading" className="text-lg font-semibold text-slate-900">

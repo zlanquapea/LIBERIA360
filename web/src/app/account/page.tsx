@@ -64,6 +64,13 @@ export default function AccountPage() {
         </div>
       </dl>
 
+      <Link
+        href="/creators/me"
+        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+      >
+        Manage creator profile
+      </Link>
+
       <button
         type="button"
         onClick={handleLogout}

@@ -151,6 +151,36 @@ export interface Business {
   createdAt: string;
 }
 
+// Mirrors api/src/creators/entities/creator.entity.ts (sanitized — user is
+// the public shape).
+export interface Creator {
+  id: string;
+  user: AuthUser | null;
+  name: string;
+  username: string;
+  bio: string | null;
+  profileImage: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  youtube: string | null;
+  followerCount: number;
+  specialties: string[];
+  locationsCovered: string[];
+  contentLinks: string[];
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedCreators {
+  data: Creator[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
 
 export interface PlacesQuery {
