@@ -6,6 +6,7 @@ import { Activity } from "../activities/entities/activity.entity";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { User } from "../users/entities/user.entity";
+import { Review } from "../reviews/entities/review.entity";
 
 config();
 
@@ -21,7 +22,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME ?? "liberia360",
   password: process.env.DB_PASSWORD ?? "liberia360",
   database: process.env.DB_DATABASE ?? "liberia360",
-  entities: [Place, Activity, Category, County, User],
+  entities: [Place, Activity, Category, County, User, Review],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,
 });
