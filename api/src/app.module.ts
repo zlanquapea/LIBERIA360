@@ -20,6 +20,8 @@ import { Business } from "./businesses/entities/business.entity";
 import { BusinessesModule } from "./businesses/businesses.module";
 import { Creator } from "./creators/entities/creator.entity";
 import { CreatorsModule } from "./creators/creators.module";
+import { Event } from "./events/entities/event.entity";
+import { EventsModule } from "./events/events.module";
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { CreatorsModule } from "./creators/creators.module";
             Review,
             Business,
             Creator,
+            Event,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -61,6 +64,7 @@ import { CreatorsModule } from "./creators/creators.module";
     UploadsModule,
     BusinessesModule,
     CreatorsModule,
+    EventsModule,
   ],
 })
 export class AppModule {}
