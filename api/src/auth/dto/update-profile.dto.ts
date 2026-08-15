@@ -1,7 +1,6 @@
 import {
   ArrayMaxSize,
   IsArray,
-  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
@@ -11,19 +10,21 @@ import {
 } from "class-validator";
 import { TravelerType } from "../../users/entities/user.enums";
 
-export class RegisterDto {
+// The traveler-type/interests fields register.dto.ts captures at signup
+// weren't previously editable afterward — nor was homeCountyId, actually
+// (Phase 2 had no profile-update endpoint at all). This backs
+// `PATCH /auth/me`, the first way to fix any of it post-signup.
+export class UpdateProfileDto {
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(150)
-  name: string;
+  name?: string;
 
-  @IsEmail()
-  email: string;
-
+  @IsOptional()
   @IsString()
-  @MinLength(8, { message: "Password must be at least 8 characters" })
-  @MaxLength(72) // bcrypt silently truncates beyond 72 bytes — reject longer up front
-  password: string;
+  @MaxLength(40)
+  phone?: string;
 
   @IsOptional()
   @IsUUID()
@@ -33,9 +34,6 @@ export class RegisterDto {
   @IsEnum(TravelerType)
   travelerType?: TravelerType;
 
-  // Category slugs — not validated against the categories table here (same
-  // as GenerateTripDto's interests) since a stale slug is harmless: it
-  // just never matches anything and quietly contributes nothing.
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10)

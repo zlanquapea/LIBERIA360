@@ -33,6 +33,12 @@ export class UsersService {
     return (await this.findById(saved.id))!;
   }
 
+  /** PATCH /auth/me — see UpdateProfileDto for why this exists. */
+  async update(id: string, data: Partial<User>): Promise<User> {
+    await this.userRepo.update({ id }, data);
+    return (await this.findById(id))!;
+  }
+
   /** Used to target "events nearby" push notifications (Tech Spec §3.2) at
    * users who've set this as their home county. */
   async findIdsByHomeCounty(countyId: string): Promise<string[]> {

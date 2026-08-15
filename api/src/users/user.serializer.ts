@@ -8,6 +8,9 @@ export interface PublicUser {
   authProvider: string;
   homeCounty: User["homeCounty"];
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  travelerType: User["travelerType"];
+  interests: string[];
   createdAt: Date;
 }
 
@@ -21,6 +24,9 @@ export function toPublicUser(user: User): PublicUser {
     authProvider: user.authProvider,
     homeCounty: user.homeCounty,
     isAdmin: user.isAdmin,
+    isSuperAdmin: user.isSuperAdmin,
+    travelerType: user.travelerType,
+    interests: user.interests,
     createdAt: user.createdAt,
   };
 }

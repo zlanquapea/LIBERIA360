@@ -40,6 +40,8 @@ export class AuthService {
       passwordHash,
       authProvider: AuthProvider.EMAIL,
       homeCountyId: dto.homeCountyId ?? null,
+      travelerType: dto.travelerType ?? null,
+      interests: dto.interests ?? [],
     });
 
     return this.buildAuthResult(user);

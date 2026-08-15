@@ -31,6 +31,8 @@ describe("Phase 3 (e2e)", () => {
   let ownerToken: string;
   let adminToken: string;
   let strangerToken: string;
+  let superAdminToken: string;
+  let superAdminId: string;
 
   let hotelBusinessId: string;
 
@@ -129,6 +131,16 @@ describe("Phase 3 (e2e)", () => {
     await userRepo.update({ id: admin.id }, { isAdmin: true });
     const stranger = await registerUser("stranger@example.com", "Stranger");
     strangerToken = stranger.token;
+    const superAdmin = await registerUser(
+      "superadmin@example.com",
+      "Super Admin",
+    );
+    superAdminToken = superAdmin.token;
+    superAdminId = superAdmin.id;
+    await userRepo.update(
+      { id: superAdmin.id },
+      { isAdmin: true, isSuperAdmin: true },
+    );
 
     const claim = await request(app.getHttpServer())
       .post("/api/v1/businesses")
@@ -533,6 +545,134 @@ describe("Phase 3 (e2e)", () => {
         .get("/api/v1/admin/analytics/aggregate?limit=999")
         .set("Authorization", `Bearer ${adminToken}`)
         .expect(400);
+    });
+  });
+
+  describe("Profile — traveler type, interests, PATCH /auth/me", () => {
+    it("accepts travelerType/interests at registration and returns them on /auth/me", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/api/v1/auth/register")
+        .send({
+          name: "Profile Tester",
+          email: "profile-tester@example.com",
+          password: "password123",
+          travelerType: "diaspora",
+          interests: ["beaches", "culture-heritage"],
+        })
+        .expect(201);
+      expect(res.body.user.travelerType).toBe("diaspora");
+      expect(res.body.user.interests).toEqual(["beaches", "culture-heritage"]);
+      expect(res.body.user.isSuperAdmin).toBe(false);
+
+      const me = await request(app.getHttpServer())
+        .get("/api/v1/auth/me")
+        .set("Authorization", `Bearer ${res.body.accessToken}`)
+        .expect(200);
+      expect(me.body.travelerType).toBe("diaspora");
+    });
+
+    it("lets a signed-in user update their own profile via PATCH /auth/me", async () => {
+      const patched = await request(app.getHttpServer())
+        .patch("/api/v1/auth/me")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ travelerType: "tourist", interests: ["hiking-adventure"] })
+        .expect(200);
+      expect(patched.body.travelerType).toBe("tourist");
+      expect(patched.body.interests).toEqual(["hiking-adventure"]);
+    });
+
+    it("rejects an unauthenticated profile update", async () => {
+      await request(app.getHttpServer())
+        .patch("/api/v1/auth/me")
+        .send({ travelerType: "tourist" })
+        .expect(401);
+    });
+  });
+
+  describe("Admin Team & Access (super admin only)", () => {
+    let plainUserId: string;
+    let plainUserToken: string;
+
+    beforeAll(async () => {
+      const plain = await registerUser("team-plain@example.com", "Team Plain");
+      plainUserId = plain.id;
+      plainUserToken = plain.token;
+    });
+
+    it("blocks a regular admin (not super admin) from every team endpoint", async () => {
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/team")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/team/${plainUserId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ isAdmin: true, isSuperAdmin: false })
+        .expect(403);
+    });
+
+    it("lets a super admin promote a user to admin, and it takes effect immediately", async () => {
+      const promoted = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/team/${plainUserId}`)
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .send({ isAdmin: true, isSuperAdmin: false })
+        .expect(200);
+      expect(promoted.body.isAdmin).toBe(true);
+      expect(promoted.body.isSuperAdmin).toBe(false);
+
+      // No re-login needed — the JWT strategy re-fetches the user on every
+      // request (see api/README.md's admin-access note).
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${plainUserToken}`)
+        .expect(200);
+    });
+
+    it("finds a team member by email and lists the full roster", async () => {
+      const found = await request(app.getHttpServer())
+        .get("/api/v1/admin/team/search")
+        .query({ email: "team-plain@example.com" })
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(found.body.id).toBe(plainUserId);
+
+      const roster = await request(app.getHttpServer())
+        .get("/api/v1/admin/team")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      const emails = roster.body.map((u: { email: string }) => u.email);
+      expect(emails).toContain("team-plain@example.com");
+      expect(emails).toContain("superadmin@example.com");
+    });
+
+    it("404s a search for an email with no account", async () => {
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/team/search")
+        .query({ email: "nobody@example.com" })
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it("blocks a super admin from removing their own super-admin access", async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/team/${superAdminId}`)
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .send({ isAdmin: true, isSuperAdmin: false })
+        .expect(400);
+    });
+
+    it("demotes a plain admin back to a regular user", async () => {
+      const demoted = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/team/${plainUserId}`)
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .send({ isAdmin: false, isSuperAdmin: false })
+        .expect(200);
+      expect(demoted.body.isAdmin).toBe(false);
+
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${plainUserToken}`)
+        .expect(403);
     });
   });
 });
