@@ -31,6 +31,21 @@ npm run start:dev     # http://localhost:3001, watch mode
 - `npm run migration:generate -- src/database/migrations/<Name>` — generate a migration from entity changes
 - `npm run seed` — load Stage 1 (Greater Monrovia) sample data
 
+## Tests
+
+```bash
+npm run test        # unit tests (services/controllers, DTO validation) — no DB needed
+npm run test:e2e     # full HTTP-level tests against a real Postgres DB
+```
+
+`test:e2e` needs a `liberia360_test` Postgres database (same user/password as dev). It runs
+migrations and truncates/reseeds its own fixtures on every run, so it's safe to re-run and
+doesn't touch the dev database:
+
+```bash
+createdb -O liberia360 liberia360_test   # one-time setup
+```
+
 ## Notes
 
 - Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. "Near Me" radius search (Phase 2) is the point at which PostGIS earns its setup cost; until then, distance sorting can be done with a Haversine expression in SQL.
