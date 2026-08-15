@@ -1,0 +1,81 @@
+import {
+  Body,
+  Controller,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { AdminContentService } from "./admin-content.service";
+import { CreatePlaceDto } from "./dto/create-place.dto";
+import { UpdatePlaceDto } from "./dto/update-place.dto";
+import { CreateActivityDto } from "./dto/create-activity.dto";
+import { UpdateActivityDto } from "./dto/update-activity.dto";
+import { CreateBusinessAdminDto } from "./dto/create-business-admin.dto";
+import { UpdateBusinessAdminDto } from "./dto/update-business-admin.dto";
+import { UpdateEventDto } from "./dto/update-event.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
+import { toPublicUser } from "../users/user.serializer";
+import { Business } from "../businesses/entities/business.entity";
+import { Event } from "../events/entities/event.entity";
+
+function sanitizeBusiness(business: Business) {
+  return {
+    ...business,
+    owner: business.owner ? toPublicUser(business.owner) : null,
+  };
+}
+
+function sanitizeEvent(event: Event) {
+  return {
+    ...event,
+    createdBy: event.createdBy ? toPublicUser(event.createdBy) : null,
+  };
+}
+
+@Controller("admin")
+@UseGuards(JwtAuthGuard, AdminGuard)
+export class AdminContentController {
+  constructor(private readonly adminContentService: AdminContentService) {}
+
+  @Post("places")
+  createPlace(@Body() dto: CreatePlaceDto) {
+    return this.adminContentService.createPlace(dto);
+  }
+
+  @Patch("places/:id")
+  updatePlace(@Param("id") id: string, @Body() dto: UpdatePlaceDto) {
+    return this.adminContentService.updatePlace(id, dto);
+  }
+
+  @Post("activities")
+  createActivity(@Body() dto: CreateActivityDto) {
+    return this.adminContentService.createActivity(dto);
+  }
+
+  @Patch("activities/:id")
+  updateActivity(@Param("id") id: string, @Body() dto: UpdateActivityDto) {
+    return this.adminContentService.updateActivity(id, dto);
+  }
+
+  @Post("businesses")
+  async createBusiness(@Body() dto: CreateBusinessAdminDto) {
+    return sanitizeBusiness(await this.adminContentService.createBusiness(dto));
+  }
+
+  @Patch("businesses/:id")
+  async updateBusiness(
+    @Param("id") id: string,
+    @Body() dto: UpdateBusinessAdminDto,
+  ) {
+    return sanitizeBusiness(
+      await this.adminContentService.updateBusiness(id, dto),
+    );
+  }
+
+  @Patch("events/:id")
+  async updateEvent(@Param("id") id: string, @Body() dto: UpdateEventDto) {
+    return sanitizeEvent(await this.adminContentService.updateEvent(id, dto));
+  }
+}
