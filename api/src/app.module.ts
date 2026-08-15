@@ -10,6 +10,9 @@ import { County } from "./counties/entities/county.entity";
 import { PlacesModule } from "./places/places.module";
 import { CountiesModule } from "./counties/counties.module";
 import { CategoriesModule } from "./categories/categories.module";
+import { User } from "./users/entities/user.entity";
+import { UsersModule } from "./users/users.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -26,7 +29,7 @@ import { CategoriesModule } from "./categories/categories.module";
         return {
           type: "postgres",
           ...database,
-          entities: [Place, Activity, Category, County],
+          entities: [Place, Activity, Category, County, User],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
         };
@@ -36,6 +39,8 @@ import { CategoriesModule } from "./categories/categories.module";
     PlacesModule,
     CountiesModule,
     CategoriesModule,
+    UsersModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
