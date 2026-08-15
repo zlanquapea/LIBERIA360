@@ -26,23 +26,65 @@ What's deliberately **not** here yet: accounts, reviews, business claims, events
 
 ## Local development
 
-Requires Node 20+, PostgreSQL, and npm. From the repo root:
+Requires Node 20+, PostgreSQL, and npm.
+
+### 1. Install dependencies
 
 ```bash
-npm install                                    # installs both workspaces
+npm install    # installs both workspaces from the repo root
+```
 
-# One-time DB setup (adjust for your local Postgres if not using defaults):
-createuser liberia360 --pwprompt               # password: liberia360
-createdb liberia360 -O liberia360
+### 2. Set up PostgreSQL
 
+**macOS / a machine with PostgreSQL already installed and `sudo -u postgres` working normally:**
+
+```bash
+sudo -u postgres createuser liberia360 --pwprompt   # password: liberia360
+sudo -u postgres createdb liberia360 -O liberia360
+```
+
+**GitHub Codespaces** (the default image doesn't ship PostgreSQL, and `sudo -u <user>` for a target other than root can prompt for a password it won't accept — use this exact sequence, confirmed working):
+
+```bash
+# Install and start PostgreSQL
+sudo apt-get update
+sudo apt-get install -y postgresql postgresql-contrib
+sudo service postgresql start
+
+# Create the role and database as the postgres OS user, via a root shell
+# (sudo -u postgres directly can hang on a password prompt in Codespaces —
+# going through `sudo su -` avoids that)
+sudo su - postgres -c "psql -c \"CREATE ROLE liberia360 WITH LOGIN PASSWORD 'liberia360';\""
+sudo su - postgres -c "createdb liberia360 -O liberia360"
+```
+
+PostgreSQL doesn't auto-start when a Codespace stops/resumes — if a fresh session can't reach the DB, just re-run `sudo service postgresql start`.
+
+**Either way, verify the connection the app will actually use before moving on:**
+
+```bash
+PGPASSWORD=liberia360 psql -h 127.0.0.1 -p 5432 -U liberia360 -d liberia360 -c "SELECT 1;"
+```
+
+That should print `1`. If it doesn't, fix that before continuing — migrations/seeding will fail with the same error.
+
+### 3. Configure and load the app
+
+```bash
 cp api/.env.example api/.env
 cp web/.env.example web/.env.local
 
 npm run migrate:api                            # apply schema
 npm run seed:api                               # load Stage 1 sample data
+```
 
+### 4. Run it
+
+```bash
 npm run dev:api                                # terminal 1 — http://localhost:3001
 npm run dev:web                                # terminal 2 — http://localhost:3000
 ```
 
-Then open http://localhost:3000 — Home, Explore, Counties, Search, and a Destination Profile should all load with real seeded data. Root `package.json` also exposes `build:api`, `build:web`, `test:api`, and `lint:api`/`lint:web` for CI-style checks; see `web/package.json` for the frontend's own `lint`/`build` scripts.
+Open http://localhost:3000 — Home, Explore, Counties, Search, and a Destination Profile should all load with real seeded data. (In Codespaces, use the **Ports** tab to open the forwarded URL for port 3000 rather than typing `localhost` into a browser outside the Codespace.)
+
+Root `package.json` also exposes `build:api`, `build:web`, `test:api`, and `lint:api`/`lint:web` for CI-style checks; see `web/package.json` for the frontend's own `lint`/`build` scripts.
