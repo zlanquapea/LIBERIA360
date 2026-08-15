@@ -1,10 +1,10 @@
-import 'reflect-metadata';
-import { AppDataSource } from './data-source';
-import { County } from '../counties/entities/county.entity';
-import { Category } from '../categories/entities/category.entity';
-import { Place } from '../places/entities/place.entity';
-import { Activity } from '../activities/entities/activity.entity';
-import { COUNTY_SEEDS, CATEGORY_SEEDS, PLACE_SEEDS } from './seed-data';
+import "reflect-metadata";
+import { AppDataSource } from "./data-source";
+import { County } from "../counties/entities/county.entity";
+import { Category } from "../categories/entities/category.entity";
+import { Place } from "../places/entities/place.entity";
+import { Activity } from "../activities/entities/activity.entity";
+import { COUNTY_SEEDS, CATEGORY_SEEDS, PLACE_SEEDS } from "./seed-data";
 
 /**
  * Idempotent seed script — safe to re-run. Upserts by `slug` for
@@ -20,10 +20,10 @@ async function seed() {
     const placeRepo = dataSource.getRepository(Place);
     const activityRepo = dataSource.getRepository(Activity);
 
-    await countyRepo.upsert(COUNTY_SEEDS, ['slug']);
+    await countyRepo.upsert(COUNTY_SEEDS, ["slug"]);
     console.log(`Seeded ${COUNTY_SEEDS.length} counties.`);
 
-    await categoryRepo.upsert(CATEGORY_SEEDS, ['slug']);
+    await categoryRepo.upsert(CATEGORY_SEEDS, ["slug"]);
     console.log(`Seeded ${CATEGORY_SEEDS.length} categories.`);
 
     const counties = await countyRepo.find();
@@ -40,7 +40,9 @@ async function seed() {
         );
       }
 
-      const { activities, countySlug, categorySlug, ...placeFields } = placeSeed;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { activities, countySlug, categorySlug, ...placeFields } =
+        placeSeed;
 
       let place = await placeRepo.findOne({ where: { slug: placeSeed.slug } });
       if (place) {
@@ -53,19 +55,23 @@ async function seed() {
       // Replace this place's activities on every run so re-seeding stays idempotent.
       await activityRepo.delete({ placeId: place.id });
       if (activities?.length) {
-        const activityRows = activities.map((a) => activityRepo.create({ ...a, placeId: place.id }));
+        const activityRows = activities.map((a) =>
+          activityRepo.create({ ...a, placeId: place.id }),
+        );
         await activityRepo.save(activityRows);
       }
     }
-    console.log(`Seeded ${PLACE_SEEDS.length} places (Stage 1 — Greater Monrovia).`);
+    console.log(
+      `Seeded ${PLACE_SEEDS.length} places (Stage 1 — Greater Monrovia).`,
+    );
 
-    console.log('Seed complete.');
+    console.log("Seed complete.");
   } finally {
     await dataSource.destroy();
   }
 }
 
 seed().catch((error) => {
-  console.error('Seed failed:', error);
+  console.error("Seed failed:", error);
   process.exit(1);
 });

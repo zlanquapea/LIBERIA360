@@ -1,5 +1,5 @@
 export enum ActivityDifficulty {
-  EASY = 'easy',
-  MODERATE = 'moderate',
-  CHALLENGING = 'challenging',
+  EASY = "easy",
+  MODERATE = "moderate",
+  CHALLENGING = "challenging",
 }

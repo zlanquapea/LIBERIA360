@@ -1,4 +1,4 @@
-import { ValueTransformer } from 'typeorm';
+import { ValueTransformer } from "typeorm";
 
 /**
  * Postgres NUMERIC/DECIMAL columns come back from `pg` as strings (to avoid
@@ -7,5 +7,6 @@ import { ValueTransformer } from 'typeorm';
  */
 export const decimalTransformer: ValueTransformer = {
   to: (value?: number | null) => value,
-  from: (value?: string | null) => (value === null || value === undefined ? value : parseFloat(value)),
+  from: (value?: string | null) =>
+    value === null || value === undefined ? value : parseFloat(value),
 };
