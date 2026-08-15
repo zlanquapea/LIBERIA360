@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { AdminGate } from '@/components/AdminGate';
 import { useAuth } from '@/hooks/useAuth';
 import { createSponsoredPlacement, getAllSponsoredPlacements, revokeSponsoredPlacement } from '@/lib/admin-api';
 import { getPlaces } from '@/lib/api';
@@ -26,14 +25,6 @@ function placementState(p: SponsoredPlacement): 'active' | 'upcoming' | 'past' {
 // create a time-boxed campaign for a place, revoke one early, and see
 // past/active/upcoming at a glance.
 export default function AdminSponsoredPlacementsPage() {
-  return (
-    <AdminGate>
-      <SponsoredPlacementsDashboard />
-    </AdminGate>
-  );
-}
-
-function SponsoredPlacementsDashboard() {
   const { token } = useAuth();
   const [placements, setPlacements] = useState<SponsoredPlacement[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -52,7 +43,7 @@ function SponsoredPlacementsDashboard() {
   if (!token) return null;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
+    <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-slate-900">Sponsored Placements</h1>
 
       <CreatePlacementForm token={token} places={places} onCreated={reload} />
@@ -68,7 +59,7 @@ function SponsoredPlacementsDashboard() {
           </ul>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 

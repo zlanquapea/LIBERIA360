@@ -1,11 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { AdminGate } from '@/components/AdminGate';
 import { useAuth } from '@/hooks/useAuth';
-import { getModerationQueue, setBusinessVerification, setCreatorFeatured } from '@/lib/admin-api';
-import { getCreatorByUsername } from '@/lib/api';
+import { getModerationQueue, getTeamRoster, setBusinessVerification, setCreatorFeatured } from '@/lib/admin-api';
+import { getActiveSponsoredPlacements, getCreatorByUsername, getPlaces } from '@/lib/api';
 import { formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
 import type { Creator, ModerationQueue, VerificationStatus } from '@/lib/types';
@@ -18,20 +16,20 @@ const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'community_favorite', label: 'Community favorite' },
 ];
 
-// Admin dashboard home (Tech Spec §7/§8) — moderation queue (pending
-// business claims + recent reviews) plus quick links into the other admin
-// sections. Gated on User.isAdmin via AdminGate.
-export default function AdminPage() {
-  return (
-    <AdminGate>
-      <AdminDashboard />
-    </AdminGate>
-  );
+interface Kpis {
+  totalPlaces: number;
+  activePlacements: number;
+  teamSize: number | null; // null when not a super admin — nothing to show
 }
 
-function AdminDashboard() {
-  const { token } = useAuth();
+// Admin dashboard home (Tech Spec §7/§8) — KPI tiles for at-a-glance
+// platform health, then "needs attention" (pending business claims,
+// followed by browsing/lower-urgency sections. Gated + given its sidebar
+// by admin/layout.tsx, so this is content only.
+export default function AdminPage() {
+  const { user, token } = useAuth();
   const [queue, setQueue] = useState<ModerationQueue | null>(null);
+  const [kpis, setKpis] = useState<Kpis | null>(null);
 
   function reload() {
     if (!token) return;
@@ -40,28 +38,72 @@ function AdminDashboard() {
 
   useEffect(reload, [token]);
 
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([
+      getPlaces({ limit: 1 }),
+      getActiveSponsoredPlacements(),
+      user?.isSuperAdmin ? getTeamRoster(token) : Promise.resolve(null),
+    ]).then(([places, placements, team]) => {
+      setKpis({
+        totalPlaces: places.meta.total,
+        activePlacements: placements.length,
+        teamSize: team ? team.length : null,
+      });
+    });
+  }, [token, user?.isSuperAdmin]);
+
   if (!token) return null;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
-      <h1 className="text-xl font-bold text-slate-900">Admin</h1>
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            user?.isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700'
+          }`}
+        >
+          {user?.isSuperAdmin ? '⭐ Super Admin' : 'Admin'}
+        </span>
+      </div>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <AdminNavCard href="/admin/content" icon="📝" label="Content management" />
-        <AdminNavCard href="/admin/sponsored-placements" icon="⭐" label="Sponsored placements" />
-        <AdminNavCard href="/admin/analytics" icon="📊" label="B2B analytics" />
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiTile label="Catalog places" value={kpis?.totalPlaces} icon="📍" />
+        <KpiTile
+          label="Needs attention"
+          value={queue?.pendingBusinesses.length}
+          icon="⏳"
+          tone={queue && queue.pendingBusinesses.length > 0 ? 'warning' : undefined}
+        />
+        <KpiTile label="Featured this week" value={kpis?.activePlacements} icon="⭐" />
+        <KpiTile
+          label="Team members"
+          value={kpis?.teamSize ?? undefined}
+          icon="🔑"
+          hint={user?.isSuperAdmin ? undefined : 'Super admin only'}
+        />
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold text-slate-800">Pending business claims</h2>
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+          Needs attention
+          {queue && queue.pendingBusinesses.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              {queue.pendingBusinesses.length}
+            </span>
+          )}
+        </h2>
         {!queue ? (
           <p className="text-sm text-slate-500">Loading…</p>
         ) : queue.pendingBusinesses.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing pending.</p>
+          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+            Nothing pending — the queue is clear.
+          </p>
         ) : (
           <ul className="flex flex-col gap-3">
             {queue.pendingBusinesses.map((business) => (
-              <li key={business.id} className="rounded-xl border border-slate-200 p-3">
+              <li key={business.id} className="rounded-xl border border-amber-200 bg-amber-50/40 p-3">
                 <p className="font-medium text-slate-900">{business.name}</p>
                 <p className="text-xs text-slate-500">
                   {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
@@ -95,21 +137,38 @@ function AdminDashboard() {
           </ul>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
-function AdminNavCard({ href, icon, label }: { href: string; icon: string; label: string }) {
+function KpiTile({
+  label,
+  value,
+  icon,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: number | undefined;
+  icon: string;
+  tone?: 'warning';
+  hint?: string;
+}) {
   return (
-    <Link
-      href={href}
-      className="flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-4 text-center hover:border-brand-500"
+    <div
+      className={`rounded-xl border p-3 ${tone === 'warning' && value ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}
     >
-      <span aria-hidden className="text-2xl">
-        {icon}
-      </span>
-      <span className="text-sm font-medium text-slate-700">{label}</span>
-    </Link>
+      <div className="flex items-center justify-between">
+        <span aria-hidden className="text-lg">
+          {icon}
+        </span>
+        {tone === 'warning' && Boolean(value) && (
+          <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
+        )}
+      </div>
+      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value ?? (hint ? '—' : '…')}</p>
+      <p className="text-xs text-slate-500">{hint ?? label}</p>
+    </div>
   );
 }
 

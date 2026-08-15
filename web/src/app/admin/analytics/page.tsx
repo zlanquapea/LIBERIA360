@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { AdminGate } from '@/components/AdminGate';
 import { useAuth } from '@/hooks/useAuth';
 import { getAggregateAnalytics } from '@/lib/admin-api';
 import type { AggregateAnalytics } from '@/lib/types';
@@ -14,14 +13,6 @@ import type { AggregateAnalytics } from '@/lib/types';
 // account system (see api/src/admin/admin-analytics.service.ts's note on
 // why that's out of scope here).
 export default function AdminAnalyticsPage() {
-  return (
-    <AdminGate>
-      <AggregateAnalyticsDashboard />
-    </AdminGate>
-  );
-}
-
-function AggregateAnalyticsDashboard() {
   const { token } = useAuth();
   const [data, setData] = useState<AggregateAnalytics | null>(null);
 
@@ -33,7 +24,7 @@ function AggregateAnalyticsDashboard() {
   if (!token) return null;
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
+    <div className="flex flex-col gap-8">
       <h1 className="text-xl font-bold text-slate-900">B2B Tourism Analytics</h1>
 
       {!data ? (
@@ -68,7 +59,7 @@ function AggregateAnalyticsDashboard() {
           <BreakdownSection title="By county" rows={data.byCounty} />
         </>
       )}
-    </main>
+    </div>
   );
 }
 
