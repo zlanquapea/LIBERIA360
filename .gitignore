@@ -36,8 +36,7 @@ coverage/
 # TypeScript build info
 *.tsbuildinfo
 
-# PWA generated files
-web/public/sw.js
+# PWA generated files (web/public/sw.js is hand-written and committed — see api/README.md)
 web/public/workbox-*.js
 web/public/sw.js.map
 web/public/worker-*.js
