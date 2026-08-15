@@ -11,6 +11,8 @@ npm install                   # (or from repo root — this is an npm workspace)
 
 Requires the API (`../api`) running locally for data — see `../api/README.md`.
 
+**Codespaces**: `NEXT_PUBLIC_API_URL`'s default (`http://localhost:3001/api/v1`) only works for Phase 1's server-fetched pages. Phase 2's client-side auth/writes need it pointed at port 3001's *forwarded* URL instead — see the root `README.md`'s "Codespaces: one more step" section before testing signup/login or anything else Phase 2.
+
 ## Run
 
 ```bash
