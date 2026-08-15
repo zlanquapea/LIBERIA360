@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getCreators } from '@/lib/api';
+import { colorForCreator } from '@/lib/category-colors';
 
 export const metadata = { title: 'Creators — LIBERIA360' };
 
@@ -46,7 +47,10 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
                 creator.featured ? 'border-gold-400 bg-gold-400/10' : 'border-slate-200'
               }`}
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg font-semibold text-white">
+              <span
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold text-white"
+                style={{ backgroundColor: colorForCreator(creator.username) }}
+              >
                 {creator.name.trim().charAt(0).toUpperCase() || '?'}
               </span>
               <div className="min-w-0">

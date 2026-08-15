@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ApiError, getBusinessByPlace, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
-import { colorForCategory } from '@/lib/category-colors';
+import { colorForCategory, gradientForCategory } from '@/lib/category-colors';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
@@ -60,7 +60,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       <PlaceViewTracker placeId={place.id} />
       <div
         aria-hidden
-        className="flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-800 text-6xl"
+        className="flex h-40 items-center justify-center rounded-2xl text-6xl"
+        style={{ backgroundImage: gradientForCategory(place.category.slug) }}
       >
         {place.category.icon ?? '📍'}
       </div>

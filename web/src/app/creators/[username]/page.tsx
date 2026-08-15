@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ApiError, getCreatorByUsername } from '@/lib/api';
+import { colorForCreator } from '@/lib/category-colors';
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -26,7 +27,10 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
       <div className="flex items-center gap-4">
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-accent-600 text-2xl font-semibold text-white">
+        <span
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl font-semibold text-white"
+          style={{ backgroundColor: colorForCreator(creator.username) }}
+        >
           {creator.name.trim().charAt(0).toUpperCase() || '?'}
         </span>
         <div>
