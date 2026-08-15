@@ -3,6 +3,9 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsLatitude,
+  IsLongitude,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -15,8 +18,10 @@ const SORT_VALUES: PlaceSort[] = ["featured", "rating", "distance", "name"];
 
 /**
  * GET /places query params (Tech Spec §10): filters by category, county,
- * tag, and free-text search. Radius/"near me" search is Phase 2 (§3.2) and
- * intentionally not implemented here — see api/README.md.
+ * tag, and free-text search, plus Phase 2 "Near Me" radius search (§3.2) —
+ * `lat`/`lng`/`radiusKm` must be supplied together. Radius search uses a
+ * Haversine formula in SQL rather than PostGIS (see api/README.md); fine at
+ * this catalog size, worth revisiting if the catalog grows a lot.
  */
 export class QueryPlacesDto {
   @IsOptional()
@@ -55,4 +60,23 @@ export class QueryPlacesDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  // "Near Me" (Tech Spec §3.2) — 5/10/25/50 km presets from the client, but
+  // any value in a sane range is accepted.
+  @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  lng?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.1)
+  @Max(200)
+  radiusKm?: number;
 }
