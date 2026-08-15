@@ -84,6 +84,13 @@ export class Creator {
   @Column({ type: "boolean", default: false })
   verified: boolean;
 
+  // Phase 3 creator promotion (Tech Spec §3.3) — admin-set, surfaces this
+  // creator first in the directory. No self-service "sponsored content"
+  // tooling beyond this yet; the spec gives that bullet one line with no
+  // further detail to build against.
+  @Column({ type: "boolean", default: false })
+  featured: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

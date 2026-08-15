@@ -8,6 +8,7 @@ import { Repository } from "typeorm";
 import { Creator } from "./entities/creator.entity";
 import { CreateCreatorDto } from "./dto/create-creator.dto";
 import { UpdateCreatorDto } from "./dto/update-creator.dto";
+import { SetFeaturedDto } from "./dto/set-featured.dto";
 
 export interface PaginatedCreators {
   data: Creator[];
@@ -78,9 +79,21 @@ export class CreatorsService {
     return creator;
   }
 
+  async setFeatured(creatorId: string, dto: SetFeaturedDto): Promise<Creator> {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+    creator.featured = dto.featured;
+    await this.creatorRepo.save(creator);
+    return creator;
+  }
+
   async findAll(page = 1, limit = 20): Promise<PaginatedCreators> {
     const [data, total] = await this.creatorRepo.findAndCount({
-      order: { followerCount: "DESC" },
+      order: { featured: "DESC", followerCount: "DESC" },
       skip: (page - 1) * limit,
       take: limit,
     });
