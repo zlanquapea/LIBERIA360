@@ -52,18 +52,20 @@ export default async function Home() {
         </div>
       </section>
 
-      <Link
-        href="/trips/new"
-        className="flex items-center justify-between rounded-xl bg-gradient-to-br from-accent-600 to-accent-800 px-5 py-4 text-white hover:from-accent-700 hover:to-accent-900"
-      >
-        <div>
-          <p className="font-semibold">Build My Liberia Trip</p>
-          <p className="text-sm text-accent-100">Days, interests, budget — we&apos;ll plan the route</p>
-        </div>
-        <span aria-hidden className="text-2xl">
-          🧳
-        </span>
-      </Link>
+      <div className="flex flex-col gap-2 rounded-xl bg-gradient-to-br from-accent-600 to-accent-800 px-5 py-4 text-white">
+        <Link href="/trips/new" className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold">Build My Liberia Trip</p>
+            <p className="text-sm text-accent-100">Days, interests, budget — we&apos;ll plan the route</p>
+          </div>
+          <span aria-hidden className="text-2xl">
+            🧳
+          </span>
+        </Link>
+        <Link href="/trips/weekend/new" className="text-sm font-medium text-accent-50 underline underline-offset-2">
+          Or plan a Weekend Explorer trip from where you are →
+        </Link>
+      </div>
 
       <Link
         href="/explore"

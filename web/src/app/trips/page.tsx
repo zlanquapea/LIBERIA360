@@ -60,12 +60,20 @@ export default function TripsPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900">My Trips</h1>
-        <Link
-          href="/trips/new"
-          className="shrink-0 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
-        >
-          + Build a trip
-        </Link>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href="/trips/weekend/new"
+            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+          >
+            Weekend Explorer
+          </Link>
+          <Link
+            href="/trips/new"
+            className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+          >
+            + Build a trip
+          </Link>
+        </div>
       </div>
 
       {itineraries.length === 0 ? (
