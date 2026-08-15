@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { AuthApiError } from '@/lib/auth-api';
+import { HttpError } from '@/lib/http';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function SignupPage() {
@@ -23,7 +23,7 @@ export default function SignupPage() {
       await register(name, email, password);
       router.push('/account');
     } catch (err) {
-      setError(err instanceof AuthApiError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }

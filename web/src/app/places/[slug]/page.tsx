@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ApiError, getCountyPlaces, getPlaceBySlug } from '@/lib/api';
+import { ApiError, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { SaveButton } from '@/components/SaveButton';
+import { ReviewsSection } from '@/components/ReviewsSection';
 import type { Place, PlaceType } from '@/lib/types';
 
 const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
@@ -26,7 +27,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
     notFound();
   }
 
-  const nearbyResult = await getCountyPlaces(place.county.slug, { limit: 30 });
+  const [nearbyResult, reviewsResult] = await Promise.all([
+    getCountyPlaces(place.county.slug, { limit: 30 }),
+    getReviews(place.id, { limit: 20 }),
+  ]);
   const nearby = nearbyResult.data.filter((p) => p.id !== place.id);
   const nearbyByType = groupByType(nearby);
 
@@ -154,9 +158,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold text-slate-900">Reviews</h2>
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
-          Reviews & ratings are coming in Phase 2.
-        </p>
+        <ReviewsSection placeId={place.id} initialReviews={reviewsResult.data} />
       </section>
 
       {Object.keys(nearbyByType).length > 0 && (

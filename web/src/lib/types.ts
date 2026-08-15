@@ -98,6 +98,35 @@ export interface PaginatedPlaces {
   };
 }
 
+// Mirrors api/src/reviews/entities/review.entity.ts (sanitized — user is
+// the public shape, never a passwordHash).
+export interface Review {
+  id: string;
+  placeId: string;
+  user: AuthUser | null;
+  overallRating: number;
+  experienceRating: number | null;
+  accessibilityRating: number | null;
+  cleanlinessRating: number | null;
+  valueRating: number | null;
+  safetyRating: number | null;
+  serviceRating: number | null;
+  comment: string | null;
+  photos: string[];
+  verifiedVisit: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedReviews {
+  data: Review[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
 
 export interface PlacesQuery {

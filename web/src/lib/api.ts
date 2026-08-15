@@ -1,4 +1,4 @@
-import type { Category, County, PaginatedPlaces, Place, PlacesQuery } from './types';
+import type { Category, County, PaginatedPlaces, PaginatedReviews, Place, PlacesQuery } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -53,6 +53,10 @@ export function getCountyPlaces(countySlug: string, query: PlacesQuery = {}): Pr
 
 export function getCategories(): Promise<Category[]> {
   return apiFetch<Category[]>('/categories');
+}
+
+export function getReviews(placeId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>('/reviews', { placeId, ...query });
 }
 
 export { ApiError };
