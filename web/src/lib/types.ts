@@ -175,6 +175,34 @@ export interface Creator {
   createdAt: string;
 }
 
+// Mirrors api/src/bookings/entities/booking.enums.ts.
+export type BookingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled';
+export type PaymentProvider = 'mtn_momo';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'refunded';
+
+// Mirrors api/src/bookings/entities/booking.entity.ts (sanitized — guest
+// and business.owner are the public user shape). Request-to-book only —
+// paymentStatus stays 'unpaid' until a real MTN MoMo integration exists.
+export interface Booking {
+  id: string;
+  business: Business;
+  businessId: string;
+  guest: AuthUser | null;
+  guestUserId: string;
+  requestedDate: string;
+  requestedEndDate: string | null;
+  partySize: number | null;
+  notes: string | null;
+  status: BookingStatus;
+  businessResponse: string | null;
+  respondedAt: string | null;
+  paymentProvider: PaymentProvider;
+  paymentStatus: PaymentStatus;
+  paymentReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PaginatedCreators {
   data: Creator[];
   meta: {

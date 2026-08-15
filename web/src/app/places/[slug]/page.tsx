@@ -9,6 +9,7 @@ import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { SaveButton } from '@/components/SaveButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { BusinessClaimSection } from '@/components/BusinessClaimSection';
+import { BookingRequestSection } from '@/components/BookingRequestSection';
 import type { BusinessType, Place, PlaceType } from '@/lib/types';
 
 const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
@@ -177,6 +178,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
           suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
           initialBusiness={business}
         />
+        {business && <BookingRequestSection business={business} />}
       </section>
 
       <section className="flex flex-col gap-2">

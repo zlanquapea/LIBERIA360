@@ -75,6 +75,13 @@ export default function AccountPage() {
       </Link>
 
       <Link
+        href="/account/bookings"
+        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+      >
+        My Bookings
+      </Link>
+
+      <Link
         href="/creators/me"
         className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
       >
