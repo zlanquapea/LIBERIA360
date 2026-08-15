@@ -1,4 +1,4 @@
-import type { PlaceType, RecommendedVisitLength } from './types';
+import type { BusinessType, PlaceType, RecommendedVisitLength } from './types';
 
 const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   attraction: 'Attraction',
@@ -7,6 +7,17 @@ const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   restaurant: 'Restaurant',
   activity_provider: 'Tour & Activity',
 };
+
+const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  hotel: 'Hotel',
+  restaurant: 'Restaurant',
+  tour_operator: 'Tour Operator',
+  transport: 'Transport',
+};
+
+export function formatBusinessType(type: BusinessType): string {
+  return BUSINESS_TYPE_LABELS[type] ?? type;
+}
 
 const VISIT_LENGTH_LABELS: Record<RecommendedVisitLength, string> = {
   day_trip: 'Day trip',

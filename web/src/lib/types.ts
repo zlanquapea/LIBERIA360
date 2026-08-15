@@ -127,6 +127,30 @@ export interface PaginatedReviews {
   };
 }
 
+// Mirrors api/src/businesses/entities/business.enums.ts.
+export type BusinessType = 'hotel' | 'restaurant' | 'tour_operator' | 'transport';
+export type SubscriptionTier = 'free' | 'premium';
+
+// Mirrors api/src/businesses/entities/business.entity.ts (sanitized — owner
+// is the public user shape).
+export interface Business {
+  id: string;
+  name: string;
+  type: BusinessType;
+  owner: AuthUser | null;
+  linkedPlaceId: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  socialLinks: string[];
+  description: string | null;
+  images: string[];
+  verificationStatus: VerificationStatus;
+  subscriptionTier: SubscriptionTier;
+  createdAt: string;
+}
+
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
 
 export interface PlacesQuery {

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ApiError, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
+import { ApiError, getBusinessByPlace, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
@@ -8,12 +8,25 @@ import { VerificationBadge } from '@/components/VerificationBadge';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { SaveButton } from '@/components/SaveButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
-import type { Place, PlaceType } from '@/lib/types';
+import { BusinessClaimSection } from '@/components/BusinessClaimSection';
+import type { BusinessType, Place, PlaceType } from '@/lib/types';
 
 const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
   hotel: 'Accommodation',
   restaurant: 'Restaurants',
   activity_provider: 'Tour guides & activities',
+};
+
+// Loose mapping from the catalog's PlaceType to the claim form's
+// BusinessType — just a sensible default for the type dropdown, not a
+// strict correspondence (an attraction's on-site cafe is still a
+// "restaurant" business, for instance).
+const SUGGESTED_BUSINESS_TYPE: Record<PlaceType, BusinessType> = {
+  hotel: 'hotel',
+  restaurant: 'restaurant',
+  activity_provider: 'tour_operator',
+  attraction: 'tour_operator',
+  nature_site: 'tour_operator',
 };
 
 export default async function PlaceProfilePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -27,9 +40,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
     notFound();
   }
 
-  const [nearbyResult, reviewsResult] = await Promise.all([
+  const [nearbyResult, reviewsResult, business] = await Promise.all([
     getCountyPlaces(place.county.slug, { limit: 30 }),
     getReviews(place.id, { limit: 20 }),
+    getBusinessByPlace(place.id),
   ]);
   const nearby = nearbyResult.data.filter((p) => p.id !== place.id);
   const nearbyByType = groupByType(nearby);
@@ -154,6 +168,15 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         ) : (
           <p className="text-sm text-slate-500">No verified contact on file yet.</p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="font-semibold text-slate-900">Business listing</h2>
+        <BusinessClaimSection
+          placeId={place.id}
+          suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
+          initialBusiness={business}
+        />
       </section>
 
       <section className="flex flex-col gap-2">
