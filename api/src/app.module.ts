@@ -16,6 +16,8 @@ import { AuthModule } from "./auth/auth.module";
 import { Review } from "./reviews/entities/review.entity";
 import { ReviewsModule } from "./reviews/reviews.module";
 import { UploadsModule } from "./uploads/uploads.module";
+import { Business } from "./businesses/entities/business.entity";
+import { BusinessesModule } from "./businesses/businesses.module";
 
 @Module({
   imports: [
@@ -32,7 +34,7 @@ import { UploadsModule } from "./uploads/uploads.module";
         return {
           type: "postgres",
           ...database,
-          entities: [Place, Activity, Category, County, User, Review],
+          entities: [Place, Activity, Category, County, User, Review, Business],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
         };
@@ -46,6 +48,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     AuthModule,
     ReviewsModule,
     UploadsModule,
+    BusinessesModule,
   ],
 })
 export class AppModule {}
