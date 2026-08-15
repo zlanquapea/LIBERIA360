@@ -13,6 +13,7 @@ import { Event } from "../events/entities/event.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { PushSubscription } from "../push/entities/push-subscription.entity";
 import { Booking } from "../bookings/entities/booking.entity";
+import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 
 config();
 
@@ -41,6 +42,7 @@ export const AppDataSource = new DataSource({
     Itinerary,
     PushSubscription,
     Booking,
+    AnalyticsEvent,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

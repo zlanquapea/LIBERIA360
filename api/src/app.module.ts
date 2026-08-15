@@ -28,6 +28,8 @@ import { PushSubscription } from "./push/entities/push-subscription.entity";
 import { PushModule } from "./push/push.module";
 import { Booking } from "./bookings/entities/booking.entity";
 import { BookingsModule } from "./bookings/bookings.module";
+import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
+import { AnalyticsModule } from "./analytics/analytics.module";
 
 @Module({
   imports: [
@@ -57,6 +59,7 @@ import { BookingsModule } from "./bookings/bookings.module";
             Itinerary,
             PushSubscription,
             Booking,
+            AnalyticsEvent,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -77,6 +80,7 @@ import { BookingsModule } from "./bookings/bookings.module";
     ItinerariesModule,
     PushModule,
     BookingsModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}
