@@ -32,6 +32,7 @@ import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { SponsoredPlacement } from "./sponsored-placements/entities/sponsored-placement.entity";
 import { SponsoredPlacementsModule } from "./sponsored-placements/sponsored-placements.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { SponsoredPlacementsModule } from "./sponsored-placements/sponsored-plac
     BookingsModule,
     AnalyticsModule,
     SponsoredPlacementsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

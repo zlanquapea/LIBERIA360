@@ -176,6 +176,18 @@ export class Place {
   })
   verificationStatus: VerificationStatus;
 
+  // Audit trail (Tech Spec §7 — "who verified what and when"). A plain FK
+  // id, not a relation, deliberately: Place is embedded (directly or via
+  // Business/Review/Event/Itinerary) in nearly every response in the app,
+  // and a full eager User relation here would mean auditing every one of
+  // those response paths for a passwordHash leak. An id is enough for an
+  // admin to cross-reference.
+  @Column({ name: "verified_by_user_id", type: "uuid", nullable: true })
+  verifiedByUserId: string | null;
+
+  @Column({ name: "verified_at", type: "timestamptz", nullable: true })
+  verifiedAt: Date | null;
+
   @Column({ type: "boolean", default: false })
   featured: boolean;
 
