@@ -75,6 +75,19 @@ export interface Place {
   activities?: Activity[];
 }
 
+// Mirrors api/src/users/user.serializer.ts's PublicUser — passwordHash is
+// never sent to the client, so it has no field for it here either.
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  authProvider: string;
+  homeCounty: County | null;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
 export interface PaginatedPlaces {
   data: Place[];
   meta: {
