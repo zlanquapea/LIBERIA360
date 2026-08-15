@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
+import { TwoFactorSettings } from '@/components/TwoFactorSettings';
 import { InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
 import { getCategories } from '@/lib/api';
 import { formatTravelerType } from '@/lib/format';
@@ -88,6 +89,8 @@ export default function AccountPage() {
       </dl>
 
       <ProfileEditor />
+
+      <TwoFactorSettings />
 
       <PushNotificationToggle />
 
