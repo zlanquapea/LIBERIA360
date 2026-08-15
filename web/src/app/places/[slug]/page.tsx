@@ -6,6 +6,7 @@ import { directionsLink, whatsappLink } from '@/lib/contact';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
+import { SaveButton } from '@/components/SaveButton';
 import type { Place, PlaceType } from '@/lib/types';
 
 const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
@@ -182,6 +183,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       )}
 
       <section className="flex gap-3 border-t border-slate-200 pt-4">
+        <SaveButton slug={place.slug} className="flex-1 justify-center" />
         <button
           type="button"
           disabled
