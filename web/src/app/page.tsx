@@ -53,6 +53,19 @@ export default async function Home() {
       </section>
 
       <Link
+        href="/trips/new"
+        className="flex items-center justify-between rounded-xl bg-gradient-to-br from-accent-600 to-accent-800 px-5 py-4 text-white hover:from-accent-700 hover:to-accent-900"
+      >
+        <div>
+          <p className="font-semibold">Build My Liberia Trip</p>
+          <p className="text-sm text-accent-100">Days, interests, budget — we&apos;ll plan the route</p>
+        </div>
+        <span aria-hidden className="text-2xl">
+          🧳
+        </span>
+      </Link>
+
+      <Link
         href="/explore"
         className="flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 hover:border-brand-400"
       >

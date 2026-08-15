@@ -65,6 +65,13 @@ export default function AccountPage() {
       </dl>
 
       <Link
+        href="/trips"
+        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+      >
+        My Trips
+      </Link>
+
+      <Link
         href="/creators/me"
         className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
       >

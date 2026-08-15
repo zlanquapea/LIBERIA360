@@ -1,4 +1,4 @@
-import type { BusinessType, EventCategory, PlaceType, RecommendedVisitLength } from './types';
+import type { BudgetBand, BusinessType, EventCategory, PlaceType, RecommendedVisitLength } from './types';
 
 const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
   attraction: 'Attraction',
@@ -73,6 +73,16 @@ const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
 
 export function formatEventCategory(category: EventCategory): string {
   return EVENT_CATEGORY_LABELS[category] ?? category;
+}
+
+const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
+  budget: 'Budget (under $10/stop)',
+  moderate: 'Moderate (under $50/stop)',
+  premium: 'Premium (no limit)',
+};
+
+export function formatBudgetBand(band: BudgetBand): string {
+  return BUDGET_BAND_LABELS[band] ?? band;
 }
 
 export function formatEventDateRange(startDate: string, endDate: string | null): string {

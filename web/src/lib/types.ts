@@ -217,6 +217,42 @@ export interface PaginatedEvents {
   };
 }
 
+// Mirrors api/src/itineraries/entities/itinerary.enums.ts.
+export type BudgetBand = 'budget' | 'moderate' | 'premium';
+export type ItineraryKind = 'trip' | 'weekend';
+
+// GET /itineraries (list) returns stops as stored — placeId only, not
+// resolved. GET /itineraries/:id and the two generate endpoints return
+// stops with the full Place resolved (ItineraryStopWithPlace below).
+export interface ItineraryStop {
+  day: number;
+  order: number;
+  placeId: string;
+  notes: string | null;
+}
+
+export interface Itinerary {
+  id: string;
+  title: string;
+  kind: ItineraryKind;
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  stops: ItineraryStop[];
+  createdAt: string;
+}
+
+export interface ItineraryStopWithPlace {
+  day: number;
+  order: number;
+  notes: string | null;
+  place: Place;
+}
+
+export interface ItineraryDetail extends Omit<Itinerary, 'stops'> {
+  stops: ItineraryStopWithPlace[];
+}
+
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
 
 export interface PlacesQuery {
