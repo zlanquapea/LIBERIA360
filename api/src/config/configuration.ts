@@ -19,6 +19,12 @@ export interface AppConfig {
     privateKey: string;
     contactEmail: string;
   };
+  twoFactor: {
+    // 32-byte hex key for AES-256-GCM, encrypting TOTP secrets at rest
+    // (see auth/two-factor-crypto.ts) — a DB leak alone shouldn't be
+    // enough to generate valid codes for every account.
+    encryptionKey: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -43,5 +49,12 @@ export default (): AppConfig => ({
     publicKey: process.env.VAPID_PUBLIC_KEY ?? "",
     privateKey: process.env.VAPID_PRIVATE_KEY ?? "",
     contactEmail: process.env.VAPID_CONTACT_EMAIL ?? "mailto:admin@example.com",
+  },
+  twoFactor: {
+    // Dev-only fallback (32 bytes of "dead", valid hex, obviously not
+    // random), same pattern as jwt.secret above — never rely on this
+    // outside local development. Generate a real one with:
+    //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    encryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY ?? "dead".repeat(16),
   },
 });
