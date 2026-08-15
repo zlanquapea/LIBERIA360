@@ -8,6 +8,7 @@ import { County } from "../counties/entities/county.entity";
 import { User } from "../users/entities/user.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { Creator } from "../creators/entities/creator.entity";
 
 config();
 
@@ -23,7 +24,16 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME ?? "liberia360",
   password: process.env.DB_PASSWORD ?? "liberia360",
   database: process.env.DB_DATABASE ?? "liberia360",
-  entities: [Place, Activity, Category, County, User, Review, Business],
+  entities: [
+    Place,
+    Activity,
+    Category,
+    County,
+    User,
+    Review,
+    Business,
+    Creator,
+  ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,
 });
