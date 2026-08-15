@@ -8,6 +8,7 @@ import {
   UseGuards,
   Post,
 } from "@nestjs/common";
+import { Throttle, seconds } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -33,8 +34,11 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  // Stricter than the global default (see app.module.ts) — this is exactly
+  // the endpoint a password-guessing script would hit.
   @Post("login")
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -42,9 +46,12 @@ export class AuthController {
   // Login step 2 — exchanges the pendingToken from a twoFactorRequired
   // login response, plus a TOTP or recovery code, for a real accessToken.
   // Deliberately unauthenticated: the pendingToken itself is the proof of
-  // "already passed the password check".
+  // "already passed the password check". Same tight limit as login — a
+  // 6-digit TOTP code only has a million possibilities, so this is exactly
+  // as brute-forceable as a weak password without it.
   @Post("2fa/verify")
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
   verifyTwoFactor(@Body() dto: VerifyTwoFactorDto) {
     return this.authService.verifyTwoFactor(dto);
   }

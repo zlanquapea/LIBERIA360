@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { ThrottlerModule, ThrottlerGuard, seconds } from "@nestjs/throttler";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import configuration, { AppConfig } from "./config/configuration";
 import { HealthModule } from "./health/health.module";
@@ -40,6 +42,12 @@ import { AdminModule } from "./admin/admin.module";
       isGlobal: true,
       load: [configuration],
     }),
+    // Global default: generous enough not to bother normal browsing/API
+    // use. Password- and code-guessing endpoints (login, 2fa/verify) get
+    // a much stricter override via @Throttle — see auth.controller.ts.
+    ThrottlerModule.forRoot([
+      { name: "default", ttl: seconds(60), limit: 120 },
+    ]),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (
@@ -87,6 +95,12 @@ import { AdminModule } from "./admin/admin.module";
     AnalyticsModule,
     SponsoredPlacementsModule,
     AdminModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
