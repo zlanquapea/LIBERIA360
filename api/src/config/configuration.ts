@@ -10,6 +10,15 @@ export interface AppConfig {
     database: string;
     synchronize: boolean;
   };
+  jwt: {
+    secret: string;
+    expiresIn: string;
+  };
+  webPush: {
+    publicKey: string;
+    privateKey: string;
+    contactEmail: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -23,5 +32,16 @@ export default (): AppConfig => ({
     password: process.env.DB_PASSWORD ?? "liberia360",
     database: process.env.DB_DATABASE ?? "liberia360",
     synchronize: process.env.DB_SYNCHRONIZE === "true",
+  },
+  jwt: {
+    // Dev-only fallback so a fresh checkout boots without extra setup —
+    // never rely on this default outside local development.
+    secret: process.env.JWT_SECRET ?? "dev-only-insecure-secret-change-me",
+    expiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
+  },
+  webPush: {
+    publicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+    privateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+    contactEmail: process.env.VAPID_CONTACT_EMAIL ?? "mailto:admin@example.com",
   },
 });

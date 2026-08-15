@@ -1,0 +1,58 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ApiError, getEvent } from '@/lib/api';
+import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const event = await getEvent(id).catch(() => null);
+  return { title: event ? `${event.name} — LIBERIA360 Events` : 'Event — LIBERIA360' };
+}
+
+export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  const event = await getEvent(id).catch((error) => {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  });
+  if (!event) {
+    notFound();
+  }
+
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+      <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+        {formatEventCategory(event.category)}
+      </span>
+
+      <h1 className="text-2xl font-bold text-slate-900">{event.name}</h1>
+
+      <div className="flex flex-col gap-1 text-sm text-slate-600">
+        <p>📅 {formatEventDateRange(event.startDate, event.endDate)}</p>
+        <p>
+          📍{' '}
+          {event.place ? (
+            <Link href={`/places/${event.place.slug}`} className="text-brand-700 hover:underline">
+              {event.place.name}
+            </Link>
+          ) : (
+            event.locationText
+          )}{' '}
+          · {event.county.name} County
+        </p>
+      </div>
+
+      {event.description && <p className="text-slate-700">{event.description}</p>}
+
+      {event.ticketInfo && (
+        <section className="flex flex-col gap-1 rounded-xl border border-slate-200 p-3">
+          <h2 className="text-sm font-semibold text-slate-900">Tickets</h2>
+          <p className="text-sm text-slate-600">{event.ticketInfo}</p>
+        </section>
+      )}
+
+      {event.createdBy && <p className="text-xs text-slate-400">Posted by {event.createdBy.name}</p>}
+    </main>
+  );
+}

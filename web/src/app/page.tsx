@@ -1,11 +1,16 @@
 import Link from 'next/link';
-import { getCategories, getPlaces } from '@/lib/api';
+import { getCategories, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { formatEventDateRange } from '@/lib/format';
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, trending] = await Promise.all([getCategories(), getPlaces({ sort: 'featured', limit: 6 })]);
+  const [categories, trending, upcomingEvents] = await Promise.all([
+    getCategories(),
+    getPlaces({ sort: 'featured', limit: 6 }),
+    getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
+  ]);
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
@@ -47,6 +52,21 @@ export default async function Home() {
         </div>
       </section>
 
+      <div className="flex flex-col gap-2 rounded-xl bg-gradient-to-br from-accent-600 to-accent-800 px-5 py-4 text-white">
+        <Link href="/trips/new" className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold">Build My Liberia Trip</p>
+            <p className="text-sm text-accent-100">Days, interests, budget — we&apos;ll plan the route</p>
+          </div>
+          <span aria-hidden className="text-2xl">
+            🧳
+          </span>
+        </Link>
+        <Link href="/trips/weekend/new" className="text-sm font-medium text-accent-50 underline underline-offset-2">
+          Or plan a Weekend Explorer trip from where you are →
+        </Link>
+      </div>
+
       <Link
         href="/explore"
         className="flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 hover:border-brand-400"
@@ -57,6 +77,19 @@ export default async function Home() {
         </div>
         <span aria-hidden className="text-2xl">
           🗺️
+        </span>
+      </Link>
+
+      <Link
+        href="/creators"
+        className="flex items-center justify-between rounded-xl border border-accent-200 bg-accent-50 px-5 py-4 hover:border-accent-400"
+      >
+        <div>
+          <p className="font-semibold text-accent-800">Meet Liberia&apos;s creators</p>
+          <p className="text-sm text-accent-700">Videos, photos, and guides from local storytellers</p>
+        </div>
+        <span aria-hidden className="text-2xl">
+          🎥
         </span>
       </Link>
 
@@ -76,15 +109,46 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="flex items-center justify-between rounded-xl border border-dashed border-slate-300 px-5 py-4">
+      {upcomingEvents.data.length > 0 && (
+        <section aria-labelledby="events-heading" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 id="events-heading" className="text-lg font-semibold text-slate-900">
+              Upcoming events
+            </h2>
+            <Link href="/events" className="text-sm font-medium text-brand-700 hover:underline">
+              See all
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {upcomingEvents.data.map((event) => (
+              <li key={event.id}>
+                <Link
+                  href={`/events/${event.id}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 hover:border-brand-500"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-slate-900">{event.name}</p>
+                    <p className="text-xs text-slate-500">{formatEventDateRange(event.startDate, event.endDate)}</p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <Link
+        href="/near-me"
+        className="flex items-center justify-between rounded-xl border-2 border-gold-400 bg-white px-5 py-4 hover:border-gold-600"
+      >
         <div>
-          <p className="font-semibold text-slate-700">Near Me</p>
-          <p className="text-sm text-slate-500">Radius-based discovery is coming in Phase 2.</p>
+          <p className="font-semibold text-slate-800">Near Me</p>
+          <p className="text-sm text-slate-600">Find places close to where you are right now</p>
         </div>
-        <span aria-hidden className="text-2xl opacity-50">
+        <span aria-hidden className="text-2xl">
           📡
         </span>
-      </section>
+      </Link>
     </main>
   );
 }

@@ -46,6 +46,24 @@ doesn't touch the dev database:
 createdb -O liberia360 liberia360_test   # one-time setup
 ```
 
+## Phase 2
+
+Accounts and everything that depends on them (Tech Spec §3.2). All 8 modules below are migrated, unit/e2e tested (`test/phase2.e2e-spec.ts`), and have a matching frontend in `../web`.
+
+- **Auth**: JWT (email/password only — see `src/users/entities/user.enums.ts` for why Google/Apple/phone are schema-ready but not implemented). Set a real `JWT_SECRET` outside local dev. `POST /auth/register`, `POST /auth/login`, `GET /auth/me`.
+- **Uploads**: `POST /api/v1/uploads/image` stores to a local `uploads/` folder — dev/demo only, see `src/uploads/uploads.controller.ts` for why this isn't production-ready.
+- **Reviews**: `POST /reviews`, `GET /reviews?placeId=...` — one review per user per place; `Place.rating`/`reviewCount` are recomputed from the reviews table on every write, not incrementally maintained.
+- **Businesses**: `POST /businesses` (self-claim, one claim per Place), `GET /businesses?placeId=...`, `GET /businesses/mine`.
+- **Creators**: `POST /creators`, `PATCH /creators/me`, `GET /creators` (directory), `GET /creators/:username` (public profile) — one creator profile per user.
+- **Events**: `POST /events`, `GET /events?category=&county=&dateFrom=&dateTo=`, `GET /events/:id`. Creating an event fires a best-effort push notification (see below) to users whose home county matches.
+- **Near Me**: `GET /places?lat=&lng=&radiusKm=` — all three or none; a Haversine SQL expression rather than PostGIS (fine at this catalog size, see Notes below).
+- **Trip Planner / Weekend Explorer**: `POST /itineraries` ("Build My Liberia Trip" — duration/interests/budget, starts from Monrovia), `POST /itineraries/weekend` (starts from a given lat/lng, filtered by travel time instead of day count), `GET /itineraries` (mine, stops as stored — placeId only), `GET /itineraries/:id` (stops resolved to full Place objects). Both generators use the same greedy nearest-neighbor sequencing in `itineraries.service.ts`.
+- **Push notifications**: needs a VAPID keypair in `.env`:
+  ```bash
+  npx web-push generate-vapid-keys
+  ```
+  Without it, `PushService` logs a warning at boot and silently no-ops sends — the app still runs fine. `GET /push/vapid-public-key` is public (the frontend needs it to create a browser subscription); `POST /push/subscribe`/`/unsubscribe` are authenticated.
+
 ## Notes
 
-- Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. "Near Me" radius search (Phase 2) is the point at which PostGIS earns its setup cost; until then, distance sorting can be done with a Haversine expression in SQL.
+- Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. Phase 2's "Near Me" radius search uses a Haversine expression in SQL instead; fine at this catalog size, worth revisiting if it grows a lot.

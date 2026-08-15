@@ -73,6 +73,23 @@ export interface Place {
   verificationStatus: VerificationStatus;
   featured: boolean;
   activities?: Activity[];
+  // Populated (non-null) only when the request included lat/lng/radiusKm —
+  // distance from the *search point*, distinct from distanceFromMonroviaKm
+  // above (which is a fixed catalog field, always from Monrovia).
+  distanceKm?: number | null;
+}
+
+// Mirrors api/src/users/user.serializer.ts's PublicUser — passwordHash is
+// never sent to the client, so it has no field for it here either.
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  authProvider: string;
+  homeCounty: County | null;
+  isAdmin: boolean;
+  createdAt: string;
 }
 
 export interface PaginatedPlaces {
@@ -83,6 +100,157 @@ export interface PaginatedPlaces {
     limit: number;
     totalPages: number;
   };
+}
+
+// Mirrors api/src/reviews/entities/review.entity.ts (sanitized — user is
+// the public shape, never a passwordHash).
+export interface Review {
+  id: string;
+  placeId: string;
+  user: AuthUser | null;
+  overallRating: number;
+  experienceRating: number | null;
+  accessibilityRating: number | null;
+  cleanlinessRating: number | null;
+  valueRating: number | null;
+  safetyRating: number | null;
+  serviceRating: number | null;
+  comment: string | null;
+  photos: string[];
+  verifiedVisit: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedReviews {
+  data: Review[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Mirrors api/src/businesses/entities/business.enums.ts.
+export type BusinessType = 'hotel' | 'restaurant' | 'tour_operator' | 'transport';
+export type SubscriptionTier = 'free' | 'premium';
+
+// Mirrors api/src/businesses/entities/business.entity.ts (sanitized — owner
+// is the public user shape).
+export interface Business {
+  id: string;
+  name: string;
+  type: BusinessType;
+  owner: AuthUser | null;
+  linkedPlaceId: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  socialLinks: string[];
+  description: string | null;
+  images: string[];
+  verificationStatus: VerificationStatus;
+  subscriptionTier: SubscriptionTier;
+  createdAt: string;
+}
+
+// Mirrors api/src/creators/entities/creator.entity.ts (sanitized — user is
+// the public shape).
+export interface Creator {
+  id: string;
+  user: AuthUser | null;
+  name: string;
+  username: string;
+  bio: string | null;
+  profileImage: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  youtube: string | null;
+  followerCount: number;
+  specialties: string[];
+  locationsCovered: string[];
+  contentLinks: string[];
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedCreators {
+  data: Creator[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Mirrors api/src/events/entities/event.enums.ts.
+export type EventCategory = 'concert' | 'festival' | 'sports' | 'nightlife' | 'seasonal' | 'other';
+
+// Mirrors api/src/events/entities/event.entity.ts (sanitized — createdBy is
+// the public user shape).
+export interface Event {
+  id: string;
+  name: string;
+  category: EventCategory;
+  place: Place | null;
+  placeId: string | null;
+  locationText: string | null;
+  county: County;
+  startDate: string;
+  endDate: string | null;
+  description: string | null;
+  images: string[];
+  ticketInfo: string | null;
+  createdBy: AuthUser | null;
+  createdAt: string;
+}
+
+export interface PaginatedEvents {
+  data: Event[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Mirrors api/src/itineraries/entities/itinerary.enums.ts.
+export type BudgetBand = 'budget' | 'moderate' | 'premium';
+export type ItineraryKind = 'trip' | 'weekend';
+
+// GET /itineraries (list) returns stops as stored — placeId only, not
+// resolved. GET /itineraries/:id and the two generate endpoints return
+// stops with the full Place resolved (ItineraryStopWithPlace below).
+export interface ItineraryStop {
+  day: number;
+  order: number;
+  placeId: string;
+  notes: string | null;
+}
+
+export interface Itinerary {
+  id: string;
+  title: string;
+  kind: ItineraryKind;
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  stops: ItineraryStop[];
+  createdAt: string;
+}
+
+export interface ItineraryStopWithPlace {
+  day: number;
+  order: number;
+  notes: string | null;
+  place: Place;
+}
+
+export interface ItineraryDetail extends Omit<Itinerary, 'stops'> {
+  stops: ItineraryStopWithPlace[];
 }
 
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
@@ -96,4 +264,8 @@ export interface PlacesQuery {
   sort?: PlaceSort;
   page?: number;
   limit?: number;
+  // "Near Me" (Tech Spec §3.2) — must be supplied together, or omitted.
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
 }

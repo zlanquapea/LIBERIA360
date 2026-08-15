@@ -10,6 +10,22 @@ import { County } from "./counties/entities/county.entity";
 import { PlacesModule } from "./places/places.module";
 import { CountiesModule } from "./counties/counties.module";
 import { CategoriesModule } from "./categories/categories.module";
+import { User } from "./users/entities/user.entity";
+import { UsersModule } from "./users/users.module";
+import { AuthModule } from "./auth/auth.module";
+import { Review } from "./reviews/entities/review.entity";
+import { ReviewsModule } from "./reviews/reviews.module";
+import { UploadsModule } from "./uploads/uploads.module";
+import { Business } from "./businesses/entities/business.entity";
+import { BusinessesModule } from "./businesses/businesses.module";
+import { Creator } from "./creators/entities/creator.entity";
+import { CreatorsModule } from "./creators/creators.module";
+import { Event } from "./events/entities/event.entity";
+import { EventsModule } from "./events/events.module";
+import { Itinerary } from "./itineraries/entities/itinerary.entity";
+import { ItinerariesModule } from "./itineraries/itineraries.module";
+import { PushSubscription } from "./push/entities/push-subscription.entity";
+import { PushModule } from "./push/push.module";
 
 @Module({
   imports: [
@@ -26,7 +42,19 @@ import { CategoriesModule } from "./categories/categories.module";
         return {
           type: "postgres",
           ...database,
-          entities: [Place, Activity, Category, County],
+          entities: [
+            Place,
+            Activity,
+            Category,
+            County,
+            User,
+            Review,
+            Business,
+            Creator,
+            Event,
+            Itinerary,
+            PushSubscription,
+          ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
         };
@@ -36,6 +64,15 @@ import { CategoriesModule } from "./categories/categories.module";
     PlacesModule,
     CountiesModule,
     CategoriesModule,
+    UsersModule,
+    AuthModule,
+    ReviewsModule,
+    UploadsModule,
+    BusinessesModule,
+    CreatorsModule,
+    EventsModule,
+    ItinerariesModule,
+    PushModule,
   ],
 })
 export class AppModule {}
