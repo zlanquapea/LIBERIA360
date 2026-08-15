@@ -10,6 +10,7 @@ import { Review } from "../reviews/entities/review.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Event } from "../events/entities/event.entity";
+import { Itinerary } from "../itineraries/entities/itinerary.entity";
 
 config();
 
@@ -35,6 +36,7 @@ export const AppDataSource = new DataSource({
     Business,
     Creator,
     Event,
+    Itinerary,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

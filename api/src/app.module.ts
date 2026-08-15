@@ -22,6 +22,8 @@ import { Creator } from "./creators/entities/creator.entity";
 import { CreatorsModule } from "./creators/creators.module";
 import { Event } from "./events/entities/event.entity";
 import { EventsModule } from "./events/events.module";
+import { Itinerary } from "./itineraries/entities/itinerary.entity";
+import { ItinerariesModule } from "./itineraries/itineraries.module";
 
 @Module({
   imports: [
@@ -48,6 +50,7 @@ import { EventsModule } from "./events/events.module";
             Business,
             Creator,
             Event,
+            Itinerary,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -65,6 +68,7 @@ import { EventsModule } from "./events/events.module";
     BusinessesModule,
     CreatorsModule,
     EventsModule,
+    ItinerariesModule,
   ],
 })
 export class AppModule {}
