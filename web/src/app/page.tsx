@@ -122,15 +122,18 @@ export default async function Home() {
         </section>
       )}
 
-      <section className="flex items-center justify-between rounded-xl border border-dashed border-slate-300 px-5 py-4">
+      <Link
+        href="/near-me"
+        className="flex items-center justify-between rounded-xl border-2 border-gold-400 bg-white px-5 py-4 hover:border-gold-600"
+      >
         <div>
-          <p className="font-semibold text-slate-700">Near Me</p>
-          <p className="text-sm text-slate-500">Radius-based discovery is coming in Phase 2.</p>
+          <p className="font-semibold text-slate-800">Near Me</p>
+          <p className="text-sm text-slate-600">Find places close to where you are right now</p>
         </div>
-        <span aria-hidden className="text-2xl opacity-50">
+        <span aria-hidden className="text-2xl">
           📡
         </span>
-      </section>
+      </Link>
     </main>
   );
 }

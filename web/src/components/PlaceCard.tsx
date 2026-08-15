@@ -3,8 +3,11 @@ import type { Place } from '@/lib/types';
 import { formatDistance, formatPlaceType, formatRating } from '@/lib/format';
 import { VerificationBadge } from './VerificationBadge';
 
-export function PlaceCard({ place }: { place: Place }) {
-  const distance = formatDistance(place.distanceFromMonroviaKm);
+// `distanceOverride` lets a caller show a more relevant distance than the
+// catalog's fixed distanceFromMonroviaKm — e.g. Near Me results show
+// distance from the searched point instead.
+export function PlaceCard({ place, distanceOverride }: { place: Place; distanceOverride?: string | null }) {
+  const distance = distanceOverride ?? formatDistance(place.distanceFromMonroviaKm);
 
   return (
     <Link

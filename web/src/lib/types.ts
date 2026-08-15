@@ -73,6 +73,10 @@ export interface Place {
   verificationStatus: VerificationStatus;
   featured: boolean;
   activities?: Activity[];
+  // Populated (non-null) only when the request included lat/lng/radiusKm —
+  // distance from the *search point*, distinct from distanceFromMonroviaKm
+  // above (which is a fixed catalog field, always from Monrovia).
+  distanceKm?: number | null;
 }
 
 // Mirrors api/src/users/user.serializer.ts's PublicUser — passwordHash is
@@ -224,4 +228,8 @@ export interface PlacesQuery {
   sort?: PlaceSort;
   page?: number;
   limit?: number;
+  // "Near Me" (Tech Spec §3.2) — must be supplied together, or omitted.
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
 }
