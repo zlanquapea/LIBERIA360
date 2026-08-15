@@ -5,24 +5,22 @@ Product context lives in [`LIBERIA360_Business_Plan.docx`](./LIBERIA360_Business
 
 ## Repository layout
 
-This is an npm-workspaces monorepo building the Phase 1 MVP (discovery, no accounts/payments):
+This is an npm-workspaces monorepo:
 
 ```
 api/   NestJS backend — REST API, PostgreSQL (TypeORM)
 web/   Next.js frontend — responsive PWA
 ```
 
-See `api/README.md` and `web/README.md` for service-specific setup, and the "Local development" section below for running the full stack.
+See `api/README.md` and `web/README.md` for service-specific setup (including each phase's feature list in more detail), and the "Local development" section below for running the full stack.
 
-## Phase 1 scope
+## Scope
 
-What's built (matches Tech Spec §3.1 — discovery only, no accounts/payments):
+**Phase 1** (Tech Spec §3.1 — discovery, no accounts/payments): catalog of places/categories/counties/activities, seeded with Stage 1 (Greater Monrovia) sample data; Home, Explore (map), Category Browse, County Browse, Search, Destination Profile, and Saved/Bucket List (device-local) screens; the REST API backing all of it.
 
-- Catalog: places, categories, counties, activities — seeded with Stage 1 (Greater Monrovia) sample data
-- Screens: Home, Explore (map), Category Browse, County Browse, Search, Destination Profile, Saved/Bucket List (device-local)
-- REST API backing all of the above, with unit + e2e test coverage
+**Phase 2** (Tech Spec §3.2 — accounts and everything that depends on them): JWT auth; reviews + rating recalculation; business self-claim; creator directory/profiles; events (with push notifications for events in a user's home county); "Near Me" radius search; "Build My Liberia Trip" + Weekend Explorer itinerary generation; push notification opt-in. All backend modules and their frontend screens are built and tested — see `api/README.md`'s and `web/README.md`'s "Phase 2" sections for the module-by-module breakdown.
 
-What's deliberately **not** here yet: accounts, reviews, business claims, events, trip planner, "Near Me" radius search (all Phase 2), and bookings/payments (Phase 3). See the Technical Specification for the full phased plan.
+What's deliberately **not** here yet: bookings/payments (Phase 3 — the Business Plan's marketplace/monetization layer). See the Technical Specification for the full phased plan.
 
 ## Local development
 
