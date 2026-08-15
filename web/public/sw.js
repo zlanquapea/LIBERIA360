@@ -36,3 +36,39 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/'))),
   );
 });
+
+// Phase 2 push notifications (Tech Spec §3.2 "events nearby") — the API
+// sends a JSON payload of {title, body, url}; this just needs to turn that
+// into a real OS notification and route a click back into the app.
+self.addEventListener('push', (event) => {
+  let payload = { title: 'LIBERIA360', body: '' };
+  if (event.data) {
+    try {
+      payload = { ...payload, ...event.data.json() };
+    } catch {
+      payload.body = event.data.text();
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: payload.url || '/' },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const existing = clientList.find((client) => new URL(client.url).pathname === url);
+      if (existing) return existing.focus();
+      return self.clients.openWindow(url);
+    }),
+  );
+});

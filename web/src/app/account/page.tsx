@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 
 // Account screen — shows the signed-in profile, or prompts to log in.
 // No server-side gate: auth state lives in localStorage (see auth-storage.ts),
@@ -63,6 +64,8 @@ export default function AccountPage() {
           </dd>
         </div>
       </dl>
+
+      <PushNotificationToggle />
 
       <Link
         href="/trips"
