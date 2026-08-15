@@ -30,6 +30,8 @@ import { Booking } from "./bookings/entities/booking.entity";
 import { BookingsModule } from "./bookings/bookings.module";
 import { AnalyticsEvent } from "./analytics/entities/analytics-event.entity";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { SponsoredPlacement } from "./sponsored-placements/entities/sponsored-placement.entity";
+import { SponsoredPlacementsModule } from "./sponsored-placements/sponsored-placements.module";
 
 @Module({
   imports: [
@@ -60,6 +62,7 @@ import { AnalyticsModule } from "./analytics/analytics.module";
             PushSubscription,
             Booking,
             AnalyticsEvent,
+            SponsoredPlacement,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -81,6 +84,7 @@ import { AnalyticsModule } from "./analytics/analytics.module";
     PushModule,
     BookingsModule,
     AnalyticsModule,
+    SponsoredPlacementsModule,
   ],
 })
 export class AppModule {}
