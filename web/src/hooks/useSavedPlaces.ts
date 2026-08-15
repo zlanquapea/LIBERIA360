@@ -14,7 +14,7 @@ export function useSavedPlaces() {
   }, []);
 
   const toggle = useCallback((slug: string) => {
-    toggleSavedPlace(slug);
+    return toggleSavedPlace(slug);
   }, []);
 
   return { savedSlugs, isSaved: (slug: string) => savedSlugs.includes(slug), toggle };

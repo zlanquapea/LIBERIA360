@@ -175,6 +175,22 @@ export interface Creator {
   createdAt: string;
 }
 
+// Mirrors api/src/analytics/entities/analytics-event.enums.ts.
+export type AnalyticsEventType = 'view' | 'save' | 'contact_click' | 'booking_request';
+
+// Mirrors api/src/analytics/analytics.service.ts's AnalyticsTotals/BusinessAnalytics.
+export interface AnalyticsTotals {
+  view: number;
+  save: number;
+  contact_click: number;
+  booking_request: number;
+}
+
+export interface BusinessAnalytics {
+  totals: AnalyticsTotals;
+  byDay: (AnalyticsTotals & { date: string })[];
+}
+
 // Mirrors api/src/bookings/entities/booking.enums.ts.
 export type BookingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled';
 export type PaymentProvider = 'mtn_momo';

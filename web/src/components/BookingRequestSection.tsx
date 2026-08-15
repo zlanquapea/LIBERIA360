@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { createBooking } from '@/lib/booking-api';
+import { recordAnalyticsEvent } from '@/lib/analytics-api';
 import { HttpError } from '@/lib/http';
 import { formatBookingStatus } from '@/lib/format';
 import type { Business, BookingStatus } from '@/lib/types';
@@ -42,6 +43,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
       });
       setSent({ status: booking.status });
       setShowForm(false);
+      recordAnalyticsEvent(business.linkedPlaceId, 'booking_request');
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
