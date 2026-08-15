@@ -85,13 +85,15 @@ export interface PaginatedPlaces {
   };
 }
 
+export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
+
 export interface PlacesQuery {
   category?: string;
   county?: string;
   tag?: string;
   type?: PlaceType;
   q?: string;
-  sort?: 'featured' | 'rating' | 'distance' | 'name';
+  sort?: PlaceSort;
   page?: number;
   limit?: number;
 }

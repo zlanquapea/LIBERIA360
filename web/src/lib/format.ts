@@ -28,6 +28,18 @@ export function formatDistance(km: number | null): string | null {
   return `${km} km from Monrovia`;
 }
 
+// The data model doesn't store a travel-time field, so this is a rough
+// estimate (assumes ~35 km/h average, accounting for typical road
+// conditions) — always labeled "estimated" rather than presented as fact.
+export function estimateTravelTime(km: number | null): string | null {
+  if (km === null || km === 0) return null;
+  const minutes = Math.round((km / 35) * 60);
+  if (minutes < 60) return `~${minutes} min drive (estimated)`;
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return `~${hours}h${rem > 0 ? ` ${rem}m` : ''} drive (estimated)`;
+}
+
 export function formatCost(amount: number | null): string {
   if (amount === null) return 'Not listed';
   if (amount === 0) return 'Free';
