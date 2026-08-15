@@ -8,6 +8,8 @@ import { Repository } from "typeorm";
 import { Event } from "./entities/event.entity";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { QueryEventsDto } from "./dto/query-events.dto";
+import { PushService } from "../push/push.service";
+import { UsersService } from "../users/users.service";
 
 export interface PaginatedEvents {
   data: Event[];
@@ -19,6 +21,8 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
+    private readonly pushService: PushService,
+    private readonly usersService: UsersService,
   ) {}
 
   async create(userId: string, dto: CreateEventDto): Promise<Event> {
@@ -45,7 +49,29 @@ export class EventsService {
       createdByUserId: userId,
     });
     const saved = await this.eventRepo.save(event);
-    return this.eventRepo.findOneOrFail({ where: { id: saved.id } });
+    const full = await this.eventRepo.findOneOrFail({
+      where: { id: saved.id },
+    });
+
+    // "Events nearby" push (Tech Spec §3.2) — targeted at users who've set
+    // this event's county as their home county. Fire-and-forget: a
+    // notification failure should never fail event creation.
+    void this.notifyNearby(full);
+
+    return full;
+  }
+
+  private async notifyNearby(event: Event): Promise<void> {
+    const userIds = await this.usersService.findIdsByHomeCounty(event.countyId);
+    if (userIds.length === 0) return;
+    await this.pushService.sendToUsers(
+      userIds.filter((id) => id !== event.createdByUserId),
+      {
+        title: `New event in ${event.county.name}`,
+        body: event.name,
+        url: `/events/${event.id}`,
+      },
+    );
   }
 
   async findAll(query: QueryEventsDto): Promise<PaginatedEvents> {

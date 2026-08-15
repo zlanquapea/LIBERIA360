@@ -25,4 +25,14 @@ export class UsersService {
     });
     return this.userRepo.save(user);
   }
+
+  /** Used to target "events nearby" push notifications (Tech Spec §3.2) at
+   * users who've set this as their home county. */
+  async findIdsByHomeCounty(countyId: string): Promise<string[]> {
+    const users = await this.userRepo.find({
+      where: { homeCountyId: countyId },
+      select: ["id"],
+    });
+    return users.map((u) => u.id);
+  }
 }

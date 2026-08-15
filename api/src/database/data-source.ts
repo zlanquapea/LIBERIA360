@@ -11,6 +11,7 @@ import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Event } from "../events/entities/event.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
+import { PushSubscription } from "../push/entities/push-subscription.entity";
 
 config();
 
@@ -37,6 +38,7 @@ export const AppDataSource = new DataSource({
     Creator,
     Event,
     Itinerary,
+    PushSubscription,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

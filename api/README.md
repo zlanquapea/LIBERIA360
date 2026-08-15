@@ -46,6 +46,16 @@ doesn't touch the dev database:
 createdb -O liberia360 liberia360_test   # one-time setup
 ```
 
+## Phase 2
+
+- **Auth**: JWT (email/password only — see `src/users/entities/user.enums.ts` for why Google/Apple/phone are schema-ready but not implemented). Set a real `JWT_SECRET` outside local dev.
+- **Uploads**: `POST /api/v1/uploads/image` stores to a local `uploads/` folder — dev/demo only, see `src/uploads/uploads.controller.ts` for why this isn't production-ready.
+- **Push notifications**: needs a VAPID keypair in `.env`:
+  ```bash
+  npx web-push generate-vapid-keys
+  ```
+  Without it, `PushService` logs a warning at boot and silently no-ops sends — the app still runs fine.
+
 ## Notes
 
-- Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. "Near Me" radius search (Phase 2) is the point at which PostGIS earns its setup cost; until then, distance sorting can be done with a Haversine expression in SQL.
+- Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. Phase 2's "Near Me" radius search uses a Haversine expression in SQL instead; fine at this catalog size, worth revisiting if it grows a lot.
