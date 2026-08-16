@@ -1,4 +1,7 @@
 # LIBERIA360
+
+[![CI](https://github.com/zlanquapea/LIBERIA360/actions/workflows/ci.yml/badge.svg)](https://github.com/zlanquapea/LIBERIA360/actions/workflows/ci.yml)
+
 LIBERIA360 is a private-sector digital discovery platform for Liberia's tourism and hospitality economy. It gives Liberians, the diaspora, expats, and international visitors one place to discover destinations, plan trips, and connect directly with hotels, restaurants, tour operators, and local creators.
 
 Product context lives in [`LIBERIA360_Business_Plan.docx`](./LIBERIA360_Business_Plan.docx) and [`LIBERIA360_Technical_Specification.docx`](./LIBERIA360_Technical_Specification.docx).
@@ -12,7 +15,7 @@ api/   NestJS backend — REST API, PostgreSQL (TypeORM)
 web/   Next.js frontend — responsive PWA
 ```
 
-See `api/README.md` and `web/README.md` for service-specific setup (including each phase's feature list in more detail), and the "Local development" section below for running the full stack.
+See `api/README.md` and `web/README.md` for service-specific setup (including each phase's feature list in more detail), and the "Local development" section below for running the full stack. Deploying this for real (not local dev)? See [`DEPLOYMENT.md`](./DEPLOYMENT.md) first.
 
 ## Scope
 
@@ -102,3 +105,10 @@ Fix, once both dev servers are running:
 3. `web/.env.local`: set `NEXT_PUBLIC_API_URL` to that URL + `/api/v1`.
 4. `api/.env`: set `CORS_ORIGIN` to your forwarded **port 3000** URL (same pattern).
 5. Restart `npm run dev:api` and `npm run dev:web` so they pick up the new env vars.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push/PR to `main` (and on demand via `workflow_dispatch`), as two independent jobs against a real Postgres 16 service container — nothing mocked:
+
+- **`api`**: lint (`eslint`, no `--fix` — a fixable violation should still fail the run), `nest build`, unit tests (`npm run test:api`, no DB needed), then e2e tests (`npm run test:e2e`, against a throwaway `liberia360_test` DB each spec migrates/truncates itself — see `api/README.md`'s Tests section).
+- **`web`**: builds the API, runs migrations, seeds Stage 1 sample data, and starts it for real (`npm run start:prod`, polled on `/health/ready` before continuing) — `next build` statically prerenders a handful of pages (`/`, `/counties`, `/explore`, ...) that fetch from the API *at build time*, so without a live, seeded API those builds fail outright rather than just missing data. Then `next lint`, `tsc --noEmit`, the Jest unit test suite (`web/jest.config.js`, via `next/jest`), and finally `next build`.

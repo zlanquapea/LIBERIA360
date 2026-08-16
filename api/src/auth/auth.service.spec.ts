@@ -6,12 +6,19 @@ import * as bcrypt from "bcrypt";
 import { authenticator } from "otplib";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
+import { MailService } from "../mail/mail.service";
 import { AuthProvider } from "../users/entities/user.enums";
 import { encryptSecret } from "./two-factor-crypto";
+import { hashToken } from "./token-hash";
 
 // Same dev-only fallback key as configuration.ts's TWO_FACTOR_ENCRYPTION_KEY
 // default — a valid 32-byte hex string, nothing more.
 const TEST_TWO_FACTOR_KEY = "dead".repeat(16);
+
+const CONFIG_BY_KEY: Record<string, unknown> = {
+  twoFactor: { encryptionKey: TEST_TWO_FACTOR_KEY },
+  webAppUrl: "http://localhost:3000",
+};
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -20,23 +27,33 @@ describe("AuthService", () => {
     create: jest.Mock;
     findById: jest.Mock;
     update: jest.Mock;
+    findByTokenHash: jest.Mock;
   };
   let jwtService: { sign: jest.Mock; verify: jest.Mock };
   let configService: { get: jest.Mock };
+  let mailService: {
+    sendEmailVerification: jest.Mock;
+    sendPasswordReset: jest.Mock;
+  };
 
   beforeEach(async () => {
     usersService = {
       findByEmail: jest.fn(),
       create: jest.fn(),
       findById: jest.fn(),
-      update: jest.fn(),
+      update: jest.fn((id, data) => ({ id, ...data })),
+      findByTokenHash: jest.fn(),
     };
     jwtService = {
       sign: jest.fn().mockReturnValue("signed.jwt.token"),
       verify: jest.fn(),
     };
     configService = {
-      get: jest.fn().mockReturnValue({ encryptionKey: TEST_TWO_FACTOR_KEY }),
+      get: jest.fn((key: string) => CONFIG_BY_KEY[key]),
+    };
+    mailService = {
+      sendEmailVerification: jest.fn().mockResolvedValue(undefined),
+      sendPasswordReset: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -45,6 +62,7 @@ describe("AuthService", () => {
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
 
@@ -305,6 +323,205 @@ describe("AuthService", () => {
           code: "000000",
         }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe("forgotPassword", () => {
+    it("silently no-ops for an unknown email — never reveals whether an account exists", async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      await service.forgotPassword("nobody@example.com");
+      expect(usersService.update).not.toHaveBeenCalled();
+      expect(mailService.sendPasswordReset).not.toHaveBeenCalled();
+    });
+
+    it("stores a hashed reset token and emails a reset link for a real account", async () => {
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        passwordHash: "hash",
+      });
+
+      await service.forgotPassword("x@example.com");
+
+      expect(usersService.update).toHaveBeenCalledWith(
+        "1",
+        expect.objectContaining({
+          passwordResetTokenHash: expect.any(String),
+          passwordResetTokenExpiresAt: expect.any(Date),
+        }),
+      );
+      expect(mailService.sendPasswordReset).toHaveBeenCalledWith(
+        "x@example.com",
+        expect.stringContaining("/reset-password?token="),
+      );
+    });
+  });
+
+  describe("resetPassword", () => {
+    it("rejects an unknown or already-used token", async () => {
+      usersService.findByTokenHash.mockResolvedValue(null);
+      await expect(
+        service.resetPassword("bad-token", "newpassword123"),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it("rejects an expired token", async () => {
+      const token = "a-real-token";
+      usersService.findByTokenHash.mockResolvedValue({
+        id: "1",
+        tokenVersion: 0,
+        passwordResetTokenHash: hashToken(token),
+        passwordResetTokenExpiresAt: new Date(Date.now() - 1000),
+      });
+      await expect(
+        service.resetPassword(token, "newpassword123"),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it("sets a new password, clears the token, and bumps tokenVersion", async () => {
+      const token = "a-real-token";
+      usersService.findByTokenHash.mockResolvedValue({
+        id: "1",
+        tokenVersion: 3,
+        passwordResetTokenHash: hashToken(token),
+        passwordResetTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      await service.resetPassword(token, "newpassword123");
+
+      const updateCall = usersService.update.mock.calls[0];
+      expect(updateCall[0]).toBe("1");
+      expect(updateCall[1].passwordResetTokenHash).toBeNull();
+      expect(updateCall[1].tokenVersion).toBe(4);
+      expect(
+        await bcrypt.compare("newpassword123", updateCall[1].passwordHash),
+      ).toBe(true);
+    });
+  });
+
+  describe("verifyEmail", () => {
+    it("rejects an unknown or expired token", async () => {
+      usersService.findByTokenHash.mockResolvedValue(null);
+      await expect(service.verifyEmail("bad-token")).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it("marks the account verified and clears the token", async () => {
+      const token = "verify-token";
+      usersService.findByTokenHash.mockResolvedValue({
+        id: "1",
+        emailVerificationTokenHash: hashToken(token),
+        emailVerificationTokenExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      await service.verifyEmail(token);
+
+      expect(usersService.update).toHaveBeenCalledWith(
+        "1",
+        expect.objectContaining({
+          emailVerified: true,
+          emailVerificationTokenHash: null,
+        }),
+      );
+    });
+  });
+
+  describe("resendVerification", () => {
+    it("no-ops for an already-verified account", async () => {
+      await service.resendVerification({
+        id: "1",
+        emailVerified: true,
+      } as never);
+      expect(usersService.update).not.toHaveBeenCalled();
+      expect(mailService.sendEmailVerification).not.toHaveBeenCalled();
+    });
+
+    it("issues a new token and resends for an unverified account", async () => {
+      await service.resendVerification({
+        id: "1",
+        email: "x@example.com",
+        emailVerified: false,
+      } as never);
+      expect(usersService.update).toHaveBeenCalledWith(
+        "1",
+        expect.objectContaining({
+          emailVerificationTokenHash: expect.any(String),
+        }),
+      );
+      expect(mailService.sendEmailVerification).toHaveBeenCalled();
+    });
+  });
+
+  describe("changePassword", () => {
+    it("rejects the wrong current password", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      const user = { id: "1", passwordHash, tokenVersion: 0 } as never;
+      await expect(
+        service.changePassword(user, "wrong-password", "newpassword123"),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(usersService.update).not.toHaveBeenCalled();
+    });
+
+    it("sets the new password and bumps tokenVersion, returning a fresh token", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      const user = { id: "1", passwordHash, tokenVersion: 2 } as never;
+
+      const result = await service.changePassword(
+        user,
+        "correct-password",
+        "newpassword123",
+      );
+
+      expect(usersService.update).toHaveBeenCalledWith(
+        "1",
+        expect.objectContaining({ tokenVersion: 3 }),
+      );
+      expect(result.accessToken).toBe("signed.jwt.token");
+    });
+  });
+
+  describe("logoutAllDevices", () => {
+    it("bumps tokenVersion and returns a fresh token", async () => {
+      const user = { id: "1", tokenVersion: 5 } as never;
+      const result = await service.logoutAllDevices(user);
+      expect(usersService.update).toHaveBeenCalledWith("1", {
+        tokenVersion: 6,
+      });
+      expect(result.accessToken).toBe("signed.jwt.token");
+    });
+  });
+
+  describe("deleteAccount", () => {
+    it("rejects the wrong password without touching the account", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      const user = { id: "1", passwordHash, tokenVersion: 0 } as never;
+      await expect(
+        service.deleteAccount(user, "wrong-password"),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(usersService.update).not.toHaveBeenCalled();
+    });
+
+    it("anonymizes the account and bumps tokenVersion given the correct password", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      const user = { id: "1", passwordHash, tokenVersion: 1 } as never;
+
+      await service.deleteAccount(user, "correct-password");
+
+      const updateCall = usersService.update.mock.calls[0];
+      expect(updateCall[0]).toBe("1");
+      expect(updateCall[1]).toMatchObject({
+        name: "Deleted user",
+        passwordHash: null,
+        phone: null,
+        isAdmin: false,
+        isSuperAdmin: false,
+        tokenVersion: 2,
+      });
+      expect(updateCall[1].email).toMatch(
+        /^deleted-.+@deleted\.liberia360\.invalid$/,
+      );
+      expect(updateCall[1].deletedAt).toBeInstanceOf(Date);
     });
   });
 });

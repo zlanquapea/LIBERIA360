@@ -84,3 +84,59 @@ export function disableTwoFactor(token: string, password: string): Promise<{ suc
     body: JSON.stringify({ password }),
   });
 }
+
+// Always resolves with the same generic message whether or not the email
+// is registered (see AuthService.forgotPassword) — nothing to branch on.
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<{ success: true }> {
+  return apiRequest<{ success: true }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
+export function verifyEmail(token: string): Promise<{ success: true }> {
+  return apiRequest<{ success: true }>('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function resendVerification(token: string): Promise<{ success: true }> {
+  return apiRequest<{ success: true }>('/auth/resend-verification', {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
+
+// Both return a fresh AuthResult — the calling session gets a new token
+// signed with the bumped tokenVersion instead of being logged out by its
+// own request (see AuthService.changePassword/logoutAllDevices).
+export function changePassword(token: string, currentPassword: string, newPassword: string): Promise<AuthResult> {
+  return apiRequest<AuthResult>('/auth/password', {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export function logoutAllDevices(token: string): Promise<AuthResult> {
+  return apiRequest<AuthResult>('/auth/logout-all', {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
+
+export function deleteAccount(token: string, password: string): Promise<{ success: true }> {
+  return apiRequest<{ success: true }>('/auth/me', {
+    method: 'DELETE',
+    headers: authHeader(token),
+    body: JSON.stringify({ password }),
+  });
+}

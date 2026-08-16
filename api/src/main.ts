@@ -1,16 +1,28 @@
 import "reflect-metadata";
-import { NestFactory } from "@nestjs/core";
+import { NestFactory, HttpAdapterHost } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { ConfigService } from "@nestjs/config";
 import { mkdirSync } from "fs";
-import { join } from "path";
 import { AppModule } from "./app.module";
 import { AppConfig } from "./config/configuration";
+import { validateProductionConfig } from "./config/validate-production-config";
+import { localUploadsDir } from "./uploads/local-uploads-dir";
+import { initErrorTracking } from "./error-tracking/error-tracking";
+import { SentryExceptionsFilter } from "./error-tracking/sentry-exceptions.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService<AppConfig, true>);
+
+  validateProductionConfig(configService);
+
+  initErrorTracking(
+    configService.get("errorTracking", { infer: true }).dsn,
+    configService.get("nodeEnv", { infer: true }),
+  );
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new SentryExceptionsFilter(httpAdapter));
 
   app.enableCors({
     origin: configService.get("corsOrigin", { infer: true }),
@@ -24,12 +36,16 @@ async function bootstrap() {
     }),
   );
 
-  // Local-disk upload storage (dev/demo only — see src/uploads/uploads.controller.ts).
-  const uploadsDir = join(__dirname, "..", "uploads");
-  mkdirSync(uploadsDir, { recursive: true });
-  app.useStaticAssets(uploadsDir, { prefix: "/uploads" });
+  // Only relevant when STORAGE_DRIVER=local (the default) — see
+  // src/uploads/storage/local-storage.provider.ts. With STORAGE_DRIVER=s3,
+  // uploaded files never touch this instance's disk at all.
+  if (configService.get("storage", { infer: true }).driver === "local") {
+    const uploadsDir = localUploadsDir();
+    mkdirSync(uploadsDir, { recursive: true });
+    app.useStaticAssets(uploadsDir, { prefix: "/uploads" });
+  }
 
-  app.setGlobalPrefix("api/v1", { exclude: ["health"] });
+  app.setGlobalPrefix("api/v1", { exclude: ["health", "health/ready"] });
 
   const port = configService.get("port", { infer: true });
   await app.listen(port);

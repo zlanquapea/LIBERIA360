@@ -1,6 +1,11 @@
 export interface JwtPayload {
   sub: string; // user id
   email: string;
+  // The tokenVersion this token was signed with — JwtStrategy rejects it
+  // if it doesn't match the user's *current* tokenVersion, which is what
+  // makes a normally-stateless JWT actually revocable (password change,
+  // "sign out of all other devices", account deletion all bump it).
+  tokenVersion: number;
 }
 
 // Signed by AuthService.login instead of a real JwtPayload when the account

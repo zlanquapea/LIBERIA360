@@ -91,6 +91,47 @@ export function useAuth() {
     clearStoredAuth();
   }, []);
 
+  // No token involved — these three run before/without a session
+  // (a signed-out visitor resetting a forgotten password, or clicking a
+  // verify-email link from an inbox on another device).
+  const forgotPassword = useCallback((email: string) => authApi.forgotPassword(email), []);
+  const resetPassword = useCallback(
+    (resetToken: string, newPassword: string) => authApi.resetPassword(resetToken, newPassword),
+    [],
+  );
+  const verifyEmail = useCallback((verifyToken: string) => authApi.verifyEmail(verifyToken), []);
+
+  const resendVerification = useCallback(async () => {
+    if (!token) throw new Error('Not signed in');
+    return authApi.resendVerification(token);
+  }, [token]);
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      if (!token) throw new Error('Not signed in');
+      const result = await authApi.changePassword(token, currentPassword, newPassword);
+      setStoredAuth({ token: result.accessToken, user: result.user });
+      return result.user;
+    },
+    [token],
+  );
+
+  const logoutAllDevices = useCallback(async () => {
+    if (!token) throw new Error('Not signed in');
+    const result = await authApi.logoutAllDevices(token);
+    setStoredAuth({ token: result.accessToken, user: result.user });
+    return result.user;
+  }, [token]);
+
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      if (!token) throw new Error('Not signed in');
+      await authApi.deleteAccount(token, password);
+      clearStoredAuth();
+    },
+    [token],
+  );
+
   return {
     user,
     token,
@@ -104,6 +145,13 @@ export function useAuth() {
     enableTwoFactor,
     disableTwoFactor,
     logout,
+    forgotPassword,
+    resetPassword,
+    verifyEmail,
+    resendVerification,
+    changePassword,
+    logoutAllDevices,
+    deleteAccount,
   };
 }
 

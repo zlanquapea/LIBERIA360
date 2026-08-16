@@ -6,6 +6,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import { TwoFactorSettings } from '@/components/TwoFactorSettings';
+import { AccountSecurity } from '@/components/AccountSecurity';
+import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
 import { InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
 import { getCategories } from '@/lib/api';
 import { formatTravelerType } from '@/lib/format';
@@ -59,6 +61,8 @@ export default function AccountPage() {
         </div>
       </div>
 
+      <EmailVerificationBanner />
+
       <dl className="flex flex-col divide-y divide-slate-100 rounded-xl border border-slate-200 text-sm">
         <div className="flex justify-between px-4 py-3">
           <dt className="text-slate-500">Home county</dt>
@@ -91,6 +95,8 @@ export default function AccountPage() {
       <ProfileEditor />
 
       <TwoFactorSettings />
+
+      <AccountSecurity />
 
       <PushNotificationToggle />
 

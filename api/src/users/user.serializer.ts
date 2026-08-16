@@ -12,11 +12,13 @@ export interface PublicUser {
   travelerType: User["travelerType"];
   interests: string[];
   twoFactorEnabled: boolean;
+  emailVerified: boolean;
   createdAt: Date;
 }
 
-/** Strips passwordHash, twoFactorSecret, twoFactorRecoveryCodes (and anything
- * else internal) before a User ever leaves the API. */
+/** Strips passwordHash, twoFactorSecret, twoFactorRecoveryCodes,
+ * tokenVersion, verification/reset token hashes (and anything else
+ * internal) before a User ever leaves the API. */
 export function toPublicUser(user: User): PublicUser {
   return {
     id: user.id,
@@ -30,6 +32,7 @@ export function toPublicUser(user: User): PublicUser {
     travelerType: user.travelerType,
     interests: user.interests,
     twoFactorEnabled: user.twoFactorEnabled,
+    emailVerified: user.emailVerified,
     createdAt: user.createdAt,
   };
 }

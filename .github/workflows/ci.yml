@@ -1,0 +1,129 @@
+name: CI
+
+# Two independent jobs rather than one, because they need different things
+# from Postgres: `api` needs a throwaway `liberia360_test` DB that each
+# e2e spec truncates/migrates itself (see api/README.md's Tests section);
+# `web` needs the *real* `liberia360` DB, migrated and seeded, with the API
+# actually running — `next build` statically prerenders a handful of pages
+# (/, /counties, /explore, ...) that fetch from the API at build time, so
+# without a live API those builds fail with ECONNREFUSED, not just a
+# missing-data warning.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: liberia360
+          POSTGRES_PASSWORD: liberia360
+          POSTGRES_DB: liberia360_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        working-directory: api
+        run: npx eslint "{src,test}/**/*.ts"
+
+      - name: Build
+        run: npm run build:api
+
+      - name: Unit tests
+        run: npm run test:api
+
+      - name: E2E tests
+        working-directory: api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: liberia360
+          DB_PASSWORD: liberia360
+          TEST_DB_DATABASE: liberia360_test
+        run: npm run test:e2e
+
+  web:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: liberia360
+          POSTGRES_PASSWORD: liberia360
+          POSTGRES_DB: liberia360
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USERNAME: liberia360
+      DB_PASSWORD: liberia360
+      DB_DATABASE: liberia360
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build + migrate + seed + start the API
+        working-directory: api
+        run: |
+          npm run build
+          npm run migration:run
+          npm run seed
+          npm run start:prod &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health/ready > /dev/null; then
+              echo "API is up and can reach the DB"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become healthy in time" >&2
+          exit 1
+
+      - name: Lint
+        run: npm run lint:web
+
+      - name: Typecheck
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test:web
+
+      - name: Build (also statically prerenders pages that fetch from the live API above)
+        run: npm run build:web

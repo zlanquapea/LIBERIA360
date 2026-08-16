@@ -25,6 +25,42 @@ export interface AppConfig {
     // enough to generate valid codes for every account.
     encryptionKey: string;
   };
+  mail: {
+    smtpHost: string;
+    smtpPort: number;
+    smtpUser: string;
+    smtpPassword: string;
+    smtpSecure: boolean;
+    from: string;
+  };
+  // Public web app origin — used to build links that go *in* an email
+  // (verify-email, reset-password), since the API has no view layer of
+  // its own to render those pages.
+  webAppUrl: string;
+  storage: {
+    // "local" (default, dev/demo — see uploads/local-storage.provider.ts)
+    // or "s3" (S3-compatible: AWS S3, Cloudflare R2, DigitalOcean Spaces,
+    // MinIO, ...). See uploads/README section in api/README.md.
+    driver: "local" | "s3";
+    s3: {
+      bucket: string;
+      region: string;
+      accessKeyId: string;
+      secretAccessKey: string;
+      // Only needed for non-AWS S3-compatible providers (R2, MinIO, ...).
+      endpoint: string;
+      // Public base URL uploaded files are served from — a CDN in front
+      // of the bucket, the bucket's own public URL, or the provider's
+      // endpoint, depending on setup.
+      publicUrlBase: string;
+    };
+  };
+  // Crash reporting (src/error-tracking) — same "no-op unless configured"
+  // shape as mail/push above. Unset by default; errors are only logged
+  // locally.
+  errorTracking: {
+    dsn: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -56,5 +92,28 @@ export default (): AppConfig => ({
     // outside local development. Generate a real one with:
     //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
     encryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY ?? "dead".repeat(16),
+  },
+  mail: {
+    smtpHost: process.env.SMTP_HOST ?? "",
+    smtpPort: parseInt(process.env.SMTP_PORT ?? "587", 10),
+    smtpUser: process.env.SMTP_USER ?? "",
+    smtpPassword: process.env.SMTP_PASSWORD ?? "",
+    smtpSecure: process.env.SMTP_SECURE === "true",
+    from: process.env.MAIL_FROM ?? "LIBERIA360 <no-reply@liberia360.example>",
+  },
+  webAppUrl: process.env.WEB_APP_URL ?? "http://localhost:3000",
+  storage: {
+    driver: process.env.STORAGE_DRIVER === "s3" ? "s3" : "local",
+    s3: {
+      bucket: process.env.S3_BUCKET ?? "",
+      region: process.env.S3_REGION ?? "auto",
+      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+      endpoint: process.env.S3_ENDPOINT ?? "",
+      publicUrlBase: process.env.S3_PUBLIC_URL_BASE ?? "",
+    },
+  },
+  errorTracking: {
+    dsn: process.env.SENTRY_DSN ?? "",
   },
 });
