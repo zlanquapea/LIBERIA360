@@ -17,6 +17,7 @@ import {
   STORAGE_PROVIDER,
   StorageProvider,
 } from "./storage/storage-provider.interface";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -35,6 +36,7 @@ const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
  * `STORAGE_DRIVER` selects (`StorageModule`) — local disk by default,
  * S3-compatible object storage with `STORAGE_DRIVER=s3`.
  */
+@ApiTags("Uploads")
 @Controller("uploads")
 export class UploadsController {
   constructor(
@@ -42,6 +44,7 @@ export class UploadsController {
   ) {}
 
   @Post("image")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   // A listing owner uploading a full photo set, or an admin batch-editing
   // the catalog, can legitimately fire off a dozen-plus of these in a

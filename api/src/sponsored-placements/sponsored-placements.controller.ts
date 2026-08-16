@@ -17,6 +17,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { SponsoredPlacement } from "./entities/sponsored-placement.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize(placement: SponsoredPlacement) {
   return {
@@ -25,6 +26,7 @@ function sanitize(placement: SponsoredPlacement) {
   };
 }
 
+@ApiTags("Sponsored Placements")
 @Controller("sponsored-placements")
 export class SponsoredPlacementsController {
   constructor(
@@ -38,6 +40,7 @@ export class SponsoredPlacementsController {
   }
 
   @Get()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   async findAll() {
     const placements = await this.sponsoredPlacementsService.findAll();
@@ -45,6 +48,7 @@ export class SponsoredPlacementsController {
   }
 
   @Post()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   async create(
     @CurrentUser() user: User,
@@ -54,9 +58,10 @@ export class SponsoredPlacementsController {
   }
 
   @Delete(":id")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async revoke(@Param("id") id: string) {
-    await this.sponsoredPlacementsService.revoke(id);
+  async revoke(@CurrentUser() user: User, @Param("id") id: string) {
+    await this.sponsoredPlacementsService.revoke(user.id, id);
   }
 }

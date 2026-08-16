@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AdminTeamService } from "./admin-team.service";
 import { User } from "../users/entities/user.entity";
+import { AdminAuditService } from "./admin-audit.service";
 
 describe("AdminTeamService", () => {
   let service: AdminTeamService;
@@ -11,6 +12,7 @@ describe("AdminTeamService", () => {
     save: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
+  let adminAuditService: { log: jest.Mock };
 
   beforeEach(async () => {
     userRepo = {
@@ -18,11 +20,13 @@ describe("AdminTeamService", () => {
       save: jest.fn((u) => u),
       createQueryBuilder: jest.fn(),
     };
+    adminAuditService = { log: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminTeamService,
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: AdminAuditService, useValue: adminAuditService },
       ],
     }).compile();
 
@@ -106,6 +110,38 @@ describe("AdminTeamService", () => {
       });
       expect(result.isAdmin).toBe(false);
       expect(result.isSuperAdmin).toBe(false);
+    });
+
+    it("records the role change with before/after roles in the audit log", async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: "target",
+        isAdmin: false,
+        isSuperAdmin: false,
+      });
+      await service.setRoles("admin-1", "target", {
+        isAdmin: true,
+        isSuperAdmin: false,
+      });
+      expect(adminAuditService.log).toHaveBeenCalledWith(
+        "admin-1",
+        "admin_team.roles_changed",
+        "user",
+        "target",
+        {
+          from: { isAdmin: false, isSuperAdmin: false },
+          to: { isAdmin: true, isSuperAdmin: false },
+        },
+      );
+    });
+
+    it("does not record anything when rejecting a self-demotion", async () => {
+      await expect(
+        service.setRoles("admin-1", "admin-1", {
+          isAdmin: true,
+          isSuperAdmin: false,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(adminAuditService.log).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
 import { PlacesService } from "./places.service";
 import { QueryPlacesDto } from "./dto/query-places.dto";
+import { ApiTags } from "@nestjs/swagger";
 
+@ApiTags("Places")
 @Controller("places")
 export class PlacesController {
   constructor(private readonly placesService: PlacesService) {}

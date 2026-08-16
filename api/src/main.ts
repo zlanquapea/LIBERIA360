@@ -4,15 +4,25 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { ConfigService } from "@nestjs/config";
 import { mkdirSync } from "fs";
+import helmet from "helmet";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { AppConfig } from "./config/configuration";
 import { validateProductionConfig } from "./config/validate-production-config";
 import { localUploadsDir } from "./uploads/local-uploads-dir";
 import { initErrorTracking } from "./error-tracking/error-tracking";
 import { SentryExceptionsFilter } from "./error-tracking/sentry-exceptions.filter";
+import { StructuredLogger } from "./logging/structured-logger";
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Read directly from process.env here (same fallback as
+  // configuration.ts) rather than via ConfigService, which doesn't exist
+  // yet — this has to be passed into NestFactory.create() itself to also
+  // cover Nest's own startup logs (RouterExplorer's route-mapping lines,
+  // etc.), not just this file's own logging after the app object exists.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: new StructuredLogger(process.env.NODE_ENV ?? "development"),
+  });
   const configService = app.get(ConfigService<AppConfig, true>);
 
   validateProductionConfig(configService);
@@ -23,6 +33,24 @@ async function bootstrap() {
   );
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new SentryExceptionsFilter(httpAdapter));
+
+  app.use(
+    helmet({
+      // Helmet's default Cross-Origin-Resource-Policy (same-origin) would
+      // block the web app — a different origin — from loading uploaded
+      // photos via <img src>, which is the entire point of serving them
+      // (see uploads/local-storage.provider.ts). Every response here is
+      // meant to be fetched cross-origin by the frontend (JSON via bearer
+      // token, never cookies), so there's no CSRF-adjacent reason to keep
+      // the stricter default.
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
+
+  // Let in-flight requests finish (and TypeORM close its pool) on SIGTERM
+  // instead of dropping them — the difference between a clean rolling
+  // deploy and a handful of failed requests every time this restarts.
+  app.enableShutdownHooks();
 
   app.enableCors({
     origin: configService.get("corsOrigin", { infer: true }),
@@ -46,6 +74,25 @@ async function bootstrap() {
   }
 
   app.setGlobalPrefix("api/v1", { exclude: ["health", "health/ready"] });
+
+  // Built from the actual DTOs/decorators already on every controller
+  // (see nest-cli.json's @nestjs/swagger CLI plugin, which infers
+  // @ApiProperty from class-validator decorators and pulls in existing
+  // JSDoc comments — introspectComments) rather than hand-written
+  // @ApiProperty/@ApiOperation annotations throughout, so this stays in
+  // sync with the real request/response shapes without needing to be
+  // maintained twice. Mounted after setGlobalPrefix so every generated
+  // path correctly shows the real /api/v1/... route.
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle("LIBERIA360 API")
+    .setDescription(
+      "REST API for the LIBERIA360 tourism discovery platform — see api/README.md for feature-area docs (what each module does and why).",
+    )
+    .setVersion("1.0")
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup("api/docs", app, swaggerDocument);
 
   const port = configService.get("port", { infer: true });
   await app.listen(port);

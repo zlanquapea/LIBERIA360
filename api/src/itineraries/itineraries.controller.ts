@@ -17,8 +17,11 @@ import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiTags("Itineraries")
 @Controller("itineraries")
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class ItinerariesController {
   constructor(private readonly itinerariesService: ItinerariesService) {}

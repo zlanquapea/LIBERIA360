@@ -4,8 +4,11 @@ import { CreateFreshnessReportDto } from "./dto/create-freshness-report.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiTags("Freshness Reports")
 @Controller("freshness-reports")
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class FreshnessController {
   constructor(private readonly freshnessService: FreshnessService) {}

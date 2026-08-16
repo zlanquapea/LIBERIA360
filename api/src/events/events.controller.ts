@@ -15,6 +15,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Event } from "./entities/event.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize(event: Event) {
   return {
@@ -23,11 +24,13 @@ function sanitize(event: Event) {
   };
 }
 
+@ApiTags("Events")
 @Controller("events")
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async create(@CurrentUser() user: User, @Body() dto: CreateEventDto) {
     return sanitize(await this.eventsService.create(user, dto));

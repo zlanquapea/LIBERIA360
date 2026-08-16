@@ -18,6 +18,8 @@ import { AdminAnalyticsService } from "./admin-analytics.service";
 import { AdminAnalyticsController } from "./admin-analytics.controller";
 import { AdminTeamService } from "./admin-team.service";
 import { AdminTeamController } from "./admin-team.controller";
+import { AdminAuditModule } from "./admin-audit.module";
+import { AdminAuditController } from "./admin-audit.controller";
 
 @Module({
   imports: [
@@ -33,12 +35,14 @@ import { AdminTeamController } from "./admin-team.controller";
       AnalyticsEvent,
       PlaceFreshnessReport,
     ]),
+    AdminAuditModule,
   ],
   controllers: [
     AdminController,
     AdminContentController,
     AdminAnalyticsController,
     AdminTeamController,
+    AdminAuditController,
   ],
   providers: [
     AdminService,

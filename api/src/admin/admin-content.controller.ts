@@ -20,6 +20,7 @@ import { AdminGuard } from "../auth/guards/admin.guard";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "../businesses/entities/business.entity";
 import { Event } from "../events/entities/event.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitizeBusiness(business: Business) {
   return {
@@ -35,7 +36,9 @@ function sanitizeEvent(event: Event) {
   };
 }
 
+@ApiTags("Admin Content")
 @Controller("admin")
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminContentController {
   constructor(private readonly adminContentService: AdminContentService) {}

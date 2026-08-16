@@ -15,6 +15,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Booking } from "./entities/booking.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 // Nested user objects (guest, business.owner) come through eager relations
 // as raw entities — strip passwordHash before anything leaves the API,
@@ -34,7 +35,9 @@ function sanitize(booking: Booking) {
   };
 }
 
+@ApiTags("Bookings")
 @Controller("bookings")
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}

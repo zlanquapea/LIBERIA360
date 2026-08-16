@@ -27,7 +27,9 @@ import { CurrentUser } from "./decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
 import { toPublicUser } from "../users/user.serializer";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiTags("Auth")
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -63,12 +65,14 @@ export class AuthController {
   }
 
   @Get("me")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: User) {
     return toPublicUser(user);
   }
 
   @Patch("me")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async updateMe(@CurrentUser() user: User, @Body() dto: UpdateProfileDto) {
     const updated = await this.usersService.update(user.id, dto);
@@ -76,12 +80,14 @@ export class AuthController {
   }
 
   @Post("2fa/setup")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   setupTwoFactor(@CurrentUser() user: User) {
     return this.authService.setupTwoFactor(user);
   }
 
   @Post("2fa/enable")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async enableTwoFactor(
     @CurrentUser() user: User,
@@ -95,6 +101,7 @@ export class AuthController {
   }
 
   @Post("2fa/disable")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async disableTwoFactor(
@@ -137,6 +144,7 @@ export class AuthController {
   }
 
   @Post("resend-verification")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
@@ -146,6 +154,7 @@ export class AuthController {
   }
 
   @Patch("password")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async changePassword(
     @CurrentUser() user: User,
@@ -162,6 +171,7 @@ export class AuthController {
   // calling session so it isn't logged out by its own request; every
   // other token issued before this call stops working immediately.
   @Post("logout-all")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async logoutAllDevices(@CurrentUser() user: User) {
@@ -169,6 +179,7 @@ export class AuthController {
   }
 
   @Delete("me")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async deleteAccount(

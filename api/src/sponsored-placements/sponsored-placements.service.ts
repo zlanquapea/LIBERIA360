@@ -8,6 +8,7 @@ import { Repository } from "typeorm";
 import { SponsoredPlacement } from "./entities/sponsored-placement.entity";
 import { Place } from "../places/entities/place.entity";
 import { CreateSponsoredPlacementDto } from "./dto/create-sponsored-placement.dto";
+import { AdminAuditService } from "../admin/admin-audit.service";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -20,6 +21,7 @@ export class SponsoredPlacementsService {
     private readonly placementRepo: Repository<SponsoredPlacement>,
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    private readonly adminAuditService: AdminAuditService,
   ) {}
 
   async create(
@@ -41,6 +43,13 @@ export class SponsoredPlacementsService {
         endDate: dto.endDate,
         createdByUserId: adminUserId,
       }),
+    );
+    await this.adminAuditService.log(
+      adminUserId,
+      "sponsored_placement.created",
+      "sponsored_placement",
+      placement.id,
+      { placeId: dto.placeId, startDate: dto.startDate, endDate: dto.endDate },
     );
     return this.placementRepo.findOneOrFail({ where: { id: placement.id } });
   }
@@ -64,10 +73,18 @@ export class SponsoredPlacementsService {
     return this.placementRepo.find({ order: { startDate: "DESC" } });
   }
 
-  async revoke(id: string): Promise<void> {
-    const result = await this.placementRepo.delete({ id });
-    if (result.affected === 0) {
+  async revoke(adminUserId: string, id: string): Promise<void> {
+    const placement = await this.placementRepo.findOne({ where: { id } });
+    if (!placement) {
       throw new NotFoundException(`Sponsored placement "${id}" not found`);
     }
+    await this.placementRepo.delete({ id });
+    await this.adminAuditService.log(
+      adminUserId,
+      "sponsored_placement.revoked",
+      "sponsored_placement",
+      id,
+      { placeId: placement.placeId },
+    );
   }
 }

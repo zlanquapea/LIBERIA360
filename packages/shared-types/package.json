@@ -1,0 +1,11 @@
+{
+  "name": "@liberia360/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wire-format TypeScript types shared by api/ and web/ — the single source of truth the frontend imports instead of hand-mirroring backend response shapes.",
+  "types": "src/index.ts",
+  "main": "src/index.ts",
+  "files": [
+    "src"
+  ]
+}
