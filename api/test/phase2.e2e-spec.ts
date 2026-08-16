@@ -287,7 +287,26 @@ describe("Phase 2 (e2e)", () => {
   });
 
   describe("Events", () => {
+    it("rejects a plain user with no business or creator profile", async () => {
+      // userB never claimed a business or created a creator profile in the
+      // blocks above (both attempts 409'd against userA's) — the plain
+      // account this restriction exists for.
+      await request(app.getHttpServer())
+        .post("/api/v1/events")
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({
+          name: "Should Be Blocked",
+          category: "concert",
+          locationText: "City Hall",
+          countyId: montserrado.id,
+          startDate: "2026-09-01T18:00:00Z",
+        })
+        .expect(403);
+    });
+
     it("requires a location, rejects a bad date range, and filters by county/category", async () => {
+      // userA claimed a business and a creator profile earlier in this
+      // file, so it's eligible to post events under the same restriction.
       await request(app.getHttpServer())
         .post("/api/v1/events")
         .set("Authorization", `Bearer ${userAToken}`)

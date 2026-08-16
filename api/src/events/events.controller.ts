@@ -30,7 +30,7 @@ export class EventsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(@CurrentUser() user: User, @Body() dto: CreateEventDto) {
-    return sanitize(await this.eventsService.create(user.id, dto));
+    return sanitize(await this.eventsService.create(user, dto));
   }
 
   @Get()

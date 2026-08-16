@@ -5,9 +5,17 @@ import { EventsService } from "./events.service";
 import { EventsController } from "./events.controller";
 import { PushModule } from "../push/push.module";
 import { UsersModule } from "../users/users.module";
+import { BusinessesModule } from "../businesses/businesses.module";
+import { CreatorsModule } from "../creators/creators.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Event]), PushModule, UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([Event]),
+    PushModule,
+    UsersModule,
+    BusinessesModule,
+    CreatorsModule,
+  ],
   controllers: [EventsController],
   providers: [EventsService],
   exports: [EventsService],
