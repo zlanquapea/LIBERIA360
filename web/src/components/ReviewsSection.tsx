@@ -16,6 +16,22 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
+// Set server-side (ReviewsService.hasConfirmedBooking) when the reviewer
+// has a confirmed booking with a business linked to this place — the same
+// "verified" signal Amazon (Verified Purchase) and Booking.com (Verified
+// stay) surface: not a gate on who can review, just an extra trust signal
+// on reviews that have one.
+function VerifiedVisitBadge() {
+  return (
+    <span
+      title="This reviewer had a confirmed booking with this listing"
+      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+    >
+      ✓ Verified booking
+    </span>
+  );
+}
+
 // Reviews section of the Destination Profile screen (Tech Spec §3.2 /
 // Business Plan): read-only list plus, for logged-in users who haven't
 // reviewed this place yet, a form to post one. The API enforces one review
@@ -65,7 +81,10 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
           {reviews.map((review) => (
             <li key={review.id} className="rounded-xl border border-slate-200 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-medium text-slate-900">{review.user?.name ?? 'LIBERIA360 user'}</p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="font-medium text-slate-900">{review.user?.name ?? 'LIBERIA360 user'}</p>
+                  {review.verifiedVisit && <VerifiedVisitBadge />}
+                </div>
                 <Stars rating={review.overallRating} />
               </div>
               {review.comment && <p className="mt-1 text-sm text-slate-600">{review.comment}</p>}

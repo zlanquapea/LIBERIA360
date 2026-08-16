@@ -237,6 +237,45 @@ describe("Phase 3 (e2e)", () => {
     });
   });
 
+  describe("Reviews with a confirmed booking (verifiedVisit)", () => {
+    it("marks a review verified when the reviewer has a confirmed booking with a linked business", async () => {
+      // A fresh booking, independent of the one the Bookings block above
+      // mutates through pending → confirmed → cancelled — this one stays
+      // confirmed for the review created against it.
+      const booking = await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ businessId: hotelBusinessId, requestedDate: "2027-02-01" })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/bookings/${booking.body.id}/respond`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ action: "confirm" })
+        .expect(200);
+
+      const review = await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          placeId: hotelPlace.id,
+          overallRating: 5,
+          comment: "Great stay.",
+        })
+        .expect(201);
+      expect(review.body.verifiedVisit).toBe(true);
+    });
+
+    it("leaves a review unverified with no confirmed booking behind it", async () => {
+      const review = await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ placeId: hotelPlace.id, overallRating: 3 })
+        .expect(201);
+      expect(review.body.verifiedVisit).toBe(false);
+    });
+  });
+
   describe("Analytics", () => {
     it("records public events and aggregates them for the business owner only", async () => {
       for (const eventType of ["view", "view", "save", "contact_click"]) {
