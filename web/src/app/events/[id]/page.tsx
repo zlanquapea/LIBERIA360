@@ -4,6 +4,7 @@ import { ApiError, getEvent } from '@/lib/api';
 import { formatEventCategory, formatEventDateRange } from '@/lib/format';
 import { JsonLd } from '@/components/JsonLd';
 import { eventJsonLd } from '@/lib/structured-data';
+import { ReportButton } from '@/components/ReportButton';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -61,7 +62,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </section>
       )}
 
-      {event.createdBy && <p className="text-xs text-slate-400">Posted by {event.createdBy.name}</p>}
+      <div className="flex items-center justify-between gap-2">
+        {event.createdBy ? (
+          <p className="text-xs text-slate-400">Posted by {event.createdBy.name}</p>
+        ) : (
+          <span />
+        )}
+        <ReportButton targetType="event" targetId={event.id} />
+      </div>
     </main>
   );
 }

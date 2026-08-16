@@ -20,13 +20,18 @@ import { CreateBusinessAdminDto } from "./dto/create-business-admin.dto";
 import { UpdateBusinessAdminDto } from "./dto/update-business-admin.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateCountyDto } from "./dto/update-county.dto";
+import { ReviewsService } from "../reviews/reviews.service";
+import { AdminAuditService } from "./admin-audit.service";
 
 /** Admin content management (Tech Spec §8) — create/edit Place, Business,
  * Activity, and Event records. The first way to write to the catalog
  * through the API at all; Phase 1/2 only ever read it (seeded via
  * scripts). Deliberately self-contained (direct repo access, not routed
  * through PlacesService/BusinessesService/EventsService) so this module
- * can't regress any existing Phase 1/2 read/write path. */
+ * can't regress any existing Phase 1/2 read/write path — the one
+ * exception is `deleteReview`, which goes through `ReviewsService` so
+ * removal reuses the same rating-recalculation logic review creation
+ * uses, instead of duplicating that query here. */
 @Injectable()
 export class AdminContentService {
   constructor(
@@ -39,6 +44,8 @@ export class AdminContentService {
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
+    private readonly reviewsService: ReviewsService,
+    private readonly adminAuditService: AdminAuditService,
   ) {}
 
   // ---- Places ----
@@ -179,6 +186,33 @@ export class AdminContentService {
     });
     await this.eventRepo.save(event);
     return this.eventRepo.findOneOrFail({ where: { id } });
+  }
+
+  async deleteEvent(adminUserId: string, id: string): Promise<void> {
+    const event = await this.eventRepo.findOne({ where: { id } });
+    if (!event) {
+      throw new NotFoundException(`Event "${id}" not found`);
+    }
+    await this.eventRepo.delete({ id });
+    await this.adminAuditService.log(
+      adminUserId,
+      "event.removed",
+      "event",
+      id,
+      { name: event.name },
+    );
+  }
+
+  // ---- Reviews ----
+
+  async deleteReview(adminUserId: string, id: string): Promise<void> {
+    await this.reviewsService.remove(id);
+    await this.adminAuditService.log(
+      adminUserId,
+      "review.removed",
+      "review",
+      id,
+    );
   }
 
   // ---- Counties (safety & practical-info panel only — see UpdateCountyDto) ----

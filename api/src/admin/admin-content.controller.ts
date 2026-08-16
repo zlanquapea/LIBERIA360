@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -17,6 +20,8 @@ import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateCountyDto } from "./dto/update-county.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "../businesses/entities/business.entity";
 import { Event } from "../events/entities/event.entity";
@@ -81,6 +86,18 @@ export class AdminContentController {
   @Patch("events/:id")
   async updateEvent(@Param("id") id: string, @Body() dto: UpdateEventDto) {
     return sanitizeEvent(await this.adminContentService.updateEvent(id, dto));
+  }
+
+  @Delete("events/:id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteEvent(@CurrentUser() admin: User, @Param("id") id: string) {
+    return this.adminContentService.deleteEvent(admin.id, id);
+  }
+
+  @Delete("reviews/:id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteReview(@CurrentUser() admin: User, @Param("id") id: string) {
+    return this.adminContentService.deleteReview(admin.id, id);
   }
 
   @Patch("counties/:id")

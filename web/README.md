@@ -63,7 +63,7 @@ npm run lint
 | Content | Reviews, business self-claim and management, creator directory/profiles, events, photo uploads |
 | Trip planning | Trip Planner, Weekend Explorer, collaborative multi-user trip editing |
 | Marketplace | Booking requests, in-booking messaging, business analytics dashboard, featured placements/creators |
-| Admin | Moderation queue, content management, sponsored placements, B2B analytics, team & access management |
+| Admin | Moderation queue (incl. user-reported content), content management, sponsored placements, B2B analytics, team & access management |
 | Platform | Push notification opt-in, offline saved places, freshness reporting |
 
 Admin pages (`/admin/*`) are gated client-side by `AdminGate` for UX; the API's `AdminGuard` is the actual enforcement.

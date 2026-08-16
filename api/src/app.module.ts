@@ -40,6 +40,7 @@ import { PlaceFreshnessReport } from "./freshness/entities/place-freshness-repor
 import { FreshnessModule } from "./freshness/freshness.module";
 import { BookingMessage } from "./booking-messages/entities/booking-message.entity";
 import { BookingMessagesModule } from "./booking-messages/booking-messages.module";
+import { ReportsModule } from "./reports/reports.module";
 
 @Module({
   imports: [
@@ -105,6 +106,7 @@ import { BookingMessagesModule } from "./booking-messages/booking-messages.modul
     AdminModule,
     FreshnessModule,
     BookingMessagesModule,
+    ReportsModule,
   ],
   providers: [
     {

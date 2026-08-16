@@ -229,6 +229,14 @@ Distinct from `Place.featured` (undated editorial curation).
 
 3+ independent `no_longer_here` reports within 90 days surface the place in the admin moderation queue.
 
+### Content reports
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /reports` | Report a review or event (`{targetType, targetId, reason, details?}`, upserts per user/target) | JWT, 20/min |
+
+`reason` is one of `spam`/`inappropriate`/`fake`/`other`. 3+ independent reports on the same review or event within 90 days surface it in the admin moderation queue's `flaggedContent`, alongside a per-reason breakdown and the flagged content itself.
+
 ### Admin
 
 All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super Admin.
@@ -237,18 +245,20 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 |---|---|
 | `PATCH /admin/places/:id/verification` | Set place verification status |
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
-| `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places |
+| `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places, flagged content |
 | `POST` / `PATCH /admin/places` | Create/update places |
 | `POST` / `PATCH /admin/activities` | Create/update activities |
 | `POST` / `PATCH /admin/businesses` | Create/update businesses, including unowned "shell" listings |
 | `PATCH /admin/events/:id` | Update an event |
+| `DELETE /admin/events/:id` | Remove an event (moderation) |
+| `DELETE /admin/reviews/:id` | Remove a review (moderation) — recomputes the place's rating |
 | `PATCH /admin/counties/:id` | Update a county's safety/practical-info panel |
 | `PATCH /creators/:id/featured` | Toggle featured status |
 | `GET /admin/analytics/aggregate?limit=` | B2B aggregate analytics: top places, category/county breakdowns |
 | `GET /admin/team` | List admins and super admins | Super Admin |
 | `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
 | `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |
-| `GET /admin/audit-log` | Paginated log of verification changes, role changes, and sponsored-placement create/revoke | Super Admin |
+| `GET /admin/audit-log` | Paginated log of verification changes, role changes, sponsored-placement create/revoke, and content removal | Super Admin |
 
 The first admin is granted directly in the database:
 
@@ -267,7 +277,8 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 - **Account lifecycle**: non-enumerating forgot-password, single-use time-limited tokens (SHA-256 hashed at rest) for password reset and email verification, in-place account anonymization on delete (no cascading hard-delete through reviews/bookings/messages).
 - **Boot-time validation**: refuses to start in production if `JWT_SECRET` or `TWO_FACTOR_ENCRYPTION_KEY` are still the committed placeholder values.
 - **Uploads**: every image is re-encoded server-side (strips EXIF, resizes, recompresses) regardless of storage backend.
-- **Audit trail**: `admin_actions` table records verification changes, admin role changes, and sponsored-placement create/revoke, exposed via `GET /admin/audit-log` (super-admin-only).
+- **Audit trail**: `admin_actions` table records verification changes, admin role changes, sponsored-placement create/revoke, and content removal, exposed via `GET /admin/audit-log` (super-admin-only).
+- **Content moderation**: any signed-in user can report a review or event (`POST /reports`); 3+ independent reports surface it in the admin moderation queue for removal (`DELETE /admin/reviews/:id`, `DELETE /admin/events/:id`).
 - **Dependencies**: `npm audit` clean (0 vulnerabilities) as of the current dependency set.
 
 ## Observability

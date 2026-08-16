@@ -8,6 +8,8 @@ import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "../businesses/entities/business.entity";
 import { Review } from "../reviews/entities/review.entity";
+import { Event } from "../events/entities/event.entity";
+import { FlaggedContent } from "./admin.service";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitizeBusiness(business: Business) {
@@ -19,6 +21,21 @@ function sanitizeBusiness(business: Business) {
 
 function sanitizeReview(review: Review) {
   return { ...review, user: review.user ? toPublicUser(review.user) : null };
+}
+
+function sanitizeEvent(event: Event) {
+  return {
+    ...event,
+    createdBy: event.createdBy ? toPublicUser(event.createdBy) : null,
+  };
+}
+
+function sanitizeFlaggedContent(flagged: FlaggedContent) {
+  return {
+    ...flagged,
+    review: flagged.review ? sanitizeReview(flagged.review) : null,
+    event: flagged.event ? sanitizeEvent(flagged.event) : null,
+  };
 }
 
 @ApiTags("Admin")
@@ -55,6 +72,7 @@ export class AdminController {
       pendingBusinesses: queue.pendingBusinesses.map(sanitizeBusiness),
       recentReviews: queue.recentReviews.map(sanitizeReview),
       possiblyClosedPlaces: queue.possiblyClosedPlaces,
+      flaggedContent: queue.flaggedContent.map(sanitizeFlaggedContent),
     };
   }
 }

@@ -3,11 +3,18 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getModerationQueue, getTeamRoster, setBusinessVerification, setCreatorFeatured } from '@/lib/admin-api';
+import {
+  deleteEventAdmin,
+  deleteReviewAdmin,
+  getModerationQueue,
+  getTeamRoster,
+  setBusinessVerification,
+  setCreatorFeatured,
+} from '@/lib/admin-api';
 import { getActiveSponsoredPlacements, getCreatorByUsername, getPlaces } from '@/lib/api';
 import { formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { Creator, ModerationQueue, VerificationStatus } from '@/lib/types';
+import type { Creator, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -156,6 +163,34 @@ export default function AdminPage() {
                   View listing
                 </Link>
               </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+          Flagged content
+          {queue && queue.flaggedContent.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              {queue.flaggedContent.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500">
+          Reviews/events {/* keep in sync with REPORT_FLAG_THRESHOLD */}3+ users independently reported in the last
+          90 days.
+        </p>
+        {!queue ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : queue.flaggedContent.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+            Nothing flagged.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {queue.flaggedContent.map((flagged) => (
+              <FlaggedContentRow key={`${flagged.targetType}-${flagged.targetId}`} flagged={flagged} onDone={reload} />
             ))}
           </ul>
         )}
@@ -333,5 +368,68 @@ function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onD
       </button>
       {error && <span className="text-xs text-flag-700">{error}</span>}
     </div>
+  );
+}
+
+const REASON_LABELS: Record<string, string> = {
+  spam: 'spam',
+  inappropriate: 'inappropriate',
+  fake: 'fake',
+  other: 'other',
+};
+
+function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDone: () => void }) {
+  const { token } = useAuth();
+  const [removing, setRemoving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reasonSummary = Object.entries(flagged.reasons)
+    .filter(([, count]) => count > 0)
+    .map(([reason, count]) => `${count} ${REASON_LABELS[reason] ?? reason}`)
+    .join(', ');
+
+  async function remove() {
+    if (!token) return;
+    setRemoving(true);
+    setError(null);
+    try {
+      if (flagged.targetType === 'review') {
+        await deleteReviewAdmin(token, flagged.targetId);
+      } else {
+        await deleteEventAdmin(token, flagged.targetId);
+      }
+      onDone();
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setRemoving(false);
+    }
+  }
+
+  return (
+    <li className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+          {flagged.targetType} · {flagged.reportCount} report{flagged.reportCount === 1 ? '' : 's'} ({reasonSummary})
+        </p>
+        {flagged.review && (
+          <>
+            <p className="mt-1 text-sm font-medium text-slate-900">{flagged.review.user?.name ?? 'A guest'}</p>
+            {flagged.review.comment && <p className="text-sm text-slate-600">{flagged.review.comment}</p>}
+          </>
+        )}
+        {flagged.event && (
+          <p className="mt-1 text-sm font-medium text-slate-900">{flagged.event.name}</p>
+        )}
+        {error && <p className="mt-1 text-xs text-flag-700">{error}</p>}
+      </div>
+      <button
+        type="button"
+        disabled={removing}
+        onClick={remove}
+        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+      >
+        {removing ? 'Removing…' : 'Remove'}
+      </button>
+    </li>
   );
 }
