@@ -4,9 +4,13 @@ import { SponsoredPlacement } from "./entities/sponsored-placement.entity";
 import { Place } from "../places/entities/place.entity";
 import { SponsoredPlacementsService } from "./sponsored-placements.service";
 import { SponsoredPlacementsController } from "./sponsored-placements.controller";
+import { AdminAuditModule } from "../admin/admin-audit.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SponsoredPlacement, Place])],
+  imports: [
+    TypeOrmModule.forFeature([SponsoredPlacement, Place]),
+    AdminAuditModule,
+  ],
   controllers: [SponsoredPlacementsController],
   providers: [SponsoredPlacementsService],
 })

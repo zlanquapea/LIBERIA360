@@ -7,6 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "../users/entities/user.entity";
 import { SetTeamRolesDto } from "./dto/set-team-roles.dto";
+import { AdminAuditService } from "./admin-audit.service";
 
 /** Team & Access management (Tech Spec §7/§8) — before this, the *only*
  * way to grant admin access was a raw SQL UPDATE against the users table
@@ -17,6 +18,7 @@ export class AdminTeamService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly adminAuditService: AdminAuditService,
   ) {}
 
   /** Everyone with any admin access today — the roster a super admin
@@ -63,12 +65,28 @@ export class AdminTeamService {
       throw new NotFoundException(`User "${targetUserId}" not found`);
     }
 
+    const previousRoles = {
+      isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin,
+    };
+
     // A super admin is conceptually also an admin — every admin.controller.ts
     // endpoint only checks isAdmin, so isSuperAdmin without isAdmin would
     // silently lock a super admin out of ordinary admin actions.
     user.isSuperAdmin = dto.isSuperAdmin;
     user.isAdmin = dto.isAdmin || dto.isSuperAdmin;
 
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    await this.adminAuditService.log(
+      actingUserId,
+      "admin_team.roles_changed",
+      "user",
+      targetUserId,
+      {
+        from: previousRoles,
+        to: { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin },
+      },
+    );
+    return saved;
   }
 }

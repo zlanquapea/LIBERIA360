@@ -7,6 +7,7 @@ import { Review } from "../reviews/entities/review.entity";
 import { VerificationStatus } from "../places/entities/place.enums";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { FreshnessResponse } from "../freshness/entities/place-freshness-report.enums";
+import { AdminAuditService } from "./admin-audit.service";
 
 const MODERATION_QUEUE_REVIEW_LIMIT = 20;
 
@@ -41,6 +42,7 @@ export class AdminService {
     private readonly reviewRepo: Repository<Review>,
     @InjectRepository(PlaceFreshnessReport)
     private readonly freshnessReportRepo: Repository<PlaceFreshnessReport>,
+    private readonly adminAuditService: AdminAuditService,
   ) {}
 
   async setPlaceVerification(
@@ -52,10 +54,19 @@ export class AdminService {
     if (!place) {
       throw new NotFoundException(`Place "${placeId}" not found`);
     }
+    const previousStatus = place.verificationStatus;
     place.verificationStatus = status;
     place.verifiedByUserId = adminUserId;
     place.verifiedAt = new Date();
-    return this.placeRepo.save(place);
+    const saved = await this.placeRepo.save(place);
+    await this.adminAuditService.log(
+      adminUserId,
+      "place.verification_changed",
+      "place",
+      placeId,
+      { from: previousStatus, to: status },
+    );
+    return saved;
   }
 
   async setBusinessVerification(
@@ -69,10 +80,18 @@ export class AdminService {
     if (!business) {
       throw new NotFoundException(`Business "${businessId}" not found`);
     }
+    const previousStatus = business.verificationStatus;
     business.verificationStatus = status;
     business.verifiedByUserId = adminUserId;
     business.verifiedAt = new Date();
     const saved = await this.businessRepo.save(business);
+    await this.adminAuditService.log(
+      adminUserId,
+      "business.verification_changed",
+      "business",
+      businessId,
+      { from: previousStatus, to: status },
+    );
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
   }
 

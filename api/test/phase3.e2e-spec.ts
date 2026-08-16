@@ -502,6 +502,18 @@ describe("Phase 3 (e2e)", () => {
       expect(activeAfter.body.map((p: { id: string }) => p.id)).not.toContain(
         placementId,
       );
+
+      // The create + revoke above are both recorded in the admin audit log.
+      const auditLog = await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      const entries = auditLog.body.data.filter(
+        (a: { targetId: string }) => a.targetId === placementId,
+      );
+      const actions = entries.map((a: { action: string }) => a.action);
+      expect(actions).toContain("sponsored_placement.created");
+      expect(actions).toContain("sponsored_placement.revoked");
     });
   });
 
@@ -570,6 +582,25 @@ describe("Phase 3 (e2e)", () => {
           (b: { id: string }) => b.id === hotelBusinessId,
         ),
       ).toBe(false); // now "official", not "unverified" — no longer pending
+
+      // Both verification changes above are recorded — GET /admin/audit-log
+      // is super-admin-only (403 for a plain admin), and every entry's
+      // adminUser is the public (sanitized) shape, not a raw User row.
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+
+      const auditLog = await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      const actions = auditLog.body.data.map(
+        (a: { action: string }) => a.action,
+      );
+      expect(actions).toContain("place.verification_changed");
+      expect(actions).toContain("business.verification_changed");
+      expect(auditLog.body.data[0].adminUser.passwordHash).toBeUndefined();
     });
   });
 

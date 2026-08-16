@@ -61,7 +61,7 @@ export class SponsoredPlacementsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async revoke(@Param("id") id: string) {
-    await this.sponsoredPlacementsService.revoke(id);
+  async revoke(@CurrentUser() user: User, @Param("id") id: string) {
+    await this.sponsoredPlacementsService.revoke(user.id, id);
   }
 }
