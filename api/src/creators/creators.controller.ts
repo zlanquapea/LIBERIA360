@@ -18,28 +18,33 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Creator } from "./entities/creator.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize(creator: Creator) {
   return { ...creator, user: creator.user ? toPublicUser(creator.user) : null };
 }
 
+@ApiTags("Creators")
 @Controller("creators")
 export class CreatorsController {
   constructor(private readonly creatorsService: CreatorsService) {}
 
   @Post()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async create(@CurrentUser() user: User, @Body() dto: CreateCreatorDto) {
     return sanitize(await this.creatorsService.create(user.id, dto));
   }
 
   @Patch("me")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async updateMine(@CurrentUser() user: User, @Body() dto: UpdateCreatorDto) {
     return sanitize(await this.creatorsService.update(user.id, dto));
   }
 
   @Get("me")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async findMine(@CurrentUser() user: User) {
     const creator = await this.creatorsService.findMine(user.id);
@@ -61,6 +66,7 @@ export class CreatorsController {
   }
 
   @Patch(":id/featured")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
   async setFeatured(@Param("id") id: string, @Body() dto: SetFeaturedDto) {
     return sanitize(await this.creatorsService.setFeatured(id, dto));

@@ -1,7 +1,11 @@
 import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
+import { ApiExcludeController } from "@nestjs/swagger";
 
+// Ops/orchestrator probes, not a resource a real API consumer reads docs
+// for — left out of the generated OpenAPI doc (GET /api/docs) entirely.
+@ApiExcludeController()
 @Controller("health")
 export class HealthController {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}

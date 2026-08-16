@@ -13,7 +13,9 @@ import { CreateAnalyticsEventDto } from "./dto/create-analytics-event.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiTags("Analytics")
 @Controller("analytics")
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
@@ -27,6 +29,7 @@ export class AnalyticsController {
   }
 
   @Get("business/:businessId")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   getBusinessAnalytics(
     @CurrentUser() user: User,

@@ -8,11 +8,13 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Review } from "./entities/review.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize(review: Review) {
   return { ...review, user: review.user ? toPublicUser(review.user) : null };
 }
 
+@ApiTags("Reviews")
 @Controller("reviews")
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
@@ -21,6 +23,7 @@ export class ReviewsController {
   // this is purely an anti-spam ceiling — well above what any real visitor
   // writing a handful of honest reviews in a sitting would ever hit.
   @Post()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 10, ttl: seconds(60) } })
   async create(@CurrentUser() user: User, @Body() dto: CreateReviewDto) {

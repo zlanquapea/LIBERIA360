@@ -14,8 +14,11 @@ import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiTags("Admin Team")
 @Controller("admin/team")
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
 export class AdminTeamController {
   constructor(private readonly adminTeamService: AdminTeamService) {}

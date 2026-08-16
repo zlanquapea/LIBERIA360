@@ -13,7 +13,9 @@ import { UnsubscribePushDto } from "./dto/unsubscribe-push.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiTags("Push Notifications")
 @Controller("push")
 export class PushController {
   constructor(private readonly pushService: PushService) {}
@@ -25,6 +27,7 @@ export class PushController {
   }
 
   @Post("subscribe")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async subscribe(@CurrentUser() user: User, @Body() dto: SubscribePushDto) {
@@ -32,6 +35,7 @@ export class PushController {
   }
 
   @Post("unsubscribe")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async unsubscribe(@Body() dto: UnsubscribePushDto) {

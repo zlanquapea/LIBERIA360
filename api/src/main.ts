@@ -5,6 +5,7 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { ConfigService } from "@nestjs/config";
 import { mkdirSync } from "fs";
 import helmet from "helmet";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { AppConfig } from "./config/configuration";
 import { validateProductionConfig } from "./config/validate-production-config";
@@ -73,6 +74,25 @@ async function bootstrap() {
   }
 
   app.setGlobalPrefix("api/v1", { exclude: ["health", "health/ready"] });
+
+  // Built from the actual DTOs/decorators already on every controller
+  // (see nest-cli.json's @nestjs/swagger CLI plugin, which infers
+  // @ApiProperty from class-validator decorators and pulls in existing
+  // JSDoc comments — introspectComments) rather than hand-written
+  // @ApiProperty/@ApiOperation annotations throughout, so this stays in
+  // sync with the real request/response shapes without needing to be
+  // maintained twice. Mounted after setGlobalPrefix so every generated
+  // path correctly shows the real /api/v1/... route.
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle("LIBERIA360 API")
+    .setDescription(
+      "REST API for the LIBERIA360 tourism discovery platform — see api/README.md for feature-area docs (what each module does and why).",
+    )
+    .setVersion("1.0")
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup("api/docs", app, swaggerDocument);
 
   const port = configService.get("port", { infer: true });
   await app.listen(port);

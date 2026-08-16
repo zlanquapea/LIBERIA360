@@ -16,6 +16,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "./entities/business.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize(business: Business) {
   return {
@@ -24,11 +25,13 @@ function sanitize(business: Business) {
   };
 }
 
+@ApiTags("Businesses")
 @Controller("businesses")
 export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
   @Post()
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async claim(@CurrentUser() user: User, @Body() dto: CreateBusinessDto) {
     const business = await this.businessesService.claimPlace(user.id, dto);
@@ -36,6 +39,7 @@ export class BusinessesController {
   }
 
   @Post(":id/claim")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async claimExisting(@CurrentUser() user: User, @Param("id") id: string) {
     const business = await this.businessesService.claimExisting(user.id, id);
@@ -43,6 +47,7 @@ export class BusinessesController {
   }
 
   @Get("mine")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async mine(@CurrentUser() user: User) {
     const businesses = await this.businessesService.findMine(user.id);
@@ -50,6 +55,7 @@ export class BusinessesController {
   }
 
   @Patch(":id")
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   async updateMine(
     @CurrentUser() user: User,

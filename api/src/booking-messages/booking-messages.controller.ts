@@ -6,6 +6,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { BookingMessage } from "./entities/booking-message.entity";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 // `sender` comes through as an eager relation — strip passwordHash before
 // anything leaves the API, same pattern as bookings/reviews/events.
@@ -16,7 +17,9 @@ function sanitize(message: BookingMessage) {
   };
 }
 
+@ApiTags("Booking Messages")
 @Controller("bookings/:bookingId/messages")
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class BookingMessagesController {
   constructor(
