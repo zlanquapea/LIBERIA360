@@ -122,5 +122,8 @@ jobs:
         working-directory: web
         run: npx tsc --noEmit
 
+      - name: Unit tests
+        run: npm run test:web
+
       - name: Build (also statically prerenders pages that fetch from the live API above)
         run: npm run build:web

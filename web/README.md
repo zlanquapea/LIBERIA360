@@ -19,6 +19,15 @@ Requires the API (`../api`) running locally for data — see `../api/README.md`.
 npm run dev     # http://localhost:3000
 ```
 
+## Tests
+
+```bash
+npm run test         # Jest + React Testing Library — no API/DB needed
+npm run test:watch
+```
+
+`jest.config.js` uses `next/jest` (SWC-based, same transform as `next build` — no separate babel/ts-jest config, and `@/*` path aliases just work). Coverage so far: pure-function `lib/*` utilities (`format`, `category-colors`, `images`), the `localStorage`-backed modules with their same-tab custom-event notification pattern (`auth-storage`, `saved-places` — see their own doc comments for why that event exists), `lib/http.ts`'s error-message normalization, and one full component render test (`PlaceCard`) establishing the pattern for the rest. This is a baseline, not exhaustive coverage of every component — the project's automated frontend verification before this was entirely the manual Playwright runs described throughout this file's Phase sections; those remain how a new feature gets end-to-end-verified; this suite is for catching a regression in the utilities/components it covers on every push (see the root `README.md`'s CI section).
+
 ## Phase 2
 
 Accounts and everything that depends on them (Tech Spec §3.2), all backed by the API modules documented in `../api/README.md`:
