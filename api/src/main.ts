@@ -7,10 +7,13 @@ import { mkdirSync } from "fs";
 import { join } from "path";
 import { AppModule } from "./app.module";
 import { AppConfig } from "./config/configuration";
+import { validateProductionConfig } from "./config/validate-production-config";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService<AppConfig, true>);
+
+  validateProductionConfig(configService);
 
   app.enableCors({
     origin: configService.get("corsOrigin", { infer: true }),

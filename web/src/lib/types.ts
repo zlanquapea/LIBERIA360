@@ -100,6 +100,7 @@ export interface AuthUser {
   travelerType: TravelerType | null;
   interests: string[];
   twoFactorEnabled: boolean;
+  emailVerified: boolean;
   createdAt: string;
 }
 

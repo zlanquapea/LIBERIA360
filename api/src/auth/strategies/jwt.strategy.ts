@@ -38,6 +38,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException("User no longer exists");
     }
+    // Rejects a token issued before the most recent password change,
+    // "sign out of all other devices", or account deletion — see
+    // JwtPayload's doc comment. `payload.tokenVersion` is missing (not 0)
+    // on a token that predates this field existing at all, which should
+    // also be rejected rather than coerced to a false match.
+    if (payload.tokenVersion !== user.tokenVersion) {
+      throw new UnauthorizedException("Session expired — please sign in again");
+    }
     return user;
   }
 }

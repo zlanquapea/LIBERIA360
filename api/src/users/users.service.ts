@@ -18,6 +18,16 @@ export class UsersService {
     return this.userRepo.findOne({ where: { id } });
   }
 
+  /** Looks up a user by an exact-match hashed token — see
+   * auth/token-hash.ts and AuthService.findByValidToken for why this is a
+   * plain equality lookup rather than a bcrypt comparison loop. */
+  findByTokenHash(
+    column: "emailVerificationTokenHash" | "passwordResetTokenHash",
+    hash: string,
+  ): Promise<User | null> {
+    return this.userRepo.findOne({ where: { [column]: hash } });
+  }
+
   async create(data: Partial<User>): Promise<User> {
     const user = this.userRepo.create({
       ...data,

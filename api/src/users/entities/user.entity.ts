@@ -104,6 +104,64 @@ export class User {
   })
   twoFactorRecoveryCodes: string[] | null;
 
+  // Bumped on password change, "sign out of all other devices", and
+  // account deletion — every issued JWT carries the tokenVersion it was
+  // signed with, and JwtStrategy rejects a token whose version doesn't
+  // match the current one. This is what makes a JWT actually revocable
+  // without a server-side token blacklist: the existing "re-fetch the
+  // user on every request" behavior already does the DB round-trip this
+  // needs, so it's one integer comparison, not new infrastructure.
+  @Column({ name: "token_version", type: "int", default: 0 })
+  tokenVersion: number;
+
+  // Never blocks access to the app (most Phase 1-3 features work the same
+  // either way) — this only exists so a typo'd signup email is visible
+  // and recoverable, and to build toward a future where email delivery
+  // (booking confirmations, etc.) needs a real, checked address.
+  @Column({ name: "email_verified", type: "boolean", default: false })
+  emailVerified: boolean;
+
+  // SHA-256 of the verification token, never the token itself — same
+  // "don't store the credential in a form usable if the DB leaks"
+  // reasoning as password/recovery-code hashing, just a cheap fast hash
+  // instead of bcrypt since this is a high-entropy random token being
+  // looked up by exact match, not a low-entropy secret being brute-forced.
+  @Column({
+    name: "email_verification_token_hash",
+    type: "text",
+    nullable: true,
+  })
+  emailVerificationTokenHash: string | null;
+
+  @Column({
+    name: "email_verification_token_expires_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  emailVerificationTokenExpiresAt: Date | null;
+
+  @Column({ name: "password_reset_token_hash", type: "text", nullable: true })
+  passwordResetTokenHash: string | null;
+
+  @Column({
+    name: "password_reset_token_expires_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  passwordResetTokenExpiresAt: Date | null;
+
+  // Set on account deletion (DELETE /auth/me) — the row is anonymized in
+  // place (name, email, phone cleared/randomized; passwordHash nulled so
+  // login is impossible) rather than hard-deleted, so a deleted user's
+  // reviews, bookings, and messages don't silently vanish out from under
+  // the businesses/other travelers who depend on that history — the same
+  // "anonymize, don't erase" approach most platforms with cross-user
+  // content use. `name` becomes "Deleted user", which is why no separate
+  // "is this user deleted" check is needed on most display paths — the
+  // anonymized row already reads correctly everywhere `user.name` does.
+  @Column({ name: "deleted_at", type: "timestamptz", nullable: true })
+  deletedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
