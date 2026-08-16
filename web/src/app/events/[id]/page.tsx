@@ -2,11 +2,19 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ApiError, getEvent } from '@/lib/api';
 import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+import { JsonLd } from '@/components/JsonLd';
+import { eventJsonLd } from '@/lib/structured-data';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const event = await getEvent(id).catch(() => null);
-  return { title: event ? `${event.name} — LIBERIA360 Events` : 'Event — LIBERIA360' };
+  if (!event) {
+    return { title: 'Event — LIBERIA360' };
+  }
+  return {
+    title: `${event.name} — LIBERIA360 Events`,
+    description: event.description || undefined,
+  };
 }
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +30,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+      <JsonLd data={eventJsonLd(event)} />
       <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
         {formatEventCategory(event.category)}
       </span>
