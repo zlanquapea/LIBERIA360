@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getModerationQueue, getTeamRoster, setBusinessVerification, setCreatorFeatured } from '@/lib/admin-api';
@@ -109,6 +110,51 @@ export default function AdminPage() {
                   {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
                 </p>
                 <VerifyBusinessControl businessId={business.id} onDone={reload} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+          Possibly closed
+          {queue && queue.possiblyClosedPlaces.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              {queue.possiblyClosedPlaces.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500">
+          Places where {/* keep in sync with FRESHNESS_FLAG_THRESHOLD */}3+ visitors independently reported
+          &quot;no longer here&quot; in the last 90 days.
+        </p>
+        {!queue ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : queue.possiblyClosedPlaces.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+            Nothing flagged.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {queue.possiblyClosedPlaces.map(({ place, noLongerHereCount }) => (
+              <li
+                key={place.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/40 p-3"
+              >
+                <div>
+                  <p className="font-medium text-slate-900">{place.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {noLongerHereCount} report{noLongerHereCount === 1 ? '' : 's'} · {place.city}
+                  </p>
+                </div>
+                <Link
+                  href={`/places/${place.slug}`}
+                  target="_blank"
+                  className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500"
+                >
+                  View listing
+                </Link>
               </li>
             ))}
           </ul>

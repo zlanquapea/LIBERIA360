@@ -12,6 +12,9 @@ import { BusinessClaimSection } from '@/components/BusinessClaimSection';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { PlaceViewTracker } from '@/components/PlaceViewTracker';
 import { ContactLink } from '@/components/ContactLink';
+import { PlaceFreshnessPrompt } from '@/components/PlaceFreshnessPrompt';
+import { JsonLd } from '@/components/JsonLd';
+import { placeJsonLd } from '@/lib/structured-data';
 import type { BusinessType, Place, PlaceType } from '@/lib/types';
 
 const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
@@ -31,6 +34,20 @@ const SUGGESTED_BUSINESS_TYPE: Record<PlaceType, BusinessType> = {
   attraction: 'tour_operator',
   nature_site: 'tour_operator',
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const place = await getPlaceBySlug(slug).catch(() => null);
+  if (!place) {
+    return { title: 'Place — LIBERIA360' };
+  }
+  const description =
+    place.description.length > 160 ? `${place.description.slice(0, 157)}…` : place.description;
+  return {
+    title: `${place.name} — LIBERIA360`,
+    description: description || undefined,
+  };
+}
 
 export default async function PlaceProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -57,6 +74,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
+      <JsonLd data={placeJsonLd(place)} />
       <PlaceViewTracker placeId={place.id} />
       <div
         aria-hidden
@@ -90,6 +108,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
           </div>
         )}
       </header>
+
+      <PlaceFreshnessPrompt placeId={place.id} />
 
       <p className="text-slate-700">{place.description}</p>
 

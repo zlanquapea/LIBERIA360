@@ -237,6 +237,194 @@ describe("Phase 3 (e2e)", () => {
     });
   });
 
+  describe("Booking messages", () => {
+    let messagingBookingId: string;
+
+    beforeAll(async () => {
+      const create = await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ businessId: hotelBusinessId, requestedDate: "2027-03-01" })
+        .expect(201);
+      messagingBookingId = create.body.id;
+    });
+
+    it("lets the guest post a message and the owner read + reply, in order", async () => {
+      const first = await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ body: "What time is check-in?" })
+        .expect(201);
+      expect(first.body.sender.passwordHash).toBeUndefined();
+      expect(first.body.body).toBe("What time is check-in?");
+
+      const reply = await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ body: "Check-in is at 2pm." })
+        .expect(201);
+      expect(reply.body.body).toBe("Check-in is at 2pm.");
+
+      const thread = await request(app.getHttpServer())
+        .get(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .expect(200);
+      expect(thread.body).toHaveLength(2);
+      expect(thread.body[0].body).toBe("What time is check-in?");
+      expect(thread.body[1].body).toBe("Check-in is at 2pm.");
+    });
+
+    it("blocks a stranger from posting or reading the thread", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ body: "let me in" })
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+    });
+
+    it("404s on a booking that doesn't exist", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/bookings/00000000-0000-0000-0000-000000000000/messages")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ body: "hi" })
+        .expect(404);
+    });
+
+    it("rejects an empty message body", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ body: "" })
+        .expect(400);
+    });
+  });
+
+  describe("Reviews with a confirmed booking (verifiedVisit)", () => {
+    it("marks a review verified when the reviewer has a confirmed booking with a linked business", async () => {
+      // A fresh booking, independent of the one the Bookings block above
+      // mutates through pending → confirmed → cancelled — this one stays
+      // confirmed for the review created against it.
+      const booking = await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ businessId: hotelBusinessId, requestedDate: "2027-02-01" })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/bookings/${booking.body.id}/respond`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ action: "confirm" })
+        .expect(200);
+
+      const review = await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          placeId: hotelPlace.id,
+          overallRating: 5,
+          comment: "Great stay.",
+        })
+        .expect(201);
+      expect(review.body.verifiedVisit).toBe(true);
+    });
+
+    it("leaves a review unverified with no confirmed booking behind it", async () => {
+      const review = await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ placeId: hotelPlace.id, overallRating: 3 })
+        .expect(201);
+      expect(review.body.verifiedVisit).toBe(false);
+    });
+  });
+
+  describe('Freshness reports ("is this still here?")', () => {
+    it("requires auth, 404s an unknown place, and upserts instead of duplicating", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .send({ placeId: unclaimedPlace.id, response: "still_here" })
+        .expect(401);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          placeId: "00000000-0000-0000-0000-000000000000",
+          response: "still_here",
+        })
+        .expect(404);
+
+      const first = await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "still_here" })
+        .expect(201);
+
+      const mine = await request(app.getHttpServer())
+        .get(`/api/v1/freshness-reports/mine?placeId=${unclaimedPlace.id}`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .expect(200);
+      expect(mine.body.response).toBe("still_here");
+
+      // A second report from the same user updates the existing row
+      // rather than creating a new one.
+      const second = await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "no_longer_here" })
+        .expect(201);
+      expect(second.body.id).toBe(first.body.id);
+
+      const mineAfter = await request(app.getHttpServer())
+        .get(`/api/v1/freshness-reports/mine?placeId=${unclaimedPlace.id}`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .expect(200);
+      expect(mineAfter.body.response).toBe("no_longer_here");
+    });
+
+    it("flags a place in the admin moderation queue once enough independent reports accumulate", async () => {
+      // guestToken already reported "no_longer_here" on unclaimedPlace in
+      // the previous test — two more independent reporters cross the
+      // FRESHNESS_FLAG_THRESHOLD of 3.
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "no_longer_here" })
+        .expect(201);
+
+      const beforeThreshold = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        beforeThreshold.body.possiblyClosedPlaces.some(
+          (p: { place: { id: string } }) => p.place.id === unclaimedPlace.id,
+        ),
+      ).toBe(false); // only 2 reports so far
+
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "no_longer_here" })
+        .expect(201);
+
+      const afterThreshold = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      const flagged = afterThreshold.body.possiblyClosedPlaces.find(
+        (p: { place: { id: string } }) => p.place.id === unclaimedPlace.id,
+      );
+      expect(flagged).toBeDefined();
+      expect(flagged.noLongerHereCount).toBe(3);
+    });
+  });
+
   describe("Analytics", () => {
     it("records public events and aggregates them for the business owner only", async () => {
       for (const eventType of ["view", "view", "save", "contact_click"]) {
@@ -524,6 +712,42 @@ describe("Phase 3 (e2e)", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ endDate: "2020-01-01T00:00:00Z" })
         .expect(400);
+    });
+
+    it("updates a county's safety & practical-info panel, admin-only", async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/counties/${montserrado.id}`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ emergencyNumber: "911" })
+        .expect(403);
+
+      const update = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/counties/${montserrado.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          emergencyNumber: "911",
+          safetyTips: ["Agree on taxi fares before getting in."],
+          localCustoms: "Greet before getting to business.",
+        })
+        .expect(200);
+      expect(update.body.emergencyNumber).toBe("911");
+      expect(update.body.safetyTips).toEqual([
+        "Agree on taxi fares before getting in.",
+      ]);
+
+      const publicRead = await request(app.getHttpServer())
+        .get("/api/v1/counties")
+        .expect(200);
+      const found = publicRead.body.find(
+        (c: { id: string }) => c.id === montserrado.id,
+      );
+      expect(found.emergencyNumber).toBe("911");
+
+      await request(app.getHttpServer())
+        .patch("/api/v1/admin/counties/00000000-0000-0000-0000-000000000000")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ emergencyNumber: "911" })
+        .expect(404);
     });
   });
 

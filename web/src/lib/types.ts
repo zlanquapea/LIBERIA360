@@ -30,6 +30,9 @@ export interface County {
   slug: string;
   rolloutStage: number;
   icon: string | null;
+  emergencyNumber: string | null;
+  safetyTips: string[];
+  localCustoms: string | null;
   placeCount?: number;
 }
 
@@ -244,6 +247,18 @@ export interface Booking {
   updatedAt: string;
 }
 
+// Mirrors api/src/booking-messages/entities/booking-message.entity.ts
+// (sanitized — sender is the public user shape). Threaded notes on a
+// booking between the guest and the business owner.
+export interface BookingMessage {
+  id: string;
+  bookingId: string;
+  sender: AuthUser | null;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface PaginatedCreators {
   data: Creator[];
   meta: {
@@ -302,6 +317,7 @@ export interface ItineraryStop {
 
 export interface Itinerary {
   id: string;
+  userId: string;
   title: string;
   kind: ItineraryKind;
   durationDays: number;
@@ -318,8 +334,12 @@ export interface ItineraryStopWithPlace {
   place: Place;
 }
 
+// Collaborative trip planning (Wanderlog/TripIt-style): the owner invites
+// other users by email, and from then on anyone in `collaborators` can
+// view and edit the trip's stops right alongside the owner.
 export interface ItineraryDetail extends Omit<Itinerary, 'stops'> {
   stops: ItineraryStopWithPlace[];
+  collaborators: AuthUser[];
 }
 
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';
@@ -423,10 +443,35 @@ export interface UpdateEventInput {
   ticketInfo?: string;
 }
 
+// PATCH /admin/counties/:id — safety & practical-info panel fields only;
+// name/slug/rolloutStage/icon aren't editable through this endpoint.
+export interface UpdateCountyInput {
+  emergencyNumber?: string;
+  safetyTips?: string[];
+  localCustoms?: string;
+}
+
+export interface PossiblyClosedPlace {
+  place: Place;
+  noLongerHereCount: number;
+}
+
 // Mirrors api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];
   recentReviews: Review[];
+  possiblyClosedPlaces: PossiblyClosedPlace[];
+}
+
+// Mirrors api/src/freshness/entities/place-freshness-report.enums.ts.
+export type FreshnessResponse = 'still_here' | 'no_longer_here';
+
+export interface PlaceFreshnessReport {
+  id: string;
+  placeId: string;
+  userId: string;
+  response: FreshnessResponse;
+  createdAt: string;
 }
 
 // Mirrors api/src/admin/admin-analytics.service.ts.

@@ -66,8 +66,15 @@ export class Review {
   @Column({ type: "text", array: true, default: () => "'{}'" })
   photos: string[];
 
-  // Phase 1 has no booking/check-in data to verify a visit against, so this
-  // stays false unless an admin sets it later — not auto-computed.
+  // Auto-computed at creation time (see ReviewsService.hasConfirmedBooking)
+  // from whether the reviewer has a confirmed Booking with a business
+  // linked to this place — Phase 1 had no booking data to verify a visit
+  // against, so this stayed permanently false until Phase 3's Bookings
+  // module existed to compute it from. Same loose "verified" semantics as
+  // Amazon's Verified Purchase / Booking.com's Verified stay: a real
+  // engagement signal, not a gate on who's allowed to review — most of the
+  // catalog (plain attractions, no bookable business behind them) has no
+  // way to ever earn this, and that's fine, reviews stay open regardless.
   @Column({ name: "verified_visit", type: "boolean", default: false })
   verifiedVisit: boolean;
 

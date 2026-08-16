@@ -287,7 +287,26 @@ describe("Phase 2 (e2e)", () => {
   });
 
   describe("Events", () => {
+    it("rejects a plain user with no business or creator profile", async () => {
+      // userB never claimed a business or created a creator profile in the
+      // blocks above (both attempts 409'd against userA's) — the plain
+      // account this restriction exists for.
+      await request(app.getHttpServer())
+        .post("/api/v1/events")
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({
+          name: "Should Be Blocked",
+          category: "concert",
+          locationText: "City Hall",
+          countyId: montserrado.id,
+          startDate: "2026-09-01T18:00:00Z",
+        })
+        .expect(403);
+    });
+
     it("requires a location, rejects a bad date range, and filters by county/category", async () => {
+      // userA claimed a business and a creator profile earlier in this
+      // file, so it's eligible to post events under the same restriction.
       await request(app.getHttpServer())
         .post("/api/v1/events")
         .set("Authorization", `Bearer ${userAToken}`)
@@ -406,6 +425,149 @@ describe("Phase 2 (e2e)", () => {
           interests: [],
           budgetBand: "premium",
         })
+        .expect(404);
+    });
+  });
+
+  describe("Collaborative trip planning", () => {
+    let tripId: string;
+    let strangerToken: string;
+
+    beforeAll(async () => {
+      const trip = await request(app.getHttpServer())
+        .post("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          durationDays: 1,
+          interests: ["culture-heritage", "beaches"],
+          budgetBand: "moderate",
+        })
+        .expect(201);
+      tripId = trip.body.id;
+      const stranger = await registerUser(
+        "tripStranger@example.com",
+        "Stranger",
+      );
+      strangerToken = stranger.token;
+    });
+
+    it("404s inviting/viewing/editing for anyone but the owner, before any invite exists", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ email: "userB@example.com" })
+        .expect(404);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(404);
+    });
+
+    it("404s inviting an email with no account", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ email: "nobody@example.com" })
+        .expect(404);
+    });
+
+    it("lets the owner invite a collaborator by email, who can then view and edit the trip", async () => {
+      const invite = await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ email: "userB@example.com" })
+        .expect(201);
+      expect(invite.body).toHaveLength(1);
+      expect(invite.body[0].id).toBe(userBId);
+      expect(invite.body[0].passwordHash).toBeUndefined();
+
+      // Duplicate invite is rejected.
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ email: "userB@example.com" })
+        .expect(409);
+
+      const asCollaborator = await request(app.getHttpServer())
+        .get(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(200);
+      expect(asCollaborator.body.collaborators).toHaveLength(1);
+
+      // A collaborator can't invite further collaborators onto the trip.
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ email: "tripStranger@example.com" })
+        .expect(403);
+
+      // A collaborator can add, annotate, and remove a stop.
+      const added = await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/stops`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ placeId: hotelPlace.id, day: 1, notes: "Check in first" })
+        .expect(201);
+      expect(
+        added.body.stops.some(
+          (s: { place: { id: string } }) => s.place.id === hotelPlace.id,
+        ),
+      ).toBe(true);
+
+      // Adding the same place twice is rejected.
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/stops`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ placeId: hotelPlace.id, day: 1 })
+        .expect(409);
+
+      const annotated = await request(app.getHttpServer())
+        .patch(`/api/v1/itineraries/${tripId}/stops/${hotelPlace.id}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ notes: "Confirmed 2pm check-in" })
+        .expect(200);
+      expect(
+        annotated.body.stops.find(
+          (s: { place: { id: string } }) => s.place.id === hotelPlace.id,
+        ).notes,
+      ).toBe("Confirmed 2pm check-in");
+
+      const removed = await request(app.getHttpServer())
+        .delete(`/api/v1/itineraries/${tripId}/stops/${hotelPlace.id}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(200);
+      expect(
+        removed.body.stops.some(
+          (s: { place: { id: string } }) => s.place.id === hotelPlace.id,
+        ),
+      ).toBe(false);
+
+      // Stop mutations stay off-limits to a non-member.
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/stops`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ placeId: hotelPlace.id, day: 1 })
+        .expect(404);
+
+      // "Shared with me" surfaces it for the collaborator, not the stranger.
+      const shared = await request(app.getHttpServer())
+        .get("/api/v1/itineraries/shared-with-me")
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(200);
+      expect(shared.body.some((t: { id: string }) => t.id === tripId)).toBe(
+        true,
+      );
+
+      // Collaborator leaves the trip themself; owner can no longer be
+      // blocked by them, and userB loses view access again.
+      await request(app.getHttpServer())
+        .delete(`/api/v1/itineraries/${tripId}/collaborators/${userBId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
         .expect(404);
     });
   });

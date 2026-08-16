@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getItinerary } from '@/lib/itinerary-api';
+import { getItinerary, removeItineraryStop } from '@/lib/itinerary-api';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
 import { ItineraryStops } from '@/components/ItineraryStops';
+import { TripCollaborators } from '@/components/TripCollaborators';
+import { AddTripStop } from '@/components/AddTripStop';
 import type { ItineraryDetail } from '@/lib/types';
 
 export default function TripDetailPage() {
@@ -16,6 +18,13 @@ export default function TripDetailPage() {
   const [itinerary, setItinerary] = useState<ItineraryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(() => {
+    if (!token) return;
+    getItinerary(token, id)
+      .then((result) => setItinerary(result))
+      .catch((err) => setError(err instanceof HttpError ? err.message : 'Could not load this trip.'));
+  }, [token, id]);
 
   useEffect(() => {
     if (!ready || !token) {
@@ -70,6 +79,10 @@ export default function TripDetailPage() {
     );
   }
 
+  const isOwner = itinerary.userId === user.id;
+  const isCollaborator = itinerary.collaborators.some((c) => c.id === user.id);
+  const canEdit = isOwner || isCollaborator;
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
       <div>
@@ -80,10 +93,33 @@ export default function TripDetailPage() {
         <p className="text-sm text-slate-500">
           {itinerary.durationDays} day{itinerary.durationDays === 1 ? '' : 's'} · {formatBudgetBand(itinerary.budgetBand)}
           {itinerary.interests.length > 0 && ` · ${itinerary.interests.join(', ')}`}
+          {!isOwner && isCollaborator && ' · Shared with you'}
         </p>
       </div>
 
-      <ItineraryStops stops={itinerary.stops} />
+      <TripCollaborators
+        itineraryId={itinerary.id}
+        collaborators={itinerary.collaborators}
+        isOwner={isOwner}
+        onChange={reload}
+      />
+
+      <ItineraryStops
+        stops={itinerary.stops}
+        onRemove={
+          canEdit
+            ? async (placeId) => {
+                if (!token) return;
+                await removeItineraryStop(token, itinerary.id, placeId);
+                reload();
+              }
+            : undefined
+        }
+      />
+
+      {canEdit && (
+        <AddTripStop itineraryId={itinerary.id} durationDays={itinerary.durationDays} onAdded={reload} />
+      )}
     </main>
   );
 }

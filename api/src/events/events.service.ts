@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -10,6 +11,9 @@ import { CreateEventDto } from "./dto/create-event.dto";
 import { QueryEventsDto } from "./dto/query-events.dto";
 import { PushService } from "../push/push.service";
 import { UsersService } from "../users/users.service";
+import { BusinessesService } from "../businesses/businesses.service";
+import { CreatorsService } from "../creators/creators.service";
+import { User } from "../users/entities/user.entity";
 
 export interface PaginatedEvents {
   data: Event[];
@@ -23,9 +27,13 @@ export class EventsService {
     private readonly eventRepo: Repository<Event>,
     private readonly pushService: PushService,
     private readonly usersService: UsersService,
+    private readonly businessesService: BusinessesService,
+    private readonly creatorsService: CreatorsService,
   ) {}
 
-  async create(userId: string, dto: CreateEventDto): Promise<Event> {
+  async create(user: User, dto: CreateEventDto): Promise<Event> {
+    await this.assertCanPostEvents(user);
+
     if (!dto.placeId && !dto.locationText) {
       throw new BadRequestException(
         "Provide either placeId or locationText for the event location",
@@ -46,7 +54,7 @@ export class EventsService {
       description: dto.description ?? null,
       images: dto.images ?? [],
       ticketInfo: dto.ticketInfo ?? null,
-      createdByUserId: userId,
+      createdByUserId: user.id,
     });
     const saved = await this.eventRepo.save(event);
     const full = await this.eventRepo.findOneOrFail({
@@ -59,6 +67,29 @@ export class EventsService {
     void this.notifyNearby(full);
 
     return full;
+  }
+
+  // Posting was originally open to any logged-in user — cheap for
+  // spam/junk listings with zero accountability behind them. Restricted to
+  // identities that already carry some public accountability: a claimed
+  // business, a creator profile, or admin. Deliberately reuses the existing
+  // ownership-derived permission pattern (see BusinessesService/
+  // CreatorsService.findMine) rather than adding a new stored "organizer"
+  // role — a business owner or creator who stops being one loses posting
+  // rights automatically, the same way they'd lose any other business/
+  // creator capability, with nothing to separately revoke.
+  private async assertCanPostEvents(user: User): Promise<void> {
+    if (user.isAdmin) return;
+
+    const [businesses, creator] = await Promise.all([
+      this.businessesService.findMine(user.id),
+      this.creatorsService.findMine(user.id),
+    ]);
+    if (businesses.length > 0 || creator) return;
+
+    throw new ForbiddenException(
+      "Posting events requires a claimed business listing or a creator profile — claim a business or set up a creator profile first.",
+    );
   }
 
   private async notifyNearby(event: Event): Promise<void> {

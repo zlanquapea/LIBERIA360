@@ -19,6 +19,7 @@ import { UpdateActivityDto } from "./dto/update-activity.dto";
 import { CreateBusinessAdminDto } from "./dto/create-business-admin.dto";
 import { UpdateBusinessAdminDto } from "./dto/update-business-admin.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
+import { UpdateCountyDto } from "./dto/update-county.dto";
 
 /** Admin content management (Tech Spec §8) — create/edit Place, Business,
  * Activity, and Event records. The first way to write to the catalog
@@ -178,6 +179,18 @@ export class AdminContentService {
     });
     await this.eventRepo.save(event);
     return this.eventRepo.findOneOrFail({ where: { id } });
+  }
+
+  // ---- Counties (safety & practical-info panel only — see UpdateCountyDto) ----
+
+  async updateCounty(id: string, dto: UpdateCountyDto): Promise<County> {
+    const county = await this.countyRepo.findOne({ where: { id } });
+    if (!county) {
+      throw new NotFoundException(`County "${id}" not found`);
+    }
+    this.countyRepo.merge(county, dto);
+    await this.countyRepo.save(county);
+    return this.countyRepo.findOneOrFail({ where: { id } });
   }
 
   private async assertCategoryExists(categoryId: string): Promise<void> {

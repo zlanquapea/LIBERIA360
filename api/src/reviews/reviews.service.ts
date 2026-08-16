@@ -7,6 +7,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Review } from "./entities/review.entity";
 import { Place } from "../places/entities/place.entity";
+import { Booking } from "../bookings/entities/booking.entity";
+import { BookingStatus } from "../bookings/entities/booking.enums";
 import { CreateReviewDto } from "./dto/create-review.dto";
 import { QueryReviewsDto } from "./dto/query-reviews.dto";
 
@@ -22,6 +24,8 @@ export class ReviewsService {
     private readonly reviewRepo: Repository<Review>,
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
   ) {}
 
   async create(userId: string, dto: CreateReviewDto): Promise<Review> {
@@ -37,14 +41,32 @@ export class ReviewsService {
       throw new ConflictException("You have already reviewed this place");
     }
 
+    const verifiedVisit = await this.hasConfirmedBooking(userId, dto.placeId);
+
     const review = await this.reviewRepo.save(
-      this.reviewRepo.create({ ...dto, userId }),
+      this.reviewRepo.create({ ...dto, userId, verifiedVisit }),
     );
     await this.recalculatePlaceRating(dto.placeId);
     return this.reviewRepo.findOneOrFail({
       where: { id: review.id },
       relations: ["user"],
     });
+  }
+
+  /** See Review.verifiedVisit's doc comment for what this signal does and
+   * doesn't mean. */
+  private async hasConfirmedBooking(
+    userId: string,
+    placeId: string,
+  ): Promise<boolean> {
+    const count = await this.bookingRepo
+      .createQueryBuilder("booking")
+      .innerJoin("booking.business", "business")
+      .where("booking.guestUserId = :userId", { userId })
+      .andWhere("business.linkedPlaceId = :placeId", { placeId })
+      .andWhere("booking.status = :status", { status: BookingStatus.CONFIRMED })
+      .getCount();
+    return count > 0;
   }
 
   async findForPlace(query: QueryReviewsDto): Promise<PaginatedReviews> {

@@ -2,8 +2,13 @@
 // friendly ... PWA service worker"). This is a starting point: it caches the
 // app shell and static assets so the app opens offline, and serves cached
 // pages when the network is unavailable. Caching *saved places* for offline
-// viewing (the fuller §6.3 goal) is wired up alongside the Save/Bucket List
-// feature, not here.
+// viewing (the fuller §6.3 goal) is an explicit localStorage snapshot taken
+// alongside the Save/Bucket List feature (src/lib/saved-places.ts), not
+// this generic HTTP-level cache — a snapshot survives even where this
+// cache doesn't (Safari private browsing has no persistent Cache Storage,
+// eviction under storage pressure, etc.), and lets the Saved screen tell
+// the visitor plainly "this is a saved copy" instead of silently serving
+// possibly-stale data with no indication either way.
 
 const CACHE_NAME = 'liberia360-shell-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png', '/icons/icon-192.png', '/icons/icon-512.png'];

@@ -2,18 +2,28 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { createEvent } from '@/lib/event-api';
+import { getMyBusinesses } from '@/lib/business-api';
+import { getMyCreatorProfile } from '@/lib/creator-api';
 import { HttpError } from '@/lib/http';
 import { formatEventCategory } from '@/lib/format';
 import type { County, EventCategory } from '@/lib/types';
 
 const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nightlife', 'seasonal', 'other'];
 
+// Mirrors the API's restriction (EventsService.assertCanPostEvents):
+// posting requires a claimed business, a creator profile, or admin — not
+// just any logged-in account. Checked client-side too so a traveler with
+// neither sees a clear next step instead of filling out the whole form
+// and hitting a 403 at the end.
+type Eligibility = 'checking' | 'eligible' | 'ineligible';
+
 export function NewEventForm({ counties }: { counties: County[] }) {
   const router = useRouter();
   const { user, token, ready } = useAuth();
+  const [eligibility, setEligibility] = useState<Eligibility>('checking');
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<EventCategory>('other');
@@ -25,6 +35,26 @@ export function NewEventForm({ counties }: { counties: County[] }) {
   const [ticketInfo, setTicketInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user || !token) return;
+    if (user.isAdmin) {
+      setEligibility('eligible');
+      return;
+    }
+    let cancelled = false;
+    Promise.all([getMyBusinesses(token), getMyCreatorProfile(token)])
+      .then(([businesses, creator]) => {
+        if (cancelled) return;
+        setEligibility(businesses.length > 0 || creator ? 'eligible' : 'ineligible');
+      })
+      .catch(() => {
+        if (!cancelled) setEligibility('ineligible');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, token]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,6 +92,26 @@ export function NewEventForm({ counties }: { counties: County[] }) {
         </Link>{' '}
         to post an event.
       </p>
+    );
+  }
+
+  if (eligibility === 'checking') {
+    return <p className="text-sm text-slate-500">Checking your account…</p>;
+  }
+
+  if (eligibility === 'ineligible') {
+    return (
+      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-600">
+        <p>
+          Posting events is limited to businesses and creators, so listings stay tied to a real, accountable account.
+        </p>
+        <p>
+          <Link href="/creators/me" className="font-medium text-brand-700 hover:underline">
+            Set up a creator profile
+          </Link>{' '}
+          or claim a business from its destination page to unlock this.
+        </p>
+      </div>
     );
   }
 

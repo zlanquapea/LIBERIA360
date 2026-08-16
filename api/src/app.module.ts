@@ -25,6 +25,7 @@ import { CreatorsModule } from "./creators/creators.module";
 import { Event } from "./events/entities/event.entity";
 import { EventsModule } from "./events/events.module";
 import { Itinerary } from "./itineraries/entities/itinerary.entity";
+import { ItineraryCollaborator } from "./itineraries/entities/itinerary-collaborator.entity";
 import { ItinerariesModule } from "./itineraries/itineraries.module";
 import { PushSubscription } from "./push/entities/push-subscription.entity";
 import { PushModule } from "./push/push.module";
@@ -35,6 +36,10 @@ import { AnalyticsModule } from "./analytics/analytics.module";
 import { SponsoredPlacement } from "./sponsored-placements/entities/sponsored-placement.entity";
 import { SponsoredPlacementsModule } from "./sponsored-placements/sponsored-placements.module";
 import { AdminModule } from "./admin/admin.module";
+import { PlaceFreshnessReport } from "./freshness/entities/place-freshness-report.entity";
+import { FreshnessModule } from "./freshness/freshness.module";
+import { BookingMessage } from "./booking-messages/entities/booking-message.entity";
+import { BookingMessagesModule } from "./booking-messages/booking-messages.module";
 
 @Module({
   imports: [
@@ -68,10 +73,13 @@ import { AdminModule } from "./admin/admin.module";
             Creator,
             Event,
             Itinerary,
+            ItineraryCollaborator,
             PushSubscription,
             Booking,
             AnalyticsEvent,
             SponsoredPlacement,
+            PlaceFreshnessReport,
+            BookingMessage,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -95,6 +103,8 @@ import { AdminModule } from "./admin/admin.module";
     AnalyticsModule,
     SponsoredPlacementsModule,
     AdminModule,
+    FreshnessModule,
+    BookingMessagesModule,
   ],
   providers: [
     {
