@@ -259,6 +259,49 @@ describe("Phase 2 (e2e)", () => {
         .expect(200);
       expect(mine.body).toHaveLength(1);
     });
+
+    it("lets the owner edit their own listing (including photos) after claiming, blocks everyone else", async () => {
+      const claim = await request(app.getHttpServer())
+        .post("/api/v1/businesses")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          placeId: beachPlace.id,
+          name: "Test Beach Business",
+          type: "tour_operator",
+        })
+        .expect(201);
+      const businessId = claim.body.id;
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/businesses/${businessId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ name: "Hijacked" })
+        .expect(403);
+
+      const updated = await request(app.getHttpServer())
+        .patch(`/api/v1/businesses/${businessId}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          description: "Now with real photos of the actual place.",
+          images: ["/uploads/pool.jpg", "/uploads/room.jpg"],
+        })
+        .expect(200);
+      expect(updated.body.images).toEqual([
+        "/uploads/pool.jpg",
+        "/uploads/room.jpg",
+      ]);
+      expect(updated.body.description).toBe(
+        "Now with real photos of the actual place.",
+      );
+      // Untouched fields survive a partial update.
+      expect(updated.body.name).toBe("Test Beach Business");
+
+      await request(app.getHttpServer())
+        .patch("/api/v1/businesses/00000000-0000-0000-0000-000000000000")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ name: "Nope" })
+        .expect(404);
+    });
   });
 
   describe("Creators", () => {

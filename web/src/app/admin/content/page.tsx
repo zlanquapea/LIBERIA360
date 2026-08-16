@@ -15,6 +15,7 @@ import {
 import { getBusinessByPlace, getCategories, getCounties, getEvents, getPlaceBySlug, getPlaces } from '@/lib/api';
 import { HttpError } from '@/lib/http';
 import { formatBusinessType, formatEventCategory, formatPlaceType } from '@/lib/format';
+import { PhotoManager } from '@/components/PhotoManager';
 import type {
   Activity,
   ActivityDifficulty,
@@ -324,6 +325,7 @@ function PlaceEditForm({
   const [city, setCity] = useState(place.city);
   const [contactPhone, setContactPhone] = useState(place.contactPhone ?? '');
   const [whatsapp, setWhatsapp] = useState(place.whatsapp ?? '');
+  const [images, setImages] = useState(place.images);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -337,6 +339,7 @@ function PlaceEditForm({
     setCity(place.city);
     setContactPhone(place.contactPhone ?? '');
     setWhatsapp(place.whatsapp ?? '');
+    setImages(place.images);
     setSuccess(false);
     // Keyed on place.id, not the whole place object: a save re-fetches the
     // same place (new object, same id) to refresh other sections below —
@@ -360,6 +363,7 @@ function PlaceEditForm({
         city,
         contactPhone: contactPhone.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
+        images,
       });
       setSuccess(true);
       onSaved(updated);
@@ -373,6 +377,7 @@ function PlaceEditForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
       <h3 className="text-sm font-semibold text-slate-700">Place details</h3>
+      <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           Name
@@ -598,6 +603,7 @@ function BusinessEditor({
   const [type, setType] = useState<BusinessType>(business?.type ?? 'hotel');
   const [phone, setPhone] = useState(business?.phone ?? '');
   const [ownerUserId, setOwnerUserId] = useState(business?.owner?.id ?? '');
+  const [images, setImages] = useState(business?.images ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -606,6 +612,7 @@ function BusinessEditor({
     setType(business?.type ?? 'hotel');
     setPhone(business?.phone ?? '');
     setOwnerUserId(business?.owner?.id ?? '');
+    setImages(business?.images ?? []);
   }, [business]);
 
   async function handleSubmit(e: FormEvent) {
@@ -619,9 +626,16 @@ function BusinessEditor({
           type,
           phone: phone.trim() || undefined,
           ownerUserId: ownerUserId.trim() || null,
+          images,
         });
       } else {
-        await createBusinessAdmin(token, { placeId: place.id, name, type, phone: phone.trim() || undefined });
+        await createBusinessAdmin(token, {
+          placeId: place.id,
+          name,
+          type,
+          phone: phone.trim() || undefined,
+          images,
+        });
       }
       onChanged();
     } catch (err) {
@@ -636,6 +650,7 @@ function BusinessEditor({
       <h3 className="text-sm font-semibold text-slate-700">
         {business ? 'Business listing' : 'Seed a business listing (unclaimed until an owner claims it)'}
       </h3>
+      <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           Name

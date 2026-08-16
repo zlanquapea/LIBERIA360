@@ -1,0 +1,67 @@
+'use client';
+
+import { useState } from 'react';
+import { gradientForCategory } from '@/lib/category-colors';
+
+// Destination profile hero. Real photos are the point — a traveler
+// deciding on a hotel wants to see the room and the pool, not a category
+// icon — but plenty of listings genuinely have no photos yet (freshly
+// seeded, not yet claimed), so this falls back to the existing
+// gradient+icon placeholder rather than showing an empty box.
+export function PlaceGallery({
+  images,
+  categorySlug,
+  categoryIcon,
+  alt,
+}: {
+  images: string[];
+  categorySlug: string;
+  categoryIcon: string | null;
+  alt: string;
+}) {
+  const [active, setActive] = useState(0);
+
+  if (images.length === 0) {
+    return (
+      <div
+        aria-hidden
+        className="flex h-40 items-center justify-center rounded-2xl text-6xl"
+        style={{ backgroundImage: gradientForCategory(categorySlug) }}
+      >
+        {categoryIcon ?? '📍'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={images[active]}
+          alt={alt}
+          className="h-64 w-full object-cover sm:h-80"
+        />
+      </div>
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {images.map((img, i) => (
+            <button
+              key={img}
+              type="button"
+              onClick={() => setActive(i)}
+              aria-label={`Show photo ${i + 1} of ${images.length}`}
+              aria-current={i === active}
+              className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${
+                i === active ? 'border-brand-600' : 'border-transparent'
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
