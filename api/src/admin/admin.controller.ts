@@ -51,6 +51,7 @@ export class AdminController {
     return {
       pendingBusinesses: queue.pendingBusinesses.map(sanitizeBusiness),
       recentReviews: queue.recentReviews.map(sanitizeReview),
+      possiblyClosedPlaces: queue.possiblyClosedPlaces,
     };
   }
 }

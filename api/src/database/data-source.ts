@@ -15,6 +15,7 @@ import { PushSubscription } from "../push/entities/push-subscription.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 import { SponsoredPlacement } from "../sponsored-placements/entities/sponsored-placement.entity";
+import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 
 config();
 
@@ -45,6 +46,7 @@ export const AppDataSource = new DataSource({
     Booking,
     AnalyticsEvent,
     SponsoredPlacement,
+    PlaceFreshnessReport,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

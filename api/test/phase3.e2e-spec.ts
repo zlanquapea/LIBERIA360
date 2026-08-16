@@ -276,6 +276,88 @@ describe("Phase 3 (e2e)", () => {
     });
   });
 
+  describe('Freshness reports ("is this still here?")', () => {
+    it("requires auth, 404s an unknown place, and upserts instead of duplicating", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .send({ placeId: unclaimedPlace.id, response: "still_here" })
+        .expect(401);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          placeId: "00000000-0000-0000-0000-000000000000",
+          response: "still_here",
+        })
+        .expect(404);
+
+      const first = await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "still_here" })
+        .expect(201);
+
+      const mine = await request(app.getHttpServer())
+        .get(`/api/v1/freshness-reports/mine?placeId=${unclaimedPlace.id}`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .expect(200);
+      expect(mine.body.response).toBe("still_here");
+
+      // A second report from the same user updates the existing row
+      // rather than creating a new one.
+      const second = await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "no_longer_here" })
+        .expect(201);
+      expect(second.body.id).toBe(first.body.id);
+
+      const mineAfter = await request(app.getHttpServer())
+        .get(`/api/v1/freshness-reports/mine?placeId=${unclaimedPlace.id}`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .expect(200);
+      expect(mineAfter.body.response).toBe("no_longer_here");
+    });
+
+    it("flags a place in the admin moderation queue once enough independent reports accumulate", async () => {
+      // guestToken already reported "no_longer_here" on unclaimedPlace in
+      // the previous test — two more independent reporters cross the
+      // FRESHNESS_FLAG_THRESHOLD of 3.
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "no_longer_here" })
+        .expect(201);
+
+      const beforeThreshold = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        beforeThreshold.body.possiblyClosedPlaces.some(
+          (p: { place: { id: string } }) => p.place.id === unclaimedPlace.id,
+        ),
+      ).toBe(false); // only 2 reports so far
+
+      await request(app.getHttpServer())
+        .post("/api/v1/freshness-reports")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ placeId: unclaimedPlace.id, response: "no_longer_here" })
+        .expect(201);
+
+      const afterThreshold = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      const flagged = afterThreshold.body.possiblyClosedPlaces.find(
+        (p: { place: { id: string } }) => p.place.id === unclaimedPlace.id,
+      );
+      expect(flagged).toBeDefined();
+      expect(flagged.noLongerHereCount).toBe(3);
+    });
+  });
+
   describe("Analytics", () => {
     it("records public events and aggregates them for the business owner only", async () => {
       for (const eventType of ["view", "view", "save", "contact_click"]) {

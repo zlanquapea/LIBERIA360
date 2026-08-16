@@ -12,6 +12,7 @@ import { BusinessClaimSection } from '@/components/BusinessClaimSection';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { PlaceViewTracker } from '@/components/PlaceViewTracker';
 import { ContactLink } from '@/components/ContactLink';
+import { PlaceFreshnessPrompt } from '@/components/PlaceFreshnessPrompt';
 import { JsonLd } from '@/components/JsonLd';
 import { placeJsonLd } from '@/lib/structured-data';
 import type { BusinessType, Place, PlaceType } from '@/lib/types';
@@ -107,6 +108,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
           </div>
         )}
       </header>
+
+      <PlaceFreshnessPrompt placeId={place.id} />
 
       <p className="text-slate-700">{place.description}</p>
 

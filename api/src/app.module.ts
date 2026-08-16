@@ -35,6 +35,8 @@ import { AnalyticsModule } from "./analytics/analytics.module";
 import { SponsoredPlacement } from "./sponsored-placements/entities/sponsored-placement.entity";
 import { SponsoredPlacementsModule } from "./sponsored-placements/sponsored-placements.module";
 import { AdminModule } from "./admin/admin.module";
+import { PlaceFreshnessReport } from "./freshness/entities/place-freshness-report.entity";
+import { FreshnessModule } from "./freshness/freshness.module";
 
 @Module({
   imports: [
@@ -72,6 +74,7 @@ import { AdminModule } from "./admin/admin.module";
             Booking,
             AnalyticsEvent,
             SponsoredPlacement,
+            PlaceFreshnessReport,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -95,6 +98,7 @@ import { AdminModule } from "./admin/admin.module";
     AnalyticsModule,
     SponsoredPlacementsModule,
     AdminModule,
+    FreshnessModule,
   ],
   providers: [
     {

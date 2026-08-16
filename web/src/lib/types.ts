@@ -434,10 +434,27 @@ export interface UpdateCountyInput {
   localCustoms?: string;
 }
 
+export interface PossiblyClosedPlace {
+  place: Place;
+  noLongerHereCount: number;
+}
+
 // Mirrors api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];
   recentReviews: Review[];
+  possiblyClosedPlaces: PossiblyClosedPlace[];
+}
+
+// Mirrors api/src/freshness/entities/place-freshness-report.enums.ts.
+export type FreshnessResponse = 'still_here' | 'no_longer_here';
+
+export interface PlaceFreshnessReport {
+  id: string;
+  placeId: string;
+  userId: string;
+  response: FreshnessResponse;
+  createdAt: string;
 }
 
 // Mirrors api/src/admin/admin-analytics.service.ts.
