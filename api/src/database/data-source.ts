@@ -16,6 +16,7 @@ import { Booking } from "../bookings/entities/booking.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 import { SponsoredPlacement } from "../sponsored-placements/entities/sponsored-placement.entity";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
+import { BookingMessage } from "../booking-messages/entities/booking-message.entity";
 
 config();
 
@@ -47,6 +48,7 @@ export const AppDataSource = new DataSource({
     AnalyticsEvent,
     SponsoredPlacement,
     PlaceFreshnessReport,
+    BookingMessage,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

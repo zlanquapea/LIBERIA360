@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import BookingMessageThread from '@/components/BookingMessageThread';
 import { cancelBooking, getBusinessBookings, getMyBookings, respondToBooking } from '@/lib/booking-api';
 import { getMyBusinesses } from '@/lib/business-api';
 import { formatBookingStatus } from '@/lib/format';
@@ -109,6 +110,7 @@ export default function BookingsPage() {
                     Cancel request
                   </button>
                 )}
+                <BookingMessageThread bookingId={booking.id} />
               </li>
             ))}
           </ul>
@@ -134,6 +136,7 @@ export default function BookingsPage() {
                           onDone={() => reloadIncoming(business.id)}
                         />
                       )}
+                      <BookingMessageThread bookingId={booking.id} />
                     </li>
                   ))}
                 </ul>

@@ -247,6 +247,18 @@ export interface Booking {
   updatedAt: string;
 }
 
+// Mirrors api/src/booking-messages/entities/booking-message.entity.ts
+// (sanitized — sender is the public user shape). Threaded notes on a
+// booking between the guest and the business owner.
+export interface BookingMessage {
+  id: string;
+  bookingId: string;
+  sender: AuthUser | null;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface PaginatedCreators {
   data: Creator[];
   meta: {

@@ -237,6 +237,73 @@ describe("Phase 3 (e2e)", () => {
     });
   });
 
+  describe("Booking messages", () => {
+    let messagingBookingId: string;
+
+    beforeAll(async () => {
+      const create = await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ businessId: hotelBusinessId, requestedDate: "2027-03-01" })
+        .expect(201);
+      messagingBookingId = create.body.id;
+    });
+
+    it("lets the guest post a message and the owner read + reply, in order", async () => {
+      const first = await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ body: "What time is check-in?" })
+        .expect(201);
+      expect(first.body.sender.passwordHash).toBeUndefined();
+      expect(first.body.body).toBe("What time is check-in?");
+
+      const reply = await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ body: "Check-in is at 2pm." })
+        .expect(201);
+      expect(reply.body.body).toBe("Check-in is at 2pm.");
+
+      const thread = await request(app.getHttpServer())
+        .get(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .expect(200);
+      expect(thread.body).toHaveLength(2);
+      expect(thread.body[0].body).toBe("What time is check-in?");
+      expect(thread.body[1].body).toBe("Check-in is at 2pm.");
+    });
+
+    it("blocks a stranger from posting or reading the thread", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ body: "let me in" })
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+    });
+
+    it("404s on a booking that doesn't exist", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/bookings/00000000-0000-0000-0000-000000000000/messages")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ body: "hi" })
+        .expect(404);
+    });
+
+    it("rejects an empty message body", async () => {
+      await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${messagingBookingId}/messages`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ body: "" })
+        .expect(400);
+    });
+  });
+
   describe("Reviews with a confirmed booking (verifiedVisit)", () => {
     it("marks a review verified when the reviewer has a confirmed booking with a linked business", async () => {
       // A fresh booking, independent of the one the Bookings block above
