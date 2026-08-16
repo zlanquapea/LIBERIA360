@@ -14,6 +14,7 @@ import { UpdateActivityDto } from "./dto/update-activity.dto";
 import { CreateBusinessAdminDto } from "./dto/create-business-admin.dto";
 import { UpdateBusinessAdminDto } from "./dto/update-business-admin.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
+import { UpdateCountyDto } from "./dto/update-county.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { toPublicUser } from "../users/user.serializer";
@@ -77,5 +78,10 @@ export class AdminContentController {
   @Patch("events/:id")
   async updateEvent(@Param("id") id: string, @Body() dto: UpdateEventDto) {
     return sanitizeEvent(await this.adminContentService.updateEvent(id, dto));
+  }
+
+  @Patch("counties/:id")
+  updateCounty(@Param("id") id: string, @Body() dto: UpdateCountyDto) {
+    return this.adminContentService.updateCounty(id, dto);
   }
 }

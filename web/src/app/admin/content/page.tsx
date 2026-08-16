@@ -8,6 +8,7 @@ import {
   createPlace,
   updateActivity,
   updateBusinessAdmin,
+  updateCountyAdmin,
   updateEventAdmin,
   updatePlace,
 } from '@/lib/admin-api';
@@ -64,6 +65,7 @@ export default function AdminContentPage() {
       <CreatePlaceSection token={token} categories={categories} counties={counties} onCreated={reloadPlaces} />
       <ManagePlaceSection token={token} categories={categories} counties={counties} places={places} onChanged={reloadPlaces} />
       <ManageEventsSection token={token} counties={counties} />
+      <ManageCountiesSection token={token} counties={counties} onChanged={setCounties} />
     </div>
   );
 }
@@ -815,6 +817,136 @@ function EventEditForm({
         className="self-start rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
       >
         {submitting ? 'Saving…' : 'Save event'}
+      </button>
+    </form>
+  );
+}
+
+// --- Edit a county's safety & practical-info panel -------------------------
+
+function ManageCountiesSection({
+  token,
+  counties,
+  onChanged,
+}: {
+  token: string;
+  counties: County[];
+  onChanged: (counties: County[]) => void;
+}) {
+  const [selectedId, setSelectedId] = useState('');
+  const selected = counties.find((c) => c.id === selectedId) ?? null;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-semibold text-slate-800">County safety &amp; practical info</h2>
+      <p className="text-sm text-slate-500">
+        Shown as a &quot;Before you go&quot; panel on the county page — left blank on purpose until set here rather
+        than guessed at seed time (a wrong emergency number is worse than no number at all).
+      </p>
+      <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className={inputClass}>
+        <option value="">Select a county…</option>
+        {counties.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      {selected && (
+        <CountyEditForm
+          token={token}
+          county={selected}
+          onSaved={(updated) => onChanged(counties.map((c) => (c.id === updated.id ? updated : c)))}
+        />
+      )}
+    </section>
+  );
+}
+
+function CountyEditForm({
+  token,
+  county,
+  onSaved,
+}: {
+  token: string;
+  county: County;
+  onSaved: (county: County) => void;
+}) {
+  const [emergencyNumber, setEmergencyNumber] = useState(county.emergencyNumber ?? '');
+  // One tip per line in the textarea — simplest editing UI for a string
+  // array; split/filter on save and on load, same as photos elsewhere.
+  const [safetyTipsText, setSafetyTipsText] = useState(county.safetyTips.join('\n'));
+  const [localCustoms, setLocalCustoms] = useState(county.localCustoms ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setEmergencyNumber(county.emergencyNumber ?? '');
+    setSafetyTipsText(county.safetyTips.join('\n'));
+    setLocalCustoms(county.localCustoms ?? '');
+    setSuccess(false);
+    // Keyed on county.id, not the whole county object — same reasoning as
+    // EventEditForm above: a save replaces this county with a new object of
+    // the same id, which must not wipe the success message just set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [county.id]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      const updated = await updateCountyAdmin(token, county.id, {
+        emergencyNumber: emergencyNumber.trim() || undefined,
+        safetyTips: safetyTipsText
+          .split('\n')
+          .map((tip) => tip.trim())
+          .filter(Boolean),
+        localCustoms: localCustoms.trim() || undefined,
+      });
+      setSuccess(true);
+      onSaved(updated);
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Emergency number
+        <input
+          maxLength={100}
+          placeholder="e.g. 911"
+          value={emergencyNumber}
+          onChange={(e) => setEmergencyNumber(e.target.value)}
+          className={inputClass}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Safety tips (one per line)
+        <textarea rows={4} value={safetyTipsText} onChange={(e) => setSafetyTipsText(e.target.value)} className={inputClass} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Local customs
+        <textarea rows={3} value={localCustoms} onChange={(e) => setLocalCustoms(e.target.value)} className={inputClass} />
+      </label>
+      {error && (
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          {error}
+        </p>
+      )}
+      {success && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>}
+      <button
+        type="submit"
+        disabled={submitting}
+        className="self-start rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+      >
+        {submitting ? 'Saving…' : 'Save county info'}
       </button>
     </form>
   );

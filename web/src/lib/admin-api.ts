@@ -3,6 +3,7 @@ import type {
   AggregateAnalytics,
   AuthUser,
   Business,
+  County,
   CreateActivityInput,
   CreateBusinessAdminInput,
   CreatePlaceInput,
@@ -13,6 +14,7 @@ import type {
   SponsoredPlacement,
   UpdateActivityInput,
   UpdateBusinessAdminInput,
+  UpdateCountyInput,
   UpdateEventInput,
   UpdatePlaceInput,
   VerificationStatus,
@@ -91,6 +93,14 @@ export function updateBusinessAdmin(token: string, id: string, input: UpdateBusi
 
 export function updateEventAdmin(token: string, id: string, input: UpdateEventInput): Promise<Event> {
   return apiRequest<Event>(`/admin/events/${id}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateCountyAdmin(token: string, id: string, input: UpdateCountyInput): Promise<County> {
+  return apiRequest<County>(`/admin/counties/${id}`, {
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify(input),

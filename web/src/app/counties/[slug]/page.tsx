@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getCountyPlaces, getCounties } from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { CountySafetyPanel } from '@/components/CountySafetyPanel';
 
 // County detail — places within a chosen county (Tech Spec §4.1).
 export default async function CountyDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -34,6 +35,8 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
           {county.rolloutStage > 1 && ' (still growing)'}
         </p>
       </div>
+
+      <CountySafetyPanel county={county} />
 
       {placesResult.data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">

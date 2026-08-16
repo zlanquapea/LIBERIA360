@@ -34,6 +34,31 @@ export class County {
   @Column({ type: "varchar", length: 50, nullable: true })
   icon: string | null;
 
+  // Safety & practical-info panel, for the international-visitor/diaspora
+  // audience specifically — null unless an admin has actually verified and
+  // set it (see PATCH /admin/counties/:id). Deliberately null rather than
+  // a guessed default: a wrong emergency number is worse than no number at
+  // all, so this is admin-entered content, not something computed or
+  // assumed at seed time.
+  @Column({
+    name: "emergency_number",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
+  emergencyNumber: string | null;
+
+  @Column({
+    name: "safety_tips",
+    type: "text",
+    array: true,
+    default: () => "'{}'",
+  })
+  safetyTips: string[];
+
+  @Column({ name: "local_customs", type: "text", nullable: true })
+  localCustoms: string | null;
+
   @OneToMany(() => Place, (place) => place.county)
   places: Place[];
 

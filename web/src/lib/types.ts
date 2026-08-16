@@ -30,6 +30,9 @@ export interface County {
   slug: string;
   rolloutStage: number;
   icon: string | null;
+  emergencyNumber: string | null;
+  safetyTips: string[];
+  localCustoms: string | null;
   placeCount?: number;
 }
 
@@ -421,6 +424,14 @@ export interface UpdateEventInput {
   description?: string;
   images?: string[];
   ticketInfo?: string;
+}
+
+// PATCH /admin/counties/:id — safety & practical-info panel fields only;
+// name/slug/rolloutStage/icon aren't editable through this endpoint.
+export interface UpdateCountyInput {
+  emergencyNumber?: string;
+  safetyTips?: string[];
+  localCustoms?: string;
 }
 
 // Mirrors api/src/admin/admin.service.ts's ModerationQueue (sanitized).

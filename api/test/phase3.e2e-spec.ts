@@ -564,6 +564,42 @@ describe("Phase 3 (e2e)", () => {
         .send({ endDate: "2020-01-01T00:00:00Z" })
         .expect(400);
     });
+
+    it("updates a county's safety & practical-info panel, admin-only", async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/counties/${montserrado.id}`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ emergencyNumber: "911" })
+        .expect(403);
+
+      const update = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/counties/${montserrado.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          emergencyNumber: "911",
+          safetyTips: ["Agree on taxi fares before getting in."],
+          localCustoms: "Greet before getting to business.",
+        })
+        .expect(200);
+      expect(update.body.emergencyNumber).toBe("911");
+      expect(update.body.safetyTips).toEqual([
+        "Agree on taxi fares before getting in.",
+      ]);
+
+      const publicRead = await request(app.getHttpServer())
+        .get("/api/v1/counties")
+        .expect(200);
+      const found = publicRead.body.find(
+        (c: { id: string }) => c.id === montserrado.id,
+      );
+      expect(found.emergencyNumber).toBe("911");
+
+      await request(app.getHttpServer())
+        .patch("/api/v1/admin/counties/00000000-0000-0000-0000-000000000000")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ emergencyNumber: "911" })
+        .expect(404);
+    });
   });
 
   describe("B2B aggregate analytics", () => {

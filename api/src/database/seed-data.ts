@@ -39,12 +39,46 @@ export interface CountySeed {
   // the rest, expected to get corrected over time rather than researched
   // to certainty up front.
   icon: string;
+  // Safety & practical-info panel — only populated for counties actually
+  // live in the catalog (rolloutStage 1). Deliberately no emergencyNumber
+  // seeded here: it's the one field where a wrong value is actively
+  // worse than an empty one, so it's left for an admin to verify and set
+  // via PATCH /admin/counties/:id rather than asserted at seed time.
+  // safetyTips/localCustoms below are general, low-risk-if-imprecise
+  // travel-safety and etiquette notes, not anything safety-critical.
+  safetyTips?: string[];
+  localCustoms?: string;
 }
 
 // All 15 counties, staged per Business Plan §9.1.
 export const COUNTY_SEEDS: CountySeed[] = [
-  { name: "Montserrado", slug: "montserrado", rolloutStage: 1, icon: "🏛️" }, // the capital county — Monrovia
-  { name: "Margibi", slug: "margibi", rolloutStage: 1, icon: "✈️" }, // Roberts International Airport
+  {
+    name: "Montserrado",
+    slug: "montserrado",
+    rolloutStage: 1,
+    icon: "🏛️", // the capital county — Monrovia
+    safetyTips: [
+      "Agree on the fare before getting into a shared taxi — meters aren't standard.",
+      "Carry small-denomination cash (USD and Liberian dollars are both widely used); many small vendors can't take cards.",
+      "Stick to bottled or filtered water.",
+      "Traffic drives on the right; road conditions and lighting vary a lot after dark, so plan evening travel in advance.",
+    ],
+    localCustoms:
+      "A warm, unhurried greeting before getting to business is the norm. Dress modestly when visiting religious or cultural sites. Tipping isn't obligatory but is appreciated for guides and service staff.",
+  },
+  {
+    name: "Margibi",
+    slug: "margibi",
+    rolloutStage: 1,
+    icon: "✈️", // Roberts International Airport
+    safetyTips: [
+      "Roberts International Airport is well outside central Monrovia — budget real transfer time, especially at night.",
+      "Agree on the fare before getting into a shared taxi — meters aren't standard.",
+      "Stick to bottled or filtered water.",
+    ],
+    localCustoms:
+      "Same general etiquette as Montserrado — a warm greeting first, modest dress at religious/cultural sites, cash widely preferred over cards outside larger hotels.",
+  },
   { name: "Bong", slug: "bong", rolloutStage: 2, icon: "🎓" }, // Cuttington University, Gbarnga
   { name: "Grand Bassa", slug: "grand-bassa", rolloutStage: 2, icon: "⚓" }, // Buchanan — Liberia's 2nd-largest port
   {
