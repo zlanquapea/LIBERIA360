@@ -317,6 +317,7 @@ export interface ItineraryStop {
 
 export interface Itinerary {
   id: string;
+  userId: string;
   title: string;
   kind: ItineraryKind;
   durationDays: number;
@@ -333,8 +334,12 @@ export interface ItineraryStopWithPlace {
   place: Place;
 }
 
+// Collaborative trip planning (Wanderlog/TripIt-style): the owner invites
+// other users by email, and from then on anyone in `collaborators` can
+// view and edit the trip's stops right alongside the owner.
 export interface ItineraryDetail extends Omit<Itinerary, 'stops'> {
   stops: ItineraryStopWithPlace[];
+  collaborators: AuthUser[];
 }
 
 export type PlaceSort = 'featured' | 'rating' | 'distance' | 'name';

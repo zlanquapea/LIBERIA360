@@ -1,4 +1,4 @@
-import type { BudgetBand, Itinerary, ItineraryDetail } from './types';
+import type { AuthUser, BudgetBand, Itinerary, ItineraryDetail } from './types';
 import { apiRequest, authHeader } from './http';
 
 export interface GenerateTripInput {
@@ -40,4 +40,59 @@ export function getMyItineraries(token: string): Promise<Itinerary[]> {
 
 export function getItinerary(token: string, id: string): Promise<ItineraryDetail> {
   return apiRequest<ItineraryDetail>(`/itineraries/${id}`, { headers: authHeader(token) });
+}
+
+// Trips someone else invited this user onto as a collaborator — the other
+// half of "My Trips" alongside getMyItineraries.
+export function getSharedWithMe(token: string): Promise<Itinerary[]> {
+  return apiRequest<Itinerary[]>('/itineraries/shared-with-me', { headers: authHeader(token) });
+}
+
+export function inviteCollaborator(token: string, itineraryId: string, email: string): Promise<AuthUser[]> {
+  return apiRequest<AuthUser[]>(`/itineraries/${itineraryId}/collaborators`, {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function removeCollaborator(token: string, itineraryId: string, userId: string): Promise<AuthUser[]> {
+  return apiRequest<AuthUser[]>(`/itineraries/${itineraryId}/collaborators/${userId}`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
+}
+
+export interface AddStopInput {
+  placeId: string;
+  day: number;
+  notes?: string;
+}
+
+export function addItineraryStop(token: string, itineraryId: string, input: AddStopInput): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops`, {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateItineraryStop(
+  token: string,
+  itineraryId: string,
+  placeId: string,
+  notes: string,
+): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops/${placeId}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ notes }),
+  });
+}
+
+export function removeItineraryStop(token: string, itineraryId: string, placeId: string): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops/${placeId}`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
 }

@@ -11,6 +11,7 @@ import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Event } from "../events/entities/event.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
+import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
 import { PushSubscription } from "../push/entities/push-subscription.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
@@ -43,6 +44,7 @@ export const AppDataSource = new DataSource({
     Creator,
     Event,
     Itinerary,
+    ItineraryCollaborator,
     PushSubscription,
     Booking,
     AnalyticsEvent,

@@ -4,8 +4,16 @@ import type { ItineraryStopWithPlace } from '@/lib/types';
 
 // Groups an itinerary's resolved stops by day (Tech Spec §4.3) — shared
 // between the trip and Weekend Explorer detail views, since both produce
-// the same ItineraryDetail shape.
-export function ItineraryStops({ stops }: { stops: ItineraryStopWithPlace[] }) {
+// the same ItineraryDetail shape. `onRemove` is only passed for a
+// collaborative trip's detail view where the viewer can actually edit it —
+// the read-only generation-result views leave it undefined.
+export function ItineraryStops({
+  stops,
+  onRemove,
+}: {
+  stops: ItineraryStopWithPlace[];
+  onRemove?: (placeId: string) => void;
+}) {
   const byDay = new Map<number, ItineraryStopWithPlace[]>();
   for (const stop of stops) {
     const list = byDay.get(stop.day) ?? [];
@@ -33,20 +41,35 @@ export function ItineraryStops({ stops }: { stops: ItineraryStopWithPlace[] }) {
               .sort((a, b) => a.order - b.order)
               .map((stop) => (
                 <li key={`${stop.day}-${stop.order}-${stop.place.id}`}>
-                  <Link
-                    href={`/places/${stop.place.slug}`}
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-brand-500"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg text-white">
-                      {stop.place.category.icon ?? '📍'}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-slate-900">{stop.place.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {formatPlaceType(stop.place.type)} · {stop.place.city}
-                      </p>
-                    </div>
-                  </Link>
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 hover:border-brand-500">
+                    <Link
+                      href={`/places/${stop.place.slug}`}
+                      className="flex min-w-0 flex-1 items-center gap-3"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg text-white">
+                        {stop.place.category.icon ?? '📍'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-900">{stop.place.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {formatPlaceType(stop.place.type)} · {stop.place.city}
+                        </p>
+                      </div>
+                    </Link>
+                    {onRemove && (
+                      <button
+                        type="button"
+                        onClick={() => onRemove(stop.place.id)}
+                        aria-label={`Remove ${stop.place.name} from this trip`}
+                        className="shrink-0 rounded-full border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-flag-500 hover:text-flag-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {stop.notes && (
+                    <p className="mt-1 pl-12 text-xs text-slate-500">📝 {stop.notes}</p>
+                  )}
                 </li>
               ))}
           </ul>

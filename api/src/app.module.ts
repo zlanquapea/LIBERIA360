@@ -25,6 +25,7 @@ import { CreatorsModule } from "./creators/creators.module";
 import { Event } from "./events/entities/event.entity";
 import { EventsModule } from "./events/events.module";
 import { Itinerary } from "./itineraries/entities/itinerary.entity";
+import { ItineraryCollaborator } from "./itineraries/entities/itinerary-collaborator.entity";
 import { ItinerariesModule } from "./itineraries/itineraries.module";
 import { PushSubscription } from "./push/entities/push-subscription.entity";
 import { PushModule } from "./push/push.module";
@@ -72,6 +73,7 @@ import { BookingMessagesModule } from "./booking-messages/booking-messages.modul
             Creator,
             Event,
             Itinerary,
+            ItineraryCollaborator,
             PushSubscription,
             Booking,
             AnalyticsEvent,

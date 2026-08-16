@@ -1,16 +1,23 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Itinerary, ItineraryStop } from "./entities/itinerary.entity";
+import { ItineraryCollaborator } from "./entities/itinerary-collaborator.entity";
 import { Place } from "../places/entities/place.entity";
 import { PlaceType } from "../places/entities/place.enums";
 import { BudgetBand, ItineraryKind } from "./entities/itinerary.enums";
 import { GenerateTripDto } from "./dto/generate-trip.dto";
 import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
+import { AddStopDto } from "./dto/add-stop.dto";
+import { UpdateStopDto } from "./dto/update-stop.dto";
+import { UsersService } from "../users/users.service";
+import { PublicUser, toPublicUser } from "../users/user.serializer";
 
 // Home screen "Explore the map" default center — used as the implicit
 // starting point for "Build My Liberia Trip" when no location is given
@@ -38,6 +45,7 @@ export interface ItineraryStopWithPlace extends Omit<ItineraryStop, "placeId"> {
 
 export interface ItineraryResponse extends Omit<Itinerary, "stops"> {
   stops: ItineraryStopWithPlace[];
+  collaborators: PublicUser[];
 }
 
 function haversineKm(
@@ -76,6 +84,9 @@ export class ItinerariesService {
     private readonly itineraryRepo: Repository<Itinerary>,
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    @InjectRepository(ItineraryCollaborator)
+    private readonly collaboratorRepo: Repository<ItineraryCollaborator>,
+    private readonly usersService: UsersService,
   ) {}
 
   async generateTrip(
@@ -105,7 +116,7 @@ export class ItinerariesService {
       }),
     );
 
-    return this.toResponse(itinerary, ordered);
+    return this.toResponse(itinerary, ordered, []);
   }
 
   async generateWeekend(
@@ -153,7 +164,7 @@ export class ItinerariesService {
       }),
     );
 
-    return this.toResponse(itinerary, ordered);
+    return this.toResponse(itinerary, ordered, []);
   }
 
   async findMine(userId: string): Promise<Itinerary[]> {
@@ -163,13 +174,25 @@ export class ItinerariesService {
     });
   }
 
-  async findOne(userId: string, id: string): Promise<ItineraryResponse> {
-    const itinerary = await this.itineraryRepo.findOne({
-      where: { id, userId },
+  /** Trips someone else owns but has added this user to as a collaborator
+   * — the other half of "My Trips" (Wanderlog/TripIt-style collaborative
+   * planning), kept as a separate endpoint rather than folded into
+   * findMine so existing callers of GET /itineraries don't change shape. */
+  async findSharedWithMe(userId: string): Promise<Itinerary[]> {
+    const memberships = await this.collaboratorRepo.find({
+      where: { userId },
+      relations: ["itinerary"],
+      order: { createdAt: "DESC" },
     });
+    return memberships.map((m) => m.itinerary);
+  }
+
+  async findOne(userId: string, id: string): Promise<ItineraryResponse> {
+    const itinerary = await this.itineraryRepo.findOne({ where: { id } });
     if (!itinerary) {
       throw new NotFoundException(`Itinerary "${id}" not found`);
     }
+    const collaborators = await this.assertCanView(userId, itinerary);
     const placeIds = itinerary.stops.map((s) => s.placeId);
     const places = placeIds.length
       ? await this.placeRepo.find({
@@ -177,7 +200,192 @@ export class ItinerariesService {
           relations: ["category", "county"],
         })
       : [];
-    return this.toResponse(itinerary, places);
+    return this.toResponse(itinerary, places, collaborators);
+  }
+
+  /** Invite another user (by email) to co-plan this trip — owner only, so
+   * a collaborator can't unilaterally invite further collaborators onto
+   * someone else's trip. */
+  async inviteCollaborator(
+    ownerId: string,
+    itineraryId: string,
+    email: string,
+  ): Promise<PublicUser[]> {
+    const itinerary = await this.getOwned(ownerId, itineraryId);
+    const invitee = await this.usersService.findByEmail(email);
+    if (!invitee) {
+      throw new NotFoundException(`No account found for "${email}"`);
+    }
+    if (invitee.id === ownerId) {
+      throw new BadRequestException("You already own this trip");
+    }
+    const existing = await this.collaboratorRepo.findOne({
+      where: { itineraryId: itinerary.id, userId: invitee.id },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `${invitee.name} is already a collaborator on this trip`,
+      );
+    }
+    await this.collaboratorRepo.save(
+      this.collaboratorRepo.create({
+        itineraryId: itinerary.id,
+        userId: invitee.id,
+        invitedByUserId: ownerId,
+      }),
+    );
+    return this.listCollaborators(itinerary.id);
+  }
+
+  /** Owner can remove anyone; a collaborator can remove themself ("leave
+   * this trip") — same self-service-cancel pattern BookingsService uses
+   * for a guest cancelling their own booking. */
+  async removeCollaborator(
+    userId: string,
+    itineraryId: string,
+    collaboratorUserId: string,
+  ): Promise<PublicUser[]> {
+    const itinerary = await this.itineraryRepo.findOne({
+      where: { id: itineraryId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary "${itineraryId}" not found`);
+    }
+    // Membership check first (404s for a total stranger) before deciding
+    // *what* they're allowed to do — same "don't confirm the id exists to
+    // someone with no access at all" reasoning as getOwned.
+    await this.assertCanView(userId, itinerary);
+    const isOwner = itinerary.userId === userId;
+    const isSelfRemoval = collaboratorUserId === userId;
+    if (!isOwner && !isSelfRemoval) {
+      throw new ForbiddenException(
+        "Only the trip owner can remove other collaborators",
+      );
+    }
+    await this.collaboratorRepo.delete({
+      itineraryId,
+      userId: collaboratorUserId,
+    });
+    return this.listCollaborators(itineraryId);
+  }
+
+  /** Add a stop — owner or any collaborator. */
+  async addStop(
+    userId: string,
+    itineraryId: string,
+    dto: AddStopDto,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    const place = await this.placeRepo.findOne({ where: { id: dto.placeId } });
+    if (!place) {
+      throw new NotFoundException(`Place "${dto.placeId}" not found`);
+    }
+    if (itinerary.stops.some((s) => s.placeId === dto.placeId)) {
+      throw new ConflictException("This place is already on the trip");
+    }
+    const stopsForDay = itinerary.stops.filter((s) => s.day === dto.day);
+    const order = stopsForDay.length
+      ? Math.max(...stopsForDay.map((s) => s.order)) + 1
+      : 0;
+    itinerary.stops = [
+      ...itinerary.stops,
+      { day: dto.day, order, placeId: dto.placeId, notes: dto.notes ?? null },
+    ];
+    itinerary.durationDays = Math.max(itinerary.durationDays, dto.day);
+    const saved = await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, saved.id);
+  }
+
+  /** Remove a stop — owner or any collaborator. */
+  async removeStop(
+    userId: string,
+    itineraryId: string,
+    placeId: string,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    itinerary.stops = itinerary.stops.filter((s) => s.placeId !== placeId);
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
+  }
+
+  /** Edit a stop's notes — the shared "who's bringing what / meet here at
+   * 9am" annotation collaborators leave for each other. */
+  async updateStop(
+    userId: string,
+    itineraryId: string,
+    placeId: string,
+    dto: UpdateStopDto,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    const stop = itinerary.stops.find((s) => s.placeId === placeId);
+    if (!stop) {
+      throw new NotFoundException(`Stop for place "${placeId}" not found`);
+    }
+    stop.notes = dto.notes ?? null;
+    itinerary.stops = [...itinerary.stops];
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
+  }
+
+  private async listCollaborators(itineraryId: string): Promise<PublicUser[]> {
+    const rows = await this.collaboratorRepo.find({
+      where: { itineraryId },
+      order: { createdAt: "ASC" },
+    });
+    return rows.map((r) => toPublicUser(r.user));
+  }
+
+  private async getOwned(
+    userId: string,
+    itineraryId: string,
+  ): Promise<Itinerary> {
+    const itinerary = await this.itineraryRepo.findOne({
+      where: { id: itineraryId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary "${itineraryId}" not found`);
+    }
+    if (itinerary.userId === userId) {
+      return itinerary;
+    }
+    // A collaborator can see this trip but can't invite onto someone
+    // else's — a stranger with no access at all still just gets 404, to
+    // avoid confirming a random itinerary id exists.
+    await this.assertCanView(userId, itinerary);
+    throw new ForbiddenException("Only the trip owner can do this");
+  }
+
+  /** Owner or collaborator — read access. Returns the collaborator list
+   * (the trip detail view shows it either way) so callers that already
+   * need it don't have to look it up twice. */
+  private async assertCanView(
+    userId: string,
+    itinerary: Itinerary,
+  ): Promise<PublicUser[]> {
+    const collaborators = await this.listCollaborators(itinerary.id);
+    const isMember =
+      itinerary.userId === userId || collaborators.some((c) => c.id === userId);
+    if (!isMember) {
+      throw new NotFoundException(`Itinerary "${itinerary.id}" not found`);
+    }
+    return collaborators;
+  }
+
+  /** Owner or collaborator — write access to the stop list. Same
+   * membership check as assertCanView; kept separate since a future
+   * read-only viewer tier would only need to change this one. */
+  private async getEditable(
+    userId: string,
+    itineraryId: string,
+  ): Promise<Itinerary> {
+    const itinerary = await this.itineraryRepo.findOne({
+      where: { id: itineraryId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException(`Itinerary "${itineraryId}" not found`);
+    }
+    await this.assertCanView(userId, itinerary);
+    return itinerary;
   }
 
   private async findCandidates(
@@ -254,6 +462,7 @@ export class ItinerariesService {
   private toResponse(
     itinerary: Itinerary,
     resolvedPlaces: Place[],
+    collaborators: PublicUser[],
   ): ItineraryResponse {
     const placeById = new Map(resolvedPlaces.map((p) => [p.id, p]));
     return {
@@ -266,6 +475,7 @@ export class ItinerariesService {
           place: placeById.get(s.placeId),
         }))
         .filter((s): s is ItineraryStopWithPlace => !!s.place),
+      collaborators,
     };
   }
 }
