@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -8,6 +9,7 @@ import { Repository } from "typeorm";
 import { Business } from "./entities/business.entity";
 import { Place } from "../places/entities/place.entity";
 import { CreateBusinessDto } from "./dto/create-business.dto";
+import { UpdateBusinessDto } from "./dto/update-business.dto";
 
 @Injectable()
 export class BusinessesService {
@@ -67,6 +69,31 @@ export class BusinessesService {
     }
 
     business.ownerUserId = userId;
+    await this.businessRepo.save(business);
+    return this.businessRepo.findOneOrFail({ where: { id: businessId } });
+  }
+
+  /** Lets the owner edit their own listing after claiming it — the claim
+   * form only ever gets one shot at these fields otherwise. Deliberately
+   * excludes `type`/`placeId`/`ownerUserId`: what business this is and
+   * what it's linked to aren't things an owner should be able to change
+   * themselves (that stays admin-only, via UpdateBusinessAdminDto). */
+  async updateMine(
+    userId: string,
+    businessId: string,
+    dto: UpdateBusinessDto,
+  ): Promise<Business> {
+    const business = await this.businessRepo.findOne({
+      where: { id: businessId },
+    });
+    if (!business) {
+      throw new NotFoundException(`Business "${businessId}" not found`);
+    }
+    if (business.ownerUserId !== userId) {
+      throw new ForbiddenException("You don't manage this listing");
+    }
+
+    Object.assign(business, dto);
     await this.businessRepo.save(business);
     return this.businessRepo.findOneOrFail({ where: { id: businessId } });
   }

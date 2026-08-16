@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ApiError, getBusinessByPlace, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
-import { colorForCategory, gradientForCategory } from '@/lib/category-colors';
+import { colorForCategory } from '@/lib/category-colors';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
+import { galleryImages } from '@/lib/images';
 import { VerificationBadge } from '@/components/VerificationBadge';
+import { PlaceGallery } from '@/components/PlaceGallery';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { SaveButton } from '@/components/SaveButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -76,13 +78,12 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
       <JsonLd data={placeJsonLd(place)} />
       <PlaceViewTracker placeId={place.id} />
-      <div
-        aria-hidden
-        className="flex h-40 items-center justify-center rounded-2xl text-6xl"
-        style={{ backgroundImage: gradientForCategory(place.category.slug) }}
-      >
-        {place.category.icon ?? '📍'}
-      </div>
+      <PlaceGallery
+        images={galleryImages(place.images, business?.images)}
+        categorySlug={place.category.slug}
+        categoryIcon={place.category.icon}
+        alt={place.name}
+      />
 
       <header className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3">

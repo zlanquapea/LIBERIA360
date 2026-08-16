@@ -3,12 +3,14 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
 import { BusinessesService } from "./businesses.service";
 import { CreateBusinessDto } from "./dto/create-business.dto";
+import { UpdateBusinessDto } from "./dto/update-business.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
@@ -45,6 +47,17 @@ export class BusinessesController {
   async mine(@CurrentUser() user: User) {
     const businesses = await this.businessesService.findMine(user.id);
     return businesses.map(sanitize);
+  }
+
+  @Patch(":id")
+  @UseGuards(JwtAuthGuard)
+  async updateMine(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: UpdateBusinessDto,
+  ) {
+    const business = await this.businessesService.updateMine(user.id, id, dto);
+    return sanitize(business);
   }
 
   @Get()
