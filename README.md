@@ -15,7 +15,7 @@ api/   NestJS backend — REST API, PostgreSQL (TypeORM)
 web/   Next.js frontend — responsive PWA
 ```
 
-See `api/README.md` and `web/README.md` for service-specific setup (including each phase's feature list in more detail), and the "Local development" section below for running the full stack.
+See `api/README.md` and `web/README.md` for service-specific setup (including each phase's feature list in more detail), and the "Local development" section below for running the full stack. Deploying this for real (not local dev)? See [`DEPLOYMENT.md`](./DEPLOYMENT.md) first.
 
 ## Scope
 

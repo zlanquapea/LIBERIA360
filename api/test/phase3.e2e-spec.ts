@@ -60,7 +60,7 @@ describe("Phase 3 (e2e)", () => {
         forbidNonWhitelisted: true,
       }),
     );
-    app.setGlobalPrefix("api/v1", { exclude: ["health"] });
+    app.setGlobalPrefix("api/v1", { exclude: ["health", "health/ready"] });
     await app.init();
 
     dataSource = moduleFixture.get(DataSource);

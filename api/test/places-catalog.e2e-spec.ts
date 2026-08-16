@@ -35,7 +35,7 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
         forbidNonWhitelisted: true,
       }),
     );
-    app.setGlobalPrefix("api/v1", { exclude: ["health"] });
+    app.setGlobalPrefix("api/v1", { exclude: ["health", "health/ready"] });
     await app.init();
 
     dataSource = moduleFixture.get(DataSource);
@@ -136,6 +136,15 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
   describe("GET /health", () => {
     it("reports ok without the /api/v1 prefix", async () => {
       const res = await request(app.getHttpServer()).get("/health").expect(200);
+      expect(res.body.status).toBe("ok");
+    });
+  });
+
+  describe("GET /health/ready", () => {
+    it("reports ok without the /api/v1 prefix, since it can reach the DB", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/health/ready")
+        .expect(200);
       expect(res.body.status).toBe("ok");
     });
   });

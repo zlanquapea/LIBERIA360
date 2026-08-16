@@ -36,7 +36,7 @@ async function bootstrap() {
     app.useStaticAssets(uploadsDir, { prefix: "/uploads" });
   }
 
-  app.setGlobalPrefix("api/v1", { exclude: ["health"] });
+  app.setGlobalPrefix("api/v1", { exclude: ["health", "health/ready"] });
 
   const port = configService.get("port", { infer: true });
   await app.listen(port);

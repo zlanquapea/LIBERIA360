@@ -106,8 +106,8 @@ jobs:
           npm run seed
           npm run start:prod &
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:3001/health > /dev/null; then
-              echo "API is up"
+            if curl -sf http://localhost:3001/health/ready > /dev/null; then
+              echo "API is up and can reach the DB"
               exit 0
             fi
             sleep 1
