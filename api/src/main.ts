@@ -4,10 +4,10 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { ConfigService } from "@nestjs/config";
 import { mkdirSync } from "fs";
-import { join } from "path";
 import { AppModule } from "./app.module";
 import { AppConfig } from "./config/configuration";
 import { validateProductionConfig } from "./config/validate-production-config";
+import { localUploadsDir } from "./uploads/local-uploads-dir";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -27,10 +27,14 @@ async function bootstrap() {
     }),
   );
 
-  // Local-disk upload storage (dev/demo only — see src/uploads/uploads.controller.ts).
-  const uploadsDir = join(__dirname, "..", "uploads");
-  mkdirSync(uploadsDir, { recursive: true });
-  app.useStaticAssets(uploadsDir, { prefix: "/uploads" });
+  // Only relevant when STORAGE_DRIVER=local (the default) — see
+  // src/uploads/storage/local-storage.provider.ts. With STORAGE_DRIVER=s3,
+  // uploaded files never touch this instance's disk at all.
+  if (configService.get("storage", { infer: true }).driver === "local") {
+    const uploadsDir = localUploadsDir();
+    mkdirSync(uploadsDir, { recursive: true });
+    app.useStaticAssets(uploadsDir, { prefix: "/uploads" });
+  }
 
   app.setGlobalPrefix("api/v1", { exclude: ["health"] });
 

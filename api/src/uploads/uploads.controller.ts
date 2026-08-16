@@ -1,16 +1,22 @@
 import {
   BadRequestException,
   Controller,
+  Inject,
   Post,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { extname, join } from "path";
+import { memoryStorage } from "multer";
 import { randomUUID } from "crypto";
+import { Throttle, seconds } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { processUploadedImage } from "./image-processing";
+import {
+  STORAGE_PROVIDER,
+  StorageProvider,
+} from "./storage/storage-provider.interface";
 
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -18,29 +24,37 @@ const ALLOWED_MIME_TYPES = [
   "image/webp",
   "image/gif",
 ];
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+// Raw upload cap, before re-encoding shrinks it further (see
+// image-processing.ts) — generous enough for an unedited phone photo.
+const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 
 /**
- * Local-disk file upload for review/business photos.
- *
- * DEV/DEMO ONLY: Tech Spec §6.1 calls for S3-compatible object storage + a
- * CDN in production. This stores to a local `uploads/` folder and serves it
- * statically (wired up in main.ts) — fine for local dev and this demo, not
- * for a real deployment (no redundancy, doesn't survive a redeploy, and
- * won't work at all across multiple server instances).
+ * Photo upload for reviews/business/place listings. Every upload is
+ * re-encoded through `processUploadedImage` (EXIF stripped, resized,
+ * recompressed) before it's handed to whichever `StorageProvider`
+ * `STORAGE_DRIVER` selects (`StorageModule`) — local disk by default,
+ * S3-compatible object storage with `STORAGE_DRIVER=s3`.
  */
 @Controller("uploads")
 export class UploadsController {
+  constructor(
+    @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+  ) {}
+
   @Post("image")
   @UseGuards(JwtAuthGuard)
+  // A listing owner uploading a full photo set, or an admin batch-editing
+  // the catalog, can legitimately fire off a dozen-plus of these in a
+  // row — well above login/password's 5/min, but still a real ceiling
+  // against storage-filling abuse off a stolen token.
+  @Throttle({ default: { limit: 30, ttl: seconds(60) } })
   @UseInterceptors(
     FileInterceptor("file", {
-      storage: diskStorage({
-        destination: join(__dirname, "..", "..", "uploads"),
-        filename: (_req, file, callback) => {
-          callback(null, `${randomUUID()}${extname(file.originalname)}`);
-        },
-      }),
+      // Buffered in memory, not streamed to disk — processUploadedImage
+      // needs the whole file to re-encode it, and disk storage would mean
+      // writing the *original* (unprocessed, EXIF-and-all) file to disk
+      // first for no benefit.
+      storage: memoryStorage(),
       limits: { fileSize: MAX_FILE_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
@@ -56,12 +70,30 @@ export class UploadsController {
       },
     }),
   )
-  uploadImage(@UploadedFile() file: Express.Multer.File) {
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException(
         'No file uploaded (expected multipart field "file")',
       );
     }
-    return { url: `/uploads/${file.filename}` };
+
+    let processed;
+    try {
+      processed = await processUploadedImage(file.buffer);
+    } catch {
+      // fileFilter only trusts the declared MIME type header — this is
+      // the backstop for a file whose actual bytes aren't a real image.
+      throw new BadRequestException(
+        "Could not process that image — the file may be corrupted or isn't a real image.",
+      );
+    }
+
+    const filename = `${randomUUID()}.${processed.extension}`;
+    const { url } = await this.storage.save({
+      buffer: processed.buffer,
+      filename,
+      contentType: processed.contentType,
+    });
+    return { url };
   }
 }
