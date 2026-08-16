@@ -217,6 +217,43 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
       expect(res.body.data.map((p: any) => p.slug)).toEqual(["test-museum"]);
     });
 
+    it("stems the query — a plural matches the singular in the catalog", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=museums")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual(["test-museum"]);
+    });
+
+    it("AND-matches a multi-word query (websearch_to_tsquery default)", async () => {
+      // Both places' seeded descriptions end in "used for e2e testing.",
+      // so only the beach-specific word narrows it to one result.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=beach%20testing")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual(["test-beach"]);
+    });
+
+    it("returns no results for a term nowhere in the catalog, not an error", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=nonexistentxyz")
+        .expect(200);
+      expect(res.body.data).toEqual([]);
+      expect(res.body.meta.total).toBe(0);
+    });
+
+    it("still applies an explicit sort alongside a text search", async () => {
+      // Both fixtures' descriptions independently match "testing" — this
+      // is really just checking sort=rating doesn't get silently
+      // overridden by the query-present relevance-ranking default.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=testing&sort=rating")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "test-beach",
+        "test-museum",
+      ]);
+    });
+
     it("sorts by rating descending", async () => {
       const res = await request(app.getHttpServer())
         .get("/api/v1/places?sort=rating")

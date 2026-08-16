@@ -32,6 +32,21 @@ const HAVERSINE_KM_SQL = `
   )
 `;
 
+// Postgres full-text search, not ILIKE substring matching — handles word
+// stemming ("beaches" matches "beach"), multi-word queries, and relevance
+// ranking, none of which ILIKE '%...%' can do. name is weighted 'A'
+// (highest), description 'B' — a match in the name should outrank a
+// match buried in the description. This exact expression has to stay
+// textually in sync with the migration's GIN index
+// (AddPlacesFullTextSearchIndex) for Postgres to actually use it instead
+// of scanning every row.
+const SEARCH_VECTOR_SQL = `
+  (
+    setweight(to_tsvector('english', coalesce(place.name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(place.description, '')), 'B')
+  )
+`;
+
 @Injectable()
 export class PlacesService {
   constructor(
@@ -81,10 +96,17 @@ export class PlacesService {
     if (query.type) {
       qb.andWhere("place.type = :type", { type: query.type });
     }
+    // websearch_to_tsquery understands plain search-engine-style input
+    // (quoted phrases, "or", a leading "-" to exclude a word) without the
+    // caller needing to know tsquery's own operator syntax — the same
+    // input shape a free-text search box already produces.
     if (query.q) {
-      qb.andWhere("(place.name ILIKE :q OR place.description ILIKE :q)", {
-        q: `%${query.q}%`,
-      });
+      qb.andWhere(
+        `${SEARCH_VECTOR_SQL} @@ websearch_to_tsquery('english', :q)`,
+        {
+          q: query.q,
+        },
+      );
     }
 
     if (isNearSearch) {
@@ -117,10 +139,27 @@ export class PlacesService {
           break;
         case "featured":
         default:
-          qb.orderBy("place.featured", "DESC").addOrderBy(
-            "place.rating",
-            "DESC",
-          );
+          // A free-text search with no explicit sort should rank by how
+          // well a result matches the query, not by curation/rating —
+          // "featured, then rating" is the right default for *browsing*,
+          // but once someone's typed a search, relevance is what they
+          // actually asked for. An explicit ?sort=rating/distance/name
+          // alongside ?q= still wins (this only applies to the default).
+          if (query.q) {
+            // TypeORM's orderBy() can't take an arbitrary raw expression
+            // directly — it expects an alias it already knows about, the
+            // same reason distance_km below is select()ed under a name
+            // first rather than ordered by the raw Haversine expression.
+            qb.addSelect(
+              `ts_rank(${SEARCH_VECTOR_SQL}, websearch_to_tsquery('english', :q))`,
+              "search_rank",
+            ).orderBy("search_rank", "DESC");
+          } else {
+            qb.orderBy("place.featured", "DESC").addOrderBy(
+              "place.rating",
+              "DESC",
+            );
+          }
           break;
       }
     }

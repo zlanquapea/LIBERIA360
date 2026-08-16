@@ -46,6 +46,10 @@ doesn't touch the dev database:
 createdb -O liberia360 liberia360_test   # one-time setup
 ```
 
+## Phase 1
+
+- **Catalog listing/search**: `GET /places?category=&county=&tag=&type=&q=&sort=&page=&limit=` (`limit` capped at 100), `GET /places/:slug`, `GET /counties/:id/places` (scoped variant of the same query). `q` is Postgres full-text search (`src/places/places.service.ts`'s `SEARCH_VECTOR_SQL`), not `ILIKE` substring matching — handles word stemming ("beaches" matches "beach"), multi-word AND-matching, and accepts `websearch_to_tsquery`'s plain search-engine-style syntax (quoted phrases, `or`, a leading `-` to exclude a word). `name` is weighted higher than `description` (a title match should outrank one buried in the description), backed by a GIN expression index (migration `AddPlacesFullTextSearchIndex`) rather than a stored generated column, so the index expression has to stay textually in sync with `SEARCH_VECTOR_SQL` — see that file's comment. `sort` defaults to `featured` (curated first, then rating) when browsing, but a `q` search with no explicit `sort` ranks by relevance (`ts_rank`) instead — an explicit `sort=rating`/`distance`/`name` alongside `q` still wins.
+
 ## Phase 2
 
 Accounts and everything that depends on them (Tech Spec §3.2). All 8 modules below are migrated, unit/e2e tested (`test/phase2.e2e-spec.ts`), and have a matching frontend in `../web`.

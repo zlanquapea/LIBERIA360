@@ -40,9 +40,13 @@ export class QueryPlacesDto {
   @IsEnum(PlaceType)
   type?: PlaceType;
 
+  // Postgres full-text search across name (weighted higher)/description —
+  // see SEARCH_VECTOR_SQL in places.service.ts — not a substring match, so
+  // this accepts websearch_to_tsquery's plain search-engine-style syntax
+  // (quoted phrases, "or", a leading "-" to exclude a word).
   @IsOptional()
   @IsString()
-  q?: string; // free-text search across name/description
+  q?: string;
 
   @IsOptional()
   @IsIn(SORT_VALUES)
