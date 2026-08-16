@@ -1,18 +1,18 @@
 # LIBERIA360 API
 
-NestJS REST API for the LIBERIA360 Phase 1 discovery MVP (see `../LIBERIA360_Technical_Specification.docx` §6, §10).
+NestJS REST API for the LIBERIA360 platform. PostgreSQL via TypeORM, JWT authentication, class-validator DTOs, OpenAPI documentation.
 
 ## Setup
 
 ```bash
-cp .env.example .env      # adjust DB credentials if needed
-npm install                # (or `npm install` from repo root — this is an npm workspace)
+cp .env.example .env
+npm install
 ```
 
-Requires a running PostgreSQL instance matching `.env`. Locally:
+Requires a running PostgreSQL instance matching `.env`:
 
 ```bash
-sudo -u postgres createuser liberia360 --pwprompt   # password: liberia360 (or match your .env)
+sudo -u postgres createuser liberia360 --pwprompt   # password: liberia360
 sudo -u postgres createdb liberia360 -O liberia360
 ```
 
@@ -22,96 +22,266 @@ sudo -u postgres createdb liberia360 -O liberia360
 npm run start:dev     # http://localhost:3001, watch mode
 ```
 
-`GET /health` confirms the service is up (unprefixed). All feature endpoints are under `/api/v1/...`. Interactive API docs (Swagger UI) live at `GET /api/docs` — built from the real DTOs/decorators already on every controller (`@nestjs/swagger`'s CLI plugin, `nest-cli.json`), not hand-written by hand alongside them, so it can't drift out of sync with the actual request/response shapes.
+- `GET /health` — liveness check (unprefixed).
+- All feature endpoints are under `/api/v1`.
+- Interactive API documentation (Swagger UI): `GET /api/docs`, generated from controller/DTO metadata via the `@nestjs/swagger` compiler plugin.
 
 ## Database
 
-- ORM: TypeORM. Schema changes are managed via migrations, not `synchronize` (kept off outside local bootstrapping).
-- `npm run migration:run` — apply migrations
-- `npm run migration:generate -- src/database/migrations/<Name>` — generate a migration from entity changes
-- `npm run seed` — load Stage 1 (Greater Monrovia) sample data
+Schema is managed with TypeORM migrations (`synchronize` is off outside local bootstrapping).
+
+```bash
+npm run migration:run                                    # apply migrations
+npm run migration:generate -- src/database/migrations/<Name>   # generate from entity changes
+npm run seed                                              # load sample catalog data
+```
 
 ## Tests
 
 ```bash
-npm run test        # unit tests (services/controllers, DTO validation) — no DB needed
-npm run test:e2e     # full HTTP-level tests against a real Postgres DB
+npm run test         # unit tests — no database required
+npm run test:e2e     # HTTP-level tests against a real database
 ```
 
-`test:e2e` needs a `liberia360_test` Postgres database (same user/password as dev). It runs
-migrations and truncates/reseeds its own fixtures on every run, so it's safe to re-run and
-doesn't touch the dev database:
+`test:e2e` requires a `liberia360_test` database (one-time setup):
 
 ```bash
-createdb -O liberia360 liberia360_test   # one-time setup
+createdb -O liberia360 liberia360_test
 ```
 
-## Phase 1
+Each e2e spec file runs its own migrations and resets its fixtures, so it is safe to re-run and does not touch the development database.
 
-- **Catalog listing/search**: `GET /places?category=&county=&tag=&type=&q=&sort=&page=&limit=` (`limit` capped at 100), `GET /places/:slug`, `GET /counties/:id/places` (scoped variant of the same query). `q` is Postgres full-text search (`src/places/places.service.ts`'s `SEARCH_VECTOR_SQL`), not `ILIKE` substring matching — handles word stemming ("beaches" matches "beach"), multi-word AND-matching, and accepts `websearch_to_tsquery`'s plain search-engine-style syntax (quoted phrases, `or`, a leading `-` to exclude a word). `name` is weighted higher than `description` (a title match should outrank one buried in the description), backed by a GIN expression index (migration `AddPlacesFullTextSearchIndex`) rather than a stored generated column, so the index expression has to stay textually in sync with `SEARCH_VECTOR_SQL` — see that file's comment. `sort` defaults to `featured` (curated first, then rating) when browsing, but a `q` search with no explicit `sort` ranks by relevance (`ts_rank`) instead — an explicit `sort=rating`/`distance`/`name` alongside `q` still wins.
+## Configuration
 
-## Phase 2
+Environment variables (`.env.example` has the full annotated list):
 
-Accounts and everything that depends on them (Tech Spec §3.2). All 8 modules below are migrated, unit/e2e tested (`test/phase2.e2e-spec.ts`), and have a matching frontend in `../web`.
+| Variable | Purpose |
+|---|---|
+| `PORT`, `NODE_ENV`, `CORS_ORIGIN` | Server basics |
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` | Database connection |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Auth token signing |
+| `TWO_FACTOR_ENCRYPTION_KEY` | AES-256-GCM key for encrypting stored TOTP secrets |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_CONTACT_EMAIL` | Web Push |
+| `WEB_APP_URL` | Frontend origin, used to build links in transactional emails |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `MAIL_FROM` | Email delivery |
+| `STORAGE_DRIVER`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `S3_PUBLIC_URL_BASE` | Upload storage backend |
+| `SENTRY_DSN` | Crash reporting |
 
-- **Auth**: JWT (email/password only — see `src/users/entities/user.enums.ts` for why Google/Apple/phone are schema-ready but not implemented). Set a real `JWT_SECRET` outside local dev. `POST /auth/register`, `POST /auth/login`, `GET /auth/me`.
-- **Uploads**: `POST /api/v1/uploads/image` (rate-limited to 30/min — generous for a full photo-set upload, still a real ceiling against storage-filling abuse off a stolen token). Every upload is re-encoded through `src/uploads/image-processing.ts` before it's stored: auto-oriented and re-encoded as a quality-82 JPEG capped at a 2000px long edge, which both strips EXIF (GPS/device metadata a listing owner never meant to publish) and cuts a multi-MB phone photo down substantially with no visible loss at gallery size. Stored through whichever `StorageProvider` `STORAGE_DRIVER` selects (`src/uploads/storage/storage.module.ts`) — `LocalStorageProvider` (default, writes to a local `uploads/` folder served back at `/uploads/<filename>`, not under `/api/v1`; doesn't survive a redeploy or work across multiple instances — see "Production readiness" below) or `S3StorageProvider` (`STORAGE_DRIVER=s3`, any S3-compatible provider — AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO). Feeds `Place.images`/`Business.images` (both `text[]`, capped at 10) — set via `PATCH /admin/places/:id`, `PATCH /admin/businesses/:id`, or (for a business owner) the new `PATCH /businesses/:id` above. Real photos, not the category placeholder: a hotel's actual rooms and pool, not just its category icon.
-- **Reviews**: `POST /reviews`, `GET /reviews?placeId=...` — one review per user per place; `Place.rating`/`reviewCount` are recomputed from the reviews table on every write, not incrementally maintained. `Review.verifiedVisit` is set automatically at creation time when the reviewer has a `CONFIRMED` booking with a business linked to that place (`ReviewsService.hasConfirmedBooking`) — same loose "verified" semantics as Amazon's Verified Purchase or Booking.com's Verified stay: an extra trust signal, not a gate on who can review (most of the catalog has no bookable business behind it at all, and reviewing stays open regardless).
-- **Businesses**: `POST /businesses` (self-claim, one claim per Place), `PATCH /businesses/:id` (owner-only — editing a listing after claiming; the claim form only ever got one shot at these fields otherwise), `GET /businesses?placeId=...`, `GET /businesses/mine`.
-- **Creators**: `POST /creators`, `PATCH /creators/me`, `GET /creators` (directory), `GET /creators/:username` (public profile) — one creator profile per user.
-- **Events**: `POST /events`, `GET /events?category=&county=&dateFrom=&dateTo=`, `GET /events/:id`. Creating an event fires a best-effort push notification (see below) to users whose home county matches. `POST /events` requires a claimed business, a creator profile, or admin — not just any logged-in account (`EventsService.assertCanPostEvents`); reuses the same ownership-derived permission as business/creator capabilities rather than a separately stored "organizer" role, so it can't drift out of sync with whether someone actually still owns a business or creator profile.
-- **Near Me**: `GET /places?lat=&lng=&radiusKm=` — all three or none; a Haversine SQL expression rather than PostGIS (fine at this catalog size, see Notes below).
-- **Trip Planner / Weekend Explorer**: `POST /itineraries` ("Build My Liberia Trip" — duration/interests/budget, starts from Monrovia), `POST /itineraries/weekend` (starts from a given lat/lng, filtered by travel time instead of day count), `GET /itineraries` (mine, stops as stored — placeId only), `GET /itineraries/:id` (stops resolved to full Place objects). Both generators use the same greedy nearest-neighbor sequencing in `itineraries.service.ts`.
-- **Collaborative trip planning** (Wanderlog/TripIt-style): `POST /itineraries/:id/collaborators` (`{email}`, owner-only) invites another user onto a trip by email — no accept/decline handshake, the same "immediate effect" simplification the rest of the app already uses for business self-claim and admin promotion. From then on the invited user can `GET /itineraries/:id` (returns the same shape either way, now with a `collaborators` array), and — owner or any collaborator — `POST /itineraries/:id/stops` (add), `PATCH /itineraries/:id/stops/:placeId` (edit notes — "meet here at 9am"), `DELETE /itineraries/:id/stops/:placeId` (remove). `DELETE /itineraries/:id/collaborators/:userId` lets the owner remove anyone, or a collaborator remove themself ("leave this trip"). `GET /itineraries/shared-with-me` lists trips someone else owns but invited this user onto, kept separate from `GET /itineraries` so that endpoint's existing shape doesn't change. Non-members get a 404 on every one of these routes (not 403) — same "don't confirm a private itinerary id even exists" stance the original owner-only `findOne` already had.
-- **Two-factor authentication** (TOTP, RFC 6238 — see `src/auth/two-factor-crypto.ts` for why TOTP over SMS/email OTP): `POST /auth/2fa/setup` (generates a secret + QR code), `POST /auth/2fa/enable` (`{code}`, confirms setup and returns 10 one-time recovery codes — shown once, only bcrypt hashes are stored), `POST /auth/2fa/disable` (`{password}`). When 2FA is on, `POST /auth/login` returns `{twoFactorRequired: true, pendingToken}` instead of an accessToken; exchange it via `POST /auth/2fa/verify` (`{pendingToken, code}`, `code` is either a 6-digit authenticator code or an `xxxxx-xxxxx` recovery code). `pendingToken` is a short-lived (5m), purpose-scoped JWT that `JwtStrategy` refuses to accept as a normal bearer token. Set a real `TWO_FACTOR_ENCRYPTION_KEY` outside local dev (see `.env.example`) — TOTP secrets are encrypted at rest with it (AES-256-GCM), so a DB leak alone doesn't hand out working codes. `POST /auth/login` and `POST /auth/2fa/verify` are both rate-limited to 5 requests/minute/IP (`@nestjs/throttler`, `src/app.module.ts`) against password/code brute-forcing; every other endpoint gets a 120/minute default.
-- **Push notifications**: needs a VAPID keypair in `.env`:
-  ```bash
-  npx web-push generate-vapid-keys
-  ```
-  Without it, `PushService` logs a warning at boot and silently no-ops sends — the app still runs fine. `GET /push/vapid-public-key` is public (the frontend needs it to create a browser subscription); `POST /push/subscribe`/`/unsubscribe` are authenticated.
+`JWT_SECRET` and `TWO_FACTOR_ENCRYPTION_KEY` ship with placeholder dev values; the app refuses to start in production with either unset. Every other integration (SMTP, VAPID, S3, Sentry) degrades gracefully when unconfigured — the app runs, the corresponding feature is a no-op.
 
-## Phase 3
+## API reference
 
-The marketplace layer (Tech Spec §3.3 / Business Plan §8). All 7 modules below are migrated, unit/e2e tested (`test/phase3.e2e-spec.ts`), and have a matching frontend in `../web`.
+Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any authenticated user, `Owner` authenticated + resource-ownership check, `Admin` / `Super Admin` role-gated.
 
-- **Bookings**: `POST /bookings` (request), `GET /bookings/mine`, `GET /bookings/business/:businessId` (owner-only), `PATCH /bookings/:id/respond` (`{action: "confirm"|"decline"}`, business owner only, one response per booking), `PATCH /bookings/:id/cancel` (guest only, while pending/confirmed). One entity covers hotel/tour/restaurant/transport bookings uniformly — `Business.type` already tells you which kind it is. **Payment**: request-to-book only — no real money moves through the API yet. `Booking.paymentProvider`/`paymentStatus`/`paymentReference` exist in the schema (provider defaults to `mtn_momo`, the intended real-world provider for Liberia) but are never called against a live payment API; wiring up real MTN Mobile Money capture is a follow-up that needs an actual merchant relationship this environment can't create.
-- **Booking messages**: `POST /bookings/:bookingId/messages` (`{body}`, 1-2000 chars), `GET /bookings/:bookingId/messages` (oldest first) — a threaded, in-platform conversation on a booking between the guest and the business owner, so a coordination detail ("what time is check-in?") stays attached to the booking instead of only living in a `wa.me` deep-link off to someone's personal WhatsApp, unrecoverable if that history gets cleared and invisible if there's ever a dispute over what was agreed. Deliberately narrow (`BookingMessagesService.assertParticipant` — same two-sided ownership check as `BookingsService`): plain text only, no attachments, no read receipts, no editing/deleting. Both endpoints 403 for anyone but the booking's guest or the business owner, and 404 for an unknown booking.
-- **Analytics**: `POST /analytics/events` (public, fire-and-forget — `{placeId, eventType: "view"|"save"|"contact_click"|"booking_request"}`, `204` on success), `GET /analytics/business/:businessId` (owner-only — totals + a 30-day daily breakdown). An anonymous append-only event log; no per-visitor data, no user tie.
-- **Sponsored placements** ("Featured this week", Business Plan §8.3): `GET /sponsored-placements/active` (public), `GET /sponsored-placements` (admin, full history), `POST /sponsored-placements` (admin), `DELETE /sponsored-placements/:id` (admin). Time-boxed (`startDate`/`endDate`), distinct from Phase 1's `Place.featured` (general editorial curation, no dates).
-- **Featured creators**: `PATCH /creators/:id/featured` (admin) — `Creator.findAll()` sorts featured creators first.
-- **Admin verification**: `PATCH /admin/places/:id/verification`, `PATCH /admin/businesses/:id/verification` (both `{status: VerificationStatus}`, stamp `verifiedByUserId`/`verifiedAt`), `GET /admin/moderation-queue` (unverified businesses, the 20 most recent reviews, and possibly-closed places — see below).
-- **Crowdsourced freshness reports** ("is this still here?"): `POST /freshness-reports` (`{placeId, response: "still_here"|"no_longer_here"}`, upserts on `(userId, placeId)` — a changed mind replaces the old report instead of piling up alongside it) and `GET /freshness-reports/mine?placeId=` (so a client can show "you already answered" instead of re-prompting). A catalog this size can't be manually re-verified by admins alone; once 3+ distinct users report `no_longer_here` on the same place within 90 days, it surfaces in `GET /admin/moderation-queue`'s new `possiblyClosedPlaces` (place + report count) for an admin to actually look at — this is the "flagged content" mechanism `AdminService`'s own doc comment used to note was missing.
-- **Admin content management**: `POST`/`PATCH /admin/places`, `POST`/`PATCH /admin/activities`, `POST`/`PATCH /admin/businesses`, `PATCH /admin/events/:id`, `PATCH /admin/counties/:id`. The first way to create a Place through the API at all (Phase 1/2 only ever read the seeded catalog). `POST /admin/businesses` lets an admin seed an unowned "shell" business record (`ownerUserId` omitted) that a real owner can later claim via the existing `POST /businesses/:id/claim` — the Business Plan's "seed the catalog directly via outreach before relying on self-service claiming" mitigation. `PATCH /admin/counties/:id` only touches the safety & practical-info panel (`emergencyNumber`/`safetyTips`/`localCustoms`) — everything else about a county is seed-owned, not admin-owned.
-- **County safety & practical-info panel**: `County.emergencyNumber`/`safetyTips`/`localCustoms`, shown as a "Before you go" section on the county page — for the international-visitor/diaspora audience specifically. `emergencyNumber` is deliberately never seeded (only ever set via the admin PATCH above): a wrong emergency number is worse than none at all, so it's admin-entered content, not a guess baked into `seed-data.ts`. `safetyTips`/`localCustoms` are seeded for the two live counties (Montserrado, Margibi) with general, low-risk-if-imprecise travel notes.
-- **B2B aggregate tourism analytics** (Business Plan §8.4): `GET /admin/analytics/aggregate?limit=10` — top places by visitor interest, and breakdowns by category/county, all built on the same analytics event log with no per-visitor data in the output.
+### Auth
 
-All `/admin/*` and admin-only routes above are gated by `AdminGuard` (`src/auth/guards/admin.guard.ts`), which checks `req.user.isAdmin`. There's no self-service admin signup — promote a user directly in the database:
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /auth/register` | Create an account | — |
+| `POST /auth/login` | Password login; returns `{twoFactorRequired, pendingToken}` if 2FA is enabled | — |
+| `POST /auth/2fa/setup` | Generate a TOTP secret + QR code | JWT |
+| `POST /auth/2fa/enable` | Confirm setup with a code; returns one-time recovery codes | JWT |
+| `POST /auth/2fa/disable` | Disable 2FA (password-confirmed) | JWT |
+| `POST /auth/2fa/verify` | Exchange a `pendingToken` + code/recovery code for a session | — |
+| `GET /auth/me` | Current user profile | JWT |
+| `PATCH /auth/me` | Update profile fields | JWT |
+| `PATCH /auth/password` | Change password | JWT |
+| `POST /auth/logout-all` | Revoke all other sessions | JWT |
+| `DELETE /auth/me` | Anonymize and deactivate the account | JWT |
+| `POST /auth/forgot-password` | Request a reset link (non-enumerating response) | — |
+| `POST /auth/reset-password` | Consume a reset token | — |
+| `POST /auth/verify-email` | Consume an email verification token | — |
+| `POST /auth/resend-verification` | Resend the verification email | JWT |
+
+`login`, `2fa/verify`, `forgot-password`, and `reset-password` are rate-limited to 5 requests/minute/IP. Every other endpoint defaults to 120/minute.
+
+### Catalog
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /places` | List/search places — `category`, `county`, `tag`, `type`, `q` (full-text search), `sort`, `page`, `limit`, `lat`/`lng`/`radiusKm` (all three or none) | — |
+| `GET /places/:slug` | Place detail | — |
+| `GET /counties` | List counties | — |
+| `GET /counties/:id/places` | Places scoped to a county | — |
+| `GET /categories` | List categories | — |
+
+`q` runs Postgres full-text search (`websearch_to_tsquery`, weighted `name`/`description`, GIN-indexed) rather than substring matching — supports stemming, multi-word queries, and search-engine syntax (quoted phrases, `or`, leading `-` to exclude). A `q` search with no explicit `sort` ranks by relevance; `sort` otherwise defaults to `featured`.
+
+### Reviews
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /reviews` | Create a review (one per user per place) | JWT, 10/min |
+| `GET /reviews?placeId=` | List reviews for a place | — |
+
+`Place.rating`/`reviewCount` are recomputed from the reviews table on every write. `verifiedVisit` is set automatically when the reviewer has a confirmed booking with a business linked to that place.
+
+### Businesses
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /businesses` | Self-claim a place (one claim per place) | JWT |
+| `PATCH /businesses/:id` | Update a claimed listing | Owner |
+| `GET /businesses?placeId=` | List businesses for a place | — |
+| `GET /businesses/mine` | Businesses owned by the current user | JWT |
+
+### Creators
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /creators` | Create a creator profile (one per user) | JWT |
+| `PATCH /creators/me` | Update own profile | JWT |
+| `GET /creators` | Directory | — |
+| `GET /creators/:username` | Public profile | — |
+
+### Events
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /events` | Create an event | JWT + claimed business, creator profile, or admin |
+| `GET /events?category=&county=&dateFrom=&dateTo=` | List/filter events | — |
+| `GET /events/:id` | Event detail | — |
+
+Creating an event triggers a best-effort push notification to users whose home county matches.
+
+### Uploads
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /uploads/image` | Upload an image | JWT, 30/min |
+
+Every upload is re-encoded (auto-oriented, quality-82 JPEG, capped at 2000px) — strips EXIF metadata and reduces file size. Stored via `LocalStorageProvider` (default) or `S3StorageProvider` (`STORAGE_DRIVER=s3`, any S3-compatible provider), selected at boot.
+
+### Push notifications
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /push/vapid-public-key` | Public VAPID key | — |
+| `POST /push/subscribe` | Register a browser push subscription | JWT |
+| `POST /push/unsubscribe` | Remove a subscription | JWT |
+
+Requires a VAPID keypair (`npx web-push generate-vapid-keys`); unconfigured, subscriptions are accepted but sends are silently skipped.
+
+### Itineraries
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /itineraries` | Generate a multi-day trip ("Build My Liberia Trip") | JWT |
+| `POST /itineraries/weekend` | Generate a trip from a location, filtered by travel time | JWT |
+| `GET /itineraries` | List own itineraries | JWT |
+| `GET /itineraries/:id` | Itinerary detail, stops resolved to full places | Owner or collaborator |
+| `GET /itineraries/shared-with-me` | Itineraries owned by others the user was invited to | JWT |
+| `POST /itineraries/:id/collaborators` | Invite a user by email | Owner |
+| `DELETE /itineraries/:id/collaborators/:userId` | Remove a collaborator, or leave | Owner or self |
+| `POST /itineraries/:id/stops` | Add a stop | Owner or collaborator |
+| `PATCH /itineraries/:id/stops/:placeId` | Edit stop notes | Owner or collaborator |
+| `DELETE /itineraries/:id/stops/:placeId` | Remove a stop | Owner or collaborator |
+
+Generation uses greedy nearest-neighbor sequencing. Non-members get 404 (not 403) on member-only routes.
+
+### Bookings
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /bookings` | Request a booking | JWT |
+| `GET /bookings/mine` | Own booking requests | JWT |
+| `GET /bookings/business/:businessId` | Incoming requests for a business | Owner |
+| `PATCH /bookings/:id/respond` | Confirm or decline (`{action}`) | Owner |
+| `PATCH /bookings/:id/cancel` | Cancel while pending/confirmed | Guest |
+
+One `Booking` entity covers hotel/tour/restaurant/transport, distinguished by `Business.type`. Request-to-book only: `paymentProvider`/`paymentStatus`/`paymentReference` exist in the schema (`paymentProvider` defaults to `mtn_momo`) but are not wired to a live payment API.
+
+### Booking messages
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /bookings/:bookingId/messages` | Post a message (1–2000 chars) | Guest or business owner |
+| `GET /bookings/:bookingId/messages` | List messages, oldest first | Guest or business owner |
+
+Plain text only; no attachments, read receipts, or editing.
+
+### Analytics
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /analytics/events` | Log an event (`view`/`save`/`contact_click`/`booking_request`) | — |
+| `GET /analytics/business/:businessId` | Totals + 30-day daily breakdown | Owner |
+
+Append-only anonymous event log; no per-visitor data.
+
+### Sponsored placements
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /sponsored-placements/active` | Currently active placements | — |
+| `GET /sponsored-placements` | Full history | Admin |
+| `POST /sponsored-placements` | Create a time-boxed placement | Admin |
+| `DELETE /sponsored-placements/:id` | Revoke | Admin |
+
+Distinct from `Place.featured` (undated editorial curation).
+
+### Freshness reports
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /freshness-reports` | Report `still_here` / `no_longer_here` (upserts per user/place) | JWT |
+| `GET /freshness-reports/mine?placeId=` | The current user's own report | JWT |
+
+3+ independent `no_longer_here` reports within 90 days surface the place in the admin moderation queue.
+
+### Admin
+
+All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super Admin.
+
+| Method & path | Description |
+|---|---|
+| `PATCH /admin/places/:id/verification` | Set place verification status |
+| `PATCH /admin/businesses/:id/verification` | Set business verification status |
+| `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places |
+| `POST` / `PATCH /admin/places` | Create/update places |
+| `POST` / `PATCH /admin/activities` | Create/update activities |
+| `POST` / `PATCH /admin/businesses` | Create/update businesses, including unowned "shell" listings |
+| `PATCH /admin/events/:id` | Update an event |
+| `PATCH /admin/counties/:id` | Update a county's safety/practical-info panel |
+| `PATCH /creators/:id/featured` | Toggle featured status |
+| `GET /admin/analytics/aggregate?limit=` | B2B aggregate analytics: top places, category/county breakdowns |
+| `GET /admin/team` | List admins and super admins | Super Admin |
+| `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
+| `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |
+| `GET /admin/audit-log` | Paginated log of verification changes, role changes, and sponsored-placement create/revoke | Super Admin |
+
+The first admin is granted directly in the database:
 
 ```bash
-psql -U liberia360 -d liberia360 -c "UPDATE users SET is_admin = true WHERE email = 'you@example.com';"
+psql -U liberia360 -d liberia360 -c "UPDATE users SET is_admin = true, is_super_admin = true WHERE email = 'you@example.com';"
 ```
 
-Takes effect immediately without re-login: the JWT strategy re-fetches the full `User` row from the DB on every request rather than trusting a stale claim baked into the token.
+Role changes take effect immediately — the JWT strategy re-fetches the user row from the database on every request.
 
-## Production readiness
+## Security
 
-Hardening work that isn't tied to a specific catalog/marketplace feature — instead makes the existing ones safe to run for real users. MTN Mobile Money / real payment capture is explicitly out of scope here (see the Bookings entry above); PostGIS and load testing are noted as deferred technical debt in "Notes" below, not addressed by this section.
+- **Password/session**: bcrypt password hashing, JWT bearer auth, per-user `tokenVersion` for session revocation (password change / "sign out everywhere" bump it and invalidate every other outstanding token).
+- **Two-factor authentication**: TOTP (RFC 6238), encrypted-at-rest secrets (AES-256-GCM), one-time recovery codes stored as bcrypt hashes, a short-lived purpose-scoped `pendingToken` for the login→2FA handoff.
+- **Rate limiting**: `@nestjs/throttler`, 120/min global default; 5/min on login/2FA-verify/password-reset; 10/min on review creation; 30/min on uploads.
+- **HTTP hardening**: `helmet()` on every response (`Cross-Origin-Resource-Policy: cross-origin`, since `/uploads/*` is meant to be loaded cross-origin by the web app); graceful shutdown (`enableShutdownHooks`) so in-flight requests complete on `SIGTERM`.
+- **Account lifecycle**: non-enumerating forgot-password, single-use time-limited tokens (SHA-256 hashed at rest) for password reset and email verification, in-place account anonymization on delete (no cascading hard-delete through reviews/bookings/messages).
+- **Boot-time validation**: refuses to start in production if `JWT_SECRET` or `TWO_FACTOR_ENCRYPTION_KEY` are still the committed placeholder values.
+- **Uploads**: every image is re-encoded server-side (strips EXIF, resizes, recompresses) regardless of storage backend.
+- **Audit trail**: `admin_actions` table records verification changes, admin role changes, and sponsored-placement create/revoke, exposed via `GET /admin/audit-log` (super-admin-only).
+- **Dependencies**: `npm audit` clean (0 vulnerabilities) as of the current dependency set.
 
-- **Auth hardening**: session revocation, forgot/reset password, email verification, and account deletion, all migrated and unit/e2e tested (`test/auth-lifecycle.e2e-spec.ts`).
-  - **Session revocation**: every `User` has a `tokenVersion` (int, default 0), signed into every JWT it issues. `JwtStrategy` rejects a token whose `tokenVersion` doesn't match the user's current one — piggybacking on the pre-existing "re-fetch the full `User` row on every request" behavior (the same mechanism that makes `isAdmin` promotion take effect immediately, above) rather than standing up a separate token-blacklist store. Password change and "sign out of all other devices" both bump it; both return a *fresh* `AuthResult` so the calling session isn't logged out by its own request.
-  - **Forgot/reset password**: `POST /auth/forgot-password` (`{email}`) always returns the same generic response whether or not the account exists — deliberately non-enumerating. `POST /auth/reset-password` (`{token, newPassword}`) consumes a single-use, 1-hour token. Both endpoints, plus `login`/`2fa/verify`, are rate-limited to 5 requests/minute/IP.
-  - **Email verification**: set at registration (`User.emailVerified`, default false) and never gates anything — see the entity's doc comment — it's a soft nudge (an `EmailVerificationBanner` in `../web`), not a login/feature block, since most of the app doesn't depend on a working inbox yet. `POST /auth/verify-email` (`{token}`, public, single-use, 24h TTL), `POST /auth/resend-verification` (authenticated, rate-limited).
-  - **Change password / delete account**: `PATCH /auth/password` (`{currentPassword, newPassword}`) returns a fresh `AuthResult`. `DELETE /auth/me` (`{password}`) anonymizes the row in place instead of hard-deleting it — name/email/phone cleared or randomized, `passwordHash` nulled so login becomes impossible, `name` becomes "Deleted user" — rather than cascading a delete through every review/booking/message the account ever left, which would silently blank out history other users depend on. The email is freed for reuse immediately (re-registering with it succeeds).
-  - **Token/secret hashing**: verification and reset tokens are stored as a SHA-256 hash (`src/auth/token-hash.ts`), not the raw token — same "don't store the credential in a form usable straight out of a DB leak" reasoning as password hashing, just SHA-256 instead of bcrypt, since these are high-entropy random tokens looked up by exact match rather than low-entropy secrets that need brute-force resistance.
-  - **Email delivery**: `MailService` (`src/mail`) follows the same progressive-enhancement shape as `PushService` — unconfigured SMTP doesn't block registration/reset/etc. from succeeding, it just logs the email body (including the link) instead of sending it, which is also the easiest way to test these flows locally without a real inbox. Set `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`/`MAIL_FROM` (see `.env.example`) for real delivery. `WEB_APP_URL` is what verify/reset links point at — the API has no view layer of its own.
-- **Boot-time config validation** (`src/config/validate-production-config.ts`, called from `main.ts`): only runs when `NODE_ENV=production`. Refuses to start (`process.exit(1)`) if `JWT_SECRET` or `TWO_FACTOR_ENCRYPTION_KEY` are still the committed dev-placeholder values — booting with either is actively dangerous (forgeable login tokens / decryptable TOTP secrets straight out of a DB dump), not just incomplete. Everything else that's merely unconfigured (`STORAGE_DRIVER=local`, no `SMTP_HOST`, no VAPID keys, no `SENTRY_DSN`) only logs a warning — the app is still safe to run without those, just missing a feature, matching the rest of the codebase's graceful-degradation philosophy.
-- **Crash reporting** (`src/error-tracking`): same progressive-enhancement shape as `PushService`/`MailService` — unset `SENTRY_DSN` means `initErrorTracking` (called from `main.ts`, right after boot-time config validation) is a no-op forever after; `Sentry.captureException()` is itself a documented no-op when `Sentry.init()` was never called, so `SentryExceptionsFilter` (registered globally, always — nothing extra to configure) doesn't need its own "is this configured" branch either. Only genuinely unexpected failures get reported: a 4xx `HttpException` (bad input, unauthorized, not found, ...) is expected, routine traffic, not a crash — only an unhandled 500 or a non-`HttpException` thrown from anywhere in the app reaches Sentry. `GET /health/ready` above is the other half of "notice something's wrong" — this is for "notice a specific request failed and why."
-- **S3-compatible object storage + image hardening**: `StorageProvider` (`src/uploads/storage`) is a one-method interface (`save`) behind which `UploadsController` never knows which backend it's talking to. `StorageModule` picks `LocalStorageProvider` or `S3StorageProvider` at boot from `storage.driver` (`STORAGE_DRIVER` — `"local"` default or `"s3"`, any S3-compatible provider: AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO via `S3_ENDPOINT`). `S3StorageProvider` deliberately never sets an object ACL — modern buckets default to ACLs-disabled ("bucket owner enforced"), where a `PutObjectCommand` ACL fails outright; public read is expected from a bucket policy, a CDN, or the provider's own public-bucket setting (`S3_PUBLIC_URL_BASE`) instead. Every upload is also re-encoded (EXIF stripped, resized, recompressed — see the Uploads bullet above) regardless of which provider stores it. See the "Uploads" bullet above for the endpoint itself.
-- **HTTP hardening & operational basics**: `helmet()` (`main.ts`) sets the standard security headers on every response, with one deliberate override — `Cross-Origin-Resource-Policy: cross-origin` instead of helmet's `same-origin` default, since the whole point of `/uploads/*` is being loaded cross-origin by the web app via `<img src>` (every response here is meant to be fetched cross-origin anyway — auth is a bearer token, never a cookie, so there's no CSRF-adjacent reason for the stricter default). `app.enableShutdownHooks()` lets in-flight requests finish (and TypeORM close its pool) on `SIGTERM` instead of dropping them on every restart/rolling deploy. `POST /reviews` is rate-limited (10/min) — one review per user per place was already enforced, this is purely an anti-spam ceiling. `StructuredLogger` (`src/logging`) emits one-JSON-object-per-line logs when `NODE_ENV=production` (for a real log aggregator to parse/query, instead of grepping colored terminal text) and otherwise delegates straight to Nest's own `ConsoleLogger` — local dev's output is unchanged. Passed as the `logger` option to `NestFactory.create()` itself (not `app.useLogger()` after the fact) so it also covers Nest's own startup logs, and every `new Logger(context)` call site throughout the app (`PushService`, `MailService`, ...) picks it up automatically.
-- **API docs** (`GET /api/docs`, Swagger UI): `nest-cli.json`'s `@nestjs/swagger` compiler plugin (`introspectComments: true`) infers `@ApiProperty` straight from every DTO's existing `class-validator` decorators and TypeScript types, and pulls in the doc comments already on most fields — no hand-written `@ApiProperty`/`@ApiOperation` annotations to keep in sync by hand alongside the real DTOs. Every route guarded by `JwtAuthGuard`/`AdminGuard`/`SuperAdminGuard` also gets `@ApiBearerAuth()` so Swagger UI's "Authorize" flow actually sends the token on "Try it out." `HealthController` is `@ApiExcludeController()` — an ops probe, not a resource an API consumer reads docs for.
-- **Dependency security**: NestJS 10 → 11 (`@nestjs/core`/`common`/`platform-express`/`config`/`typeorm`/`jwt`/`passport`/`testing`/`cli`/`schematics`) and bcrypt 5 → 6, clearing every moderate/high/critical `npm audit` finding that traced back to this API (`body-parser`/`express`/`multer`/`qs`'s DoS advisories via the old `@nestjs/platform-express`; `lodash`'s prototype-pollution advisories via the old `@nestjs/config`; `node-tar`'s critical path-traversal advisories via bcrypt's `node-pre-gyp`). One real code change fell out of the `@nestjs/jwt` bump: `JWT_EXPIRES_IN` is a plain `string` from the environment, and `@nestjs/jwt@11`'s types want the narrower `ms`-package `StringValue` template-literal type an env var can't be statically proven to match — `auth.module.ts` casts it through `JwtSignOptions["expiresIn"]` with a comment explaining why (jsonwebtoken throws at sign-time on a genuinely malformed value, it doesn't silently misbehave). Everything else was a clean, behavior-preserving bump — full regression (136/136 unit, 84/84 e2e) and a live boot both confirm it.
-- **Admin audit trail** (`GET /admin/audit-log`, super-admin-only): `AdminAuditService` (`src/admin/admin-audit.service.ts`, shared via `AdminAuditModule` between `AdminModule` and `SponsoredPlacementsModule`) records a `who did what to what, when` row (`admin_actions` table) for the handful of admin actions with real business/trust stakes — place/business verification status changes, admin team role changes, and sponsored placement create/revoke — deliberately not every admin PATCH, which would mostly be low-stakes noise. `log()` never blocks or fails the action it's recording: a logging failure is itself logged and swallowed, never rethrown, so a DB hiccup on the audit write can't turn a successful admin action into a 500. Read access is `SuperAdminGuard`-gated — oversight *of* admins is a super-admin concern, not something any admin can pull on their peers — and returns a paginated, sanitized (`toPublicUser`) list ordered newest-first.
+## Observability
 
-## Notes
+- **Structured logging**: JSON-per-line log output in production (`NODE_ENV=production`), human-readable console output otherwise.
+- **Crash reporting**: unhandled exceptions (5xx, non-`HttpException`) reported to Sentry when `SENTRY_DSN` is set; expected 4xx errors are not reported.
+- **Health checks**: `GET /health` (liveness), `GET /health/ready` (readiness, checks DB connectivity).
 
-- Phase 1 has no PostGIS dependency — `latitude`/`longitude` are plain columns. Phase 2's "Near Me" radius search uses a Haversine expression in SQL instead; fine at this catalog size, worth revisiting if it grows a lot.
+## API documentation
+
+`GET /api/docs` — Swagger UI, generated from `class-validator` DTOs and controller decorators via the `@nestjs/swagger` compiler plugin (`nest-cli.json`). Bearer-auth is wired up on every guarded route.
+
+## Known limitations
+
+- No PostGIS: `latitude`/`longitude` are plain columns and "Near Me" uses a Haversine SQL expression instead of spatial indexing. Adequate at the current catalog size.
+- Bookings do not process real payments; MTN Mobile Money integration requires a merchant relationship not available in this environment.
+- No load testing has been performed.
