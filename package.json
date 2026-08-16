@@ -5,7 +5,8 @@
   "description": "LIBERIA360 — Everything Liberia. One Place. Monorepo (api + web).",
   "workspaces": [
     "api",
-    "web"
+    "web",
+    "packages/shared-types"
   ],
   "scripts": {
     "dev:api": "npm run start:dev --workspace=api",

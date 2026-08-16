@@ -12,6 +12,7 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@liberia360/shared-types": "0.1.0",
     "@sentry/browser": "^10.70.0",
     "leaflet": "^1.9.4",
     "next": "^16.3.1",

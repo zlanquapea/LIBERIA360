@@ -11,11 +11,14 @@ Product context lives in [`LIBERIA360_Business_Plan.docx`](./LIBERIA360_Business
 This is an npm-workspaces monorepo:
 
 ```
-api/   NestJS backend — REST API, PostgreSQL (TypeORM)
-web/   Next.js frontend — responsive PWA
+api/                     NestJS backend — REST API, PostgreSQL (TypeORM)
+web/                     Next.js frontend — responsive PWA
+packages/shared-types/   Wire-format TypeScript types shared by api/ and web/
 ```
 
 See `api/README.md` and `web/README.md` for service-specific setup (including each phase's feature list in more detail), and the "Local development" section below for running the full stack. Deploying this for real (not local dev)? See [`DEPLOYMENT.md`](./DEPLOYMENT.md) first.
+
+`packages/shared-types` is a types-only npm workspace: the response shapes `web/` used to hand-copy into its own `src/lib/types.ts` now live there instead, and `web/src/lib/types.ts` just re-exports them (so no frontend import site had to change). `api/` doesn't import it directly — its own entities hold real `Date` objects that only become the shared package's ISO-string fields once a response is serialized to JSON, so there's no clean compile-time link across that boundary; each type in the package instead carries a comment pointing at the backend file it corresponds to, and the e2e tests (`api/test/*.e2e-spec.ts`) are what actually catch drift, by asserting on real HTTP response bodies.
 
 ## Scope
 
