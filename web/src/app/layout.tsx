@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { AuthRefresher } from '@/components/AuthRefresher';
+import { ErrorReportingInit } from '@/components/ErrorReportingInit';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <BottomNav />
         <ServiceWorkerRegister />
         <AuthRefresher />
+        <ErrorReportingInit />
       </body>
     </html>
   );

@@ -55,6 +55,12 @@ export interface AppConfig {
       publicUrlBase: string;
     };
   };
+  // Crash reporting (src/error-tracking) — same "no-op unless configured"
+  // shape as mail/push above. Unset by default; errors are only logged
+  // locally.
+  errorTracking: {
+    dsn: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -106,5 +112,8 @@ export default (): AppConfig => ({
       endpoint: process.env.S3_ENDPOINT ?? "",
       publicUrlBase: process.env.S3_PUBLIC_URL_BASE ?? "",
     },
+  },
+  errorTracking: {
+    dsn: process.env.SENTRY_DSN ?? "",
   },
 });

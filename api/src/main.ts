@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { NestFactory } from "@nestjs/core";
+import { NestFactory, HttpAdapterHost } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { ConfigService } from "@nestjs/config";
@@ -8,12 +8,21 @@ import { AppModule } from "./app.module";
 import { AppConfig } from "./config/configuration";
 import { validateProductionConfig } from "./config/validate-production-config";
 import { localUploadsDir } from "./uploads/local-uploads-dir";
+import { initErrorTracking } from "./error-tracking/error-tracking";
+import { SentryExceptionsFilter } from "./error-tracking/sentry-exceptions.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService<AppConfig, true>);
 
   validateProductionConfig(configService);
+
+  initErrorTracking(
+    configService.get("errorTracking", { infer: true }).dsn,
+    configService.get("nodeEnv", { infer: true }),
+  );
+  const { httpAdapter } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new SentryExceptionsFilter(httpAdapter));
 
   app.enableCors({
     origin: configService.get("corsOrigin", { infer: true }),

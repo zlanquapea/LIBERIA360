@@ -105,7 +105,28 @@ npx web-push generate-vapid-keys
 Unset is safe — `PushService` no-ops and the rest of the app works exactly
 the same either way, just without this one feature.
 
-## 7. Health checks
+## 7. Crash reporting (optional)
+
+Unset is safe — both sides just log locally instead of reporting anywhere,
+same "no-op unless configured" shape as everything else optional in this
+checklist:
+
+```bash
+# api/.env
+SENTRY_DSN=...
+
+# web/.env.local
+NEXT_PUBLIC_SENTRY_DSN=...
+```
+
+The frontend side (`web/src/lib/error-reporting.ts`) is deliberately
+`@sentry/browser`, not the full `@sentry/nextjs` SDK — it catches
+client-side JS errors (via the two React error boundaries and the global
+`window` listeners wired into the root layout), not Next.js server-side
+rendering errors. `validateProductionConfig` warns (doesn't block boot) if
+`SENTRY_DSN` is unset in production.
+
+## 8. Health checks
 
 - `GET /health` — liveness. Doesn't touch the database on purpose (a DB
   blip shouldn't get an orchestrator to kill and restart an otherwise
@@ -118,7 +139,7 @@ the same either way, just without this one feature.
 Both are unprefixed (not under `/api/v1`) so a probe config doesn't need to
 know the API's route prefix.
 
-## 8. Seed data
+## 9. Seed data
 
 `npm run seed --workspace=api` loads **Stage 1 sample/demo data** — fine for
 a fresh local checkout or a demo environment, not something to run against
@@ -127,7 +148,7 @@ admin dashboard's content management (`POST`/`PATCH /admin/places`, etc. —
 see `api/README.md`'s Phase 3 section) plus outreach-driven business
 self-claiming, not the seed script.
 
-## 9. Admin access
+## 10. Admin access
 
 No self-service admin signup by design. Promote the first real admin
 directly in the database once you have a real account to promote:
@@ -139,7 +160,7 @@ psql -U liberia360 -d liberia360 -c "UPDATE users SET is_admin = true WHERE emai
 Takes effect on that user's very next request — no re-login needed (see
 `api/README.md`).
 
-## 10. Known limitations, honestly listed
+## 11. Known limitations, honestly listed
 
 - **Rate limiting is per-instance, in-memory** (`@nestjs/throttler`'s
   default storage). Scale to N instances behind a load balancer and the
@@ -159,10 +180,8 @@ Takes effect on that user's very next request — no re-login needed (see
   provider for Liberia), but nothing calls a live payment API — bookings
   are request-to-book only today. Wiring up real capture needs an actual
   MTN merchant relationship this environment can't create.
-- **Error tracking**: not yet wired up. `console`/Nest's built-in logger is
-  what you get today; a Sentry (or similar) integration is a reasonable
-  next step, following the same "no-op if unconfigured" pattern the rest of
-  this checklist's optional features use.
+- **Crash reporting only covers client-side frontend errors and API-side
+  exceptions** — see section 7 above for the frontend-specific caveat.
 
 ## CI
 

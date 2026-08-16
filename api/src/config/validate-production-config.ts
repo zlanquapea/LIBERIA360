@@ -35,6 +35,7 @@ export function validateProductionConfig(
   const storage = configService.get("storage", { infer: true });
   const mail = configService.get("mail", { infer: true });
   const webPush = configService.get("webPush", { infer: true });
+  const errorTracking = configService.get("errorTracking", { infer: true });
 
   const fatal: string[] = [];
   if (jwt.secret === INSECURE_JWT_SECRET) {
@@ -75,6 +76,11 @@ export function validateProductionConfig(
   if (!webPush.publicKey) {
     logger.warn(
       "VAPID keys are not set in production — push notifications are disabled (this is safe, just a missing feature).",
+    );
+  }
+  if (!errorTracking.dsn) {
+    logger.warn(
+      "SENTRY_DSN is not set in production — crashes are only logged locally, not reported anywhere. Safe to run without it, just less visibility.",
     );
   }
 }
