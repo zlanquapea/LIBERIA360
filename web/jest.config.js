@@ -9,7 +9,10 @@ const createJestConfig = nextJest({ dir: './' });
 const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
-  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/'],
+  // e2e/ holds Playwright specs (its own test/expect globals, run via
+  // `npm run test:e2e`) — Jest's default testMatch would otherwise also
+  // pick up its *.spec.ts files and fail trying to run them as unit tests.
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/e2e/'],
 };
 
 module.exports = createJestConfig(customJestConfig);

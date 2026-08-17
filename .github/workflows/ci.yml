@@ -7,7 +7,8 @@ name: CI
 # actually running — `next build` statically prerenders a handful of pages
 # (/, /counties, /explore, ...) that fetch from the API at build time, so
 # without a live API those builds fail with ECONNREFUSED, not just a
-# missing-data warning.
+# missing-data warning. The same live API + DB also backs `web`'s own
+# Playwright suite (web/e2e/README.md) at the end of the job.
 on:
   push:
     branches: [main]
@@ -127,3 +128,11 @@ jobs:
 
       - name: Build (also statically prerenders pages that fetch from the live API above)
         run: npm run build:web
+
+      - name: Install Playwright's Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (Playwright, against the live API + DB started above)
+        working-directory: web
+        run: npm run test:e2e

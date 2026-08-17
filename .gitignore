@@ -33,6 +33,11 @@ Thumbs.db
 # Test coverage
 coverage/
 
+# Playwright e2e artifacts
+web/test-results/
+web/playwright-report/
+web/blob-report/
+
 # TypeScript build info
 *.tsbuildinfo
 

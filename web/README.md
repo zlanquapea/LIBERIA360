@@ -28,6 +28,12 @@ npm run test:watch
 
 Jest + React Testing Library, via `next/jest`. Covers `lib/*` utility functions, `localStorage`-backed modules (`auth-storage`, `saved-places`), HTTP error normalization, and component rendering.
 
+```bash
+npm run test:e2e
+```
+
+Playwright, against a real running API + database — see [`e2e/README.md`](./e2e/README.md) for what's covered and how to run it.
+
 ## Build
 
 ```bash
@@ -71,4 +77,4 @@ Admin pages (`/admin/*`) are gated client-side by `AdminGate` for UX; the API's 
 ## Known limitations
 
 - `public/logo.png` is a full circular lockup rather than an icon-only mark; it reads busy at favicon size.
-- The frontend's automated test coverage is a baseline (utilities and core components), not exhaustive component coverage.
+- Unit test coverage (Jest) is a baseline — utilities and core components, not exhaustive. The Playwright suite covers the critical end-to-end flows (auth, search, reviews, bookings, admin moderation — see `e2e/README.md`), not every screen.

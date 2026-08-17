@@ -127,4 +127,4 @@ See [`api/README.md`](./api/README.md) and [`web/README.md`](./web/README.md) fo
 `.github/workflows/ci.yml` runs on every push/PR to `main` against a real PostgreSQL 16 service container.
 
 - **`api`**: lint, build, unit tests, then e2e tests against a disposable `liberia360_test` database.
-- **`web`**: builds and seeds the API, starts it, then runs lint, type-checking, unit tests, and a production `next build` (which statically prerenders several pages against the live API).
+- **`web`**: builds and seeds the API, starts it, then runs lint, type-checking, unit tests, a production `next build` (which statically prerenders several pages against the live API), and a Playwright e2e suite against that same live API + database.
