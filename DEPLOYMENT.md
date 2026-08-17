@@ -171,9 +171,14 @@ Takes effect on that user's very next request — no re-login needed (see
 - **PostGIS**: "Near Me" uses a Haversine SQL expression instead of a real
   geospatial index — fine at the current catalog size, worth revisiting if
   the catalog grows a lot. Documented technical debt, not a launch blocker.
-- **Load testing**: none has been done — there's no deployed target to test
-  against yet. Worth doing once there's a real environment and a rough
-  traffic estimate.
+- **Load testing**: `npm run load-test --workspace=api` (`api/scripts/load-test.js`)
+  is a ready-to-run local single-instance sanity check (autocannon — no
+  system binary to install) against `/health`, catalog browse/search, and
+  a place detail page. It correctly distinguishes the rate limiter's
+  expected 429s under sustained load from real failures, but a laptop
+  running one instance isn't a production capacity number — re-run it
+  against the real deployed target once there's one, with a traffic
+  estimate to size connections/duration against.
 - **MTN Mobile Money / real payment capture**: intentionally out of scope
   here. `Booking.paymentProvider`/`paymentStatus`/`paymentReference` exist
   in the schema (provider defaults to `mtn_momo`, the intended real-world

@@ -51,6 +51,12 @@ createdb -O liberia360 liberia360_test
 
 Each e2e spec file runs its own migrations and resets its fixtures, so it is safe to re-run and does not touch the development database.
 
+```bash
+npm run load-test     # local sanity check — see "Known limitations" below
+```
+
+`autocannon` (a devDependency, never shipped or run in production) carries one moderate advisory from a transitive `uuid` version inside its internal ID generator — not reachable from any request the tool makes, and inert outside this manual local script.
+
 ## Configuration
 
 Environment variables (`.env.example` has the full annotated list):
@@ -295,4 +301,4 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 
 - No PostGIS: `latitude`/`longitude` are plain columns and "Near Me" uses a Haversine SQL expression instead of spatial indexing. Adequate at the current catalog size.
 - Bookings do not process real payments; MTN Mobile Money integration requires a merchant relationship not available in this environment.
-- No load testing has been performed.
+- `npm run load-test` (`scripts/load-test.js`, autocannon) is a local single-instance sanity check against `/health`, catalog browse/search, and a place detail page — not a production capacity number. Run it again once there's a real deployed target and a traffic estimate.
