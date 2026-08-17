@@ -99,6 +99,16 @@ export function updateEventAdmin(token: string, id: string, input: UpdateEventIn
   });
 }
 
+// Moderation removal — see the "flaggedContent" section of the
+// moderation queue below.
+export function deleteEventAdmin(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/events/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
+export function deleteReviewAdmin(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/reviews/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
 export function updateCountyAdmin(token: string, id: string, input: UpdateCountyInput): Promise<County> {
   return apiRequest<County>(`/admin/counties/${id}`, {
     method: 'PATCH',

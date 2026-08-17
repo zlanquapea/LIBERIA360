@@ -604,6 +604,176 @@ describe("Phase 3 (e2e)", () => {
     });
   });
 
+  describe("Content reporting & moderation", () => {
+    let reportedReview: { id: string; overallRating: number };
+    let reportedEvent: { id: string };
+
+    beforeAll(async () => {
+      // unclaimedPlace, not hotelPlace — guestToken/strangerToken have
+      // already each reviewed hotelPlace once earlier in this spec, and
+      // reviews are one-per-user-per-place.
+      const review = await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          placeId: unclaimedPlace.id,
+          overallRating: 4,
+          comment: "Fine.",
+        })
+        .expect(201);
+      reportedReview = review.body;
+
+      const event = await request(app.getHttpServer())
+        .post("/api/v1/events")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({
+          name: "Sketchy Promo Event",
+          category: "other",
+          locationText: "TBD",
+          countyId: montserrado.id,
+          startDate: "2027-06-01T00:00:00.000Z",
+        })
+        .expect(201);
+      reportedEvent = event.body;
+    });
+
+    it("rejects reporting a target that doesn't exist", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/reports")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({
+          targetType: "review",
+          targetId: "00000000-0000-0000-0000-000000000000",
+          reason: "spam",
+        })
+        .expect(404);
+    });
+
+    it("upserts on a second report from the same user for the same target", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/reports")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({
+          targetType: "review",
+          targetId: reportedReview.id,
+          reason: "spam",
+        })
+        .expect(201);
+
+      const second = await request(app.getHttpServer())
+        .post("/api/v1/reports")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({
+          targetType: "review",
+          targetId: reportedReview.id,
+          reason: "fake",
+          details: "changed my mind",
+        })
+        .expect(201);
+      expect(second.body.reason).toBe("fake");
+    });
+
+    it("surfaces a review/event in the moderation queue once 3+ distinct users report it, and lets an admin remove it", async () => {
+      // strangerToken already reported reportedReview above (as "fake").
+      // Two more distinct users push it past the threshold.
+      const secondReporter = await registerUser(
+        "reporter2@example.com",
+        "Reporter Two",
+      );
+      const thirdReporter = await registerUser(
+        "reporter3@example.com",
+        "Reporter Three",
+      );
+      for (const reporter of [secondReporter, thirdReporter]) {
+        await request(app.getHttpServer())
+          .post("/api/v1/reports")
+          .set("Authorization", `Bearer ${reporter.token}`)
+          .send({
+            targetType: "review",
+            targetId: reportedReview.id,
+            reason: "inappropriate",
+          })
+          .expect(201);
+        await request(app.getHttpServer())
+          .post("/api/v1/reports")
+          .set("Authorization", `Bearer ${reporter.token}`)
+          .send({
+            targetType: "event",
+            targetId: reportedEvent.id,
+            reason: "spam",
+          })
+          .expect(201);
+      }
+      // Third report on the event too (strangerToken hasn't reported it yet).
+      await request(app.getHttpServer())
+        .post("/api/v1/reports")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({
+          targetType: "event",
+          targetId: reportedEvent.id,
+          reason: "spam",
+        })
+        .expect(201);
+
+      const queue = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      const flagged: Array<{
+        targetType: string;
+        targetId: string;
+        reportCount: number;
+        reasons: Record<string, number>;
+        review: { id: string } | null;
+        event: { id: string } | null;
+      }> = queue.body.flaggedContent;
+
+      const flaggedReview = flagged.find(
+        (f) => f.targetType === "review" && f.targetId === reportedReview.id,
+      );
+      expect(flaggedReview?.reportCount).toBe(3);
+      expect(flaggedReview?.review?.id).toBe(reportedReview.id);
+      expect(flaggedReview?.reasons.inappropriate).toBe(2);
+      expect(flaggedReview?.reasons.fake).toBe(1);
+
+      const flaggedEvent = flagged.find(
+        (f) => f.targetType === "event" && f.targetId === reportedEvent.id,
+      );
+      expect(flaggedEvent?.reportCount).toBe(3);
+      expect(flaggedEvent?.event?.id).toBe(reportedEvent.id);
+
+      // A plain admin can act on it; removal is audit-logged.
+      await request(app.getHttpServer())
+        .delete(`/api/v1/admin/reviews/${reportedReview.id}`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/admin/reviews/${reportedReview.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/admin/events/${reportedEvent.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/events/${reportedEvent.id}`)
+        .expect(404);
+
+      const auditLog = await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      const actions = auditLog.body.data.map(
+        (a: { action: string }) => a.action,
+      );
+      expect(actions).toContain("review.removed");
+      expect(actions).toContain("event.removed");
+    });
+  });
+
   describe("Admin content management", () => {
     it("creates and updates a Place, rejecting a duplicate slug and an unknown category", async () => {
       await request(app.getHttpServer())

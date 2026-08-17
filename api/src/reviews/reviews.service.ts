@@ -69,6 +69,17 @@ export class ReviewsService {
     return count > 0;
   }
 
+  /** Admin removal (moderation) — deletes the review and recomputes the
+   * place's rating/reviewCount so it never reflects a removed review. */
+  async remove(id: string): Promise<void> {
+    const review = await this.reviewRepo.findOne({ where: { id } });
+    if (!review) {
+      throw new NotFoundException(`Review "${id}" not found`);
+    }
+    await this.reviewRepo.delete({ id });
+    await this.recalculatePlaceRating(review.placeId);
+  }
+
   async findForPlace(query: QueryReviewsDto): Promise<PaginatedReviews> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;

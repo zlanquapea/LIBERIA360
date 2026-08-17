@@ -4,9 +4,15 @@ import { Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Review } from "../reviews/entities/review.entity";
+import { Event } from "../events/entities/event.entity";
 import { VerificationStatus } from "../places/entities/place.enums";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { FreshnessResponse } from "../freshness/entities/place-freshness-report.enums";
+import { ContentReport } from "../reports/entities/content-report.entity";
+import {
+  ReportReason,
+  ReportTargetType,
+} from "../reports/entities/content-report.enums";
 import { AdminAuditService } from "./admin-audit.service";
 
 const MODERATION_QUEUE_REVIEW_LIMIT = 20;
@@ -20,15 +26,30 @@ const FRESHNESS_FLAG_THRESHOLD = 3;
 // was later fixed shouldn't keep flagging it forever.
 const FRESHNESS_WINDOW_DAYS = 90;
 
+// Same "a handful of independent signals, not just one" reasoning as
+// freshness reports above, applied to user-reported reviews/events.
+const REPORT_FLAG_THRESHOLD = 3;
+const REPORT_WINDOW_DAYS = 90;
+
 export interface PossiblyClosedPlace {
   place: Place;
   noLongerHereCount: number;
+}
+
+export interface FlaggedContent {
+  targetType: ReportTargetType;
+  targetId: string;
+  reportCount: number;
+  reasons: Record<ReportReason, number>;
+  review: Review | null;
+  event: Event | null;
 }
 
 export interface ModerationQueue {
   pendingBusinesses: Business[];
   recentReviews: Review[];
   possiblyClosedPlaces: PossiblyClosedPlace[];
+  flaggedContent: FlaggedContent[];
 }
 
 @Injectable()
@@ -42,6 +63,10 @@ export class AdminService {
     private readonly reviewRepo: Repository<Review>,
     @InjectRepository(PlaceFreshnessReport)
     private readonly freshnessReportRepo: Repository<PlaceFreshnessReport>,
+    @InjectRepository(Event)
+    private readonly eventRepo: Repository<Event>,
+    @InjectRepository(ContentReport)
+    private readonly contentReportRepo: Repository<ContentReport>,
     private readonly adminAuditService: AdminAuditService,
   ) {}
 
@@ -96,26 +121,35 @@ export class AdminService {
   }
 
   /** Tech Spec §7/§8 — pending business claims, recent reviews, and
-   * (Phase 4) crowdsourced "no longer here" reports, for an admin to
-   * review. "Flagged content" from the spec bullet was originally left
-   * out for lack of a reporting mechanism in the schema — PlaceFreshnessReport
-   * is that mechanism now, scoped to the one flag a catalog this size
-   * actually needs: whether a place has closed or moved. */
+   * "flagged content" for an admin to review. Two independent flagging
+   * mechanisms feed this: `PlaceFreshnessReport` (whether a place has
+   * closed or moved) and `ContentReport` (user-reported reviews/events —
+   * see that entity's doc comment). */
   async getModerationQueue(): Promise<ModerationQueue> {
-    const [pendingBusinesses, recentReviews, possiblyClosedPlaces] =
-      await Promise.all([
-        this.businessRepo.find({
-          where: { verificationStatus: VerificationStatus.UNVERIFIED },
-          order: { createdAt: "DESC" },
-        }),
-        this.reviewRepo.find({
-          relations: ["user", "place"],
-          order: { createdAt: "DESC" },
-          take: MODERATION_QUEUE_REVIEW_LIMIT,
-        }),
-        this.findPossiblyClosedPlaces(),
-      ]);
-    return { pendingBusinesses, recentReviews, possiblyClosedPlaces };
+    const [
+      pendingBusinesses,
+      recentReviews,
+      possiblyClosedPlaces,
+      flaggedContent,
+    ] = await Promise.all([
+      this.businessRepo.find({
+        where: { verificationStatus: VerificationStatus.UNVERIFIED },
+        order: { createdAt: "DESC" },
+      }),
+      this.reviewRepo.find({
+        relations: ["user", "place"],
+        order: { createdAt: "DESC" },
+        take: MODERATION_QUEUE_REVIEW_LIMIT,
+      }),
+      this.findPossiblyClosedPlaces(),
+      this.findFlaggedContent(),
+    ]);
+    return {
+      pendingBusinesses,
+      recentReviews,
+      possiblyClosedPlaces,
+      flaggedContent,
+    };
   }
 
   private async findPossiblyClosedPlaces(): Promise<PossiblyClosedPlace[]> {
@@ -150,5 +184,86 @@ export class AdminService {
         place: placeById.get(r.placeId)!,
         noLongerHereCount: parseInt(r.count, 10),
       }));
+  }
+
+  private async findFlaggedContent(): Promise<FlaggedContent[]> {
+    const windowStart = new Date();
+    windowStart.setDate(windowStart.getDate() - REPORT_WINDOW_DAYS);
+
+    const rows = await this.contentReportRepo
+      .createQueryBuilder("report")
+      .select("report.targetType", "targetType")
+      .addSelect("report.targetId", "targetId")
+      .addSelect("COUNT(*)", "count")
+      .where("report.createdAt >= :windowStart", { windowStart })
+      .groupBy("report.targetType")
+      .addGroupBy("report.targetId")
+      .having("COUNT(*) >= :threshold", { threshold: REPORT_FLAG_THRESHOLD })
+      .orderBy("COUNT(*)", "DESC")
+      .getRawMany<{
+        targetType: ReportTargetType;
+        targetId: string;
+        count: string;
+      }>();
+
+    if (rows.length === 0) return [];
+
+    const reviewIds = rows
+      .filter((r) => r.targetType === ReportTargetType.REVIEW)
+      .map((r) => r.targetId);
+    const eventIds = rows
+      .filter((r) => r.targetType === ReportTargetType.EVENT)
+      .map((r) => r.targetId);
+
+    const [reviews, events, allReports] = await Promise.all([
+      reviewIds.length
+        ? this.reviewRepo.find({
+            where: reviewIds.map((id) => ({ id })),
+            relations: ["user"],
+          })
+        : Promise.resolve([]),
+      eventIds.length
+        ? this.eventRepo.find({ where: eventIds.map((id) => ({ id })) })
+        : Promise.resolve([]),
+      this.contentReportRepo.find({
+        where: rows.map((r) => ({
+          targetType: r.targetType,
+          targetId: r.targetId,
+        })),
+      }),
+    ]);
+    const reviewById = new Map(reviews.map((r) => [r.id, r]));
+    const eventById = new Map(events.map((e) => [e.id, e]));
+
+    return rows.map((r) => {
+      const reasons: Record<ReportReason, number> = {
+        [ReportReason.SPAM]: 0,
+        [ReportReason.INAPPROPRIATE]: 0,
+        [ReportReason.FAKE]: 0,
+        [ReportReason.OTHER]: 0,
+      };
+      for (const report of allReports) {
+        if (
+          report.targetType === r.targetType &&
+          report.targetId === r.targetId
+        ) {
+          reasons[report.reason]++;
+        }
+      }
+      return {
+        targetType: r.targetType,
+        targetId: r.targetId,
+        reportCount: parseInt(r.count, 10),
+        reasons,
+        review:
+          r.targetType === ReportTargetType.REVIEW
+            ? (reviewById.get(r.targetId) ?? null)
+            : null,
+        event:
+          r.targetType === ReportTargetType.EVENT
+            ? (eventById.get(r.targetId) ?? null)
+            : null,
+      };
+    });
   }
 }

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { fetchMe } from '@/lib/auth-api';
 import { clearStoredAuth, getStoredAuth, setStoredAuth } from '@/lib/auth-storage';
+import { HttpError } from '@/lib/http';
 
 // Renders nothing — mounted once in the root layout (same pattern as
 // ServiceWorkerRegister) to refresh the cached user object from the API
@@ -19,7 +20,16 @@ export function AuthRefresher() {
     if (!stored) return;
     fetchMe(stored.token).then(
       (user) => setStoredAuth({ token: stored.token, user }),
-      () => clearStoredAuth(), // token invalid/expired — stop serving a stale cached user
+      (error) => {
+        // Only a genuine "this token doesn't authenticate" response means
+        // the session is actually gone — a rate limit, a network blip, or
+        // an unrelated 5xx is transient and shouldn't silently sign
+        // someone out from under them; the cached user just stays as-is
+        // until the next successful refresh.
+        if (error instanceof HttpError && error.status === 401) {
+          clearStoredAuth();
+        }
+      },
     );
   }, []);
 

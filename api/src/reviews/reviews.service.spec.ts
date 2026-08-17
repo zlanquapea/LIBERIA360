@@ -17,6 +17,7 @@ describe("ReviewsService", () => {
     create: jest.Mock;
     findOneOrFail: jest.Mock;
     createQueryBuilder: jest.Mock;
+    delete: jest.Mock;
   };
   let placeRepo: { findOne: jest.Mock; update: jest.Mock };
   let bookingQueryBuilder: {
@@ -43,6 +44,7 @@ describe("ReviewsService", () => {
         where: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue({ avg: "5", count: "1" }),
       }),
+      delete: jest.fn(),
     };
     placeRepo = {
       findOne: jest.fn().mockResolvedValue({ id: "place-1" }),
@@ -108,6 +110,29 @@ describe("ReviewsService", () => {
     bookingQueryBuilder.getCount.mockResolvedValue(0);
     await expect(service.create("user-1", DTO)).resolves.toMatchObject({
       verifiedVisit: false,
+    });
+  });
+
+  describe("remove", () => {
+    it("rejects an unknown review", async () => {
+      reviewRepo.findOne.mockResolvedValue(null);
+      await expect(service.remove("nonexistent")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(reviewRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("deletes the review and recalculates the place's rating", async () => {
+      reviewRepo.findOne.mockResolvedValue({
+        id: "review-1",
+        placeId: "place-1",
+      });
+      await service.remove("review-1");
+      expect(reviewRepo.delete).toHaveBeenCalledWith({ id: "review-1" });
+      expect(placeRepo.update).toHaveBeenCalledWith(
+        "place-1",
+        expect.objectContaining({ rating: 5, reviewCount: 1 }),
+      );
     });
   });
 });

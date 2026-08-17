@@ -482,11 +482,35 @@ export interface PossiblyClosedPlace {
   noLongerHereCount: number;
 }
 
+// api/src/reports/entities/content-report.enums.ts
+export type ReportTargetType = "review" | "event";
+export type ReportReason = "spam" | "inappropriate" | "fake" | "other";
+
+export interface CreateContentReportInput {
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: ReportReason;
+  details?: string;
+}
+
+// api/src/admin/admin.service.ts's FlaggedContent (sanitized) — a review
+// or event that's crossed the report threshold, surfaced in the
+// moderation queue below.
+export interface FlaggedContent {
+  targetType: ReportTargetType;
+  targetId: string;
+  reportCount: number;
+  reasons: Record<ReportReason, number>;
+  review: Review | null;
+  event: Event | null;
+}
+
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];
   recentReviews: Review[];
   possiblyClosedPlaces: PossiblyClosedPlace[];
+  flaggedContent: FlaggedContent[];
 }
 
 // api/src/freshness/entities/place-freshness-report.enums.ts

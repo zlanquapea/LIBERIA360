@@ -5,6 +5,7 @@ import { AuthRefresher } from '@/components/AuthRefresher';
 import { ErrorReportingInit } from '@/components/ErrorReportingInit';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
+import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
   title: 'LIBERIA360 — Everything Liberia. One Place.',
@@ -26,7 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="flex min-h-screen flex-col">
         <Header />
-        <div className="flex-1">{children}</div>
+        <div className="flex-1">
+          {children}
+          <Footer />
+        </div>
         <BottomNav />
         <ServiceWorkerRegister />
         <AuthRefresher />

@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { createReview } from '@/lib/reviews-api';
 import { HttpError } from '@/lib/http';
+import { ReportButton } from './ReportButton';
 import type { Review } from '@/lib/types';
 
 function Stars({ rating }: { rating: number }) {
@@ -88,13 +89,16 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
                 <Stars rating={review.overallRating} />
               </div>
               {review.comment && <p className="mt-1 text-sm text-slate-600">{review.comment}</p>}
-              <p className="mt-1 text-xs text-slate-400">
-                {new Date(review.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </p>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-400">
+                  {new Date(review.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </p>
+                {review.user?.id !== user?.id && <ReportButton targetType="review" targetId={review.id} />}
+              </div>
             </li>
           ))}
         </ul>

@@ -10,6 +10,8 @@ import { Review } from "../reviews/entities/review.entity";
 import { User } from "../users/entities/user.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
+import { ContentReport } from "../reports/entities/content-report.entity";
+import { ReviewsModule } from "../reviews/reviews.module";
 import { AdminService } from "./admin.service";
 import { AdminController } from "./admin.controller";
 import { AdminContentService } from "./admin-content.service";
@@ -34,8 +36,10 @@ import { AdminAuditController } from "./admin-audit.controller";
       User,
       AnalyticsEvent,
       PlaceFreshnessReport,
+      ContentReport,
     ]),
     AdminAuditModule,
+    ReviewsModule,
   ],
   controllers: [
     AdminController,
