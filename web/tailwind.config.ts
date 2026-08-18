@@ -51,6 +51,41 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Headings only — a distinct display face so the app reads as a
+        // considered tourism product rather than default system chrome.
+        // Loaded via next/font/google in layout.tsx, which self-hosts the
+        // font file at build time (no runtime request to Google, no
+        // layout-shift flash) — worth caring about on the mobile data
+        // budgets this app is built for.
+        display: ['var(--font-display)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
+      boxShadow: {
+        // A softer, more "premium travel app" card shadow than Tailwind's
+        // default `shadow-md` — wider spread, lower opacity, tinted toward
+        // the brand navy instead of pure black.
+        card: '0 2px 8px -2px rgba(8, 26, 80, 0.08), 0 8px 24px -6px rgba(8, 26, 80, 0.10)',
+        'card-hover': '0 4px 14px -2px rgba(8, 26, 80, 0.12), 0 16px 32px -8px rgba(8, 26, 80, 0.16)',
+      },
+      keyframes: {
+        // Small, CSS-only motion vocabulary — deliberately not pulling in
+        // a JS animation library for a handful of entrance/hover effects.
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
+      },
+      animation: {
+        'fade-in-up': 'fadeInUp 0.5s ease-out both',
+        'fade-in': 'fadeIn 0.6s ease-out both',
+        float: 'float 3.5s ease-in-out infinite',
       },
     },
   },
