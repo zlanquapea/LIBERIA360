@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { MapPinIcon } from '@heroicons/react/24/solid';
 import { gradientForCategory } from '@/lib/category-colors';
 
 // Destination profile hero. Real photos are the point — a traveler
@@ -28,7 +29,7 @@ export function PlaceGallery({
         className="flex h-40 items-center justify-center rounded-2xl text-6xl"
         style={{ backgroundImage: gradientForCategory(categorySlug) }}
       >
-        {categoryIcon ?? '📍'}
+        {categoryIcon ?? <MapPinIcon className="h-14 w-14 text-white/90" />}
       </div>
     );
   }

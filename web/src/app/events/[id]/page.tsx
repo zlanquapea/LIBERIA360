@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { ApiError, getEvent } from '@/lib/api';
 import { formatEventCategory, formatEventDateRange } from '@/lib/format';
 import { JsonLd } from '@/components/JsonLd';
@@ -39,9 +40,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       <h1 className="text-2xl font-bold text-slate-900">{event.name}</h1>
 
       <div className="flex flex-col gap-1 text-sm text-slate-600">
-        <p>📅 {formatEventDateRange(event.startDate, event.endDate)}</p>
-        <p>
-          📍{' '}
+        <p className="flex items-center gap-1.5">
+          <CalendarDaysIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600" />
+          {formatEventDateRange(event.startDate, event.endDate)}
+        </p>
+        <p className="flex items-center gap-1.5">
+          <MapPinIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600" />
           {event.place ? (
             <Link href={`/places/${event.place.slug}`} className="text-brand-700 hover:underline">
               {event.place.name}

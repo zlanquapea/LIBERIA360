@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, type FormEvent } from 'react';
+import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { generateWeekend } from '@/lib/itinerary-api';
 import { HttpError } from '@/lib/http';
@@ -114,9 +115,7 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
   if (!coords) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center">
-        <span aria-hidden className="text-3xl">
-          🧭
-        </span>
+        <PaperAirplaneIcon aria-hidden className="h-10 w-10 -rotate-45 text-brand-400" />
         <p className="text-sm text-slate-500">Share your location to find what&apos;s within reach.</p>
         <button
           type="button"

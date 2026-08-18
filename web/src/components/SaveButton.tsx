@@ -1,5 +1,7 @@
 'use client';
 
+import { BookmarkIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { useSavedPlaces } from '@/hooks/useSavedPlaces';
 import { recordAnalyticsEvent } from '@/lib/analytics-api';
 
@@ -23,11 +25,15 @@ export function SaveButton({ slug, placeId, className = '' }: { slug: string; pl
       type="button"
       onClick={handleClick}
       aria-pressed={saved}
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition ${
+      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
         saved ? 'border-transparent bg-gold-500 text-white' : 'border-slate-300 text-slate-700 hover:border-brand-500'
       } ${className}`}
     >
-      <span aria-hidden>{saved ? '🔖' : '📑'}</span>
+      {saved ? (
+        <BookmarkIconSolid aria-hidden className="h-4 w-4" />
+      ) : (
+        <BookmarkIcon aria-hidden className="h-4 w-4" />
+      )}
       {saved ? 'Saved' : 'Save'}
     </button>
   );

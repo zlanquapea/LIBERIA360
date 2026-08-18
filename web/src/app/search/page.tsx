@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { getCategories, getCounties, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { SearchFilters } from '@/components/SearchFilters';
@@ -37,7 +38,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-      <form action="/search" method="GET" className="flex overflow-hidden rounded-full border border-slate-300">
+      <form
+        action="/search"
+        method="GET"
+        className="flex overflow-hidden rounded-full border border-slate-300 transition-shadow focus-within:ring-2 focus-within:ring-brand-400"
+      >
         <input
           type="search"
           name="q"
@@ -45,8 +50,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           placeholder="Search places, food, activities..."
           className="w-full px-4 py-2.5 text-sm outline-none"
         />
-        <button type="submit" className="px-4 text-lg" aria-label="Search">
-          🔍
+        <button
+          type="submit"
+          className="flex items-center px-4 text-slate-600 transition-colors hover:bg-slate-50"
+          aria-label="Search"
+        >
+          <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
         </button>
       </form>
 

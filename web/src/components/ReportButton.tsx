@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { FlagIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { reportContent } from '@/lib/reports-api';
 import { HttpError } from '@/lib/http';
@@ -56,9 +57,10 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs text-slate-400 underline-offset-2 hover:text-flag-700 hover:underline"
+        className="flex items-center gap-1 text-xs text-slate-400 underline-offset-2 hover:text-flag-700 hover:underline"
       >
-        🚩 Report
+        <FlagIcon aria-hidden className="h-3 w-3" />
+        Report
       </button>
     );
   }

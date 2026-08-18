@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { StarIcon } from '@heroicons/react/24/solid';
 import { SuperAdminGate } from '@/components/SuperAdminGate';
 import { useAuth } from '@/hooks/useAuth';
 import { getTeamRoster, searchTeamMember, setTeamRoles } from '@/lib/admin-api';
@@ -66,11 +67,12 @@ function TeamDashboard() {
 function RoleBadge({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
         isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700'
       }`}
     >
-      {isSuperAdmin ? '⭐ Super Admin' : 'Admin'}
+      {isSuperAdmin && <StarIcon aria-hidden className="h-3 w-3" />}
+      {isSuperAdmin ? 'Super Admin' : 'Admin'}
     </span>
   );
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MapPinIcon, PencilSquareIcon } from '@heroicons/react/24/solid';
 import { formatPlaceType } from '@/lib/format';
 import type { ItineraryStopWithPlace } from '@/lib/types';
 
@@ -41,13 +42,13 @@ export function ItineraryStops({
               .sort((a, b) => a.order - b.order)
               .map((stop) => (
                 <li key={`${stop.day}-${stop.order}-${stop.place.id}`}>
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 hover:border-brand-500">
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card">
                     <Link
                       href={`/places/${stop.place.slug}`}
                       className="flex min-w-0 flex-1 items-center gap-3"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg text-white">
-                        {stop.place.category.icon ?? '📍'}
+                        {stop.place.category.icon ?? <MapPinIcon className="h-4 w-4" />}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-900">{stop.place.name}</p>
@@ -68,7 +69,10 @@ export function ItineraryStops({
                     )}
                   </div>
                   {stop.notes && (
-                    <p className="mt-1 pl-12 text-xs text-slate-500">📝 {stop.notes}</p>
+                    <p className="mt-1 flex items-center gap-1 pl-12 text-xs text-slate-500">
+                      <PencilSquareIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                      {stop.notes}
+                    </p>
                   )}
                 </li>
               ))}

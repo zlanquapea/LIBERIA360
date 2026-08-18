@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { StarIcon } from '@heroicons/react/24/solid';
+import { CheckBadgeIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { createReview } from '@/lib/reviews-api';
 import { HttpError } from '@/lib/http';
@@ -10,9 +12,10 @@ import type { Review } from '@/lib/types';
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <span aria-label={`${rating} out of 5 stars`} className="shrink-0 text-gold-500">
-      {'★'.repeat(rating)}
-      <span className="text-slate-300">{'★'.repeat(5 - rating)}</span>
+    <span aria-label={`${rating} out of 5 stars`} className="flex shrink-0 items-center gap-0.5">
+      {Array.from({ length: 5 }, (_, i) => (
+        <StarIcon key={i} aria-hidden className={`h-4 w-4 ${i < rating ? 'text-gold-500' : 'text-slate-300'}`} />
+      ))}
     </span>
   );
 }
@@ -28,7 +31,8 @@ function VerifiedVisitBadge() {
       title="This reviewer had a confirmed booking with this listing"
       className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
     >
-      ✓ Verified booking
+      <CheckBadgeIcon aria-hidden className="h-3.5 w-3.5" />
+      Verified booking
     </span>
   );
 }
@@ -124,9 +128,9 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
                 role="radio"
                 aria-checked={rating === value}
                 aria-label={`${value} star${value === 1 ? '' : 's'}`}
-                className={`text-2xl leading-none ${value <= rating ? 'text-gold-500' : 'text-slate-300'}`}
+                className={`transition-transform hover:scale-110 ${value <= rating ? 'text-gold-500' : 'text-slate-300'}`}
               >
-                ★
+                <StarIcon aria-hidden className="h-6 w-6" />
               </button>
             ))}
           </div>

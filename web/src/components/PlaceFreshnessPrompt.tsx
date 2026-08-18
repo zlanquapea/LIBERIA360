@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import { getMyFreshnessReport, reportFreshness } from '@/lib/freshness-api';
 import type { FreshnessResponse, PlaceFreshnessReport } from '@/lib/types';
@@ -46,9 +47,12 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
         <span className="text-slate-400">Checking…</span>
       ) : existing ? (
         <>
-          <span className="text-slate-600">
+          <span className="flex items-center gap-1 text-slate-600">
+            {existing.response === 'still_here' && (
+              <CheckCircleIcon aria-hidden className="h-4 w-4 shrink-0 text-emerald-600" />
+            )}
             {existing.response === 'still_here'
-              ? '✓ You confirmed this place is still here.'
+              ? 'You confirmed this place is still here.'
               : 'You reported this place is no longer here.'}
           </span>
           <button
