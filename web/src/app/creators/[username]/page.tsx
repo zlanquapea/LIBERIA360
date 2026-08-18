@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { CheckBadgeIcon, StarIcon } from '@heroicons/react/24/solid';
 import { ApiError, getCreatorByUsername } from '@/lib/api';
 import { colorForCreator } from '@/lib/category-colors';
 
@@ -39,17 +40,19 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             {creator.verified && (
               <span
                 aria-label="Verified creator"
-                className="inline-flex items-center rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white"
+                className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white"
               >
-                ✓ Verified
+                <CheckBadgeIcon aria-hidden className="h-3.5 w-3.5" />
+                Verified
               </span>
             )}
             {creator.featured && (
               <span
                 aria-label="Featured creator"
-                className="inline-flex items-center rounded-full bg-gold-500 px-2 py-0.5 text-xs font-medium text-white"
+                className="inline-flex items-center gap-1 rounded-full bg-gold-500 px-2 py-0.5 text-xs font-medium text-white"
               >
-                ⭐ Featured
+                <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                Featured
               </span>
             )}
           </h1>

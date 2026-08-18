@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import type { ComponentType, SVGProps } from 'react';
+import { ClockIcon, KeyIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import {
   deleteEventAdmin,
@@ -72,23 +75,24 @@ export default function AdminPage() {
             user?.isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700'
           }`}
         >
-          {user?.isSuperAdmin ? '⭐ Super Admin' : 'Admin'}
+          {user?.isSuperAdmin && <StarIcon aria-hidden className="mr-1 inline h-3 w-3 align-[-1px]" />}
+          {user?.isSuperAdmin ? 'Super Admin' : 'Admin'}
         </span>
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiTile label="Catalog places" value={kpis?.totalPlaces} icon="📍" />
+        <KpiTile label="Catalog places" value={kpis?.totalPlaces} icon={MapPinIcon} />
         <KpiTile
           label="Needs attention"
           value={queue?.pendingBusinesses.length}
-          icon="⏳"
+          icon={ClockIcon}
           tone={queue && queue.pendingBusinesses.length > 0 ? 'warning' : undefined}
         />
-        <KpiTile label="Featured this week" value={kpis?.activePlacements} icon="⭐" />
+        <KpiTile label="Featured this week" value={kpis?.activePlacements} icon={StarIcon} />
         <KpiTile
           label="Team members"
           value={kpis?.teamSize ?? undefined}
-          icon="🔑"
+          icon={KeyIcon}
           hint={user?.isSuperAdmin ? undefined : 'Super admin only'}
         />
       </section>
@@ -210,7 +214,10 @@ export default function AdminPage() {
               <li key={review.id} className="rounded-xl border border-slate-200 p-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium text-slate-900">{review.user?.name ?? 'A guest'}</p>
-                  <p className="text-slate-500">{review.overallRating.toFixed(1)} ★</p>
+                  <p className="flex items-center gap-0.5 text-slate-500">
+                    {review.overallRating.toFixed(1)}
+                    <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
+                  </p>
                 </div>
                 {review.comment && <p className="mt-1 text-slate-600">{review.comment}</p>}
               </li>
@@ -225,24 +232,22 @@ export default function AdminPage() {
 function KpiTile({
   label,
   value,
-  icon,
+  icon: Icon,
   tone,
   hint,
 }: {
   label: string;
   value: number | undefined;
-  icon: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   tone?: 'warning';
   hint?: string;
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 ${tone === 'warning' && value ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}
+      className={`rounded-xl border p-3 shadow-card transition-shadow hover:shadow-card-hover ${tone === 'warning' && value ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}
     >
       <div className="flex items-center justify-between">
-        <span aria-hidden className="text-lg">
-          {icon}
-        </span>
+        <Icon aria-hidden className="h-5 w-5 text-brand-600" />
         {tone === 'warning' && Boolean(value) && (
           <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
         )}

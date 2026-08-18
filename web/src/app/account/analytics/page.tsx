@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import type { ComponentType, SVGProps } from 'react';
+import { EyeIcon, BookmarkIcon, PhoneIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { getBusinessAnalytics } from '@/lib/analytics-api';
 import { getMyBusinesses } from '@/lib/business-api';
@@ -93,10 +95,10 @@ function BusinessAnalyticsSection({ business, analytics }: { business: Business;
       <h2 className="font-semibold text-slate-800">{business.name}</h2>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Views" value={totals.view} icon="👁️" />
-        <StatCard label="Saves" value={totals.save} icon="🔖" />
-        <StatCard label="Contact clicks" value={totals.contact_click} icon="📞" />
-        <StatCard label="Booking requests" value={totals.booking_request} icon="📅" />
+        <StatCard label="Views" value={totals.view} icon={EyeIcon} />
+        <StatCard label="Saves" value={totals.save} icon={BookmarkIcon} />
+        <StatCard label="Contact clicks" value={totals.contact_click} icon={PhoneIcon} />
+        <StatCard label="Booking requests" value={totals.booking_request} icon={CalendarDaysIcon} />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -130,12 +132,18 @@ function BusinessAnalyticsSection({ business, analytics }: { business: Business;
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+}) {
   return (
-    <div className="rounded-xl border border-slate-200 p-3 text-center">
-      <div className="text-lg" aria-hidden>
-        {icon}
-      </div>
+    <div className="rounded-xl border border-slate-200 p-3 text-center shadow-card">
+      <Icon aria-hidden className="mx-auto h-5 w-5 text-brand-600" />
       <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
       <p className="text-xs text-slate-500">{label}</p>
     </div>

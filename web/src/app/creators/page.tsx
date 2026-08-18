@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CheckBadgeIcon, StarIcon } from '@heroicons/react/24/solid';
 import { getCreators } from '@/lib/api';
 import { colorForCreator } from '@/lib/category-colors';
 
@@ -43,7 +44,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
             <Link
               key={creator.id}
               href={`/creators/${creator.username}`}
-              className={`flex items-start gap-3 rounded-xl border p-3 hover:border-brand-500 ${
+              className={`flex items-start gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card ${
                 creator.featured ? 'border-gold-400 bg-gold-400/10' : 'border-slate-200'
               }`}
             >
@@ -56,9 +57,14 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
               <div className="min-w-0">
                 <p className="flex items-center gap-1 truncate font-medium text-slate-900">
                   {creator.name}
-                  {creator.verified && <span aria-label="Verified creator">✓</span>}
+                  {creator.verified && <CheckBadgeIcon aria-label="Verified creator" className="h-4 w-4 text-brand-600" />}
                 </p>
-                {creator.featured && <p className="text-xs font-medium text-gold-600">⭐ Featured creator</p>}
+                {creator.featured && (
+                  <p className="flex items-center gap-1 text-xs font-medium text-gold-600">
+                    <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                    Featured creator
+                  </p>
+                )}
                 <p className="truncate text-xs text-slate-500">@{creator.username}</p>
                 {creator.specialties.length > 0 && (
                   <p className="mt-1 truncate text-xs text-slate-500">{creator.specialties.join(' · ')}</p>

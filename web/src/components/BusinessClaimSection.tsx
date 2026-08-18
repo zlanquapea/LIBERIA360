@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { PhoneIcon, ChatBubbleLeftRightIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { claimBusiness, updateBusiness } from '@/lib/business-api';
 import { HttpError } from '@/lib/http';
@@ -113,9 +114,10 @@ export function BusinessClaimSection({
             <ContactLink
               placeId={placeId}
               href={`tel:${business.phone}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-brand-500 hover:bg-brand-50"
             >
-              📞 Call
+              <PhoneIcon aria-hidden className="h-3.5 w-3.5" />
+              Call
             </ContactLink>
           )}
           {business.whatsapp && (
@@ -124,9 +126,10 @@ export function BusinessClaimSection({
               href={whatsappLink(business.whatsapp)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
             >
-              💬 WhatsApp
+              <ChatBubbleLeftRightIcon aria-hidden className="h-3.5 w-3.5" />
+              WhatsApp
             </ContactLink>
           )}
           {business.website && (
@@ -135,9 +138,10 @@ export function BusinessClaimSection({
               href={business.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-brand-500 hover:bg-brand-50"
             >
-              🌐 Website
+              <GlobeAltIcon aria-hidden className="h-3.5 w-3.5" />
+              Website
             </ContactLink>
           )}
         </div>

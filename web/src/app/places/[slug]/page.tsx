@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { PhoneIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import { ApiError, getBusinessByPlace, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
 import { directionsLink, whatsappLink } from '@/lib/contact';
@@ -128,9 +129,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
           href={directionsLink(place.latitude, place.longitude)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-fit items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+          className="inline-flex w-fit items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-800"
         >
-          🧭 Get Directions
+          <PaperAirplaneIcon aria-hidden className="h-4 w-4 -rotate-45" />
+          Get Directions
         </a>
         <p className="text-xs text-slate-500">
           Getting there: private car, taxi, tour operator arrangement, or shared/bus transport where available.
@@ -176,9 +178,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
               <ContactLink
                 placeId={place.id}
                 href={`tel:${place.contactPhone}`}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-brand-500 hover:bg-brand-50"
               >
-                📞 Call
+                <PhoneIcon aria-hidden className="h-4 w-4" />
+                Call
               </ContactLink>
             )}
             {place.whatsapp && (
@@ -187,9 +190,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
                 href={whatsappLink(place.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
               >
-                💬 WhatsApp
+                <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
+                WhatsApp
               </ContactLink>
             )}
           </div>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { MapPinIcon } from '@heroicons/react/24/solid';
 import { getCounties } from '@/lib/api';
 
 export const metadata = { title: 'Counties — LIBERIA360' };
@@ -25,12 +26,12 @@ export default async function CountiesPage() {
             <Link
               key={county.id}
               href={`/counties/${county.slug}`}
-              className={`flex flex-col gap-1 rounded-xl border px-4 py-3 ${
-                live ? 'border-slate-200 hover:border-brand-500' : 'border-slate-100'
+              className={`flex flex-col gap-1 rounded-xl border px-4 py-3 transition-all ${
+                live ? 'border-slate-200 hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card' : 'border-slate-100'
               }`}
             >
               <span aria-hidden className={`text-xl ${live ? '' : 'opacity-40 grayscale'}`}>
-                {county.icon ?? '📍'}
+                {county.icon ?? <MapPinIcon className="h-5 w-5 text-brand-500" />}
               </span>
               <span className={`font-medium ${live ? 'text-slate-900' : 'text-slate-400'}`}>{county.name}</span>
               <span className={`text-xs ${live ? 'text-slate-500' : 'text-slate-400'}`}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { ViewfinderCircleIcon } from '@heroicons/react/24/outline';
 import { ApiError, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import type { Place } from '@/lib/types';
@@ -85,9 +86,7 @@ export default function NearMePage() {
 
       {!coords ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center">
-          <span aria-hidden className="text-3xl">
-            📡
-          </span>
+          <ViewfinderCircleIcon aria-hidden className="h-10 w-10 text-gold-500" />
           <p className="text-sm text-slate-500">Share your location to see what&apos;s nearby.</p>
           <button
             type="button"

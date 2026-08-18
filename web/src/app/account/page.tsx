@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import { TwoFactorSettings } from '@/components/TwoFactorSettings';
@@ -131,9 +132,10 @@ export default function AccountPage() {
       {user.isAdmin && (
         <Link
           href="/admin"
-          className="rounded-full border-2 border-gold-400 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-gold-600"
+          className="flex items-center justify-center gap-1.5 rounded-full border-2 border-gold-400 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:border-gold-600"
         >
-          ⭐ Admin dashboard
+          <StarIcon aria-hidden className="h-4 w-4 text-gold-500" />
+          Admin dashboard
         </Link>
       )}
 
