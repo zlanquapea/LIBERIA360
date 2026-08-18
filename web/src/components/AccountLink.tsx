@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 
 // Header account affordance — signed out shows "Log in", signed in shows
@@ -15,9 +16,9 @@ export function AccountLink() {
     return (
       <Link
         href="/login"
-        className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:border-brand-500 hover:text-brand-700"
+        className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
       >
-        <span aria-hidden>👤</span>
+        <UserCircleIcon aria-hidden className="h-4 w-4" />
         Log in
       </Link>
     );
@@ -29,7 +30,7 @@ export function AccountLink() {
     <Link
       href="/account"
       aria-label={`Account — signed in as ${user.name}`}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white hover:bg-brand-800"
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-brand-800"
     >
       {initial}
     </Link>
