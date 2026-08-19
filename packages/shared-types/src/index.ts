@@ -558,6 +558,8 @@ export interface AdminAction {
   targetType: string;
   targetId: string | null;
   metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
   createdAt: string;
 }
 
@@ -569,4 +571,61 @@ export interface PaginatedAdminActions {
     limit: number;
     totalPages: number;
   };
+}
+
+// api/src/security/entities/login-activity.entity.ts (super-admin-only —
+// see api/README.md's "Security — login activity & session revocation"
+// section). Every completed login attempt, success or failure.
+export type LoginActivityReason =
+  | "success"
+  | "invalid_credentials"
+  | "invalid_2fa_code";
+
+export interface LoginActivity {
+  id: string;
+  userId: string | null;
+  user: AuthUser | null;
+  emailAttempted: string;
+  success: boolean;
+  reason: LoginActivityReason;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedLoginActivity {
+  data: LoginActivity[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// api/src/security/login-activity.service.ts's getOverview().
+export interface SecurityOverview {
+  failedLoginsLast1h: number;
+  failedLoginsLast24h: number;
+  distinctFailingIpsLast24h: number;
+  adminTwoFactorAdoption: {
+    total: number;
+    enabled: number;
+  };
+}
+
+// api/src/admin/admin.service.ts's getPlatformKpis() — GET /admin/kpis,
+// super-admin only. No revenue figure: no money actually moves through
+// the app yet (Booking.paymentStatus stays "unpaid" until a real MTN
+// Mobile Money integration lands).
+export interface PlatformKpis {
+  totalUsers: number;
+  newUsersLast7Days: number;
+  totalPlaces: number;
+  totalBusinessListings: number;
+  claimedBusinessCount: number;
+  businessClaimRate: number;
+  totalReviews: number;
+  totalBookings: number;
+  bookingsByStatus: Record<BookingStatus, number>;
 }

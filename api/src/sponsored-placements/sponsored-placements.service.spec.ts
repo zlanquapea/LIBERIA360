@@ -90,6 +90,7 @@ describe("SponsoredPlacementsService", () => {
           startDate: DTO.startDate,
           endDate: DTO.endDate,
         },
+        undefined,
       );
     });
   });
@@ -117,6 +118,7 @@ describe("SponsoredPlacementsService", () => {
         "sponsored_placement",
         "placement-1",
         { placeId: "place-1" },
+        undefined,
       );
     });
   });

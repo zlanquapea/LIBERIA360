@@ -9,6 +9,7 @@ import { SponsoredPlacement } from "./entities/sponsored-placement.entity";
 import { Place } from "../places/entities/place.entity";
 import { CreateSponsoredPlacementDto } from "./dto/create-sponsored-placement.dto";
 import { AdminAuditService } from "../admin/admin-audit.service";
+import { RequestInfo } from "../common/request-info";
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -27,6 +28,7 @@ export class SponsoredPlacementsService {
   async create(
     adminUserId: string,
     dto: CreateSponsoredPlacementDto,
+    requestInfo?: RequestInfo,
   ): Promise<SponsoredPlacement> {
     const place = await this.placeRepo.findOne({ where: { id: dto.placeId } });
     if (!place) {
@@ -50,6 +52,7 @@ export class SponsoredPlacementsService {
       "sponsored_placement",
       placement.id,
       { placeId: dto.placeId, startDate: dto.startDate, endDate: dto.endDate },
+      requestInfo,
     );
     return this.placementRepo.findOneOrFail({ where: { id: placement.id } });
   }
@@ -73,7 +76,11 @@ export class SponsoredPlacementsService {
     return this.placementRepo.find({ order: { startDate: "DESC" } });
   }
 
-  async revoke(adminUserId: string, id: string): Promise<void> {
+  async revoke(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
     const placement = await this.placementRepo.findOne({ where: { id } });
     if (!placement) {
       throw new NotFoundException(`Sponsored placement "${id}" not found`);
@@ -85,6 +92,7 @@ export class SponsoredPlacementsService {
       "sponsored_placement",
       id,
       { placeId: placement.placeId },
+      requestInfo,
     );
   }
 }

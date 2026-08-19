@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AdminAction } from "./entities/admin-action.entity";
+import { RequestInfo } from "../common/request-info";
 
 export interface PaginatedAdminActions {
   data: AdminAction[];
@@ -36,6 +37,7 @@ export class AdminAuditService {
     targetType: string,
     targetId: string | null,
     metadata?: Record<string, unknown>,
+    requestInfo?: RequestInfo,
   ): Promise<void> {
     try {
       await this.actionRepo.save(
@@ -45,6 +47,8 @@ export class AdminAuditService {
           targetType,
           targetId,
           metadata: metadata ?? null,
+          ipAddress: requestInfo?.ipAddress ?? null,
+          userAgent: requestInfo?.userAgent ?? null,
         }),
       );
     } catch (error) {

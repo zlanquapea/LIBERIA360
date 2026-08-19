@@ -5,8 +5,10 @@ import {
   Param,
   Patch,
   Query,
+  Req,
   UseGuards,
 } from "@nestjs/common";
+import type { Request } from "express";
 import { AdminTeamService } from "./admin-team.service";
 import { SetTeamRolesDto } from "./dto/set-team-roles.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -14,6 +16,7 @@ import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
+import { getRequestInfo } from "../common/request-info";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 @ApiTags("Admin Team")
@@ -39,11 +42,13 @@ export class AdminTeamController {
     @CurrentUser() actingUser: User,
     @Param("userId") userId: string,
     @Body() dto: SetTeamRolesDto,
+    @Req() req: Request,
   ) {
     const updated = await this.adminTeamService.setRoles(
       actingUser.id,
       userId,
       dto,
+      getRequestInfo(req),
     );
     return toPublicUser(updated);
   }

@@ -22,6 +22,7 @@ import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateCountyDto } from "./dto/update-county.dto";
 import { ReviewsService } from "../reviews/reviews.service";
 import { AdminAuditService } from "./admin-audit.service";
+import { RequestInfo } from "../common/request-info";
 
 /** Admin content management (Tech Spec §8) — create/edit Place, Business,
  * Activity, and Event records. The first way to write to the catalog
@@ -188,7 +189,11 @@ export class AdminContentService {
     return this.eventRepo.findOneOrFail({ where: { id } });
   }
 
-  async deleteEvent(adminUserId: string, id: string): Promise<void> {
+  async deleteEvent(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
     const event = await this.eventRepo.findOne({ where: { id } });
     if (!event) {
       throw new NotFoundException(`Event "${id}" not found`);
@@ -200,18 +205,25 @@ export class AdminContentService {
       "event",
       id,
       { name: event.name },
+      requestInfo,
     );
   }
 
   // ---- Reviews ----
 
-  async deleteReview(adminUserId: string, id: string): Promise<void> {
+  async deleteReview(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
     await this.reviewsService.remove(id);
     await this.adminAuditService.log(
       adminUserId,
       "review.removed",
       "review",
       id,
+      undefined,
+      requestInfo,
     );
   }
 

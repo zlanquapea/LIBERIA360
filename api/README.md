@@ -264,7 +264,11 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `GET /admin/team` | List admins and super admins | Super Admin |
 | `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
 | `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |
-| `GET /admin/audit-log` | Paginated log of verification changes, role changes, sponsored-placement create/revoke, and content removal | Super Admin |
+| `GET /admin/audit-log` | Paginated log of verification changes, role changes, sponsored-placement create/revoke, and content removal — now including the acting admin's IP and user-agent | Super Admin |
+| `GET /admin/kpis` | Platform-health numbers: users, signups (7d), places, business claim rate, reviews, bookings by status | Super Admin |
+| `GET /admin/security/login-activity?onlyFailed=` | Paginated login attempts (success and failure), with IP/device | Super Admin |
+| `GET /admin/security/overview` | Failed-login counts (1h/24h), distinct failing IPs (24h), admin-team 2FA adoption | Super Admin |
+| `POST /admin/security/users/:id/revoke-sessions` | Force-end every active session on an account (no password needed) — audit-logged | Super Admin |
 
 The first admin is granted directly in the database:
 
@@ -283,8 +287,9 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 - **Account lifecycle**: non-enumerating forgot-password, single-use time-limited tokens (SHA-256 hashed at rest) for password reset and email verification, in-place account anonymization on delete (no cascading hard-delete through reviews/bookings/messages).
 - **Boot-time validation**: refuses to start in production if `JWT_SECRET` or `TWO_FACTOR_ENCRYPTION_KEY` are still the committed placeholder values.
 - **Uploads**: every image is re-encoded server-side (strips EXIF, resizes, recompresses) regardless of storage backend.
-- **Audit trail**: `admin_actions` table records verification changes, admin role changes, sponsored-placement create/revoke, and content removal, exposed via `GET /admin/audit-log` (super-admin-only).
+- **Audit trail**: `admin_actions` table records verification changes, admin role changes, sponsored-placement create/revoke, content removal, and forced session revocations — each row includes the acting admin's IP address and user-agent (see `src/common/request-info.ts`), exposed via `GET /admin/audit-log` (super-admin-only).
 - **Content moderation**: any signed-in user can report a review or event (`POST /reports`); 3+ independent reports surface it in the admin moderation queue for removal (`DELETE /admin/reviews/:id`, `DELETE /admin/events/:id`).
+- **Login activity & session revocation**: every completed login attempt (password-only, or the final 2FA step for accounts that have it) is recorded — success or failure, with IP/device (`login_activity` table, `src/security/`) — the raw material for basic brute-force detection (a burst of failures against one email or IP) and for a super admin to see who's signing in to admin accounts and from where. A super admin can force-end any account's sessions immediately, without that account's password, via `POST /admin/security/users/:id/revoke-sessions` — reuses the same `tokenVersion` bump as the existing self-service "sign out everywhere," just triggered by someone other than the account holder.
 - **Dependencies**: `npm audit` clean (0 vulnerabilities) as of the current dependency set.
 
 ## Observability
@@ -302,3 +307,4 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 - No PostGIS: `latitude`/`longitude` are plain columns and "Near Me" uses a Haversine SQL expression instead of spatial indexing. Adequate at the current catalog size.
 - Bookings do not process real payments; MTN Mobile Money integration requires a merchant relationship not available in this environment.
 - `npm run load-test` (`scripts/load-test.js`, autocannon) is a local single-instance sanity check against `/health`, catalog browse/search, and a place detail page — not a production capacity number. Run it again once there's a real deployed target and a traffic estimate.
+- IP addresses recorded in the audit trail and login activity log (`src/common/request-info.ts`) come from Express's own `req.ip`, which only reflects `X-Forwarded-For` if the app has `trust proxy` configured — it doesn't yet. Behind a reverse proxy or load balancer without that setting, every request appears to come from the proxy's own address — the same underlying gap as `@nestjs/throttler`'s per-instance rate limiting (see DEPLOYMENT.md's "Known limitations").

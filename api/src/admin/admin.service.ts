@@ -5,6 +5,9 @@ import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
+import { User } from "../users/entities/user.entity";
+import { Booking } from "../bookings/entities/booking.entity";
+import { BookingStatus } from "../bookings/entities/booking.enums";
 import { VerificationStatus } from "../places/entities/place.enums";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { FreshnessResponse } from "../freshness/entities/place-freshness-report.enums";
@@ -14,6 +17,9 @@ import {
   ReportTargetType,
 } from "../reports/entities/content-report.enums";
 import { AdminAuditService } from "./admin-audit.service";
+import { RequestInfo } from "../common/request-info";
+
+const NEW_USER_WINDOW_DAYS = 7;
 
 const MODERATION_QUEUE_REVIEW_LIMIT = 20;
 
@@ -52,6 +58,23 @@ export interface ModerationQueue {
   flaggedContent: FlaggedContent[];
 }
 
+// Real, honestly-computable numbers only — no revenue figure, since no
+// money actually moves through the app yet (Booking.paymentStatus stays
+// "unpaid" for every booking until a real MTN Mobile Money integration
+// lands; see Booking's own doc comment). A fabricated dollar figure would
+// be actively misleading on a super admin's dashboard.
+export interface PlatformKpis {
+  totalUsers: number;
+  newUsersLast7Days: number;
+  totalPlaces: number;
+  totalBusinessListings: number;
+  claimedBusinessCount: number; // ownerUserId set — a real business claimed it
+  businessClaimRate: number; // 0–1, claimedBusinessCount / totalPlaces
+  totalReviews: number;
+  totalBookings: number;
+  bookingsByStatus: Record<BookingStatus, number>;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -67,6 +90,10 @@ export class AdminService {
     private readonly eventRepo: Repository<Event>,
     @InjectRepository(ContentReport)
     private readonly contentReportRepo: Repository<ContentReport>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
     private readonly adminAuditService: AdminAuditService,
   ) {}
 
@@ -74,6 +101,7 @@ export class AdminService {
     adminUserId: string,
     placeId: string,
     status: VerificationStatus,
+    requestInfo?: RequestInfo,
   ): Promise<Place> {
     const place = await this.placeRepo.findOne({ where: { id: placeId } });
     if (!place) {
@@ -90,6 +118,7 @@ export class AdminService {
       "place",
       placeId,
       { from: previousStatus, to: status },
+      requestInfo,
     );
     return saved;
   }
@@ -98,6 +127,7 @@ export class AdminService {
     adminUserId: string,
     businessId: string,
     status: VerificationStatus,
+    requestInfo?: RequestInfo,
   ): Promise<Business> {
     const business = await this.businessRepo.findOne({
       where: { id: businessId },
@@ -116,6 +146,7 @@ export class AdminService {
       "business",
       businessId,
       { from: previousStatus, to: status },
+      requestInfo,
     );
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
   }
@@ -265,5 +296,70 @@ export class AdminService {
             : null,
       };
     });
+  }
+
+  /** Super admin dashboard's platform-health numbers — see PlatformKpis'
+   * own doc comment for why there's no revenue figure. */
+  async getPlatformKpis(): Promise<PlatformKpis> {
+    const newUserWindowStart = new Date();
+    newUserWindowStart.setDate(
+      newUserWindowStart.getDate() - NEW_USER_WINDOW_DAYS,
+    );
+
+    const [
+      totalUsers,
+      newUsersLast7Days,
+      totalPlaces,
+      totalBusinessListings,
+      claimedBusinessCount,
+      totalReviews,
+      totalBookings,
+      bookingCountsByStatusRaw,
+    ] = await Promise.all([
+      this.userRepo.count(),
+      this.userRepo
+        .createQueryBuilder("user")
+        .where("user.createdAt >= :newUserWindowStart", {
+          newUserWindowStart,
+        })
+        .getCount(),
+      this.placeRepo.count(),
+      this.businessRepo.count(),
+      this.businessRepo
+        .createQueryBuilder("business")
+        .where("business.ownerUserId IS NOT NULL")
+        .getCount(),
+      this.reviewRepo.count(),
+      this.bookingRepo.count(),
+      this.bookingRepo
+        .createQueryBuilder("booking")
+        .select("booking.status", "status")
+        .addSelect("COUNT(*)", "count")
+        .groupBy("booking.status")
+        .getRawMany<{ status: BookingStatus; count: string }>(),
+    ]);
+
+    const bookingsByStatus: Record<BookingStatus, number> = {
+      [BookingStatus.PENDING]: 0,
+      [BookingStatus.CONFIRMED]: 0,
+      [BookingStatus.DECLINED]: 0,
+      [BookingStatus.CANCELLED]: 0,
+    };
+    for (const row of bookingCountsByStatusRaw) {
+      bookingsByStatus[row.status] = parseInt(row.count, 10);
+    }
+
+    return {
+      totalUsers,
+      newUsersLast7Days,
+      totalPlaces,
+      totalBusinessListings,
+      claimedBusinessCount,
+      businessClaimRate:
+        totalPlaces > 0 ? claimedBusinessCount / totalPlaces : 0,
+      totalReviews,
+      totalBookings,
+      bookingsByStatus,
+    };
   }
 }

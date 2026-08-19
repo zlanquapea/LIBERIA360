@@ -8,6 +8,7 @@ import { Repository } from "typeorm";
 import { User } from "../users/entities/user.entity";
 import { SetTeamRolesDto } from "./dto/set-team-roles.dto";
 import { AdminAuditService } from "./admin-audit.service";
+import { RequestInfo } from "../common/request-info";
 
 /** Team & Access management (Tech Spec §7/§8) — before this, the *only*
  * way to grant admin access was a raw SQL UPDATE against the users table
@@ -48,6 +49,7 @@ export class AdminTeamService {
     actingUserId: string,
     targetUserId: string,
     dto: SetTeamRolesDto,
+    requestInfo?: RequestInfo,
   ): Promise<User> {
     if (actingUserId === targetUserId && !dto.isSuperAdmin) {
       // A super admin can still demote themselves to a plain admin or
@@ -86,6 +88,7 @@ export class AdminTeamService {
         from: previousRoles,
         to: { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin },
       },
+      requestInfo,
     );
     return saved;
   }

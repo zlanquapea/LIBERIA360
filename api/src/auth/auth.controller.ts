@@ -6,11 +6,14 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Req,
   UseGuards,
   Post,
 } from "@nestjs/common";
+import type { Request } from "express";
 import { Throttle, seconds } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
+import { getRequestInfo } from "../common/request-info";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
@@ -47,8 +50,8 @@ export class AuthController {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.authService.login(dto, getRequestInfo(req));
   }
 
   // Login step 2 — exchanges the pendingToken from a twoFactorRequired
@@ -60,8 +63,8 @@ export class AuthController {
   @Post("2fa/verify")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  verifyTwoFactor(@Body() dto: VerifyTwoFactorDto) {
-    return this.authService.verifyTwoFactor(dto);
+  verifyTwoFactor(@Body() dto: VerifyTwoFactorDto, @Req() req: Request) {
+    return this.authService.verifyTwoFactor(dto, getRequestInfo(req));
   }
 
   @Get("me")
