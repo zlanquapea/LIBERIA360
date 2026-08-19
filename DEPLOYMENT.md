@@ -11,17 +11,33 @@ docs.
 ## 0. Just want a temporary link for friends to test?
 
 You don't need to work through this whole checklist for a short testing
-window — `render.yaml` in the repo root is a Render Blueprint that deploys
-Postgres + the API + the web app together in a few clicks (Render dashboard
-→ New → Blueprint → connect this repo → Apply). It still needs real values
-for section 1's two secrets (Blueprint auto-generates those) and section 3's
-domain/CORS wiring (Blueprint leaves those as placeholders you fill in once
-Render assigns your `*.onrender.com` URLs) — everything else in this
-checklist (real payments, S3 storage, SMTP, Sentry) is optional for a quick
-test and safe to leave unset. See `render.yaml`'s own comments for the exact
-steps and what's traded off (uploaded photos won't survive a redeploy on
-Render's free tier; password-reset/verification emails log instead of
-sending unless you add real `SMTP_*` vars).
+window. Two options, both fine for this:
+
+- **Render**: `render.yaml` in the repo root is a Blueprint that deploys
+  Postgres + the API + the web app together in a few clicks (Render
+  dashboard → New → Blueprint → connect this repo → Apply). Still needs real
+  values for section 1's two secrets (Blueprint auto-generates those) and
+  section 3's domain/CORS wiring (Blueprint leaves those as placeholders you
+  fill in once Render assigns your `*.onrender.com` URLs). See `render.yaml`'s
+  own comments for the exact steps.
+- **Railway**: no blueprint file — deploy from the dashboard as two services
+  from this same repo (one for `api`, one for `web`) plus a one-click Postgres
+  plugin, wiring `DB_HOST`/`DB_PORT`/etc. to the Postgres plugin's variables
+  via Railway's `${{Postgres.PGHOST}}`-style references. The root
+  `package.json`'s `build`/`start` scripts (`npm run build` /
+  `npm start`) exist specifically so Railway's zero-config builder
+  (Railpack) can auto-detect a start command for the `api` service without
+  you having to set one manually — they build and start `api` specifically,
+  since a single root script can't serve two different apps. The `web`
+  service still needs an explicit custom Start Command set in Railway's UI
+  (`npm run start --workspace=web -- -p $PORT`), since it's the second app
+  in this repo and root auto-detection can only point at one.
+
+Either way: everything else in this checklist (real payments, S3 storage,
+SMTP, Sentry) is optional for a quick test and safe to leave unset — just
+know that uploaded photos won't survive a redeploy on either platform's free
+tier, and password-reset/verification emails log instead of sending unless
+you add real `SMTP_*` vars.
 
 ## 1. Secrets
 

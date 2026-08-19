@@ -18,7 +18,9 @@
     "lint:api": "npm run lint --workspace=api",
     "lint:web": "npm run lint --workspace=web",
     "seed:api": "npm run seed --workspace=api",
-    "migrate:api": "npm run migration:run --workspace=api"
+    "migrate:api": "npm run migration:run --workspace=api",
+    "build": "npm run build:api",
+    "start": "npm run migrate:api && npm run start:prod --workspace=api"
   },
   "engines": {
     "node": ">=20"
