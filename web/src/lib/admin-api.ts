@@ -10,7 +10,11 @@ import type {
   Creator,
   Event,
   ModerationQueue,
+  PaginatedAdminActions,
+  PaginatedLoginActivity,
   Place,
+  PlatformKpis,
+  SecurityOverview,
   SponsoredPlacement,
   UpdateActivityInput,
   UpdateBusinessAdminInput,
@@ -174,5 +178,45 @@ export function setTeamRoles(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify(roles),
+  });
+}
+
+// Audit log — super admin only. See api/src/admin/admin-audit.service.ts.
+export function getAuditLog(token: string, page = 1, limit = 20): Promise<PaginatedAdminActions> {
+  return apiRequest<PaginatedAdminActions>(`/admin/audit-log?page=${page}&limit=${limit}`, {
+    headers: authHeader(token),
+  });
+}
+
+// Platform KPIs — super admin only. See api/src/admin/admin.service.ts's
+// getPlatformKpis().
+export function getPlatformKpis(token: string): Promise<PlatformKpis> {
+  return apiRequest<PlatformKpis>('/admin/kpis', { headers: authHeader(token) });
+}
+
+// Security — super admin only. See api/src/security/login-activity.service.ts
+// and api/src/admin/admin-security.controller.ts.
+export function getLoginActivity(
+  token: string,
+  { page = 1, limit = 20, onlyFailed }: { page?: number; limit?: number; onlyFailed?: boolean } = {},
+): Promise<PaginatedLoginActivity> {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (onlyFailed) query.set('onlyFailed', 'true');
+  return apiRequest<PaginatedLoginActivity>(`/admin/security/login-activity?${query}`, {
+    headers: authHeader(token),
+  });
+}
+
+export function getSecurityOverview(token: string): Promise<SecurityOverview> {
+  return apiRequest<SecurityOverview>('/admin/security/overview', { headers: authHeader(token) });
+}
+
+// Ends every active session on the target account immediately — doesn't
+// require that account's password, unlike the self-service
+// POST /auth/logout-all a user can call on themselves.
+export function revokeUserSessions(token: string, userId: string): Promise<AuthUser> {
+  return apiRequest<AuthUser>(`/admin/security/users/${userId}/revoke-sessions`, {
+    method: 'POST',
+    headers: authHeader(token),
   });
 }

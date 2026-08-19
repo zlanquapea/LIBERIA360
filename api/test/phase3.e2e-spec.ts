@@ -1100,4 +1100,129 @@ describe("Phase 3 (e2e)", () => {
         .expect(403);
     });
   });
+
+  describe("Platform KPIs (super admin only)", () => {
+    it("blocks a regular admin", async () => {
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/kpis")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+    });
+
+    it("returns real, non-negative platform numbers to a super admin", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/admin/kpis")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(res.body.totalUsers).toBeGreaterThan(0);
+      expect(res.body.totalPlaces).toBeGreaterThan(0);
+      expect(res.body.businessClaimRate).toBeGreaterThanOrEqual(0);
+      expect(res.body.businessClaimRate).toBeLessThanOrEqual(1);
+      expect(res.body.bookingsByStatus).toEqual(
+        expect.objectContaining({
+          pending: expect.any(Number),
+          confirmed: expect.any(Number),
+          declined: expect.any(Number),
+          cancelled: expect.any(Number),
+        }),
+      );
+    });
+  });
+
+  describe("Security — login activity, overview, and session revocation (super admin only)", () => {
+    it("blocks a regular admin from every security endpoint", async () => {
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/security/login-activity")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/security/overview")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .post(`/api/v1/admin/security/users/${superAdminId}/revoke-sessions`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(403);
+    });
+
+    it("records a failed and a successful login attempt, with device info, visible to a super admin", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/auth/login")
+        .set("User-Agent", "Phase3E2E/1.0")
+        .send({ email: "security-e2e@example.com", password: "wrong" })
+        .expect(401);
+
+      await registerUser("security-e2e@example.com", "Security E2E");
+      await request(app.getHttpServer())
+        .post("/api/v1/auth/login")
+        .set("User-Agent", "Phase3E2E/1.0")
+        .send({ email: "security-e2e@example.com", password: "password123" })
+        .expect(200);
+
+      const activity = await request(app.getHttpServer())
+        .get("/api/v1/admin/security/login-activity")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      const forThisEmail = activity.body.data.filter(
+        (a: { emailAttempted: string }) =>
+          a.emailAttempted === "security-e2e@example.com",
+      );
+      expect(forThisEmail.some((a: { success: boolean }) => a.success)).toBe(
+        true,
+      );
+      expect(forThisEmail.some((a: { success: boolean }) => !a.success)).toBe(
+        true,
+      );
+      expect(forThisEmail[0].userAgent).toBe("Phase3E2E/1.0");
+
+      const failedOnly = await request(app.getHttpServer())
+        .get("/api/v1/admin/security/login-activity")
+        .query({ onlyFailed: "true" })
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(
+        failedOnly.body.data.every((a: { success: boolean }) => !a.success),
+      ).toBe(true);
+
+      const overview = await request(app.getHttpServer())
+        .get("/api/v1/admin/security/overview")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(overview.body.failedLoginsLast24h).toBeGreaterThan(0);
+      expect(overview.body.adminTwoFactorAdoption.total).toBeGreaterThan(0);
+    });
+
+    it("revokes a user's sessions — their existing token stops working, and it's audit-logged", async () => {
+      const target = await registerUser(
+        "revoke-target@example.com",
+        "Revoke Target",
+      );
+
+      // The token from registration works until revoked.
+      await request(app.getHttpServer())
+        .get("/api/v1/auth/me")
+        .set("Authorization", `Bearer ${target.token}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .post(`/api/v1/admin/security/users/${target.id}/revoke-sessions`)
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get("/api/v1/auth/me")
+        .set("Authorization", `Bearer ${target.token}`)
+        .expect(401);
+
+      const auditLog = await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      const entry = auditLog.body.data.find(
+        (a: { targetId: string; action: string }) =>
+          a.targetId === target.id && a.action === "user.sessions_revoked",
+      );
+      expect(entry).toBeDefined();
+    });
+  });
 });

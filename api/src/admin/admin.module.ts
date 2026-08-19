@@ -11,7 +11,10 @@ import { User } from "../users/entities/user.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { ContentReport } from "../reports/entities/content-report.entity";
+import { Booking } from "../bookings/entities/booking.entity";
 import { ReviewsModule } from "../reviews/reviews.module";
+import { AuthModule } from "../auth/auth.module";
+import { SecurityModule } from "../security/security.module";
 import { AdminService } from "./admin.service";
 import { AdminController } from "./admin.controller";
 import { AdminContentService } from "./admin-content.service";
@@ -22,6 +25,7 @@ import { AdminTeamService } from "./admin-team.service";
 import { AdminTeamController } from "./admin-team.controller";
 import { AdminAuditModule } from "./admin-audit.module";
 import { AdminAuditController } from "./admin-audit.controller";
+import { AdminSecurityController } from "./admin-security.controller";
 
 @Module({
   imports: [
@@ -37,9 +41,12 @@ import { AdminAuditController } from "./admin-audit.controller";
       AnalyticsEvent,
       PlaceFreshnessReport,
       ContentReport,
+      Booking,
     ]),
     AdminAuditModule,
     ReviewsModule,
+    AuthModule,
+    SecurityModule,
   ],
   controllers: [
     AdminController,
@@ -47,6 +54,7 @@ import { AdminAuditController } from "./admin-audit.controller";
     AdminAnalyticsController,
     AdminTeamController,
     AdminAuditController,
+    AdminSecurityController,
   ],
   providers: [
     AdminService,

@@ -29,7 +29,7 @@ describe("AdminAuditService", () => {
   });
 
   describe("log", () => {
-    it("saves an action with the given fields, defaulting metadata to null", async () => {
+    it("saves an action with the given fields, defaulting metadata and request info to null", async () => {
       await service.log("admin-1", "place.verification_changed", "place", "p1");
       expect(actionRepo.save).toHaveBeenCalledWith({
         adminUserId: "admin-1",
@@ -37,6 +37,8 @@ describe("AdminAuditService", () => {
         targetType: "place",
         targetId: "p1",
         metadata: null,
+        ipAddress: null,
+        userAgent: null,
       });
     });
 
@@ -48,6 +50,23 @@ describe("AdminAuditService", () => {
       expect(actionRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           metadata: { from: { isAdmin: false }, to: { isAdmin: true } },
+        }),
+      );
+    });
+
+    it("passes request info (ip/user-agent) through when provided", async () => {
+      await service.log(
+        "admin-1",
+        "admin_team.roles_changed",
+        "user",
+        "u1",
+        undefined,
+        { ipAddress: "203.0.113.5", userAgent: "Mozilla/5.0" },
+      );
+      expect(actionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ipAddress: "203.0.113.5",
+          userAgent: "Mozilla/5.0",
         }),
       );
     });

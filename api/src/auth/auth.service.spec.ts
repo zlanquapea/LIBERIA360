@@ -7,6 +7,7 @@ import { authenticator } from "otplib";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
 import { MailService } from "../mail/mail.service";
+import { LoginActivityService } from "../security/login-activity.service";
 import { AuthProvider } from "../users/entities/user.enums";
 import { encryptSecret } from "./two-factor-crypto";
 import { hashToken } from "./token-hash";
@@ -35,6 +36,7 @@ describe("AuthService", () => {
     sendEmailVerification: jest.Mock;
     sendPasswordReset: jest.Mock;
   };
+  let loginActivityService: { record: jest.Mock };
 
   beforeEach(async () => {
     usersService = {
@@ -55,6 +57,9 @@ describe("AuthService", () => {
       sendEmailVerification: jest.fn().mockResolvedValue(undefined),
       sendPasswordReset: jest.fn().mockResolvedValue(undefined),
     };
+    loginActivityService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -63,6 +68,7 @@ describe("AuthService", () => {
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
         { provide: MailService, useValue: mailService },
+        { provide: LoginActivityService, useValue: loginActivityService },
       ],
     }).compile();
 
@@ -172,6 +178,78 @@ describe("AuthService", () => {
         twoFactorRequired: true,
         pendingToken: "signed.jwt.token",
       });
+    });
+
+    it("records a failed login-activity row for an unknown email", async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      await expect(
+        service.login({ email: "nobody@example.com", password: "x" }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(loginActivityService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: null,
+          emailAttempted: "nobody@example.com",
+          success: false,
+          reason: "invalid_credentials",
+        }),
+      );
+    });
+
+    it("records a failed login-activity row for a wrong password, attributed to the real account", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        passwordHash,
+      });
+      await expect(
+        service.login({ email: "x@example.com", password: "wrong-password" }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(loginActivityService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "1",
+          success: false,
+          reason: "invalid_credentials",
+        }),
+      );
+    });
+
+    it("records a successful login-activity row for a non-2FA account", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        passwordHash,
+        homeCounty: null,
+        isAdmin: false,
+        createdAt: new Date(),
+      });
+      await service.login({
+        email: "x@example.com",
+        password: "correct-password",
+      });
+      expect(loginActivityService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "1",
+          success: true,
+          reason: "success",
+        }),
+      );
+    });
+
+    it("does NOT record login-activity yet when 2FA is required — that's verifyTwoFactor's job", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        passwordHash,
+        twoFactorEnabled: true,
+      });
+      await service.login({
+        email: "x@example.com",
+        password: "correct-password",
+      });
+      expect(loginActivityService.record).not.toHaveBeenCalled();
     });
   });
 
@@ -323,6 +401,58 @@ describe("AuthService", () => {
           code: "000000",
         }),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it("records a successful login-activity row for a valid TOTP code", async () => {
+      const secret = authenticator.generateSecret();
+      jwtService.verify.mockReturnValue({ sub: "1", purpose: "2fa-pending" });
+      usersService.findById.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        twoFactorEnabled: true,
+        twoFactorSecret: encryptOnTestKey(secret),
+        twoFactorRecoveryCodes: [],
+      });
+
+      await service.verifyTwoFactor({
+        pendingToken: "pending.jwt",
+        code: authenticator.generate(secret),
+      });
+
+      expect(loginActivityService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "1",
+          emailAttempted: "x@example.com",
+          success: true,
+          reason: "success",
+        }),
+      );
+    });
+
+    it("records a failed login-activity row for an invalid code", async () => {
+      jwtService.verify.mockReturnValue({ sub: "1", purpose: "2fa-pending" });
+      usersService.findById.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        twoFactorEnabled: true,
+        twoFactorSecret: encryptOnTestKey(authenticator.generateSecret()),
+        twoFactorRecoveryCodes: [],
+      });
+
+      await expect(
+        service.verifyTwoFactor({
+          pendingToken: "pending.jwt",
+          code: "000000",
+        }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(loginActivityService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "1",
+          success: false,
+          reason: "invalid_2fa_code",
+        }),
+      );
     });
   });
 
@@ -489,6 +619,21 @@ describe("AuthService", () => {
         tokenVersion: 6,
       });
       expect(result.accessToken).toBe("signed.jwt.token");
+    });
+  });
+
+  describe("revokeSessions", () => {
+    it("rejects an unknown user", async () => {
+      usersService.findById.mockResolvedValue(null);
+      await expect(service.revokeSessions("nonexistent")).rejects.toThrow();
+    });
+
+    it("bumps the target user's tokenVersion without needing their password", async () => {
+      usersService.findById.mockResolvedValue({ id: "1", tokenVersion: 5 });
+      await service.revokeSessions("1");
+      expect(usersService.update).toHaveBeenCalledWith("1", {
+        tokenVersion: 6,
+      });
     });
   });
 

@@ -52,6 +52,18 @@ export class AdminAction {
   @Column({ type: "jsonb", nullable: true })
   metadata: Record<string, unknown> | null;
 
+  // Captured from the request (see common/request-info.ts) — "who did
+  // this and from what" is the whole point of an accountability log; an
+  // admin_user_id alone doesn't tell a super admin whether a role change
+  // came from the usual laptop or somewhere unexpected. Nullable because
+  // a handful of older rows predate this column, not because it's ever
+  // deliberately skipped going forward.
+  @Column({ name: "ip_address", type: "varchar", length: 64, nullable: true })
+  ipAddress: string | null;
+
+  @Column({ name: "user_agent", type: "text", nullable: true })
+  userAgent: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

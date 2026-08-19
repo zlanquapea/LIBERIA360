@@ -3,13 +3,23 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { ComponentType, SVGProps } from 'react';
-import { ClockIcon, KeyIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import {
+  ClockIcon,
+  KeyIcon,
+  MapPinIcon,
+  UsersIcon,
+  ArrowTrendingUpIcon,
+  ChatBubbleBottomCenterTextIcon,
+  CalendarDaysIcon,
+  BuildingStorefrontIcon,
+} from '@heroicons/react/24/outline';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import {
   deleteEventAdmin,
   deleteReviewAdmin,
   getModerationQueue,
+  getPlatformKpis,
   getTeamRoster,
   setBusinessVerification,
   setCreatorFeatured,
@@ -17,7 +27,7 @@ import {
 import { getActiveSponsoredPlacements, getCreatorByUsername, getPlaces } from '@/lib/api';
 import { formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { Creator, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
+import type { Creator, FlaggedContent, ModerationQueue, PlatformKpis, VerificationStatus } from '@/lib/types';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -41,6 +51,7 @@ export default function AdminPage() {
   const { user, token } = useAuth();
   const [queue, setQueue] = useState<ModerationQueue | null>(null);
   const [kpis, setKpis] = useState<Kpis | null>(null);
+  const [platformKpis, setPlatformKpis] = useState<PlatformKpis | null>(null);
 
   function reload() {
     if (!token) return;
@@ -62,6 +73,11 @@ export default function AdminPage() {
         teamSize: team ? team.length : null,
       });
     });
+  }, [token, user?.isSuperAdmin]);
+
+  useEffect(() => {
+    if (!token || !user?.isSuperAdmin) return;
+    getPlatformKpis(token).then(setPlatformKpis);
   }, [token, user?.isSuperAdmin]);
 
   if (!token) return null;
@@ -96,6 +112,47 @@ export default function AdminPage() {
           hint={user?.isSuperAdmin ? undefined : 'Super admin only'}
         />
       </section>
+
+      {user?.isSuperAdmin && (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold text-slate-800">Platform</h2>
+            <div className="flex gap-2 text-xs font-medium text-brand-700">
+              <Link href="/admin/security" className="hover:underline">
+                Security →
+              </Link>
+              <Link href="/admin/audit-log" className="hover:underline">
+                Audit Log →
+              </Link>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiTile label="Total users" value={platformKpis?.totalUsers} icon={UsersIcon} />
+            <KpiTile label="New users (7d)" value={platformKpis?.newUsersLast7Days} icon={ArrowTrendingUpIcon} />
+            <KpiTile label="Total reviews" value={platformKpis?.totalReviews} icon={ChatBubbleBottomCenterTextIcon} />
+            <KpiTile label="Total bookings" value={platformKpis?.totalBookings} icon={CalendarDaysIcon} />
+          </div>
+          {platformKpis && (
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+              <BuildingStorefrontIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-600" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-900">
+                  {platformKpis.claimedBusinessCount} of {platformKpis.totalPlaces} places claimed by a business
+                </p>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-brand-600"
+                    style={{ width: `${Math.round(platformKpis.businessClaimRate * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                {Math.round(platformKpis.businessClaimRate * 100)}%
+              </span>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="flex items-center gap-2 font-semibold text-slate-800">

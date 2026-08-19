@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -25,6 +26,8 @@ import { generateRecoveryCodes } from "./two-factor-recovery-codes";
 import { generateToken, hashToken, hashesMatch } from "./token-hash";
 import { AppConfig } from "../config/configuration";
 import { MailService } from "../mail/mail.service";
+import { LoginActivityService } from "../security/login-activity.service";
+import { RequestInfo } from "../common/request-info";
 
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1h
@@ -60,6 +63,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<AppConfig, true>,
     private readonly mailService: MailService,
+    private readonly loginActivityService: LoginActivityService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResult> {
@@ -203,6 +207,23 @@ export class AuthService {
     return this.buildAuthResult(updated);
   }
 
+  /** Super-admin security action — force any account's sessions to end
+   * immediately (a compromised account, a just-demoted admin, ...)
+   * without needing that account's password, unlike self-service
+   * logoutAllDevices. Same tokenVersion-bump mechanism, just triggered by
+   * someone other than the account holder — see the User entity's
+   * tokenVersion doc comment for how a bump actually revokes a JWT. No
+   * fresh token is returned; there's no session here to keep alive. */
+  async revokeSessions(userId: string): Promise<User> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User "${userId}" not found`);
+    }
+    return this.usersService.update(user.id, {
+      tokenVersion: user.tokenVersion + 1,
+    });
+  }
+
   /** DELETE /auth/me — anonymizes rather than hard-deletes; see User
    * entity's `deletedAt` doc comment for why. Password-confirmed, same
    * pattern as disableTwoFactor. */
@@ -237,9 +258,19 @@ export class AuthService {
     });
   }
 
-  async login(dto: LoginDto): Promise<AuthResult | TwoFactorRequiredResult> {
+  async login(
+    dto: LoginDto,
+    requestInfo?: RequestInfo,
+  ): Promise<AuthResult | TwoFactorRequiredResult> {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || !user.passwordHash) {
+      await this.loginActivityService.record({
+        userId: null,
+        emailAttempted: dto.email,
+        success: false,
+        reason: "invalid_credentials",
+        requestInfo,
+      });
       throw new UnauthorizedException("Invalid email or password");
     }
 
@@ -248,10 +279,21 @@ export class AuthService {
       user.passwordHash,
     );
     if (!passwordMatches) {
+      await this.loginActivityService.record({
+        userId: user.id,
+        emailAttempted: dto.email,
+        success: false,
+        reason: "invalid_credentials",
+        requestInfo,
+      });
       throw new UnauthorizedException("Invalid email or password");
     }
 
     if (user.twoFactorEnabled) {
+      // Not recorded here — the password check passing is only half the
+      // story for a 2FA account. POST /auth/2fa/verify records the
+      // flow's actual outcome, so a 2FA-gated login produces exactly one
+      // login_activity row, not two (see LoginActivity's doc comment).
       const payload: TwoFactorPendingPayload = {
         sub: user.id,
         purpose: "2fa-pending",
@@ -264,6 +306,13 @@ export class AuthService {
       };
     }
 
+    await this.loginActivityService.record({
+      userId: user.id,
+      emailAttempted: dto.email,
+      success: true,
+      reason: "success",
+      requestInfo,
+    });
     return this.buildAuthResult(user);
   }
 
@@ -335,7 +384,10 @@ export class AuthService {
 
   /** POST /auth/2fa/verify — login step 2. Exchanges a pendingToken from
    * step 1 plus a TOTP or recovery code for a real accessToken. */
-  async verifyTwoFactor(dto: VerifyTwoFactorDto): Promise<AuthResult> {
+  async verifyTwoFactor(
+    dto: VerifyTwoFactorDto,
+    requestInfo?: RequestInfo,
+  ): Promise<AuthResult> {
     const payload = this.decodePendingToken(dto.pendingToken);
     const user = await this.usersService.findById(payload.sub);
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
@@ -350,14 +402,35 @@ export class AuthService {
     const secret = decryptSecret(user.twoFactorSecret, encryptionKey);
 
     if (authenticator.verify({ token: dto.code, secret })) {
+      await this.loginActivityService.record({
+        userId: user.id,
+        emailAttempted: user.email,
+        success: true,
+        reason: "success",
+        requestInfo,
+      });
       return this.buildAuthResult(user);
     }
 
     const usedRecoveryCode = await this.consumeRecoveryCode(user, dto.code);
     if (usedRecoveryCode) {
+      await this.loginActivityService.record({
+        userId: user.id,
+        emailAttempted: user.email,
+        success: true,
+        reason: "success",
+        requestInfo,
+      });
       return this.buildAuthResult(user);
     }
 
+    await this.loginActivityService.record({
+      userId: user.id,
+      emailAttempted: user.email,
+      success: false,
+      reason: "invalid_2fa_code",
+      requestInfo,
+    });
     throw new UnauthorizedException("Invalid or expired code");
   }
 

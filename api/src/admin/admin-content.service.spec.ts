@@ -63,6 +63,7 @@ describe("AdminContentService", () => {
         "event",
         "event-1",
         { name: "Test Event" },
+        undefined,
       );
     });
   });
@@ -76,6 +77,8 @@ describe("AdminContentService", () => {
         "review.removed",
         "review",
         "review-1",
+        undefined,
+        undefined,
       );
     });
 

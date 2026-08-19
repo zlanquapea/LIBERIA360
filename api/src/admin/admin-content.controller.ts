@@ -7,9 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from "@nestjs/common";
+import type { Request } from "express";
 import { AdminContentService } from "./admin-content.service";
+import { getRequestInfo } from "../common/request-info";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
 import { CreateActivityDto } from "./dto/create-activity.dto";
@@ -90,14 +93,30 @@ export class AdminContentController {
 
   @Delete("events/:id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteEvent(@CurrentUser() admin: User, @Param("id") id: string) {
-    return this.adminContentService.deleteEvent(admin.id, id);
+  deleteEvent(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deleteEvent(
+      admin.id,
+      id,
+      getRequestInfo(req),
+    );
   }
 
   @Delete("reviews/:id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteReview(@CurrentUser() admin: User, @Param("id") id: string) {
-    return this.adminContentService.deleteReview(admin.id, id);
+  deleteReview(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deleteReview(
+      admin.id,
+      id,
+      getRequestInfo(req),
+    );
   }
 
   @Patch("counties/:id")

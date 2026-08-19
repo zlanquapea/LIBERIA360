@@ -131,6 +131,7 @@ describe("AdminTeamService", () => {
           from: { isAdmin: false, isSuperAdmin: false },
           to: { isAdmin: true, isSuperAdmin: false },
         },
+        undefined,
       );
     });
 
