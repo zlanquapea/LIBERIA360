@@ -14,6 +14,8 @@ import { Business } from "../businesses/entities/business.entity";
 import { Event } from "../events/entities/event.entity";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
+import { CreateCategoryDto } from "./dto/create-category.dto";
+import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { CreateActivityDto } from "./dto/create-activity.dto";
 import { UpdateActivityDto } from "./dto/update-activity.dto";
 import { CreateBusinessAdminDto } from "./dto/create-business-admin.dto";
@@ -24,9 +26,9 @@ import { ReviewsService } from "../reviews/reviews.service";
 import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
 
-/** Admin content management (Tech Spec §8) — create/edit Place, Business,
- * Activity, and Event records. The first way to write to the catalog
- * through the API at all; Phase 1/2 only ever read it (seeded via
+/** Admin content management (Tech Spec §8) — create/edit Place, Category,
+ * Business, Activity, and Event records. The first way to write to the
+ * catalog through the API at all; Phase 1/2 only ever read it (seeded via
  * scripts). Deliberately self-contained (direct repo access, not routed
  * through PlacesService/BusinessesService/EventsService) so this module
  * can't regress any existing Phase 1/2 read/write path — the one
@@ -85,6 +87,39 @@ export class AdminContentService {
     this.placeRepo.merge(place, dto);
     await this.placeRepo.save(place);
     return this.placeRepo.findOneOrFail({ where: { id } });
+  }
+
+  // ---- Categories ----
+
+  async createCategory(dto: CreateCategoryDto): Promise<Category> {
+    const existingSlug = await this.categoryRepo.exists({
+      where: { slug: dto.slug },
+    });
+    if (existingSlug) {
+      throw new ConflictException(`Slug "${dto.slug}" is already in use`);
+    }
+    const category = await this.categoryRepo.save(
+      this.categoryRepo.create(dto),
+    );
+    return this.categoryRepo.findOneOrFail({ where: { id: category.id } });
+  }
+
+  async updateCategory(id: string, dto: UpdateCategoryDto): Promise<Category> {
+    const category = await this.categoryRepo.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Category "${id}" not found`);
+    }
+    if (dto.slug && dto.slug !== category.slug) {
+      const existingSlug = await this.categoryRepo.exists({
+        where: { slug: dto.slug },
+      });
+      if (existingSlug) {
+        throw new ConflictException(`Slug "${dto.slug}" is already in use`);
+      }
+    }
+    this.categoryRepo.merge(category, dto);
+    await this.categoryRepo.save(category);
+    return this.categoryRepo.findOneOrFail({ where: { id } });
   }
 
   // ---- Activities ----

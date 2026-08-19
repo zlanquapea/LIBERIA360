@@ -253,6 +253,7 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
 | `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places, flagged content |
 | `POST` / `PATCH /admin/places` | Create/update places |
+| `POST` / `PATCH /admin/categories` | Create/update catalog categories (previously seed-data-only) |
 | `POST` / `PATCH /admin/activities` | Create/update activities |
 | `POST` / `PATCH /admin/businesses` | Create/update businesses, including unowned "shell" listings |
 | `PATCH /admin/events/:id` | Update an event |

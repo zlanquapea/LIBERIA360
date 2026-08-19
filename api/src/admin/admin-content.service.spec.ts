@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AdminContentService } from "./admin-content.service";
@@ -13,11 +13,29 @@ import { AdminAuditService } from "./admin-audit.service";
 
 describe("AdminContentService", () => {
   let service: AdminContentService;
+  let categoryRepo: {
+    exists: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    merge: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
   let eventRepo: { findOne: jest.Mock; delete: jest.Mock };
   let reviewsService: { remove: jest.Mock };
   let adminAuditService: { log: jest.Mock };
 
   beforeEach(async () => {
+    categoryRepo = {
+      exists: jest.fn().mockResolvedValue(false),
+      findOne: jest.fn(),
+      create: jest.fn((dto) => dto),
+      save: jest.fn((entity) => Promise.resolve({ id: "category-1", ...entity })),
+      merge: jest.fn((entity, dto) => Object.assign(entity, dto)),
+      findOneOrFail: jest
+        .fn()
+        .mockResolvedValue({ id: "category-1", name: "Beaches", slug: "beaches" }),
+    };
     eventRepo = {
       findOne: jest
         .fn()
@@ -31,7 +49,7 @@ describe("AdminContentService", () => {
       providers: [
         AdminContentService,
         { provide: getRepositoryToken(Place), useValue: {} },
-        { provide: getRepositoryToken(Category), useValue: {} },
+        { provide: getRepositoryToken(Category), useValue: categoryRepo },
         { provide: getRepositoryToken(County), useValue: {} },
         { provide: getRepositoryToken(Activity), useValue: {} },
         { provide: getRepositoryToken(Business), useValue: {} },
@@ -42,6 +60,62 @@ describe("AdminContentService", () => {
     }).compile();
 
     service = module.get(AdminContentService);
+  });
+
+  describe("createCategory", () => {
+    it("creates a category when the slug is free", async () => {
+      const result = await service.createCategory({
+        name: "Beaches",
+        slug: "beaches",
+        icon: "🏖️",
+        description: "Coastal spots.",
+      });
+      expect(categoryRepo.exists).toHaveBeenCalledWith({
+        where: { slug: "beaches" },
+      });
+      expect(categoryRepo.save).toHaveBeenCalled();
+      expect(result).toEqual({ id: "category-1", name: "Beaches", slug: "beaches" });
+    });
+
+    it("rejects a slug already in use", async () => {
+      categoryRepo.exists.mockResolvedValue(true);
+      await expect(
+        service.createCategory({ name: "Beaches", slug: "beaches" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(categoryRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateCategory", () => {
+    it("rejects an unknown category", async () => {
+      categoryRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.updateCategory("nonexistent", { name: "New name" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("updates fields on an existing category", async () => {
+      categoryRepo.findOne.mockResolvedValue({
+        id: "category-1",
+        name: "Beaches",
+        slug: "beaches",
+      });
+      await service.updateCategory("category-1", { name: "Beaches & Coast" });
+      expect(categoryRepo.merge).toHaveBeenCalled();
+      expect(categoryRepo.save).toHaveBeenCalled();
+    });
+
+    it("rejects changing the slug to one already in use by another category", async () => {
+      categoryRepo.findOne.mockResolvedValue({
+        id: "category-1",
+        name: "Beaches",
+        slug: "beaches",
+      });
+      categoryRepo.exists.mockResolvedValue(true);
+      await expect(
+        service.updateCategory("category-1", { slug: "waterfalls-nature" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
   });
 
   describe("deleteEvent", () => {

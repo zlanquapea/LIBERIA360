@@ -416,6 +416,15 @@ export interface CreatePlaceInput {
 
 export type UpdatePlaceInput = Partial<CreatePlaceInput>;
 
+export interface CreateCategoryInput {
+  name: string;
+  slug: string;
+  icon?: string;
+  description?: string;
+}
+
+export type UpdateCategoryInput = Partial<CreateCategoryInput>;
+
 export interface CreateActivityInput {
   placeId: string;
   name: string;
