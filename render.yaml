@@ -1,0 +1,112 @@
+# Render Blueprint for a *temporary* deploy (friends-and-family testing,
+# not a production launch — see DEPLOYMENT.md for what a real launch
+# still needs). Deploys three things together: a free Postgres instance,
+# the NestJS API, and the Next.js web app.
+#
+# This file was hand-written against Render's Blueprint spec as of this
+# repo's last update — it was NOT verified against a live Render account
+# (this environment has no outbound network access to check), so if
+# Render's dashboard flags a schema error on import, treat that error
+# message as more current than this comment and fix the field name it
+# points at. Everything else here (build/start commands, env var names,
+# ports) is verified directly against this repo's own package.json
+# scripts and .env.example files.
+#
+# How to use: Render dashboard → New → Blueprint → connect this repo →
+# Apply. Four env vars below are left as placeholders (CORS_ORIGIN,
+# WEB_APP_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SITE_URL) because they
+# depend on the *.onrender.com URLs Render assigns, which aren't known
+# until after the first deploy — fill in the real ones and redeploy once
+# you have them. See the deployment instructions the assistant gave you
+# for the full step-by-step.
+
+databases:
+  - name: liberia360-db
+    databaseName: liberia360
+    user: liberia360
+    plan: free
+
+services:
+  - type: web
+    name: liberia360-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    # Migrations run once per build (not per instance boot) — see
+    # DEPLOYMENT.md's note on why that matters if this ever scales past
+    # one instance. `migration:run` only applies pending migrations, so
+    # re-running it on every deploy is safe.
+    buildCommand: npm ci && npm run build --workspace=api && npm run migration:run --workspace=api
+    startCommand: npm run start:prod --workspace=api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DB_HOST
+        fromDatabase:
+          name: liberia360-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: liberia360-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: liberia360-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: liberia360-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: liberia360-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: TWO_FACTOR_ENCRYPTION_KEY
+        generateValue: true
+      # Placeholder — replace with your actual web service URL, e.g.
+      # https://liberia360-web.onrender.com (no trailing slash), once
+      # Render assigns it after the first deploy.
+      - key: CORS_ORIGIN
+        value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com
+      - key: WEB_APP_URL
+        value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com
+      # Unset: STORAGE_DRIVER stays "local" — uploaded photos won't
+      # survive a redeploy on Render's free tier (ephemeral disk). Fine
+      # for a short friends-testing window; see DEPLOYMENT.md if this
+      # needs to last longer.
+      - key: STORAGE_DRIVER
+        value: local
+      # Unset on purpose: SMTP_HOST left blank means password-reset and
+      # email-verification links are logged to the API's Render logs
+      # instead of actually emailed — fine for a quick test, add real
+      # SMTP_* vars in the Render dashboard if your friends need those
+      # flows to work for real.
+
+  - type: web
+    name: liberia360-web
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci && npm run build --workspace=web
+    startCommand: npm run start --workspace=web -- -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Placeholder — replace with your actual API service URL + /api/v1,
+      # e.g. https://liberia360-api.onrender.com/api/v1, once Render
+      # assigns it after the first deploy.
+      - key: NEXT_PUBLIC_API_URL
+        value: https://REPLACE-WITH-YOUR-API-URL.onrender.com/api/v1
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com

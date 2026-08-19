@@ -8,6 +8,21 @@ list of what a human has to actually configure, run, or decide. See
 more depth — this is the "am I ready to launch" checklist, not the feature
 docs.
 
+## 0. Just want a temporary link for friends to test?
+
+You don't need to work through this whole checklist for a short testing
+window — `render.yaml` in the repo root is a Render Blueprint that deploys
+Postgres + the API + the web app together in a few clicks (Render dashboard
+→ New → Blueprint → connect this repo → Apply). It still needs real values
+for section 1's two secrets (Blueprint auto-generates those) and section 3's
+domain/CORS wiring (Blueprint leaves those as placeholders you fill in once
+Render assigns your `*.onrender.com` URLs) — everything else in this
+checklist (real payments, S3 storage, SMTP, Sentry) is optional for a quick
+test and safe to leave unset. See `render.yaml`'s own comments for the exact
+steps and what's traded off (uploaded photos won't survive a redeploy on
+Render's free tier; password-reset/verification emails log instead of
+sending unless you add real `SMTP_*` vars).
+
 ## 1. Secrets
 
 Generate real values for both — a fresh checkout ships with obviously-fake
