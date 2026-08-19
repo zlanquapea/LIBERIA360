@@ -21,10 +21,9 @@ window. Two options, both fine for this:
   fill in once Render assigns your `*.onrender.com` URLs). See `render.yaml`'s
   own comments for the exact steps.
 - **Railway**: no blueprint file — deploy from the dashboard as two services
-  from this same repo (one for `api`, one for `web`) plus a one-click Postgres
-  plugin, wiring `DB_HOST`/`DB_PORT`/etc. to the Postgres plugin's variables
-  via Railway's `${{Postgres.PGHOST}}`-style references. The root
-  `package.json`'s `build`/`start` scripts (`npm run build` /
+  from this same repo (one for `api`, one for `web`) plus a Postgres
+  database, wiring `DB_HOST`/`DB_PORT`/etc. to the database's variables. The
+  root `package.json`'s `build`/`start` scripts (`npm run build` /
   `npm start`) exist specifically so Railway's zero-config builder
   (Railpack) can auto-detect a start command for the `api` service without
   you having to set one manually — they build and start `api` specifically,
@@ -32,6 +31,23 @@ window. Two options, both fine for this:
   service still needs an explicit custom Start Command set in Railway's UI
   (`npm run start --workspace=web -- -p $PORT`), since it's the second app
   in this repo and root auto-detection can only point at one.
+
+  Railway's free/Hobby tier caps a project at 5 services, and `api` + `web`
+  already use 2 — adding Railway's own one-click Postgres plugin (a 3rd
+  service) requires their paid Pro plan. If you don't want to pay just to
+  let friends test the app, use a free database from **outside** Railway
+  instead (e.g. [neon.tech](https://neon.tech) — free tier, no card
+  required, gives you a ready-to-use Postgres in under a minute):
+  1. Sign up at neon.tech, create a project, and copy the connection
+     details it shows you (host, port, username, password, database name).
+  2. On the `api` service's Variables tab, set `DB_HOST`/`DB_PORT`/
+     `DB_USERNAME`/`DB_PASSWORD`/`DB_DATABASE` to those values directly
+     (typed in, not a `${{ }}` reference — there's no Railway-side Postgres
+     service to reference since the database now lives outside Railway).
+  3. Also set `DB_SSL=true`. Neon (and every other free managed Postgres)
+     requires an encrypted connection and refuses a plain one — without
+     this the `api` service fails to connect the exact same way as having
+     no database configured at all.
 
 Either way: everything else in this checklist (real payments, S3 storage,
 SMTP, Sentry) is optional for a quick test and safe to leave unset — just
@@ -59,7 +75,10 @@ incomplete.
 ## 2. Database
 
 - A real PostgreSQL instance, not the throwaway one from local dev. Set
-  `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_DATABASE`.
+  `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD`/`DB_DATABASE`. If it's a
+  free managed Postgres outside your hosting platform (Neon, Supabase,
+  ElephantSQL, ...), also set `DB_SSL=true` — those require TLS and refuse
+  a plain connection.
 - Leave `DB_SYNCHRONIZE` unset/`false` (the default) — schema changes are
   migrations-only outside local bootstrapping.
 - **Run migrations as a release step, before new instances take traffic —
