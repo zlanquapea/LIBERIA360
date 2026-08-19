@@ -37,6 +37,16 @@ const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nig
 const inputClass =
   'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
+// Mirrors the API's slug validation (CreatePlaceDto: lowercase, kebab-case)
+// so what's auto-filled here always passes server-side validation as-is.
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 // Admin content management (Tech Spec §8) — create/edit Place, Activity,
 // Business, Event. All four go through /admin/* rather than the
 // user-facing endpoints (e.g. Business's self-claim flow), since an admin
@@ -63,7 +73,7 @@ export default function AdminContentPage() {
     <div className="flex flex-col gap-10">
       <h1 className="text-xl font-bold text-slate-900">Content Management</h1>
 
-      <CreatePlaceSection token={token} categories={categories} counties={counties} onCreated={reloadPlaces} />
+      <CreatePlaceSection token={token} categories={categories} counties={counties} places={places} onCreated={reloadPlaces} />
       <ManagePlaceSection token={token} categories={categories} counties={counties} places={places} onChanged={reloadPlaces} />
       <ManageEventsSection token={token} counties={counties} />
       <ManageCountiesSection token={token} counties={counties} onChanged={setCounties} />
@@ -77,15 +87,20 @@ function CreatePlaceSection({
   token,
   categories,
   counties,
+  places,
   onCreated,
 }: {
   token: string;
   categories: Category[];
   counties: County[];
+  places: Place[];
   onCreated: () => void;
 }) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  // Once the admin directly edits the slug, stop overwriting it as they
+  // keep typing the name — same pattern as e.g. a repo-name/slug pair.
+  const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState('');
   const [type, setType] = useState<PlaceType>('attraction');
   const [categoryId, setCategoryId] = useState('');
@@ -93,6 +108,7 @@ function CreatePlaceSection({
   const [city, setCity] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -101,6 +117,18 @@ function CreatePlaceSection({
     if (!categoryId && categories.length > 0) setCategoryId(categories[0].id);
     if (!countyId && counties.length > 0) setCountyId(counties[0].id);
   }, [categories, counties, categoryId, countyId]);
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugTouched) setSlug(slugify(value));
+  }
+
+  // Cities already used in the selected county — offered as suggestions
+  // (not a hard list) via a <datalist>, so the very first place in a
+  // county can still name a brand-new city.
+  const citiesInCounty = Array.from(
+    new Set(places.filter((p) => p.county.id === countyId).map((p) => p.city)),
+  ).sort();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -118,14 +146,17 @@ function CreatePlaceSection({
         city,
         latitude: Number(latitude),
         longitude: Number(longitude),
+        images,
       });
       setSuccess(`Created "${place.name}" (${place.slug}).`);
       setName('');
       setSlug('');
+      setSlugTouched(false);
       setDescription('');
       setCity('');
       setLatitude('');
       setLongitude('');
+      setImages([]);
       onCreated();
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
@@ -138,21 +169,29 @@ function CreatePlaceSection({
     <section className="flex flex-col gap-3">
       <h2 className="font-semibold text-slate-800">Create a place</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+        <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
+
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             Name
-            <input required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+            <input required maxLength={200} value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             Slug
             <input
               required
               maxLength={220}
-              placeholder="kebab-case"
+              placeholder="auto-generated from name"
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                setSlugTouched(true);
+              }}
               className={inputClass}
             />
+            <span className="text-xs font-normal text-slate-400">
+              Auto-filled from the name — the web address for this place. Edit it if you want something different.
+            </span>
           </label>
         </div>
 
@@ -184,7 +223,14 @@ function CreatePlaceSection({
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             County
-            <select value={countyId} onChange={(e) => setCountyId(e.target.value)} className={inputClass}>
+            <select
+              value={countyId}
+              onChange={(e) => {
+                setCountyId(e.target.value);
+                setCity(''); // last county's city no longer applies
+              }}
+              className={inputClass}
+            >
               {counties.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -197,7 +243,20 @@ function CreatePlaceSection({
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             City
-            <input required maxLength={150} value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
+            <input
+              required
+              maxLength={150}
+              list="city-suggestions"
+              placeholder={citiesInCounty.length ? 'Pick or type a city' : 'Type a city'}
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className={inputClass}
+            />
+            <datalist id="city-suggestions">
+              {citiesInCounty.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
             Latitude
