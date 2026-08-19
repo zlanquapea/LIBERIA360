@@ -26,7 +26,39 @@ class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+// `next build` prerenders every page with no dynamic route segment (Home,
+// /counties, /creators, /search, ...) up front, which means the catalog
+// fetches those pages make run *during the build itself* — before the app
+// is actually deployed anywhere. If the API isn't reachable yet at that
+// exact moment (the common case: it's the first deploy, or the two
+// services on a host like Railway/Render just haven't both come up yet),
+// the raw `fetch()` call throws a connection error, and Next.js treats an
+// uncaught error during static generation as a fatal build failure — the
+// whole site fails to build over what's really just an ordering problem,
+// not a real bug.
+//
+// `NEXT_PHASE` is a real Next.js env var, set to this exact value only
+// while `next build` is running (see Next.js's own build-phase docs) —
+// never during `next dev` or while actually serving requests. So this
+// only ever applies during that one narrow window: if a connection-level
+// failure happens then, log it and fall back to an empty result instead
+// of crashing the build. ISR (`next: { revalidate: 60 }` below) means the
+// very first real visitor after deploy — by which point the API is
+// actually up — refetches and replaces this placeholder with real data.
+// A genuine HTTP error response (res.ok false) is NOT covered by this —
+// that means the API *is* reachable and said something's actually wrong,
+// which should still fail loudly rather than be silently hidden.
+const IS_BUILD_PHASE = process.env.NEXT_PHASE === 'phase-production-build';
+
+function emptyPage(limit = 20) {
+  return { data: [], meta: { total: 0, page: 1, limit, totalPages: 1 } };
+}
+
+async function apiFetch<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+  buildFallback?: T,
+): Promise<T> {
   const url = new URL(`${API_URL}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -36,11 +68,21 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
     }
   }
 
-  const res = await fetch(url.toString(), {
-    // Phase 1 catalog data changes slowly — a short revalidation window
-    // keeps pages fast without serving stale content for long.
-    next: { revalidate: 60 },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      // Phase 1 catalog data changes slowly — a short revalidation window
+      // keeps pages fast without serving stale content for long.
+      next: { revalidate: 60 },
+    });
+  } catch (err) {
+    if (IS_BUILD_PHASE && buildFallback !== undefined) {
+      // eslint-disable-next-line no-console
+      console.warn(`[build] ${path} unreachable at build time, using an empty placeholder: ${(err as Error).message}`);
+      return buildFallback;
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     throw new ApiError(res.status, `Request to ${path} failed with ${res.status}`);
@@ -56,7 +98,11 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
 }
 
 export function getPlaces(query: PlacesQuery = {}): Promise<PaginatedPlaces> {
-  return apiFetch<PaginatedPlaces>('/places', query as Record<string, string | number | undefined>);
+  return apiFetch<PaginatedPlaces>(
+    '/places',
+    query as Record<string, string | number | undefined>,
+    emptyPage(query.limit),
+  );
 }
 
 export function getPlaceBySlug(slug: string): Promise<Place> {
@@ -64,7 +110,7 @@ export function getPlaceBySlug(slug: string): Promise<Place> {
 }
 
 export function getCounties(): Promise<County[]> {
-  return apiFetch<County[]>('/counties');
+  return apiFetch<County[]>('/counties', undefined, []);
 }
 
 export function getCountyPlaces(countySlug: string, query: PlacesQuery = {}): Promise<PaginatedPlaces> {
@@ -72,7 +118,7 @@ export function getCountyPlaces(countySlug: string, query: PlacesQuery = {}): Pr
 }
 
 export function getCategories(): Promise<Category[]> {
-  return apiFetch<Category[]>('/categories');
+  return apiFetch<Category[]>('/categories', undefined, []);
 }
 
 export function getReviews(placeId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
@@ -86,11 +132,11 @@ export function getBusinessByPlace(placeId: string): Promise<Business | null> {
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
-  return apiFetch<SponsoredPlacement[]>('/sponsored-placements/active');
+  return apiFetch<SponsoredPlacement[]>('/sponsored-placements/active', undefined, []);
 }
 
 export function getCreators(query: { page?: number; limit?: number } = {}): Promise<PaginatedCreators> {
-  return apiFetch<PaginatedCreators>('/creators', query);
+  return apiFetch<PaginatedCreators>('/creators', query, emptyPage(query.limit));
 }
 
 export function getCreatorByUsername(username: string): Promise<Creator> {
@@ -107,7 +153,11 @@ export interface EventsQuery {
 }
 
 export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
-  return apiFetch<PaginatedEvents>('/events', query as Record<string, string | number | undefined>);
+  return apiFetch<PaginatedEvents>(
+    '/events',
+    query as Record<string, string | number | undefined>,
+    emptyPage(query.limit),
+  );
 }
 
 export function getEvent(id: string): Promise<Event> {
