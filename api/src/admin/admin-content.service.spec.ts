@@ -30,11 +30,15 @@ describe("AdminContentService", () => {
       exists: jest.fn().mockResolvedValue(false),
       findOne: jest.fn(),
       create: jest.fn((dto) => dto),
-      save: jest.fn((entity) => Promise.resolve({ id: "category-1", ...entity })),
+      save: jest.fn((entity) =>
+        Promise.resolve({ id: "category-1", ...entity }),
+      ),
       merge: jest.fn((entity, dto) => Object.assign(entity, dto)),
-      findOneOrFail: jest
-        .fn()
-        .mockResolvedValue({ id: "category-1", name: "Beaches", slug: "beaches" }),
+      findOneOrFail: jest.fn().mockResolvedValue({
+        id: "category-1",
+        name: "Beaches",
+        slug: "beaches",
+      }),
     };
     eventRepo = {
       findOne: jest
@@ -74,7 +78,11 @@ describe("AdminContentService", () => {
         where: { slug: "beaches" },
       });
       expect(categoryRepo.save).toHaveBeenCalled();
-      expect(result).toEqual({ id: "category-1", name: "Beaches", slug: "beaches" });
+      expect(result).toEqual({
+        id: "category-1",
+        name: "Beaches",
+        slug: "beaches",
+      });
     });
 
     it("rejects a slug already in use", async () => {
