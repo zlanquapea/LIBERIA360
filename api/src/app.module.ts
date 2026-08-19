@@ -63,6 +63,15 @@ import { ReportsModule } from "./reports/reports.module";
         return {
           type: "postgres",
           ...database,
+          // node-postgres's `ssl` option wants `false` or a TLS options
+          // object, not a bare `true` — and most free managed Postgres
+          // providers (Neon, Render, Heroku, ...) present a cert chain that
+          // isn't in Node's default trust store, so a strict `ssl: true`
+          // fails to connect. `rejectUnauthorized: false` still encrypts
+          // the connection, just without verifying the cert against a CA —
+          // fine for this app's threat model, same tradeoff every "quick
+          // deploy to a free DB" guide for this stack makes.
+          ssl: database.ssl ? { rejectUnauthorized: false } : false,
           entities: [
             Place,
             Activity,

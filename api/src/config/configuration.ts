@@ -9,6 +9,7 @@ export interface AppConfig {
     password: string;
     database: string;
     synchronize: boolean;
+    ssl: boolean;
   };
   jwt: {
     secret: string;
@@ -74,6 +75,12 @@ export default (): AppConfig => ({
     password: process.env.DB_PASSWORD ?? "liberia360",
     database: process.env.DB_DATABASE ?? "liberia360",
     synchronize: process.env.DB_SYNCHRONIZE === "true",
+    // Off by default — a self-hosted Postgres (Railway/Render's own plugin,
+    // local dev) talks plain TCP on a private network. Free managed
+    // providers you'd point this at instead (Neon, Supabase, ElephantSQL,
+    // ...) require TLS and refuse a non-SSL connection outright, so this
+    // needs to be explicitly turned on for those via DB_SSL=true.
+    ssl: process.env.DB_SSL === "true",
   },
   jwt: {
     // Dev-only fallback so a fresh checkout boots without extra setup —

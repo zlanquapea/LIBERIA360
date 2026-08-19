@@ -33,6 +33,11 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME ?? "liberia360",
   password: process.env.DB_PASSWORD ?? "liberia360",
   database: process.env.DB_DATABASE ?? "liberia360",
+  // Same reasoning as app.module.ts's TypeOrmModule setup — a free managed
+  // Postgres (Neon, Render, Heroku, ...) requires TLS to even accept a
+  // connection, which this CLI-only DataSource (migrations, seed script)
+  // needs independently since it doesn't go through ConfigService.
+  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
   entities: [
     Place,
     Activity,
