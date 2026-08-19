@@ -1,13 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   createActivity,
   createBusinessAdmin,
+  createCategory,
   createPlace,
   updateActivity,
   updateBusinessAdmin,
+  updateCategory,
   updateCountyAdmin,
   updateEventAdmin,
   updatePlace,
@@ -73,11 +76,223 @@ export default function AdminContentPage() {
     <div className="flex flex-col gap-10">
       <h1 className="text-xl font-bold text-slate-900">Content Management</h1>
 
+      <ManageCategoriesSection token={token} categories={categories} onChanged={setCategories} />
       <CreatePlaceSection token={token} categories={categories} counties={counties} places={places} onCreated={reloadPlaces} />
       <ManagePlaceSection token={token} categories={categories} counties={counties} places={places} onChanged={reloadPlaces} />
       <ManageEventsSection token={token} counties={counties} />
       <ManageCountiesSection token={token} counties={counties} onChanged={setCounties} />
     </div>
+  );
+}
+
+// --- Categories -------------------------------------------------------------
+// Categories had no admin UI at all until now — every category in the
+// catalog was seed-data-only. Same create-then-pick-to-edit shape as
+// counties below, since the list is short (a handful to a few dozen
+// categories, never paginated-list-sized).
+
+function ManageCategoriesSection({
+  token,
+  categories,
+  onChanged,
+}: {
+  token: string;
+  categories: Category[];
+  onChanged: (categories: Category[]) => void;
+}) {
+  const [selectedId, setSelectedId] = useState('');
+  const selected = categories.find((c) => c.id === selectedId) ?? null;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-semibold text-slate-800">Categories</h2>
+      <CreateCategoryForm
+        token={token}
+        onCreated={(category) => onChanged([...categories, category])}
+      />
+      <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className={inputClass}>
+        <option value="">Edit an existing category…</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.icon ? `${c.icon} ` : ''}
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      {selected && (
+        <CategoryEditForm
+          token={token}
+          category={selected}
+          onSaved={(updated) => onChanged(categories.map((c) => (c.id === updated.id ? updated : c)))}
+        />
+      )}
+    </section>
+  );
+}
+
+function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (category: Category) => void }) {
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [icon, setIcon] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugTouched) setSlug(slugify(value));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const category = await createCategory(token, {
+        name,
+        slug,
+        icon: icon.trim() || undefined,
+        description: description.trim() || undefined,
+      });
+      onCreated(category);
+      setName('');
+      setSlug('');
+      setSlugTouched(false);
+      setIcon('');
+      setDescription('');
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+      <h3 className="text-sm font-semibold text-slate-700">Add a category</h3>
+      <div className="grid grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          Name
+          <input required maxLength={100} value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          Slug
+          <input
+            required
+            maxLength={100}
+            placeholder="auto-generated from name"
+            value={slug}
+            onChange={(e) => {
+              setSlug(e.target.value);
+              setSlugTouched(true);
+            }}
+            className={inputClass}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          Icon
+          <input maxLength={50} placeholder="e.g. 🏖️ (an emoji)" value={icon} onChange={(e) => setIcon(e.target.value)} className={inputClass} />
+        </label>
+      </div>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Description
+        <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
+      </label>
+      {error && (
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={submitting}
+        className="self-start rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+      >
+        {submitting ? 'Adding…' : 'Add category'}
+      </button>
+    </form>
+  );
+}
+
+function CategoryEditForm({
+  token,
+  category,
+  onSaved,
+}: {
+  token: string;
+  category: Category;
+  onSaved: (category: Category) => void;
+}) {
+  const [name, setName] = useState(category.name);
+  const [icon, setIcon] = useState(category.icon ?? '');
+  const [description, setDescription] = useState(category.description ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setName(category.name);
+    setIcon(category.icon ?? '');
+    setDescription(category.description ?? '');
+    setSuccess(false);
+    // Keyed on category.id — same reasoning as the other edit forms on
+    // this page: a save replaces this category with a new object of the
+    // same id, which must not wipe the success message just set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category.id]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      const updated = await updateCategory(token, category.id, {
+        name,
+        icon: icon.trim() || undefined,
+        description: description.trim() || undefined,
+      });
+      setSuccess(true);
+      onSaved(updated);
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          Name
+          <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          Icon
+          <input maxLength={50} value={icon} onChange={(e) => setIcon(e.target.value)} className={inputClass} />
+        </label>
+      </div>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Description
+        <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
+      </label>
+      {error && (
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          {error}
+        </p>
+      )}
+      {success && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>}
+      <button
+        type="submit"
+        disabled={submitting}
+        className="self-start rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+      >
+        {submitting ? 'Saving…' : 'Save category'}
+      </button>
+    </form>
   );
 }
 
@@ -773,9 +988,17 @@ function ManageEventsSection({ token, counties }: { token: string; counties: Cou
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold text-slate-800">Edit an event</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-slate-800">Events</h2>
+        <Link
+          href="/events/new"
+          className="rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+        >
+          + New event
+        </Link>
+      </div>
       <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className={inputClass}>
-        <option value="">Select an event…</option>
+        <option value="">Edit an existing event…</option>
         {events.map((ev) => (
           <option key={ev.id} value={ev.id}>
             {ev.name} ({formatEventCategory(ev.category)})

@@ -15,6 +15,8 @@ import { AdminContentService } from "./admin-content.service";
 import { getRequestInfo } from "../common/request-info";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
+import { CreateCategoryDto } from "./dto/create-category.dto";
+import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { CreateActivityDto } from "./dto/create-activity.dto";
 import { UpdateActivityDto } from "./dto/update-activity.dto";
 import { CreateBusinessAdminDto } from "./dto/create-business-admin.dto";
@@ -59,6 +61,16 @@ export class AdminContentController {
   @Patch("places/:id")
   updatePlace(@Param("id") id: string, @Body() dto: UpdatePlaceDto) {
     return this.adminContentService.updatePlace(id, dto);
+  }
+
+  @Post("categories")
+  createCategory(@Body() dto: CreateCategoryDto) {
+    return this.adminContentService.createCategory(dto);
+  }
+
+  @Patch("categories/:id")
+  updateCategory(@Param("id") id: string, @Body() dto: UpdateCategoryDto) {
+    return this.adminContentService.updateCategory(id, dto);
   }
 
   @Post("activities")

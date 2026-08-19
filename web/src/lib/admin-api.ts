@@ -4,8 +4,10 @@ import type {
   AuthUser,
   Business,
   County,
+  Category,
   CreateActivityInput,
   CreateBusinessAdminInput,
+  CreateCategoryInput,
   CreatePlaceInput,
   Creator,
   Event,
@@ -18,6 +20,7 @@ import type {
   SponsoredPlacement,
   UpdateActivityInput,
   UpdateBusinessAdminInput,
+  UpdateCategoryInput,
   UpdateCountyInput,
   UpdateEventInput,
   UpdatePlaceInput,
@@ -57,6 +60,22 @@ export function createPlace(token: string, input: CreatePlaceInput): Promise<Pla
 
 export function updatePlace(token: string, id: string, input: UpdatePlaceInput): Promise<Place> {
   return apiRequest<Place>(`/admin/places/${id}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export function createCategory(token: string, input: CreateCategoryInput): Promise<Category> {
+  return apiRequest<Category>('/admin/categories', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateCategory(token: string, id: string, input: UpdateCategoryInput): Promise<Category> {
+  return apiRequest<Category>(`/admin/categories/${id}`, {
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify(input),
