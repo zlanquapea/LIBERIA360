@@ -20,13 +20,13 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           {category.icon}
         </span>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{category.name}</h1>
-          {category.description && <p className="text-sm text-slate-500">{category.description}</p>}
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{category.name}</h1>
+          {category.description && <p className="text-sm text-slate-500 dark:text-slate-400">{category.description}</p>}
         </div>
       </div>
 
       {placesResult.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           No places in this category yet.
         </p>
       ) : (

@@ -21,7 +21,7 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
   return (
     <Link
       href={`/places/${place.slug}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
+      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
     >
       <div className="h-32 overflow-hidden">
         {cover ? (
@@ -43,23 +43,23 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display font-semibold leading-snug text-slate-900 group-hover:text-brand-700">
+          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700">
             {place.name}
           </h3>
           <VerificationBadge status={place.verificationStatus} />
         </div>
-        <p className="text-xs uppercase tracking-wide text-slate-500">
+        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
           {formatPlaceType(place.type)} · {place.city}, {place.county.name}
         </p>
-        <p className="line-clamp-2 text-sm text-slate-600">{place.description}</p>
-        <div className="mt-auto flex items-center justify-between pt-1 text-xs text-slate-500">
+        <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{place.description}</p>
+        <div className="mt-auto flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             {place.reviewCount > 0 && <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />}
             {formatRating(place.rating, place.reviewCount)}
           </span>
           {distance && (
             <span className="flex items-center gap-0.5">
-              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400" />
+              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
               {distance}
             </span>
           )}

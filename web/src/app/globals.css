@@ -4,5 +4,17 @@
 
 html,
 body {
-  @apply bg-white text-slate-900 antialiased;
+  @apply antialiased;
+}
+
+/* Native form controls (date pickers, scrollbars, etc.) pick a light or
+   dark rendering from this — without it they stay light-styled even once
+   the `dark` class flips everything else, which reads as broken instead
+   of just unthemed. */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }

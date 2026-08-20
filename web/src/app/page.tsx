@@ -42,13 +42,13 @@ export default async function Home() {
           <form
             action="/search"
             method="GET"
-            className="flex overflow-hidden rounded-full bg-white shadow-lg ring-1 ring-black/5 transition-shadow focus-within:ring-2 focus-within:ring-gold-400"
+            className="flex overflow-hidden rounded-full bg-white dark:bg-slate-900 shadow-lg ring-1 ring-black/5 transition-shadow focus-within:ring-2 focus-within:ring-gold-400"
           >
             <input
               type="search"
               name="q"
               placeholder="Search places, food, activities..."
-              className="w-full px-4 py-2.5 text-sm text-slate-900 outline-none"
+              className="w-full px-4 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none"
             />
             <button
               type="submit"
@@ -62,7 +62,7 @@ export default async function Home() {
       </section>
 
       <section aria-labelledby="categories-heading" className="flex flex-col gap-3">
-        <h2 id="categories-heading" className="font-display text-lg font-semibold text-slate-900">
+        <h2 id="categories-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
           Browse by category
         </h2>
         <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
@@ -70,12 +70,12 @@ export default async function Home() {
             <Link
               key={category.id}
               href={`/categories/${category.slug}`}
-              className="flex shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-3 text-center transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
+              className="flex shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-center transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
             >
               <span aria-hidden className="text-2xl">
                 {category.icon}
               </span>
-              <span className="whitespace-nowrap text-xs font-medium text-slate-700">{category.name}</span>
+              <span className="whitespace-nowrap text-xs font-medium text-slate-700 dark:text-slate-200">{category.name}</span>
             </Link>
           ))}
         </div>
@@ -85,7 +85,7 @@ export default async function Home() {
         <section aria-labelledby="featured-heading" className="flex flex-col gap-3">
           <h2
             id="featured-heading"
-            className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900"
+            className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
           >
             <StarIcon aria-hidden className="h-5 w-5 text-gold-500" />
             Featured this week
@@ -121,35 +121,35 @@ export default async function Home() {
 
       <Link
         href="/explore"
-        className="group flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-card"
+        className="group flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-card dark:border-brand-800 dark:bg-brand-900/40 dark:hover:border-brand-600"
       >
         <div>
-          <p className="font-display font-semibold text-brand-800">Explore the map</p>
-          <p className="text-sm text-brand-700">See every place, color-coded by category</p>
+          <p className="font-display font-semibold text-brand-800 dark:text-brand-100">Explore the map</p>
+          <p className="text-sm text-brand-700 dark:text-brand-300">See every place, color-coded by category</p>
         </div>
         <MapIcon
           aria-hidden
-          className="h-8 w-8 shrink-0 text-brand-600 transition-transform duration-300 group-hover:scale-110"
+          className="h-8 w-8 shrink-0 text-brand-600 transition-transform duration-300 group-hover:scale-110 dark:text-brand-400"
         />
       </Link>
 
       <Link
         href="/creators"
-        className="group flex items-center justify-between rounded-xl border border-accent-200 bg-accent-50 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
+        className="group flex items-center justify-between rounded-xl border border-accent-200 bg-accent-50 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card dark:border-accent-800 dark:bg-accent-900/40 dark:hover:border-accent-600"
       >
         <div>
-          <p className="font-display font-semibold text-accent-800">Meet Liberia&apos;s creators</p>
-          <p className="text-sm text-accent-700">Videos, photos, and guides from local storytellers</p>
+          <p className="font-display font-semibold text-accent-800 dark:text-accent-100">Meet Liberia&apos;s creators</p>
+          <p className="text-sm text-accent-700 dark:text-accent-300">Videos, photos, and guides from local storytellers</p>
         </div>
         <VideoCameraIcon
           aria-hidden
-          className="h-8 w-8 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110"
+          className="h-8 w-8 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
         />
       </Link>
 
       <section aria-labelledby="trending-heading" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 id="trending-heading" className="font-display text-lg font-semibold text-slate-900">
+          <h2 id="trending-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
             Trending places
           </h2>
           <Link
@@ -170,7 +170,7 @@ export default async function Home() {
       {upcomingEvents.data.length > 0 && (
         <section aria-labelledby="events-heading" className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 id="events-heading" className="font-display text-lg font-semibold text-slate-900">
+            <h2 id="events-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
               Upcoming events
             </h2>
             <Link
@@ -186,11 +186,11 @@ export default async function Home() {
               <li key={event.id}>
                 <Link
                   href={`/events/${event.id}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-900">{event.name}</p>
-                    <p className="text-xs text-slate-500">{formatEventDateRange(event.startDate, event.endDate)}</p>
+                    <p className="truncate font-medium text-slate-900 dark:text-slate-50">{event.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{formatEventDateRange(event.startDate, event.endDate)}</p>
                   </div>
                 </Link>
               </li>
@@ -201,11 +201,11 @@ export default async function Home() {
 
       <Link
         href="/near-me"
-        className="group flex items-center justify-between rounded-xl border-2 border-gold-400 bg-white px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-gold-600 hover:shadow-card"
+        className="group flex items-center justify-between rounded-xl border-2 border-gold-400 bg-white dark:bg-slate-900 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-gold-600 hover:shadow-card"
       >
         <div>
-          <p className="font-display font-semibold text-slate-800">Near Me</p>
-          <p className="text-sm text-slate-600">Find places close to where you are right now</p>
+          <p className="font-display font-semibold text-slate-800 dark:text-slate-100">Near Me</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Find places close to where you are right now</p>
         </div>
         <ViewfinderCircleIcon
           aria-hidden

@@ -35,7 +35,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
           {creator.name.trim().charAt(0).toUpperCase() || '?'}
         </span>
         <div>
-          <h1 className="flex flex-wrap items-center gap-1.5 text-xl font-bold text-slate-900">
+          <h1 className="flex flex-wrap items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-slate-50">
             {creator.name}
             {creator.verified && (
               <span
@@ -56,13 +56,13 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
               </span>
             )}
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             @{creator.username} · {creator.followerCount.toLocaleString()} followers
           </p>
         </div>
       </div>
 
-      {creator.bio && <p className="text-slate-700">{creator.bio}</p>}
+      {creator.bio && <p className="text-slate-700 dark:text-slate-200">{creator.bio}</p>}
 
       {(creator.instagram || creator.tiktok || creator.youtube) && (
         <div className="flex flex-wrap gap-2">
@@ -75,7 +75,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 href={`${prefix}${handle.replace(/^@/, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-500"
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
               >
                 {label}
               </a>
@@ -86,10 +86,10 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
       {creator.specialties.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-semibold text-slate-900">Specialties</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Specialties</h2>
           <div className="flex flex-wrap gap-1.5">
             {creator.specialties.map((s) => (
-              <span key={s} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+              <span key={s} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300">
                 {s}
               </span>
             ))}
@@ -99,10 +99,10 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
       {creator.locationsCovered.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-semibold text-slate-900">Locations covered</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Locations covered</h2>
           <div className="flex flex-wrap gap-1.5">
             {creator.locationsCovered.map((l) => (
-              <span key={l} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+              <span key={l} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300">
                 {l}
               </span>
             ))}
@@ -112,7 +112,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
       {creator.contentLinks.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-semibold text-slate-900">Featured content</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Featured content</h2>
           <ul className="flex flex-col gap-1.5">
             {creator.contentLinks.map((link) => (
               <li key={link}>

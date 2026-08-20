@@ -2,10 +2,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { AccountLink } from './AccountLink';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur">
+    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/95 px-4 py-2 backdrop-blur dark:bg-slate-950/95">
       <Link href="/" className="group flex items-center">
         <Image
           src="/logo.png"
@@ -20,11 +21,12 @@ export function Header() {
       <div className="flex items-center gap-2">
         <Link
           href="/search"
-          className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
+          className="flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 dark:hover:border-brand-400 dark:hover:bg-slate-800 dark:hover:text-brand-300"
         >
           <MagnifyingGlassIcon aria-hidden className="h-4 w-4" />
           Search
         </Link>
+        <ThemeToggle />
         <AccountLink />
       </div>
     </header>

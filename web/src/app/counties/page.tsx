@@ -15,8 +15,8 @@ export default async function CountiesPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Browse by county</h1>
-        <p className="text-sm text-slate-500">Rolling out county by county, starting with Greater Monrovia.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Browse by county</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Rolling out county by county, starting with Greater Monrovia.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -27,14 +27,14 @@ export default async function CountiesPage() {
               key={county.id}
               href={`/counties/${county.slug}`}
               className={`flex flex-col gap-1 rounded-xl border px-4 py-3 transition-all ${
-                live ? 'border-slate-200 hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card' : 'border-slate-100'
+                live ? 'border-slate-200 dark:border-slate-800 hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card' : 'border-slate-100 dark:border-slate-800'
               }`}
             >
               <span aria-hidden className={`text-xl ${live ? '' : 'opacity-40 grayscale'}`}>
                 {county.icon ?? <MapPinIcon className="h-5 w-5 text-brand-500" />}
               </span>
-              <span className={`font-medium ${live ? 'text-slate-900' : 'text-slate-400'}`}>{county.name}</span>
-              <span className={`text-xs ${live ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className={`font-medium ${live ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400 dark:text-slate-500'}`}>{county.name}</span>
+              <span className={`text-xs ${live ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-500'}`}>
                 {live ? `${county.placeCount} place${county.placeCount === 1 ? '' : 's'}` : 'Coming soon'}
               </span>
             </Link>

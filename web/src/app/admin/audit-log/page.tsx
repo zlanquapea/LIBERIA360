@@ -50,17 +50,17 @@ function AuditLog() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Audit Log</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Audit Log</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Every verification change, role change, sponsored-placement create/revoke, content removal, and forced
           session revocation — who did it, when, and from what device.
         </p>
       </div>
 
       {!result ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       ) : result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           Nothing recorded yet.
         </p>
       ) : (
@@ -77,18 +77,18 @@ function AuditLog() {
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:border-brand-500 disabled:opacity-40"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-40"
           >
             ← Previous
           </button>
-          <span className="text-slate-500">
+          <span className="text-slate-500 dark:text-slate-400">
             Page {result.meta.page} of {result.meta.totalPages}
           </span>
           <button
             type="button"
             disabled={page >= result.meta.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:border-brand-500 disabled:opacity-40"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-40"
           >
             Next →
           </button>
@@ -100,30 +100,30 @@ function AuditLog() {
 
 function AuditLogRow({ entry }: { entry: AdminAction }) {
   return (
-    <li className="flex flex-col gap-1 rounded-xl border border-slate-200 p-3 text-sm">
+    <li className="flex flex-col gap-1 rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium text-slate-900">{ACTION_LABELS[entry.action] ?? entry.action}</p>
-        <span className="flex items-center gap-1 text-xs text-slate-400">
+        <p className="font-medium text-slate-900 dark:text-slate-50">{ACTION_LABELS[entry.action] ?? entry.action}</p>
+        <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
           <ClockIcon aria-hidden className="h-3.5 w-3.5" />
           {new Date(entry.createdAt).toLocaleString()}
         </span>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         by {entry.adminUser.name} ({entry.adminUser.email})
         {entry.targetType && entry.targetId && (
           <>
             {' '}
-            · {entry.targetType} <code className="text-slate-400">{entry.targetId.slice(0, 8)}</code>
+            · {entry.targetType} <code className="text-slate-400 dark:text-slate-500">{entry.targetId.slice(0, 8)}</code>
           </>
         )}
       </p>
-      <p className="flex items-center gap-1 text-xs text-slate-400">
+      <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
         <ComputerDesktopIcon aria-hidden className="h-3.5 w-3.5" />
         {parseUserAgent(entry.userAgent)}
         {entry.ipAddress && <> · {entry.ipAddress}</>}
       </p>
       {entry.metadata && Object.keys(entry.metadata).length > 0 && (
-        <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
+        <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-50 dark:bg-slate-800 p-2 text-xs text-slate-600 dark:text-slate-300">
           {JSON.stringify(entry.metadata, null, 2)}
         </pre>
       )}

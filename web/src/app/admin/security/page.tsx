@@ -56,8 +56,8 @@ function SecurityDashboard() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Security</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Security</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Sign-in activity, brute-force signal, and account session control.
         </p>
       </div>
@@ -68,8 +68,8 @@ function SecurityDashboard() {
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-800">Login activity</h2>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Login activity</h2>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
             <input
               type="checkbox"
               checked={onlyFailed}
@@ -77,16 +77,16 @@ function SecurityDashboard() {
                 setOnlyFailed(e.target.checked);
                 setPage(1);
               }}
-              className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              className="rounded border-slate-300 dark:border-slate-700 text-brand-600 focus:ring-brand-500"
             />
             Failed attempts only
           </label>
         </div>
 
         {!activity ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : activity.data.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
             Nothing recorded yet.
           </p>
         ) : (
@@ -103,18 +103,18 @@ function SecurityDashboard() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:border-brand-500 disabled:opacity-40"
+              className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-40"
             >
               ← Previous
             </button>
-            <span className="text-slate-500">
+            <span className="text-slate-500 dark:text-slate-400">
               Page {activity.meta.page} of {activity.meta.totalPages}
             </span>
             <button
               type="button"
               disabled={page >= activity.meta.totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-full border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:border-brand-500 disabled:opacity-40"
+              className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-40"
             >
               Next →
             </button>
@@ -169,11 +169,11 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 shadow-card ${tone === 'warning' ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}
+      className={`rounded-xl border p-3 shadow-card ${tone === 'warning' ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30' : 'border-slate-200 dark:border-slate-800'}`}
     >
-      <Icon aria-hidden className={`h-5 w-5 ${tone === 'warning' ? 'text-amber-600' : 'text-brand-600'}`} />
-      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
-      <p className="text-xs text-slate-500">{label}</p>
+      <Icon aria-hidden className={`h-5 w-5 ${tone === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600'}`} />
+      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   );
 }
@@ -182,11 +182,11 @@ function LoginActivityRow({ entry }: { entry: LoginActivity }) {
   return (
     <li
       className={`flex flex-col gap-1 rounded-xl border p-3 text-sm ${
-        entry.success ? 'border-slate-200' : 'border-flag-200 bg-flag-50/40'
+        entry.success ? 'border-slate-200 dark:border-slate-800' : 'border-flag-200 bg-flag-50/40'
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 font-medium text-slate-900">
+        <p className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-50">
           {entry.success ? (
             <CheckCircleIcon aria-hidden className="h-4 w-4 text-emerald-600" />
           ) : (
@@ -204,16 +204,16 @@ function LoginActivityRow({ entry }: { entry: LoginActivity }) {
             </span>
           )}
         </p>
-        <span className="text-xs text-slate-400">{new Date(entry.createdAt).toLocaleString()}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(entry.createdAt).toLocaleString()}</span>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {entry.success
           ? 'Signed in'
           : entry.reason === 'invalid_2fa_code'
             ? 'Wrong 2FA code'
             : 'Wrong password / unknown email'}
       </p>
-      <p className="flex items-center gap-1 text-xs text-slate-400">
+      <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
         <ComputerDesktopIcon aria-hidden className="h-3.5 w-3.5" />
         {parseUserAgent(entry.userAgent)}
         {entry.ipAddress && <> · {entry.ipAddress}</>}
@@ -263,12 +263,12 @@ function RevokeSessions({ token }: { token: string }) {
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
       <div className="flex items-center gap-2">
         <FingerPrintIcon aria-hidden className="h-5 w-5 text-brand-600" />
-        <h2 className="font-semibold text-slate-800">Force sign-out</h2>
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">Force sign-out</h2>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         Ends every active session on an account immediately — no password needed. Use this for a compromised
         account or a just-demoted admin.
       </p>
@@ -279,23 +279,23 @@ function RevokeSessions({ token }: { token: string }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
           disabled={searching || !email.trim()}
           onClick={search}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
         >
           {searching ? 'Looking up…' : 'Find'}
         </button>
       </div>
       {error && <p className="text-sm text-flag-700">{error}</p>}
       {found && (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-900">{found.name}</p>
-            <p className="truncate text-xs text-slate-500">{found.email}</p>
+            <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">{found.name}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{found.email}</p>
           </div>
           {done ? (
             <span className="shrink-0 text-xs font-medium text-emerald-600">Sessions revoked</span>

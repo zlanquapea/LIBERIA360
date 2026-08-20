@@ -53,7 +53,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
 
   if (isOwner) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         You manage this listing —{' '}
         <Link href="/account/bookings" className="font-medium text-brand-700 hover:underline">
           view incoming requests
@@ -82,7 +82,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
 
   if (!user) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
           Log in
         </Link>{' '}
@@ -104,30 +104,30 @@ export function BookingRequestSection({ business }: { business: Business }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Date
           <input
             type="date"
             required
             value={requestedDate}
             onChange={(e) => setRequestedDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Check-out (optional)
           <input
             type="date"
             value={requestedEndDate}
             onChange={(e) => setRequestedEndDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Party size (optional)
         <input
           type="number"
@@ -135,18 +135,18 @@ export function BookingRequestSection({ business }: { business: Business }) {
           max={50}
           value={partySize}
           onChange={(e) => setPartySize(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Notes for {business.name} (optional)
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={2000}
           rows={3}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
@@ -156,7 +156,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
         </p>
       )}
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         This sends a request — {business.name} confirms or declines. No payment is taken now.
       </p>
 
@@ -171,7 +171,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
         <button
           type="button"
           onClick={() => setShowForm(false)}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Cancel
         </button>

@@ -11,19 +11,19 @@ export function CountySafetyPanel({ county }: { county: County }) {
   if (!hasContent) return null;
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-      <h2 className="font-semibold text-slate-900">Before you go</h2>
+    <section className="flex flex-col gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 p-4">
+      <h2 className="font-semibold text-slate-900 dark:text-slate-50">Before you go</h2>
 
       {county.emergencyNumber && (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-slate-700 dark:text-slate-200">
           <span className="font-medium">Emergency number:</span> {county.emergencyNumber}
         </p>
       )}
 
       {county.safetyTips.length > 0 && (
         <div>
-          <p className="text-sm font-medium text-slate-700">Safety tips</p>
-          <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Safety tips</p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-slate-600 dark:text-slate-300">
             {county.safetyTips.map((tip) => (
               <li key={tip}>{tip}</li>
             ))}
@@ -33,8 +33,8 @@ export function CountySafetyPanel({ county }: { county: County }) {
 
       {county.localCustoms && (
         <div>
-          <p className="text-sm font-medium text-slate-700">Local customs</p>
-          <p className="mt-1 text-sm text-slate-600">{county.localCustoms}</p>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Local customs</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{county.localCustoms}</p>
         </div>
       )}
     </section>

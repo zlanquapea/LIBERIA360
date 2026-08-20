@@ -13,11 +13,11 @@ export function PushNotificationToggle() {
   if (!available || checking) return null;
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-900">Event notifications</p>
-          <p className="text-xs text-slate-500">Get notified about new events in your home county.</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Event notifications</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Get notified about new events in your home county.</p>
         </div>
         <button
           type="button"
@@ -26,7 +26,7 @@ export function PushNotificationToggle() {
           aria-pressed={subscribed}
           className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium disabled:opacity-60 ${
             subscribed
-              ? 'border border-slate-300 text-slate-700 hover:border-flag-500 hover:text-flag-700'
+              ? 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700'
               : 'bg-brand-700 text-white hover:bg-brand-800'
           }`}
         >

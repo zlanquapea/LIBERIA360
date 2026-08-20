@@ -58,9 +58,9 @@ function ChangePasswordSection() {
 
   if (!open) {
     return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
         <div>
-          <p className="text-sm font-medium text-slate-900">Password</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Password</p>
           {success && <p className="text-xs text-emerald-700">Password updated.</p>}
         </div>
         <button
@@ -69,7 +69,7 @@ function ChangePasswordSection() {
             setOpen(true);
             setSuccess(false);
           }}
-          className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
         >
           Change
         </button>
@@ -78,9 +78,9 @@ function ChangePasswordSection() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <p className="text-sm font-medium text-slate-900">Change password</p>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Change password</p>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Current password
         <input
           type="password"
@@ -88,10 +88,10 @@ function ChangePasswordSection() {
           autoComplete="current-password"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         New password
         <input
           type="password"
@@ -100,9 +100,9 @@ function ChangePasswordSection() {
           autoComplete="new-password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
-        <span className="text-xs font-normal text-slate-400">At least 8 characters.</span>
+        <span className="text-xs font-normal text-slate-400 dark:text-slate-500">At least 8 characters.</span>
       </label>
 
       {error && (
@@ -122,7 +122,7 @@ function ChangePasswordSection() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Cancel
         </button>
@@ -154,17 +154,17 @@ function LogoutAllDevicesSection() {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-900">Sign out of all other devices</p>
-          <p className="text-xs text-slate-500">This device stays signed in.</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Sign out of all other devices</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">This device stays signed in.</p>
         </div>
         <button
           type="button"
           onClick={handleClick}
           disabled={submitting}
-          className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 disabled:opacity-60"
         >
           {submitting ? 'Signing out…' : 'Sign out everywhere else'}
         </button>
@@ -201,8 +201,8 @@ function DeleteAccountSection() {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border border-flag-200 p-3">
         <div>
-          <p className="text-sm font-medium text-slate-900">Delete account</p>
-          <p className="text-xs text-slate-500">This can&apos;t be undone.</p>
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Delete account</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">This can&apos;t be undone.</p>
         </div>
         <button
           type="button"
@@ -217,13 +217,13 @@ function DeleteAccountSection() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-flag-500 p-3">
-      <p className="text-sm font-medium text-slate-900">Delete your account</p>
-      <p className="text-xs text-slate-600">
+      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Delete your account</p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">
         Your profile, name, and email are removed. Reviews, bookings, and messages you&apos;ve left stay in place so
         other travelers and businesses aren&apos;t left with gaps in their history, but they&apos;ll no longer be
         linked to you.
       </p>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Confirm your password
         <input
           type="password"
@@ -231,7 +231,7 @@ function DeleteAccountSection() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-flag-500 focus:ring-1 focus:ring-flag-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-flag-500 focus:ring-1 focus:ring-flag-500"
         />
       </label>
 
@@ -252,7 +252,7 @@ function DeleteAccountSection() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Cancel
         </button>

@@ -33,13 +33,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
       <JsonLd data={eventJsonLd(event)} />
-      <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+      <span className="w-fit rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
         {formatEventCategory(event.category)}
       </span>
 
-      <h1 className="text-2xl font-bold text-slate-900">{event.name}</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{event.name}</h1>
 
-      <div className="flex flex-col gap-1 text-sm text-slate-600">
+      <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
         <p className="flex items-center gap-1.5">
           <CalendarDaysIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600" />
           {formatEventDateRange(event.startDate, event.endDate)}
@@ -57,18 +57,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
-      {event.description && <p className="text-slate-700">{event.description}</p>}
+      {event.description && <p className="text-slate-700 dark:text-slate-200">{event.description}</p>}
 
       {event.ticketInfo && (
-        <section className="flex flex-col gap-1 rounded-xl border border-slate-200 p-3">
-          <h2 className="text-sm font-semibold text-slate-900">Tickets</h2>
-          <p className="text-sm text-slate-600">{event.ticketInfo}</p>
+        <section className="flex flex-col gap-1 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tickets</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{event.ticketInfo}</p>
         </section>
       )}
 
       <div className="flex items-center justify-between gap-2">
         {event.createdBy ? (
-          <p className="text-xs text-slate-400">Posted by {event.createdBy.name}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Posted by {event.createdBy.name}</p>
         ) : (
           <span />
         )}

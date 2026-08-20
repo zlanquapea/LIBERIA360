@@ -62,8 +62,8 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
           >
             <Popup>
               <div className="flex flex-col gap-1">
-                <p className="font-semibold text-slate-900">{place.name}</p>
-                <p className="text-xs text-slate-500">{place.category.name}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-50">{place.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{place.category.name}</p>
                 <Link
                   href={`/places/${place.slug}`}
                   className="flex items-center gap-0.5 text-sm font-medium text-brand-700 hover:underline"
@@ -86,7 +86,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
               type="button"
               onClick={() => toggleCategory(category.slug)}
               className={`pointer-events-auto flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur ${
-                active ? 'border-transparent text-white' : 'border-slate-300 bg-white/90 text-slate-500'
+                active ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-700 bg-white/90 text-slate-500 dark:text-slate-400'
               }`}
               style={active ? { backgroundColor: colorForCategory(category.slug) } : undefined}
             >

@@ -25,27 +25,27 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-bold text-slate-900">B2B Tourism Analytics</h1>
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">B2B Tourism Analytics</h1>
 
       {!data ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       ) : (
         <>
           <section className="flex flex-col gap-3">
-            <h2 className="font-semibold text-slate-800">Top places by visitor interest</h2>
+            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Top places by visitor interest</h2>
             {data.topPlaces.length === 0 ? (
-              <p className="text-sm text-slate-500">No activity recorded yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet.</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {data.topPlaces.map((place, i) => (
-                  <li key={place.placeId} className="rounded-xl border border-slate-200 p-3">
+                  <li key={place.placeId} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <Link href={`/places/${place.slug}`} className="font-medium text-slate-900 hover:text-brand-700">
+                      <Link href={`/places/${place.slug}`} className="font-medium text-slate-900 dark:text-slate-50 hover:text-brand-700">
                         {i + 1}. {place.name}
                       </Link>
-                      <span className="text-sm font-semibold text-slate-700">{place.total} events</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{place.total} events</span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       {place.views} views · {place.saves} saves · {place.contactClicks} contact clicks ·{' '}
                       {place.bookingRequests} booking requests
                     </p>
@@ -67,18 +67,18 @@ function BreakdownSection({ title, rows }: { title: string; rows: { id: string; 
   const max = Math.max(1, ...rows.map((r) => r.totalEvents));
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold text-slate-800">{title}</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-slate-500">No activity recorded yet.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((row) => (
             <li key={row.id} className="flex items-center gap-3">
-              <span className="w-28 shrink-0 truncate text-sm text-slate-700">{row.name}</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <span className="w-28 shrink-0 truncate text-sm text-slate-700 dark:text-slate-200">{row.name}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <div className="h-full rounded-full bg-brand-500" style={{ width: `${(row.totalEvents / max) * 100}%` }} />
               </div>
-              <span className="w-10 shrink-0 text-right text-xs text-slate-500">{row.totalEvents}</span>
+              <span className="w-10 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400">{row.totalEvents}</span>
             </li>
           ))}
         </ul>

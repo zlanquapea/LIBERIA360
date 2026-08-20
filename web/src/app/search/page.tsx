@@ -41,7 +41,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <form
         action="/search"
         method="GET"
-        className="flex overflow-hidden rounded-full border border-slate-300 transition-shadow focus-within:ring-2 focus-within:ring-brand-400"
+        className="flex overflow-hidden rounded-full border border-slate-300 dark:border-slate-700 transition-shadow focus-within:ring-2 focus-within:ring-brand-400"
       >
         <input
           type="search"
@@ -52,7 +52,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         />
         <button
           type="submit"
-          className="flex items-center px-4 text-slate-600 transition-colors hover:bg-slate-50"
+          className="flex items-center px-4 text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
           aria-label="Search"
         >
           <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
@@ -61,13 +61,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       <SearchFilters categories={categories} counties={counties} />
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         {result.meta.total} result{result.meta.total === 1 ? '' : 's'}
         {q && ` for "${q}"`}
       </p>
 
       {result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           No places match your search yet.
         </p>
       ) : (
@@ -83,18 +83,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <Link
             href={pageHref(page - 1)}
             aria-disabled={page <= 1}
-            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300' : 'text-brand-700 hover:underline'}`}
+            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'}`}
           >
             ← Previous
           </Link>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-500 dark:text-slate-400">
             Page {result.meta.page} of {result.meta.totalPages}
           </span>
           <Link
             href={pageHref(page + 1)}
             aria-disabled={page >= result.meta.totalPages}
             className={`text-sm font-medium ${
-              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300' : 'text-brand-700 hover:underline'
+              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'
             }`}
           >
             Next →

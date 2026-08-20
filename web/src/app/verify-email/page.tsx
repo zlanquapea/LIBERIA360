@@ -50,7 +50,7 @@ function VerifyEmailStatus() {
   if (status === 'verifying') {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <p className="text-sm text-slate-500">Verifying your email…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Verifying your email…</p>
       </main>
     );
   }
@@ -58,8 +58,8 @@ function VerifyEmailStatus() {
   if (status === 'success') {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Email verified</h1>
-        <p className="text-sm text-slate-500">Thanks — your email address is confirmed.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Email verified</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Thanks — your email address is confirmed.</p>
         <Link
           href="/account"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -72,8 +72,8 @@ function VerifyEmailStatus() {
 
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-      <h1 className="text-xl font-bold text-slate-900">Couldn&apos;t verify email</h1>
-      <p className="text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Couldn&apos;t verify email</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         {error ?? 'This link is invalid or has expired.'} You can request a new one from your account page.
       </p>
       <Link href="/account" className="mx-auto text-sm font-medium text-brand-700 hover:underline">

@@ -9,7 +9,7 @@ import type { Category, Place } from '@/lib/types';
 // component page can stay a plain server component.
 const ExploreMapClient = dynamic(() => import('./ExploreMapClient').then((mod) => mod.ExploreMapClient), {
   ssr: false,
-  loading: () => <div className="flex h-full w-full items-center justify-center text-slate-400">Loading map…</div>,
+  loading: () => <div className="flex h-full w-full items-center justify-center text-slate-400 dark:text-slate-500">Loading map…</div>,
 });
 
 export function ExploreMapLoader({ places, categories }: { places: Place[]; categories: Category[] }) {

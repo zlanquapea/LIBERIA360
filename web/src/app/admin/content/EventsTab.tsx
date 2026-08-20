@@ -51,9 +51,9 @@ export function EventsTab({ token, counties }: { token: string; counties: County
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
           Events
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{events?.length ?? '…'}</span>
+          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{events?.length ?? '…'}</span>
         </h2>
         <Link
           href="/events/new"
@@ -63,15 +63,15 @@ export function EventsTab({ token, counties }: { token: string; counties: County
         </Link>
       </div>
       {!events ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       ) : events.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
           No events yet.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-2">Event</th>
                 <th className="px-4 py-2">Category</th>
@@ -80,13 +80,13 @@ export function EventsTab({ token, counties }: { token: string; counties: County
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {events.map((event) => (
-                <tr key={event.id} onClick={() => setView({ mode: 'edit', event })} className="cursor-pointer hover:bg-slate-50">
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{event.name}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{formatEventCategory(event.category)}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{event.county.name}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{formatEventDateRange(event.startDate, event.endDate)}</td>
+                <tr key={event.id} onClick={() => setView({ mode: 'edit', event })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">{event.name}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatEventCategory(event.category)}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{event.county.name}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatEventDateRange(event.startDate, event.endDate)}</td>
                   <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
                 </tr>
               ))}
@@ -156,20 +156,20 @@ function EventEditForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-700">Edit event</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Edit event</h3>
         {/* Removing an event is moderation, same as removing a flagged
             review — any admin already does this from the dashboard's
             "Flagged content" queue, so it isn't gated to super admin here. */}
         <DeleteButton label="Delete event" onDelete={handleDelete} onDeleted={onDeleted} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Category
           <select value={category} onChange={(e) => setCategory(e.target.value as EventCategory)} className={inputClass}>
             {EVENT_CATEGORIES.map((c) => (
@@ -180,7 +180,7 @@ function EventEditForm({
           </select>
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         County
         <select value={countyId} onChange={(e) => setCountyId(e.target.value)} className={inputClass}>
           {counties.map((c) => (
@@ -190,7 +190,7 @@ function EventEditForm({
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>

@@ -16,7 +16,7 @@ export function AccountLink() {
     return (
       <Link
         href="/login"
-        className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
+        className="flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
       >
         <UserCircleIcon aria-hidden className="h-4 w-4" />
         Log in

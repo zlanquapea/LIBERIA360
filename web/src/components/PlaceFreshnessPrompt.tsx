@@ -42,12 +42,12 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
   if (!ready || !user) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm">
       {existing === undefined ? (
-        <span className="text-slate-400">Checking…</span>
+        <span className="text-slate-400 dark:text-slate-500">Checking…</span>
       ) : existing ? (
         <>
-          <span className="flex items-center gap-1 text-slate-600">
+          <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
             {existing.response === 'still_here' && (
               <CheckCircleIcon aria-hidden className="h-4 w-4 shrink-0 text-emerald-600" />
             )}
@@ -65,12 +65,12 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
         </>
       ) : (
         <>
-          <span className="text-slate-700">Is this place still here?</span>
+          <span className="text-slate-700 dark:text-slate-200">Is this place still here?</span>
           <button
             type="button"
             disabled={submitting !== null}
             onClick={() => handleSubmit('still_here')}
-            className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
           >
             {submitting === 'still_here' ? '…' : 'Yes'}
           </button>
@@ -78,7 +78,7 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
             type="button"
             disabled={submitting !== null}
             onClick={() => handleSubmit('no_longer_here')}
-            className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:border-flag-500 disabled:opacity-60"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 disabled:opacity-60"
           >
             {submitting === 'no_longer_here' ? '…' : 'No'}
           </button>

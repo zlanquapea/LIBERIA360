@@ -61,7 +61,7 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
   if (!token) return null;
 
   return (
-    <div className="mt-2 border-t border-slate-100 pt-2">
+    <div className="mt-2 border-t border-slate-100 dark:border-slate-800 pt-2">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -73,9 +73,9 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
       {open && (
         <div className="mt-2 flex flex-col gap-2">
           {loading ? (
-            <p className="text-xs text-slate-500">Loading…</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Loading…</p>
           ) : messages.length === 0 ? (
-            <p className="text-xs text-slate-500">No messages yet.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">No messages yet.</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
               {messages.map((message) => {
@@ -84,7 +84,7 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
                   <li
                     key={message.id}
                     className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-sm ${
-                      mine ? 'ml-auto bg-brand-700 text-white' : 'bg-slate-100 text-slate-800'
+                      mine ? 'ml-auto bg-brand-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100'
                     }`}
                   >
                     {!mine && (
@@ -114,7 +114,7 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
               }}
               placeholder="Write a message…"
               maxLength={2000}
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
             />
             <button
               type="button"

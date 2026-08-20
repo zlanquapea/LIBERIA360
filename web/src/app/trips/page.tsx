@@ -41,7 +41,7 @@ export default function TripsPage() {
   if (!ready || loading) {
     return (
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -49,8 +49,8 @@ export default function TripsPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">My Trips</h1>
-        <p className="text-sm text-slate-500">Log in to build and save a Liberia trip.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My Trips</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to build and save a Liberia trip.</p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -64,11 +64,11 @@ export default function TripsPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900">My Trips</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My Trips</h1>
         <div className="flex shrink-0 gap-2">
           <Link
             href="/trips/weekend/new"
-            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
           >
             Weekend Explorer
           </Link>
@@ -82,7 +82,7 @@ export default function TripsPage() {
       </div>
 
       {itineraries.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           No trips yet — build your first Liberia itinerary.
         </p>
       ) : (
@@ -91,7 +91,7 @@ export default function TripsPage() {
 
       {shared.length > 0 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Shared with me</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Shared with me</h2>
           <TripList itineraries={shared} />
         </div>
       )}
@@ -106,16 +106,16 @@ function TripList({ itineraries }: { itineraries: Itinerary[] }) {
         <li key={itinerary.id}>
           <Link
             href={`/trips/${itinerary.id}`}
-            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 hover:border-brand-500"
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
           >
             <div className="min-w-0">
-              <p className="truncate font-medium text-slate-900">{itinerary.title}</p>
-              <p className="text-xs text-slate-500">
+              <p className="truncate font-medium text-slate-900 dark:text-slate-50">{itinerary.title}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {itinerary.durationDays} day{itinerary.durationDays === 1 ? '' : 's'} ·{' '}
                 {formatBudgetBand(itinerary.budgetBand)}
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
               {itinerary.kind === 'weekend' ? 'Weekend Explorer' : 'Trip'}
             </span>
           </Link>

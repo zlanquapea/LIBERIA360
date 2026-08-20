@@ -125,7 +125,7 @@ export default function AdminPage() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Dashboard</h1>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
             user?.isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700'
@@ -157,16 +157,16 @@ export default function AdminPage() {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-800">Top places by engagement</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Top places by engagement</h2>
           <Link href="/admin/analytics" className="text-xs font-medium text-brand-700 hover:underline">
             Full analytics →
           </Link>
         </div>
-        <div className="rounded-xl border border-slate-200 p-4">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
           {!topPlaces ? (
-            <p className="text-sm text-slate-500">Loading…</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
           ) : topPlaces.length === 0 ? (
-            <p className="text-sm text-slate-500">No activity recorded yet — views, saves, and bookings will show up here.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet — views, saves, and bookings will show up here.</p>
           ) : (
             <TopPlacesChart places={topPlaces} />
           )}
@@ -176,7 +176,7 @@ export default function AdminPage() {
       {user?.isSuperAdmin && (
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-slate-800">Platform</h2>
+            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Platform</h2>
             <div className="flex gap-2 text-xs font-medium text-brand-700">
               <Link href="/admin/security" className="hover:underline">
                 Security →
@@ -193,69 +193,69 @@ export default function AdminPage() {
             <KpiTile label="Total bookings" value={platformKpis?.totalBookings} icon={CalendarDaysIcon} />
           </div>
           {platformKpis && (
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
               <BuildingStorefrontIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-600" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900">
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
                   {platformKpis.claimedBusinessCount} of {platformKpis.totalPlaces} places claimed by a business
                 </p>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
                     className="h-full rounded-full bg-brand-600"
                     style={{ width: `${Math.round(platformKpis.businessClaimRate * 100)}%` }}
                   />
                 </div>
               </div>
-              <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+              <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">
                 {Math.round(platformKpis.businessClaimRate * 100)}%
               </span>
             </div>
           )}
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 p-4">
-              <p className="mb-3 text-sm font-medium text-slate-900">Bookings by status</p>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+              <p className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-50">Bookings by status</p>
               {platformKpis ? (
                 <BookingStatusBar counts={platformKpis.bookingsByStatus} />
               ) : (
-                <p className="text-sm text-slate-500">Loading…</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 p-4">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-900">Security snapshot</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Security snapshot</p>
                 <Link href="/admin/security" className="text-xs font-medium text-brand-700 hover:underline">
                   Details →
                 </Link>
               </div>
-              {securityOverview ? <SecuritySnapshot overview={securityOverview} /> : <p className="text-sm text-slate-500">Loading…</p>}
+              {securityOverview ? <SecuritySnapshot overview={securityOverview} /> : <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
             </div>
           </div>
         </section>
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
           Needs attention
           {queue && queue.pendingBusinesses.length > 0 && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
               {queue.pendingBusinesses.length}
             </span>
           )}
         </h2>
         {!queue ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : queue.pendingBusinesses.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             Nothing pending — the queue is clear.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
             {queue.pendingBusinesses.map((business) => (
-              <li key={business.id} className="rounded-xl border border-amber-200 bg-amber-50/40 p-3">
-                <p className="font-medium text-slate-900">{business.name}</p>
-                <p className="text-xs text-slate-500">
+              <li key={business.id} className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/20 p-3">
+                <p className="font-medium text-slate-900 dark:text-slate-50">{business.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
                 </p>
                 <VerifyBusinessControl businessId={business.id} onDone={reload} />
@@ -266,22 +266,22 @@ export default function AdminPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
           Possibly closed
           {queue && queue.possiblyClosedPlaces.length > 0 && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
               {queue.possiblyClosedPlaces.length}
             </span>
           )}
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Places where {/* keep in sync with FRESHNESS_FLAG_THRESHOLD */}3+ visitors independently reported
           &quot;no longer here&quot; in the last 90 days.
         </p>
         {!queue ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : queue.possiblyClosedPlaces.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             Nothing flagged.
           </p>
         ) : (
@@ -289,18 +289,18 @@ export default function AdminPage() {
             {queue.possiblyClosedPlaces.map(({ place, noLongerHereCount }) => (
               <li
                 key={place.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/40 p-3"
+                className="flex items-center justify-between gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/20 p-3"
               >
                 <div>
-                  <p className="font-medium text-slate-900">{place.name}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-medium text-slate-900 dark:text-slate-50">{place.name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {noLongerHereCount} report{noLongerHereCount === 1 ? '' : 's'} · {place.city}
                   </p>
                 </div>
                 <Link
                   href={`/places/${place.slug}`}
                   target="_blank"
-                  className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500"
+                  className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
                 >
                   View listing
                 </Link>
@@ -311,22 +311,22 @@ export default function AdminPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
           Flagged content
           {queue && queue.flaggedContent.length > 0 && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
               {queue.flaggedContent.length}
             </span>
           )}
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Reviews/events {/* keep in sync with REPORT_FLAG_THRESHOLD */}3+ users independently reported in the last
           90 days.
         </p>
         {!queue ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : queue.flaggedContent.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             Nothing flagged.
           </p>
         ) : (
@@ -341,23 +341,23 @@ export default function AdminPage() {
       <FeaturedCreatorToggle token={token} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold text-slate-800">Recent reviews</h2>
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">Recent reviews</h2>
         {!queue ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : queue.recentReviews.length === 0 ? (
-          <p className="text-sm text-slate-500">No reviews yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No reviews yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {queue.recentReviews.map((review) => (
-              <li key={review.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+              <li key={review.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-slate-900">{review.user?.name ?? 'A guest'}</p>
-                  <p className="flex items-center gap-0.5 text-slate-500">
+                  <p className="font-medium text-slate-900 dark:text-slate-50">{review.user?.name ?? 'A guest'}</p>
+                  <p className="flex items-center gap-0.5 text-slate-500 dark:text-slate-400">
                     {review.overallRating.toFixed(1)}
                     <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
                   </p>
                 </div>
-                {review.comment && <p className="mt-1 text-slate-600">{review.comment}</p>}
+                {review.comment && <p className="mt-1 text-slate-600 dark:text-slate-300">{review.comment}</p>}
               </li>
             ))}
           </ul>
@@ -382,7 +382,7 @@ function KpiTile({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 shadow-card transition-shadow hover:shadow-card-hover ${tone === 'warning' && value ? 'border-amber-300 bg-amber-50' : 'border-slate-200'}`}
+      className={`rounded-xl border p-3 shadow-card transition-shadow hover:shadow-card-hover ${tone === 'warning' && value ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30' : 'border-slate-200 dark:border-slate-800'}`}
     >
       <div className="flex items-center justify-between">
         <Icon aria-hidden className="h-5 w-5 text-brand-600" />
@@ -390,8 +390,8 @@ function KpiTile({
           <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
         )}
       </div>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value ?? (hint ? '—' : '…')}</p>
-      <p className="text-xs text-slate-500">{hint ?? label}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value ?? (hint ? '—' : '…')}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{hint ?? label}</p>
     </div>
   );
 }
@@ -419,14 +419,14 @@ function QuickActions({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <Link
           key={href}
           href={href}
-          className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover"
+          className="group flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700/10 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
             <Icon aria-hidden className="h-5 w-5" />
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-slate-900">{label}</span>
-            <span className="block truncate text-xs text-slate-500">{description}</span>
+            <span className="block text-sm font-semibold text-slate-900 dark:text-slate-50">{label}</span>
+            <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{description}</span>
           </span>
         </Link>
       ))}
@@ -449,18 +449,18 @@ function TopPlacesChart({ places }: { places: TopPlace[] }) {
             <Link
               href={`/places/${place.slug}`}
               target="_blank"
-              className="group flex items-center gap-3 rounded-lg -mx-1 px-1 py-0.5 hover:bg-slate-50"
+              className="group flex items-center gap-3 rounded-lg -mx-1 px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
-              <span className="w-32 shrink-0 truncate text-sm text-slate-700 group-hover:text-brand-700 sm:w-44">
+              <span className="w-32 shrink-0 truncate text-sm text-slate-700 dark:text-slate-200 group-hover:text-brand-700 sm:w-44">
                 {place.name}
               </span>
-              <span className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <span className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                 <span
                   className="block h-full rounded-r rounded-l-none bg-brand-600"
                   style={{ width: `${pct}%` }}
                 />
               </span>
-              <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-600">
+              <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300">
                 {place.total.toLocaleString()}
               </span>
             </Link>
@@ -479,12 +479,12 @@ function BookingStatusBar({ counts }: { counts: Record<BookingStatus, number> })
   const total = BOOKING_STATUS_META.reduce((sum, s) => sum + (counts[s.key] ?? 0), 0);
 
   if (total === 0) {
-    return <p className="text-sm text-slate-500">No bookings yet.</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No bookings yet.</p>;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Bookings by status">
+      <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" role="img" aria-label="Bookings by status">
         {BOOKING_STATUS_META.filter((s) => (counts[s.key] ?? 0) > 0).map((s) => (
           <div
             key={s.key}
@@ -495,10 +495,10 @@ function BookingStatusBar({ counts }: { counts: Record<BookingStatus, number> })
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
         {BOOKING_STATUS_META.map((s) => (
-          <div key={s.key} className="flex items-center gap-1.5 text-xs text-slate-600">
+          <div key={s.key} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
             {formatBookingStatus(s.key)}
-            <span className="font-semibold tabular-nums text-slate-900">{counts[s.key] ?? 0}</span>
+            <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">{counts[s.key] ?? 0}</span>
           </div>
         ))}
       </div>
@@ -519,33 +519,33 @@ function SecuritySnapshot({ overview }: { overview: SecurityOverview }) {
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="flex items-center gap-1 text-lg font-bold tabular-nums text-slate-900">
+          <p className="flex items-center gap-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">
             {overview.failedLoginsLast1h > 0 && <ShieldExclamationIcon aria-hidden className="h-4 w-4 text-amber-500" />}
             {overview.failedLoginsLast1h}
           </p>
-          <p className="text-xs text-slate-500">Failed logins (1h)</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Failed logins (1h)</p>
         </div>
         <div>
-          <p className="text-lg font-bold tabular-nums text-slate-900">{overview.failedLoginsLast24h}</p>
-          <p className="text-xs text-slate-500">Failed logins (24h)</p>
+          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">{overview.failedLoginsLast24h}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Failed logins (24h)</p>
         </div>
         <div>
-          <p className="text-lg font-bold tabular-nums text-slate-900">{overview.distinctFailingIpsLast24h}</p>
-          <p className="text-xs text-slate-500">Distinct failing IPs (24h)</p>
+          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">{overview.distinctFailingIpsLast24h}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Distinct failing IPs (24h)</p>
         </div>
         <div>
-          <p className="text-lg font-bold tabular-nums text-slate-900">
+          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">
             {enabled}/{total}
           </p>
-          <p className="text-xs text-slate-500">Admin 2FA enabled</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Admin 2FA enabled</p>
         </div>
       </div>
       <div>
-        <div className="flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <span>2FA adoption</span>
-          <span className="font-semibold tabular-nums text-slate-900">{adoptionPct}%</span>
+          <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">{adoptionPct}%</span>
         </div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div className="h-full rounded-full transition-[width]" style={{ width: `${adoptionPct}%`, backgroundColor: meterColor }} />
         </div>
       </div>
@@ -586,30 +586,30 @@ function FeaturedCreatorToggle({ token }: { token: string }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold text-slate-800">Feature a creator</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-100">Feature a creator</h2>
       <div className="flex gap-2">
         <input
           placeholder="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && lookup()}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
           disabled={loading || !username.trim()}
           onClick={lookup}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
         >
           {loading ? 'Looking up…' : 'Find'}
         </button>
       </div>
       {error && <p className="text-sm text-flag-700">{error}</p>}
       {creator && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+        <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div>
-            <p className="font-medium text-slate-900">{creator.name}</p>
-            <p className="text-xs text-slate-500">@{creator.username} · currently {creator.featured ? 'featured' : 'not featured'}</p>
+            <p className="font-medium text-slate-900 dark:text-slate-50">{creator.name}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">@{creator.username} · currently {creator.featured ? 'featured' : 'not featured'}</p>
           </div>
           <button
             type="button"
@@ -650,7 +650,7 @@ function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onD
       <select
         value={status}
         onChange={(e) => setStatus(e.target.value as VerificationStatus)}
-        className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        className="rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       >
         {VERIFICATION_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -706,19 +706,19 @@ function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDon
   }
 
   return (
-    <li className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3">
+    <li className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/20 p-3">
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
           {flagged.targetType} · {flagged.reportCount} report{flagged.reportCount === 1 ? '' : 's'} ({reasonSummary})
         </p>
         {flagged.review && (
           <>
-            <p className="mt-1 text-sm font-medium text-slate-900">{flagged.review.user?.name ?? 'A guest'}</p>
-            {flagged.review.comment && <p className="text-sm text-slate-600">{flagged.review.comment}</p>}
+            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.review.user?.name ?? 'A guest'}</p>
+            {flagged.review.comment && <p className="text-sm text-slate-600 dark:text-slate-300">{flagged.review.comment}</p>}
           </>
         )}
         {flagged.event && (
-          <p className="mt-1 text-sm font-medium text-slate-900">{flagged.event.name}</p>
+          <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.event.name}</p>
         )}
         {error && <p className="mt-1 text-xs text-flag-700">{error}</p>}
       </div>

@@ -58,8 +58,8 @@ export function AddTripStop({
   }
 
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 p-3">
-      <p className="text-sm font-medium text-slate-700">Add a stop</p>
+    <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Add a stop</p>
       <div className="flex gap-2">
         <input
           type="text"
@@ -72,7 +72,7 @@ export function AddTripStop({
             }
           }}
           placeholder="Search places…"
-          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <input
           type="number"
@@ -81,13 +81,13 @@ export function AddTripStop({
           value={day}
           onChange={(e) => setDay(Math.max(1, Number(e.target.value) || 1))}
           aria-label="Day"
-          className="w-16 shrink-0 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="w-16 shrink-0 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
           disabled={searching || !query.trim()}
           onClick={search}
-          className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 disabled:opacity-60"
         >
           {searching ? 'Searching…' : 'Search'}
         </button>
@@ -103,7 +103,7 @@ export function AddTripStop({
                 type="button"
                 disabled={addingId === place.id}
                 onClick={() => add(place.id)}
-                className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
               >
                 <span className="truncate">{place.name}</span>
                 <span className="shrink-0 text-xs font-medium text-brand-700">

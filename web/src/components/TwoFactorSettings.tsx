@@ -65,10 +65,10 @@ export function TwoFactorSettings() {
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div>
-        <p className="text-sm font-medium text-slate-900">Two-factor authentication</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Two-factor authentication</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {user.twoFactorEnabled ? 'On — an authenticator code is required at login.' : 'Off'}
         </p>
       </div>
@@ -76,7 +76,7 @@ export function TwoFactorSettings() {
         <button
           type="button"
           onClick={() => setStep({ name: 'disable' })}
-          className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-flag-500 hover:text-flag-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700"
         >
           Turn off
         </button>
@@ -148,14 +148,14 @@ function SetupFlow({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <p className="text-sm font-medium text-slate-900">Set up two-factor authentication</p>
+    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Set up two-factor authentication</p>
 
-      {loading && <p className="text-sm text-slate-500">Generating your QR code…</p>}
+      {loading && <p className="text-sm text-slate-500 dark:text-slate-400">Generating your QR code…</p>}
 
       {qrCodeDataUrl && (
         <>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Scan this with an authenticator app (Google Authenticator, Authy, 1Password, …), then enter the 6-digit
             code it shows.
           </p>
@@ -165,16 +165,16 @@ function SetupFlow({
             width={180}
             height={180}
             unoptimized
-            className="self-center rounded-lg border border-slate-200"
+            className="self-center rounded-lg border border-slate-200 dark:border-slate-800"
           />
           {secret && (
-            <p className="break-all rounded-lg bg-slate-50 px-3 py-2 text-center text-xs text-slate-500">
+            <p className="break-all rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2 text-center text-xs text-slate-500 dark:text-slate-400">
               Can&apos;t scan it? Enter this code manually: <span className="font-mono">{secret}</span>
             </p>
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
               6-digit code
               <input
                 type="text"
@@ -184,7 +184,7 @@ function SetupFlow({
                 placeholder="123456"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-center text-lg tracking-widest outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-center text-lg tracking-widest outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
             </label>
 
@@ -205,7 +205,7 @@ function SetupFlow({
               <button
                 type="button"
                 onClick={onCancel}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+                className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
               >
                 Cancel
               </button>
@@ -224,7 +224,7 @@ function SetupFlow({
           <button
             type="button"
             onClick={onCancel}
-            className="self-start rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+            className="self-start rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
           >
             Close
           </button>
@@ -236,15 +236,15 @@ function SetupFlow({
 
 function RecoveryCodesReveal({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-gold-400 bg-amber-50 p-3">
-      <p className="text-sm font-semibold text-slate-900">Two-factor authentication is on</p>
-      <p className="text-xs text-slate-600">
+    <div className="flex flex-col gap-3 rounded-xl border border-gold-400 bg-amber-50 dark:bg-amber-900/30 p-3">
+      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Two-factor authentication is on</p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">
         Save these recovery codes somewhere safe — each one lets you log in once if you lose access to your
         authenticator app. They won&apos;t be shown again.
       </p>
-      <ul className="grid grid-cols-2 gap-1.5 font-mono text-xs text-slate-800">
+      <ul className="grid grid-cols-2 gap-1.5 font-mono text-xs text-slate-800 dark:text-slate-100">
         {codes.map((c) => (
-          <li key={c} className="rounded bg-white px-2 py-1 text-center">
+          <li key={c} className="rounded bg-white dark:bg-slate-900 px-2 py-1 text-center">
             {c}
           </li>
         ))}
@@ -288,9 +288,9 @@ function DisableFlow({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <p className="text-sm font-medium text-slate-900">Turn off two-factor authentication</p>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Turn off two-factor authentication</p>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Confirm your password
         <input
           type="password"
@@ -298,7 +298,7 @@ function DisableFlow({
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
@@ -319,7 +319,7 @@ function DisableFlow({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Cancel
         </button>

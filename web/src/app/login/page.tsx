@@ -60,12 +60,12 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Log in</h1>
-        <p className="text-sm text-slate-500">Welcome back to LIBERIA360.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Log in</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back to LIBERIA360.</p>
       </div>
 
       <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Email
           <input
             type="email"
@@ -73,11 +73,11 @@ export default function LoginPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Password
           <input
             type="password"
@@ -85,7 +85,7 @@ export default function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
 
@@ -108,7 +108,7 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-slate-500 dark:text-slate-400">
         New here?{' '}
         <Link href="/signup" className="font-medium text-brand-700 hover:underline">
           Create an account
@@ -147,8 +147,8 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Enter your code</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Enter your code</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {useRecoveryCode
             ? 'Enter one of your saved recovery codes.'
             : 'Open your authenticator app and enter the 6-digit code.'}
@@ -156,7 +156,7 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           {useRecoveryCode ? 'Recovery code' : 'Authentication code'}
           <input
             type="text"
@@ -166,7 +166,7 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
             placeholder={useRecoveryCode ? 'xxxxx-xxxxx' : '123456'}
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-center text-lg tracking-widest outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-center text-lg tracking-widest outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
 
@@ -197,7 +197,7 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
         >
           {useRecoveryCode ? 'Use your authenticator app instead' : 'Use a recovery code instead'}
         </button>
-        <button type="button" onClick={onBack} className="text-slate-500 hover:underline">
+        <button type="button" onClick={onBack} className="text-slate-500 dark:text-slate-400 hover:underline">
           Back to log in
         </button>
       </div>

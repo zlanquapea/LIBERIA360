@@ -19,7 +19,7 @@ export function TravelerTypeSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as TravelerType | '')}
-      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+      className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
     >
       <option value="">Prefer not to say</option>
       {TRAVELER_TYPES.map((t) => (
@@ -53,7 +53,7 @@ export function InterestChips({
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               isSelected
                 ? 'border-transparent bg-brand-700 text-white'
-                : 'border-slate-300 text-slate-700 hover:border-brand-500'
+                : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
             }`}
           >
             {category.icon} {category.name}

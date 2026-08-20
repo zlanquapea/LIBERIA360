@@ -66,13 +66,13 @@ export function CategoriesTab({
         onCreate={() => setView({ mode: 'create' })}
       />
       {categories.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
           No categories yet — add the first one.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-2">Category</th>
                 <th className="px-4 py-2">Slug</th>
@@ -80,19 +80,19 @@ export function CategoriesTab({
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {categories.map((category) => (
                 <tr
                   key={category.id}
                   onClick={() => setView({ mode: 'edit', category })}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  <td className="px-4 py-2.5 font-medium text-slate-900">
+                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">
                     {category.icon ? `${category.icon} ` : ''}
                     {category.name}
                   </td>
-                  <td className="px-4 py-2.5 text-slate-500">{category.slug}</td>
-                  <td className="max-w-xs truncate px-4 py-2.5 text-slate-500">{category.description ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{category.slug}</td>
+                  <td className="max-w-xs truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">{category.description ?? '—'}</td>
                   <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
                 </tr>
               ))}
@@ -138,14 +138,14 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <h3 className="text-sm font-semibold text-slate-700">New category</h3>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">New category</h3>
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input required maxLength={100} value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Slug
           <input
             required
@@ -159,12 +159,12 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
             className={inputClass}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Icon
           <input maxLength={50} placeholder="e.g. 🏖️ (an emoji)" value={icon} onChange={(e) => setIcon(e.target.value)} className={inputClass} />
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>
@@ -235,9 +235,9 @@ function CategoryEditForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-700">Edit category</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Edit category</h3>
         {isSuperAdmin && (
           <DeleteButton
             label="Delete category"
@@ -247,16 +247,16 @@ function CategoryEditForm({
         )}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Icon
           <input maxLength={50} value={icon} onChange={(e) => setIcon(e.target.value)} className={inputClass} />
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>

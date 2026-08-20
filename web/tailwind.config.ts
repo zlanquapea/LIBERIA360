@@ -2,6 +2,10 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+  // Class-based, not `media` — a user's explicit choice (stored via
+  // lib/theme-storage.ts) has to win over the OS setting, and the toggle
+  // needs to actually do something regardless of prefers-color-scheme.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

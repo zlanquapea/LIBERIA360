@@ -14,7 +14,7 @@ function Stars({ rating }: { rating: number }) {
   return (
     <span aria-label={`${rating} out of 5 stars`} className="flex shrink-0 items-center gap-0.5">
       {Array.from({ length: 5 }, (_, i) => (
-        <StarIcon key={i} aria-hidden className={`h-4 w-4 ${i < rating ? 'text-gold-500' : 'text-slate-300'}`} />
+        <StarIcon key={i} aria-hidden className={`h-4 w-4 ${i < rating ? 'text-gold-500' : 'text-slate-300 dark:text-slate-700'}`} />
       ))}
     </span>
   );
@@ -78,23 +78,23 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
   return (
     <div className="flex flex-col gap-4">
       {reviews.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
           No reviews yet — be the first to share your experience.
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
           {reviews.map((review) => (
-            <li key={review.id} className="rounded-xl border border-slate-200 p-3">
+            <li key={review.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <p className="font-medium text-slate-900">{review.user?.name ?? 'LIBERIA360 user'}</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-50">{review.user?.name ?? 'LIBERIA360 user'}</p>
                   {review.verifiedVisit && <VerifiedVisitBadge />}
                 </div>
                 <Stars rating={review.overallRating} />
               </div>
-              {review.comment && <p className="mt-1 text-sm text-slate-600">{review.comment}</p>}
+              {review.comment && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{review.comment}</p>}
               <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 dark:text-slate-500">
                   {new Date(review.createdAt).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -109,16 +109,16 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
       )}
 
       {!ready ? null : !user ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           <Link href="/login" className="font-medium text-brand-700 hover:underline">
             Log in
           </Link>{' '}
           to write a review.
         </p>
       ) : alreadyReviewed || posted ? (
-        <p className="text-sm text-slate-500">You&apos;ve already reviewed this place. Thanks for sharing!</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">You&apos;ve already reviewed this place. Thanks for sharing!</p>
       ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
             {[1, 2, 3, 4, 5].map((value) => (
               <button
@@ -128,7 +128,7 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
                 role="radio"
                 aria-checked={rating === value}
                 aria-label={`${value} star${value === 1 ? '' : 's'}`}
-                className={`transition-transform hover:scale-110 ${value <= rating ? 'text-gold-500' : 'text-slate-300'}`}
+                className={`transition-transform hover:scale-110 ${value <= rating ? 'text-gold-500' : 'text-slate-300 dark:text-slate-700'}`}
               >
                 <StarIcon aria-hidden className="h-6 w-6" />
               </button>
@@ -140,7 +140,7 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
             maxLength={2000}
             rows={3}
             placeholder="Share your experience (optional)"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
           {error && (
             <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">

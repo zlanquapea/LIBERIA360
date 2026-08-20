@@ -81,12 +81,12 @@ export function NewEventForm({ counties }: { counties: County[] }) {
   }
 
   if (!ready) {
-    return <p className="text-sm text-slate-500">Loading…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
   }
 
   if (!user) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
           Log in
         </Link>{' '}
@@ -96,12 +96,12 @@ export function NewEventForm({ counties }: { counties: County[] }) {
   }
 
   if (eligibility === 'checking') {
-    return <p className="text-sm text-slate-500">Checking your account…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Checking your account…</p>;
   }
 
   if (eligibility === 'ineligible') {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-600">
+      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
         <p>
           Posting events is limited to businesses and creators, so listings stay tied to a real, accountable account.
         </p>
@@ -117,7 +117,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Event name
         <input
           type="text"
@@ -125,17 +125,17 @@ export function NewEventForm({ counties }: { counties: County[] }) {
           maxLength={200}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Category
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value as EventCategory)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           >
             {EVENT_CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -144,13 +144,13 @@ export function NewEventForm({ counties }: { counties: County[] }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           County
           <select
             required
             value={countyId}
             onChange={(e) => setCountyId(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           >
             {counties.map((c) => (
               <option key={c.id} value={c.id}>
@@ -161,7 +161,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Location
         <input
           type="text"
@@ -170,44 +170,44 @@ export function NewEventForm({ counties }: { counties: County[] }) {
           placeholder="e.g. Antoinette Tubman Stadium"
           value={locationText}
           onChange={(e) => setLocationText(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Starts
           <input
             type="datetime-local"
             required
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Ends (optional)
           <input
             type="datetime-local"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={2000}
           rows={3}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Ticket info
         <input
           type="text"
@@ -215,7 +215,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
           placeholder="e.g. $10 at the door, free entry, link to tickets"
           value={ticketInfo}
           onChange={(e) => setTicketInfo(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
