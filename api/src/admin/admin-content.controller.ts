@@ -25,6 +25,7 @@ import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateCountyDto } from "./dto/update-county.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
+import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
@@ -46,6 +47,15 @@ function sanitizeEvent(event: Event) {
   };
 }
 
+// CRUD split between the two admin tiers: any admin can create/update the
+// catalog (day-to-day content work, plus routine moderation deletes —
+// deleteEvent/deleteReview below stay AdminGuard, unchanged, since that's
+// the existing "Needs attention"/"Flagged content" workflow every admin
+// already relies on). Deleting a *structural* catalog entity — a whole
+// place, category, activity, business, or county, not a piece of
+// moderated content — is reserved for a super admin, stacking
+// @UseGuards(SuperAdminGuard) on top of this controller's own
+// AdminGuard, same pattern as GET /admin/kpis in admin.controller.ts.
 @ApiTags("Admin Content")
 @Controller("admin")
 @ApiBearerAuth()
@@ -63,6 +73,21 @@ export class AdminContentController {
     return this.adminContentService.updatePlace(id, dto);
   }
 
+  @Delete("places/:id")
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deletePlace(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deletePlace(
+      admin.id,
+      id,
+      getRequestInfo(req),
+    );
+  }
+
   @Post("categories")
   createCategory(@Body() dto: CreateCategoryDto) {
     return this.adminContentService.createCategory(dto);
@@ -73,6 +98,21 @@ export class AdminContentController {
     return this.adminContentService.updateCategory(id, dto);
   }
 
+  @Delete("categories/:id")
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteCategory(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deleteCategory(
+      admin.id,
+      id,
+      getRequestInfo(req),
+    );
+  }
+
   @Post("activities")
   createActivity(@Body() dto: CreateActivityDto) {
     return this.adminContentService.createActivity(dto);
@@ -81,6 +121,21 @@ export class AdminContentController {
   @Patch("activities/:id")
   updateActivity(@Param("id") id: string, @Body() dto: UpdateActivityDto) {
     return this.adminContentService.updateActivity(id, dto);
+  }
+
+  @Delete("activities/:id")
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteActivity(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deleteActivity(
+      admin.id,
+      id,
+      getRequestInfo(req),
+    );
   }
 
   @Post("businesses")
@@ -95,6 +150,21 @@ export class AdminContentController {
   ) {
     return sanitizeBusiness(
       await this.adminContentService.updateBusiness(id, dto),
+    );
+  }
+
+  @Delete("businesses/:id")
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteBusiness(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deleteBusiness(
+      admin.id,
+      id,
+      getRequestInfo(req),
     );
   }
 
@@ -134,5 +204,20 @@ export class AdminContentController {
   @Patch("counties/:id")
   updateCounty(@Param("id") id: string, @Body() dto: UpdateCountyDto) {
     return this.adminContentService.updateCounty(id, dto);
+  }
+
+  @Delete("counties/:id")
+  @UseGuards(SuperAdminGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteCounty(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Req() req: Request,
+  ) {
+    return this.adminContentService.deleteCounty(
+      admin.id,
+      id,
+      getRequestInfo(req),
+    );
   }
 }

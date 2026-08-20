@@ -8,6 +8,11 @@ import {
   createBusinessAdmin,
   createCategory,
   createPlace,
+  deleteActivity,
+  deleteBusinessAdmin,
+  deleteCategory,
+  deleteCountyAdmin,
+  deletePlace,
   updateActivity,
   updateBusinessAdmin,
   updateCategory,
@@ -42,6 +47,49 @@ const inputClass =
 
 // Mirrors the API's slug validation (CreatePlaceDto: lowercase, kebab-case)
 // so what's auto-filled here always passes server-side validation as-is.
+// Deleting a whole catalog entity (not moderating a piece of content) is
+// super-admin-only — see admin-content.controller.ts's SuperAdminGuard on
+// each DELETE route. Shared across every "Delete X" button below so the
+// loading/error handling and styling only need to be right once.
+function SuperAdminDeleteButton({
+  label,
+  onDelete,
+  onDeleted,
+}: {
+  label: string;
+  onDelete: () => Promise<void>;
+  onDeleted: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleClick() {
+    setDeleting(true);
+    setError(null);
+    try {
+      await onDelete();
+      onDeleted();
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        disabled={deleting}
+        onClick={handleClick}
+        className="rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+      >
+        {deleting ? 'Deleting…' : label}
+      </button>
+      {error && <p className="max-w-xs text-right text-xs text-flag-700">{error}</p>}
+    </div>
+  );
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -55,7 +103,8 @@ function slugify(text: string): string {
 // user-facing endpoints (e.g. Business's self-claim flow), since an admin
 // is seeding or correcting the catalog, not claiming a listing.
 export default function AdminContentPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const [categories, setCategories] = useState<Category[]>([]);
   const [counties, setCounties] = useState<County[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -76,11 +125,18 @@ export default function AdminContentPage() {
     <div className="flex flex-col gap-10">
       <h1 className="text-xl font-bold text-slate-900">Content Management</h1>
 
-      <ManageCategoriesSection token={token} categories={categories} onChanged={setCategories} />
+      <ManageCategoriesSection token={token} categories={categories} isSuperAdmin={isSuperAdmin} onChanged={setCategories} />
       <CreatePlaceSection token={token} categories={categories} counties={counties} places={places} onCreated={reloadPlaces} />
-      <ManagePlaceSection token={token} categories={categories} counties={counties} places={places} onChanged={reloadPlaces} />
+      <ManagePlaceSection
+        token={token}
+        categories={categories}
+        counties={counties}
+        places={places}
+        isSuperAdmin={isSuperAdmin}
+        onChanged={reloadPlaces}
+      />
       <ManageEventsSection token={token} counties={counties} />
-      <ManageCountiesSection token={token} counties={counties} onChanged={setCounties} />
+      <ManageCountiesSection token={token} counties={counties} isSuperAdmin={isSuperAdmin} onChanged={setCounties} />
     </div>
   );
 }
@@ -94,10 +150,12 @@ export default function AdminContentPage() {
 function ManageCategoriesSection({
   token,
   categories,
+  isSuperAdmin,
   onChanged,
 }: {
   token: string;
   categories: Category[];
+  isSuperAdmin: boolean;
   onChanged: (categories: Category[]) => void;
 }) {
   const [selectedId, setSelectedId] = useState('');
@@ -124,7 +182,12 @@ function ManageCategoriesSection({
         <CategoryEditForm
           token={token}
           category={selected}
+          isSuperAdmin={isSuperAdmin}
           onSaved={(updated) => onChanged(categories.map((c) => (c.id === updated.id ? updated : c)))}
+          onDeleted={() => {
+            onChanged(categories.filter((c) => c.id !== selected.id));
+            setSelectedId('');
+          }}
         />
       )}
     </section>
@@ -219,11 +282,15 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
 function CategoryEditForm({
   token,
   category,
+  isSuperAdmin,
   onSaved,
+  onDeleted,
 }: {
   token: string;
   category: Category;
+  isSuperAdmin: boolean;
   onSaved: (category: Category) => void;
+  onDeleted: () => void;
 }) {
   const [name, setName] = useState(category.name);
   const [icon, setIcon] = useState(category.icon ?? '');
@@ -265,6 +332,15 @@ function CategoryEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+      {isSuperAdmin && (
+        <div className="flex justify-end">
+          <SuperAdminDeleteButton
+            label="Delete category"
+            onDelete={() => deleteCategory(token, category.id)}
+            onDeleted={onDeleted}
+          />
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
           Name
@@ -509,12 +585,14 @@ function ManagePlaceSection({
   categories,
   counties,
   places,
+  isSuperAdmin,
   onChanged,
 }: {
   token: string;
   categories: Category[];
   counties: County[];
   places: Place[];
+  isSuperAdmin: boolean;
   onChanged: () => void;
 }) {
   const [selectedSlug, setSelectedSlug] = useState('');
@@ -561,17 +639,31 @@ function ManagePlaceSection({
             place={place}
             categories={categories}
             counties={counties}
+            isSuperAdmin={isSuperAdmin}
             onSaved={(updated) => {
               setPlace(updated);
+              onChanged();
+            }}
+            onDeleted={() => {
+              setSelectedSlug('');
+              setPlace(null);
+              setBusiness(null);
               onChanged();
             }}
           />
           <ActivitiesEditor
             token={token}
             place={place}
+            isSuperAdmin={isSuperAdmin}
             onChanged={() => reload(selectedSlug)}
           />
-          <BusinessEditor token={token} place={place} business={business} onChanged={() => reload(selectedSlug)} />
+          <BusinessEditor
+            token={token}
+            place={place}
+            business={business}
+            isSuperAdmin={isSuperAdmin}
+            onChanged={() => reload(selectedSlug)}
+          />
         </div>
       )}
     </section>
@@ -583,13 +675,17 @@ function PlaceEditForm({
   place,
   categories,
   counties,
+  isSuperAdmin,
   onSaved,
+  onDeleted,
 }: {
   token: string;
   place: Place;
   categories: Category[];
   counties: County[];
+  isSuperAdmin: boolean;
   onSaved: (place: Place) => void;
+  onDeleted: () => void;
 }) {
   const [name, setName] = useState(place.name);
   const [description, setDescription] = useState(place.description);
@@ -650,7 +746,16 @@ function PlaceEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <h3 className="text-sm font-semibold text-slate-700">Place details</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-700">Place details</h3>
+        {isSuperAdmin && (
+          <SuperAdminDeleteButton
+            label="Delete place"
+            onDelete={() => deletePlace(token, place.id)}
+            onDeleted={onDeleted}
+          />
+        )}
+      </div>
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -725,7 +830,17 @@ function PlaceEditForm({
   );
 }
 
-function ActivitiesEditor({ token, place, onChanged }: { token: string; place: Place; onChanged: () => void }) {
+function ActivitiesEditor({
+  token,
+  place,
+  isSuperAdmin,
+  onChanged,
+}: {
+  token: string;
+  place: Place;
+  isSuperAdmin: boolean;
+  onChanged: () => void;
+}) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [difficulty, setDifficulty] = useState<ActivityDifficulty | ''>('');
@@ -762,7 +877,13 @@ function ActivitiesEditor({ token, place, onChanged }: { token: string; place: P
       ) : (
         <ul className="flex flex-col gap-2">
           {(place.activities ?? []).map((activity) => (
-            <ActivityRow key={activity.id} token={token} activity={activity} onChanged={onChanged} />
+            <ActivityRow
+              key={activity.id}
+              token={token}
+              activity={activity}
+              isSuperAdmin={isSuperAdmin}
+              onChanged={onChanged}
+            />
           ))}
         </ul>
       )}
@@ -809,7 +930,17 @@ function ActivitiesEditor({ token, place, onChanged }: { token: string; place: P
   );
 }
 
-function ActivityRow({ token, activity, onChanged }: { token: string; activity: Activity; onChanged: () => void }) {
+function ActivityRow({
+  token,
+  activity,
+  isSuperAdmin,
+  onChanged,
+}: {
+  token: string;
+  activity: Activity;
+  isSuperAdmin: boolean;
+  onChanged: () => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(activity.name);
   const [price, setPrice] = useState(activity.price?.toString() ?? '');
@@ -833,9 +964,14 @@ function ActivityRow({ token, activity, onChanged }: { token: string; activity: 
           {activity.name}
           {activity.price !== null && <span className="text-slate-500"> · ${activity.price}</span>}
         </span>
-        <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-brand-700 hover:underline">
-          Edit
-        </button>
+        <span className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-brand-700 hover:underline">
+            Edit
+          </button>
+          {isSuperAdmin && (
+            <SuperAdminDeleteButton label="Delete" onDelete={() => deleteActivity(token, activity.id)} onDeleted={onChanged} />
+          )}
+        </span>
       </li>
     );
   }
@@ -866,11 +1002,13 @@ function BusinessEditor({
   token,
   place,
   business,
+  isSuperAdmin,
   onChanged,
 }: {
   token: string;
   place: Place;
   business: Business | null;
+  isSuperAdmin: boolean;
   onChanged: () => void;
 }) {
   const [name, setName] = useState(business?.name ?? '');
@@ -921,9 +1059,18 @@ function BusinessEditor({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <h3 className="text-sm font-semibold text-slate-700">
-        {business ? 'Business listing' : 'Seed a business listing (unclaimed until an owner claims it)'}
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-700">
+          {business ? 'Business listing' : 'Seed a business listing (unclaimed until an owner claims it)'}
+        </h3>
+        {isSuperAdmin && business && (
+          <SuperAdminDeleteButton
+            label="Delete business"
+            onDelete={() => deleteBusinessAdmin(token, business.id)}
+            onDeleted={onChanged}
+          />
+        )}
+      </div>
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
@@ -1124,10 +1271,12 @@ function EventEditForm({
 function ManageCountiesSection({
   token,
   counties,
+  isSuperAdmin,
   onChanged,
 }: {
   token: string;
   counties: County[];
+  isSuperAdmin: boolean;
   onChanged: (counties: County[]) => void;
 }) {
   const [selectedId, setSelectedId] = useState('');
@@ -1153,7 +1302,12 @@ function ManageCountiesSection({
         <CountyEditForm
           token={token}
           county={selected}
+          isSuperAdmin={isSuperAdmin}
           onSaved={(updated) => onChanged(counties.map((c) => (c.id === updated.id ? updated : c)))}
+          onDeleted={() => {
+            onChanged(counties.filter((c) => c.id !== selected.id));
+            setSelectedId('');
+          }}
         />
       )}
     </section>
@@ -1163,11 +1317,15 @@ function ManageCountiesSection({
 function CountyEditForm({
   token,
   county,
+  isSuperAdmin,
   onSaved,
+  onDeleted,
 }: {
   token: string;
   county: County;
+  isSuperAdmin: boolean;
   onSaved: (county: County) => void;
+  onDeleted: () => void;
 }) {
   const [emergencyNumber, setEmergencyNumber] = useState(county.emergencyNumber ?? '');
   // One tip per line in the textarea — simplest editing UI for a string
@@ -1214,6 +1372,15 @@ function CountyEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+      {isSuperAdmin && (
+        <div className="flex justify-end">
+          <SuperAdminDeleteButton
+            label="Delete county"
+            onDelete={() => deleteCountyAdmin(token, county.id)}
+            onDeleted={onDeleted}
+          />
+        </div>
+      )}
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
         Emergency number
         <input

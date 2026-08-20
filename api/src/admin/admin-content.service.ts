@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { QueryFailedError, Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
@@ -89,6 +89,51 @@ export class AdminContentService {
     return this.placeRepo.findOneOrFail({ where: { id } });
   }
 
+  async deletePlace(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
+    const place = await this.placeRepo.findOne({ where: { id } });
+    if (!place) {
+      throw new NotFoundException(`Place "${id}" not found`);
+    }
+    // Activities/reviews/analytics events/sponsored placements/freshness
+    // reports all cascade-delete with the place (see the migrations) — but
+    // a linked business or an event held at this place doesn't, on
+    // purpose: silently deleting someone's business listing, or orphaning
+    // an event's venue, is worse than asking the admin to handle those
+    // first. Checked explicitly for a clear message; deleteOrConflict
+    // below is the safety net for any FK this doesn't anticipate.
+    const hasBusiness = await this.businessRepo.exists({
+      where: { linkedPlaceId: id },
+    });
+    if (hasBusiness) {
+      throw new ConflictException(
+        "This place has a linked business — remove or reassign it first",
+      );
+    }
+    const hasEvents = await this.eventRepo.exists({ where: { placeId: id } });
+    if (hasEvents) {
+      throw new ConflictException(
+        "This place has events at this location — remove or reassign them first",
+      );
+    }
+
+    await this.deleteOrConflict(
+      () => this.placeRepo.delete({ id }),
+      "This place is still referenced elsewhere and can't be deleted",
+    );
+    await this.adminAuditService.log(
+      adminUserId,
+      "place.removed",
+      "place",
+      id,
+      { name: place.name, slug: place.slug },
+      requestInfo,
+    );
+  }
+
   // ---- Categories ----
 
   async createCategory(dto: CreateCategoryDto): Promise<Category> {
@@ -122,6 +167,36 @@ export class AdminContentService {
     return this.categoryRepo.findOneOrFail({ where: { id } });
   }
 
+  async deleteCategory(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
+    const category = await this.categoryRepo.findOne({ where: { id } });
+    if (!category) {
+      throw new NotFoundException(`Category "${id}" not found`);
+    }
+    const inUse = await this.placeRepo.exists({ where: { categoryId: id } });
+    if (inUse) {
+      throw new ConflictException(
+        "This category is still used by one or more places — move them to a different category first",
+      );
+    }
+
+    await this.deleteOrConflict(
+      () => this.categoryRepo.delete({ id }),
+      "This category is still referenced elsewhere and can't be deleted",
+    );
+    await this.adminAuditService.log(
+      adminUserId,
+      "category.removed",
+      "category",
+      id,
+      { name: category.name, slug: category.slug },
+      requestInfo,
+    );
+  }
+
   // ---- Activities ----
 
   async createActivity(dto: CreateActivityDto): Promise<Activity> {
@@ -145,6 +220,28 @@ export class AdminContentService {
     this.activityRepo.merge(activity, dto);
     await this.activityRepo.save(activity);
     return this.activityRepo.findOneOrFail({ where: { id } });
+  }
+
+  // Nothing references an activity by FK, so this is a plain delete — no
+  // exists()-checks needed, just the existence check for a clean 404.
+  async deleteActivity(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
+    const activity = await this.activityRepo.findOne({ where: { id } });
+    if (!activity) {
+      throw new NotFoundException(`Activity "${id}" not found`);
+    }
+    await this.activityRepo.delete({ id });
+    await this.adminAuditService.log(
+      adminUserId,
+      "activity.removed",
+      "activity",
+      id,
+      { name: activity.name, placeId: activity.placeId },
+      requestInfo,
+    );
   }
 
   // ---- Businesses ----
@@ -192,6 +289,28 @@ export class AdminContentService {
     this.businessRepo.merge(business, dto);
     await this.businessRepo.save(business);
     return this.businessRepo.findOneOrFail({ where: { id } });
+  }
+
+  // Bookings (and booking_messages, transitively) cascade-delete with the
+  // business — no pre-check needed beyond existence.
+  async deleteBusiness(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
+    const business = await this.businessRepo.findOne({ where: { id } });
+    if (!business) {
+      throw new NotFoundException(`Business "${id}" not found`);
+    }
+    await this.businessRepo.delete({ id });
+    await this.adminAuditService.log(
+      adminUserId,
+      "business.removed",
+      "business",
+      id,
+      { name: business.name, linkedPlaceId: business.linkedPlaceId },
+      requestInfo,
+    );
   }
 
   // ---- Events ----
@@ -274,6 +393,48 @@ export class AdminContentService {
     return this.countyRepo.findOneOrFail({ where: { id } });
   }
 
+  // Liberia has a fixed 15 counties — this exists for completeness (a
+  // genuine data-entry mistake while adding one) rather than routine use.
+  // Places and events referencing a county block the delete explicitly;
+  // deleteOrConflict catches anything else (e.g. a user's home county).
+  async deleteCounty(
+    adminUserId: string,
+    id: string,
+    requestInfo?: RequestInfo,
+  ): Promise<void> {
+    const county = await this.countyRepo.findOne({ where: { id } });
+    if (!county) {
+      throw new NotFoundException(`County "${id}" not found`);
+    }
+    const hasPlaces = await this.placeRepo.exists({ where: { countyId: id } });
+    if (hasPlaces) {
+      throw new ConflictException(
+        "This county still has places in it — move or remove them first",
+      );
+    }
+    const hasEvents = await this.eventRepo.exists({
+      where: { countyId: id },
+    });
+    if (hasEvents) {
+      throw new ConflictException(
+        "This county still has events in it — move or remove them first",
+      );
+    }
+
+    await this.deleteOrConflict(
+      () => this.countyRepo.delete({ id }),
+      "This county is still referenced elsewhere and can't be deleted",
+    );
+    await this.adminAuditService.log(
+      adminUserId,
+      "county.removed",
+      "county",
+      id,
+      { name: county.name, slug: county.slug },
+      requestInfo,
+    );
+  }
+
   private async assertCategoryExists(categoryId: string): Promise<void> {
     const exists = await this.categoryRepo.exists({
       where: { id: categoryId },
@@ -287,6 +448,28 @@ export class AdminContentService {
     const exists = await this.countyRepo.exists({ where: { id: countyId } });
     if (!exists) {
       throw new NotFoundException(`County "${countyId}" not found`);
+    }
+  }
+
+  // TypeORM wraps the driver error; Postgres reports a foreign-key
+  // violation as code 23503. This turns that into a clear 409 instead of a
+  // raw 500 — the explicit exists()-checks above cover the common,
+  // expected blockers with a specific message; this is the safety net for
+  // any relationship this service doesn't explicitly check for.
+  private async deleteOrConflict(
+    action: () => Promise<unknown>,
+    conflictMessage: string,
+  ): Promise<void> {
+    try {
+      await action();
+    } catch (err) {
+      if (
+        err instanceof QueryFailedError &&
+        (err as QueryFailedError & { code?: string }).code === "23503"
+      ) {
+        throw new ConflictException(conflictMessage);
+      }
+      throw err;
     }
   }
 }
