@@ -582,6 +582,68 @@ export interface PaginatedAdminActions {
   };
 }
 
+// api/src/admin/admin-users.service.ts — GET /admin/users, super-admin
+// only. Every account, not just admins (that's AuthUser[] from
+// GET /admin/team) — the Users & Roles > Users screen.
+export interface PaginatedUsers {
+  data: AuthUser[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// api/src/admin/admin-system.service.ts — GET /admin/system/status,
+// super-admin only. Real runtime flags, no secrets: which optional
+// integrations are actually configured, not their credentials.
+export interface SystemStatus {
+  environment: string;
+  apiUptimeSeconds: number;
+  storageDriver: "local" | "s3";
+  databaseSslEnabled: boolean;
+  integrations: {
+    email: boolean;
+    pushNotifications: boolean;
+    crashReporting: boolean;
+  };
+}
+
+// api/src/admin/admin-analytics.service.ts's getOverview() — GET
+// /admin/analytics/overview. Current-vs-previous-period comparisons
+// computed from existing timestamped tables, not a stored metrics
+// snapshot — see the service's own doc comment.
+export interface MetricTrend {
+  key: "newUsers" | "newReviews" | "newBookings" | "pageViews";
+  label: string;
+  current: number;
+  previous: number;
+  deltaPct: number | null;
+  direction: "up" | "down" | "flat";
+}
+
+export interface NeglectedPlace {
+  placeId: string;
+  name: string;
+  slug: string;
+}
+
+export interface TopReviewer {
+  userId: string;
+  name: string;
+  reviewCount: number;
+}
+
+export interface AnalyticsOverview {
+  periodDays: number;
+  metrics: MetricTrend[];
+  topPlaces: TopPlace[];
+  neglectedPlaces: NeglectedPlace[];
+  topReviewers: TopReviewer[];
+  insights: string[];
+}
+
 // api/src/security/entities/login-activity.entity.ts (super-admin-only —
 // see api/README.md's "Security — login activity & session revocation"
 // section). Every completed login attempt, success or failure.

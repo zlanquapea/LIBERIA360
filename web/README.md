@@ -60,6 +60,7 @@ npm run lint
 - **PWA**: `public/manifest.webmanifest` + `public/sw.js` (app-shell caching, push notification handlers). Saved places are snapshotted to `localStorage` for offline access, independent of the service worker's HTTP cache.
 - **SEO**: schema.org JSON-LD on destination and event pages (`src/lib/structured-data.ts`).
 - **Crash reporting**: `@sentry/browser` (client-side errors only), no-op unless `NEXT_PUBLIC_SENTRY_DSN` is set.
+- **Admin information architecture**: a 7-group collapsible sidebar (`src/lib/admin-nav.ts`) — Dashboard, Analytics, Content, Users & Roles, Settings, Security, System/Operations — driven by a typed capability model (`src/lib/capabilities.ts`) rather than scattered `isAdmin`/`isSuperAdmin` checks. `hasCapability(user, capability)` resolves each capability to a role tier; today that's still just the two real backend tiers (`AdminGuard`/`SuperAdminGuard`), so this is a naming/consistency layer over real enforcement, not a new permissions engine — see `/admin/roles` (Roles & Permissions) for the same map rendered as a reference page. Sections without a real feature behind them yet (Settings, a dynamic Roles editor) render an honest "not built yet" state (`PlaceholderPage` in `admin-ui.tsx`) instead of fake controls. Shared dashboard primitives (`KpiCard` with period-over-period deltas, `Panel`, `EmptyState`, `PeriodToggle`) live in `src/components/admin-ui.tsx`.
 
 ## Feature set
 
@@ -70,10 +71,10 @@ npm run lint
 | Content | Reviews, business self-claim and management, creator directory/profiles, events, photo uploads |
 | Trip planning | Trip Planner, Weekend Explorer, collaborative multi-user trip editing |
 | Marketplace | Booking requests, in-booking messaging, business analytics dashboard, featured placements/creators |
-| Admin | Moderation queue (incl. user-reported content), content management, sponsored placements, B2B analytics, team & access management, platform KPIs, audit log, security (login activity, brute-force signal, forced session revocation) |
+| Admin | Dashboard (KPIs w/ deltas, insights, needs-attention, recent activity), Analytics (overview/user/content/engagement/growth/reports), Content (catalog, moderation, content reports, featured content), Users & Roles (all users, administrators, roles reference, activity), Security (overview, login & auth, sessions & devices, alerts, audit log), Settings (placeholders), System/Operations (live runtime status) |
 | Platform | Push notification opt-in, offline saved places, freshness reporting |
 
-Admin pages (`/admin/*`) are gated client-side by `AdminGate` for UX; the API's `AdminGuard` is the actual enforcement.
+Admin pages (`/admin/*`) are gated client-side by `AdminGate`/`SuperAdminGate` for UX; the API's `AdminGuard`/`SuperAdminGuard` are the actual enforcement.
 
 ## Known limitations
 

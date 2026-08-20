@@ -267,6 +267,9 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `DELETE /admin/counties/:id` | Delete a county — blocked (409) if it still has places or events in it | Super Admin |
 | `PATCH /creators/:id/featured` | Toggle featured status |
 | `GET /admin/analytics/aggregate?limit=` | B2B aggregate analytics: top places, category/county breakdowns |
+| `GET /admin/analytics/overview?days=` | Decision-driving analytics: current-vs-previous-period deltas for sign-ups/reviews/bookings/page views (computed live from existing timestamped tables, not a stored snapshot), top places, neglected (zero-view) places, top reviewers, and rule-based insight sentences |
+| `GET /admin/users?page=&limit=&search=&travelerType=&isAdmin=` | Every account (not just admins — see `/admin/team` for that), paginated, searchable by name/email | Super Admin |
+| `GET /admin/system/status` | Runtime status: environment, API uptime, storage driver, DB SSL, and which optional integrations (email, push, crash reporting) are configured — flags only, never credentials | Super Admin |
 | `GET /admin/team` | List admins and super admins | Super Admin |
 | `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
 | `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { getCategories, getCounties } from '@/lib/api';
 import type { Category, County } from '@/lib/types';
@@ -18,6 +19,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'counties', label: 'Counties' },
 ];
 
+function isTab(value: string | null): value is Tab {
+  return value !== null && TABS.some((t) => t.id === value);
+}
+
 // Admin content management (Tech Spec §8) — one tab per entity, each
 // list-first: a table of what exists, a "+ New" button, click a row to
 // edit. Not a single page of stacked forms — a real admin panel, where
@@ -25,7 +30,12 @@ const TABS: { id: Tab; label: string }[] = [
 export default function AdminContentPage() {
   const { token, user } = useAuth();
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
-  const [tab, setTab] = useState<Tab>('categories');
+  const searchParams = useSearchParams();
+  // Reads the ?tab= the sidebar's "Categories" deep-link sets; a plain
+  // useState default wouldn't pick this up since the search param is
+  // only known once the router hands it to us, one tick after mount.
+  const initialTab = searchParams.get('tab');
+  const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : 'categories');
   const [categories, setCategories] = useState<Category[]>([]);
   const [counties, setCounties] = useState<County[]>([]);
 

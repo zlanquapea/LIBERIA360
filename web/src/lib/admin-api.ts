@@ -1,6 +1,7 @@
 import type {
   Activity,
   AggregateAnalytics,
+  AnalyticsOverview,
   AuthUser,
   Business,
   County,
@@ -14,10 +15,12 @@ import type {
   ModerationQueue,
   PaginatedAdminActions,
   PaginatedLoginActivity,
+  PaginatedUsers,
   Place,
   PlatformKpis,
   SecurityOverview,
   SponsoredPlacement,
+  SystemStatus,
   UpdateActivityInput,
   UpdateBusinessAdminInput,
   UpdateCategoryInput,
@@ -261,4 +264,34 @@ export function revokeUserSessions(token: string, userId: string): Promise<AuthU
     method: 'POST',
     headers: authHeader(token),
   });
+}
+
+// Decision-driving analytics — any admin. See admin-analytics.service.ts's
+// getOverview().
+export function getAnalyticsOverview(token: string, days = 7): Promise<AnalyticsOverview> {
+  return apiRequest<AnalyticsOverview>(`/admin/analytics/overview?days=${days}`, {
+    headers: authHeader(token),
+  });
+}
+
+// Users & Roles > Users — every account, super admin only. Distinct from
+// getTeamRoster() (admins only).
+export function getUsers(
+  token: string,
+  {
+    page = 1,
+    limit = 20,
+    search,
+    isAdmin,
+  }: { page?: number; limit?: number; search?: string; isAdmin?: boolean } = {},
+): Promise<PaginatedUsers> {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search) query.set('search', search);
+  if (isAdmin !== undefined) query.set('isAdmin', String(isAdmin));
+  return apiRequest<PaginatedUsers>(`/admin/users?${query}`, { headers: authHeader(token) });
+}
+
+// System / Operations — super admin only.
+export function getSystemStatus(token: string): Promise<SystemStatus> {
+  return apiRequest<SystemStatus>('/admin/system/status', { headers: authHeader(token) });
 }
