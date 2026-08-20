@@ -194,6 +194,47 @@ export interface Business {
 
 // api/src/creators/entities/creator.entity.ts (sanitized — user is the
 // public shape).
+// api/src/creators/entities/creator.enums.ts
+export type CreatorCategory =
+  | "photographer"
+  | "videographer"
+  | "tour_guide"
+  | "tour_operator"
+  | "artist"
+  | "chef"
+  | "cultural"
+  | "other";
+
+// Deliberately just two states, unlike Place/Business's VerificationStatus
+// above — see CreatorVerificationStatus's backend doc comment for why.
+export type CreatorVerificationStatus = "unverified" | "verified";
+
+export type CreatorPortfolioItemType = "image" | "video";
+
+export interface CreatorPortfolioItem {
+  id: string;
+  creatorId: string;
+  type: CreatorPortfolioItemType;
+  url: string;
+  caption: string | null;
+  category: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CreatorOffering {
+  id: string;
+  creatorId: string;
+  title: string;
+  description: string | null;
+  priceFrom: number | null;
+  durationLabel: string | null;
+  location: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Creator {
   id: string;
   user: AuthUser | null;
@@ -201,16 +242,37 @@ export interface Creator {
   username: string;
   bio: string | null;
   profileImage: string | null;
+  coverImage: string | null;
+  category: CreatorCategory;
+  county: County | null;
+  countyId: string | null;
   instagram: string | null;
   tiktok: string | null;
   youtube: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  whatsapp: string | null;
+  website: string | null;
+  languages: string[];
+  yearsExperience: number | null;
+  certifications: string[];
+  availabilityNote: string | null;
   followerCount: number;
   specialties: string[];
   locationsCovered: string[];
   contentLinks: string[];
-  verified: boolean;
+  verificationStatus: CreatorVerificationStatus;
+  verifiedByUserId: string | null;
+  verifiedAt: string | null;
   featured: boolean;
   createdAt: string;
+  updatedAt: string;
+  // Present on GET /creators/me and GET /creators/:username (which load
+  // and attach these as a separate query — see CreatorsService.
+  // attachRelated); absent on the paginated GET /creators list, which
+  // stays lightweight for directory/card rendering.
+  portfolioItems?: CreatorPortfolioItem[];
+  offerings?: CreatorOffering[];
 }
 
 // api/src/analytics/entities/analytics-event.enums.ts

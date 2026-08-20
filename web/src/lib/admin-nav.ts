@@ -66,6 +66,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       { label: 'All Content', href: '/admin/content' },
       { label: 'Categories', href: '/admin/content?tab=categories' },
+      { label: 'Creators', href: '/admin/content?tab=creators' },
       { label: 'Featured Content', href: '/admin/sponsored-placements' },
       { label: 'Moderation', href: '/admin/content/moderation', capability: 'content.moderate' },
       { label: 'Content Reports', href: '/admin/content/reports', capability: 'content.moderate' },

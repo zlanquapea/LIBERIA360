@@ -11,6 +11,7 @@ import type {
   CreateCategoryInput,
   CreatePlaceInput,
   Creator,
+  CreatorVerificationStatus,
   Event,
   ModerationQueue,
   PaginatedAdminActions,
@@ -184,6 +185,18 @@ export function createSponsoredPlacement(
 
 export function revokeSponsoredPlacement(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/sponsored-placements/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
+export function setCreatorVerification(
+  token: string,
+  creatorId: string,
+  status: CreatorVerificationStatus,
+): Promise<Creator> {
+  return apiRequest<Creator>(`/admin/creators/${creatorId}/verification`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status }),
+  });
 }
 
 // Featured creators

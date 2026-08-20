@@ -4,10 +4,12 @@ import {
   formatBudgetBand,
   formatBusinessType,
   formatCost,
+  formatCreatorCategory,
   formatDistance,
   formatEventCategory,
   formatEventDateRange,
   formatPlaceType,
+  formatPriceFrom,
   formatRating,
   formatTravelerType,
   formatVisitLength,
@@ -84,6 +86,28 @@ describe('formatCost', () => {
 
   it('labels null as Not listed', () => {
     expect(formatCost(null)).toBe('Not listed');
+  });
+});
+
+describe('formatCreatorCategory', () => {
+  it('labels every category', () => {
+    expect(formatCreatorCategory('photographer')).toBe('Photographer');
+    expect(formatCreatorCategory('tour_guide')).toBe('Tour Guide');
+    expect(formatCreatorCategory('other')).toBe('Creator');
+  });
+});
+
+describe('formatPriceFrom', () => {
+  it('returns null when no price is listed, not a fabricated "From $0"', () => {
+    expect(formatPriceFrom(null)).toBeNull();
+  });
+
+  it('drops trailing decimals for whole-dollar amounts', () => {
+    expect(formatPriceFrom(120)).toBe('From $120');
+  });
+
+  it('keeps two decimals for a fractional amount', () => {
+    expect(formatPriceFrom(49.5)).toBe('From $49.50');
   });
 });
 
