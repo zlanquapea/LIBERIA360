@@ -1,7 +1,7 @@
 'use client';
 
 import { formatTravelerType } from '@/lib/format';
-import type { Category, TravelerType } from '@/lib/types';
+import type { Category, County, TravelerType } from '@/lib/types';
 
 const TRAVELER_TYPES: TravelerType[] = ['diaspora', 'tourist', 'expat', 'business_traveler', 'local_resident'];
 
@@ -25,6 +25,38 @@ export function TravelerTypeSelect({
       {TRAVELER_TYPES.map((t) => (
         <option key={t} value={t}>
           {formatTravelerType(t)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// Same sharing rationale as TravelerTypeSelect above — asked at signup
+// (RegisterDto.homeCountyId) and editable afterward on the account page
+// (UpdateProfileDto.homeCountyId), both already accepted by the backend
+// but never actually collected anywhere in the UI until now. Lists every
+// county GET /counties returns, not just rolled-out ones (rolloutStage) —
+// someone's home county isn't limited to counties with content live yet.
+export function CountySelect({
+  value,
+  onChange,
+  counties,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  counties: County[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+    >
+      <option value="">Prefer not to say</option>
+      {counties.map((county) => (
+        <option key={county.id} value={county.id}>
+          {county.icon ? `${county.icon} ` : ''}
+          {county.name}
         </option>
       ))}
     </select>

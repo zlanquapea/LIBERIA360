@@ -17,6 +17,7 @@ export interface RegisterInput {
   name: string;
   email: string;
   password: string;
+  homeCountyId?: string;
   travelerType?: TravelerType;
   interests?: string[];
 }

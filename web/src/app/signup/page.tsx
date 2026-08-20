@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { HttpError } from '@/lib/http';
 import { useAuth } from '@/hooks/useAuth';
-import { getCategories } from '@/lib/api';
-import { InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
-import type { Category, TravelerType } from '@/lib/types';
+import { getCategories, getCounties } from '@/lib/api';
+import { CountySelect, InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
+import type { Category, County, TravelerType } from '@/lib/types';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,14 +15,17 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [homeCountyId, setHomeCountyId] = useState('');
   const [travelerType, setTravelerType] = useState<TravelerType | ''>('');
   const [interests, setInterests] = useState<string[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [counties, setCounties] = useState<County[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     getCategories().then(setCategories);
+    getCounties().then(setCounties);
   }, []);
 
   function toggleInterest(slug: string) {
@@ -38,6 +41,7 @@ export default function SignupPage() {
         name,
         email,
         password,
+        homeCountyId: homeCountyId || undefined,
         travelerType: travelerType || undefined,
         interests: interests.length > 0 ? interests : undefined,
       });
@@ -103,6 +107,15 @@ export default function SignupPage() {
           </label>
           <p className="text-xs text-slate-400 dark:text-slate-500">Helps us show you (and businesses) more relevant places.</p>
         </div>
+
+        {counties.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+              Home county <span className="font-normal text-slate-400 dark:text-slate-500">(optional)</span>
+              <CountySelect value={homeCountyId} onChange={setHomeCountyId} counties={counties} />
+            </label>
+          </div>
+        )}
 
         {categories.length > 0 && (
           <div className="flex flex-col gap-2">
