@@ -1,12 +1,25 @@
 import sharp from "sharp";
 
 const MAX_DIMENSION_PX = 2000;
+// Below this on either edge, a listing photo isn't useful for a gallery/hero
+// display and is more likely a broken/placeholder/tracking-pixel upload than
+// a real photo — reject it rather than silently store a 1x1px "image".
+const MIN_DIMENSION_PX = 200;
 const JPEG_QUALITY = 82;
 
 export interface ProcessedImage {
   buffer: Buffer;
   contentType: string;
   extension: string;
+}
+
+export class ImageTooSmallError extends Error {
+  constructor(width: number, height: number) {
+    super(
+      `Image is ${width}x${height}px — must be at least ${MIN_DIMENSION_PX}x${MIN_DIMENSION_PX}px.`,
+    );
+    this.name = "ImageTooSmallError";
+  }
 }
 
 /**
@@ -34,8 +47,16 @@ export interface ProcessedImage {
 export async function processUploadedImage(
   buffer: Buffer,
 ): Promise<ProcessedImage> {
-  const output = await sharp(buffer)
-    .rotate()
+  const source = sharp(buffer).rotate();
+  const metadata = await source.metadata();
+  if (
+    (metadata.width ?? 0) < MIN_DIMENSION_PX ||
+    (metadata.height ?? 0) < MIN_DIMENSION_PX
+  ) {
+    throw new ImageTooSmallError(metadata.width ?? 0, metadata.height ?? 0);
+  }
+
+  const output = await source
     .resize({
       width: MAX_DIMENSION_PX,
       height: MAX_DIMENSION_PX,

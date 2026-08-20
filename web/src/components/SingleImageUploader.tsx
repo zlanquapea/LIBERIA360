@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { uploadImage } from '@/lib/uploads-api';
 import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
+import { SafeImage } from './SafeImage';
 
 // Single-value counterpart to PhotoManager (which manages a `string[]`
 // gallery) — profileImage/coverImage are one-URL fields, not a list, so
@@ -44,8 +45,19 @@ export function SingleImageUploader({
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
       {value ? (
         <div className={`group relative overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 ${className}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={resolveImageUrl(value)} alt="" className="h-full w-full object-cover" />
+          <SafeImage
+            src={resolveImageUrl(value)}
+            alt=""
+            className="h-full w-full object-cover"
+            fallback={
+              <div
+                aria-hidden
+                className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+              >
+                Image unavailable
+              </div>
+            }
+          />
           <button
             type="button"
             onClick={() => onChange(null)}

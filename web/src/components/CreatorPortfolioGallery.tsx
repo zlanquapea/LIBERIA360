@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, PlayCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import type { CreatorPortfolioItem } from '@/lib/types';
 import { resolveImageUrl } from '@/lib/images';
+import { SafeImage } from './SafeImage';
 
 // The "visually appealing rather than a basic image list" gallery the spec
 // asks for: category filter chips (from whatever tags the creator actually
@@ -89,11 +90,11 @@ export function CreatorPortfolioGallery({ items }: { items: CreatorPortfolioItem
               onClick={() => setLightboxIndex(imageItems.findIndex((i) => i.id === item.id))}
               className="group relative aspect-square overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <SafeImage
                 src={resolveImageUrl(item.url)}
                 alt={item.caption ?? ''}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                fallback={<div aria-hidden className="h-full w-full bg-slate-200 dark:bg-slate-700" />}
               />
               {item.caption && (
                 <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -145,12 +146,14 @@ export function CreatorPortfolioGallery({ items }: { items: CreatorPortfolioItem
               <ChevronLeftIcon aria-hidden className="h-8 w-8" />
             </button>
           )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SafeImage
             src={resolveImageUrl(activeImage.url)}
             alt={activeImage.caption ?? ''}
+            loading="eager"
             className="max-h-[85vh] max-w-full rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
+            fallback={
+              <p className="rounded-lg bg-white/10 px-4 py-3 text-sm text-white/80">This image failed to load.</p>
+            }
           />
           {imageItems.length > 1 && (
             <button

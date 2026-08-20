@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { uploadImage } from '@/lib/uploads-api';
 import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
+import { SafeImage } from './SafeImage';
 
 const MAX_PHOTOS = 10; // matches the API's ArrayMaxSize(10) on images
 
@@ -65,9 +66,21 @@ export function PhotoManager({
             <div key={img} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
               {/* Uploaded images are on the API's own origin, unknown ahead of
                   time — next/image would need that host allow-listed, so a
-                  plain <img> is simpler here than fighting remotePatterns. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resolveImageUrl(img)} alt="" className="h-full w-full object-cover" />
+                  plain <img> (wrapped by SafeImage for load-failure/loading
+                  states) is simpler here than fighting remotePatterns. */}
+              <SafeImage
+                src={resolveImageUrl(img)}
+                alt=""
+                className="h-full w-full object-cover"
+                fallback={
+                  <div
+                    aria-hidden
+                    className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+                  >
+                    Image unavailable
+                  </div>
+                }
+              />
               <button
                 type="button"
                 onClick={() => remove(img)}

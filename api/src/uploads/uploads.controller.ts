@@ -12,7 +12,7 @@ import { memoryStorage } from "multer";
 import { randomUUID } from "crypto";
 import { Throttle, seconds } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { processUploadedImage } from "./image-processing";
+import { ImageTooSmallError, processUploadedImage } from "./image-processing";
 import {
   STORAGE_PROVIDER,
   StorageProvider,
@@ -83,7 +83,10 @@ export class UploadsController {
     let processed;
     try {
       processed = await processUploadedImage(file.buffer);
-    } catch {
+    } catch (err) {
+      if (err instanceof ImageTooSmallError) {
+        throw new BadRequestException(err.message);
+      }
       // fileFilter only trusts the declared MIME type header — this is
       // the backstop for a file whose actual bytes aren't a real image.
       throw new BadRequestException(

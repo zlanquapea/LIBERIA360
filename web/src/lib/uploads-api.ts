@@ -2,7 +2,7 @@ import { HttpError } from './http';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // matches api/src/uploads/uploads.controller.ts
+const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // matches api/src/uploads/uploads.controller.ts
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 /** POST /uploads/image — multipart, so this bypasses http.ts's apiRequest
@@ -13,7 +13,7 @@ export async function uploadImage(token: string, file: File): Promise<string> {
     throw new HttpError(400, 'Only JPEG, PNG, WebP, or GIF images are allowed.');
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    throw new HttpError(400, 'Image is larger than 5MB.');
+    throw new HttpError(400, 'Image is larger than 8MB.');
   }
 
   const body = new FormData();

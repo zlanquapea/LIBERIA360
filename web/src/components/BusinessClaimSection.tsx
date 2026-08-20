@@ -12,6 +12,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { VerificationBadge } from './VerificationBadge';
 import { ContactLink } from './ContactLink';
 import { PhotoManager } from './PhotoManager';
+import { SafeImage } from './SafeImage';
 import type { Business, BusinessType } from '@/lib/types';
 
 const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'tour_operator', 'transport'];
@@ -98,12 +99,12 @@ export function BusinessClaimSection({
         {business.images.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {business.images.map((img) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SafeImage
                 key={img}
                 src={resolveImageUrl(img)}
                 alt={`${business.name} photo`}
                 className="h-20 w-28 shrink-0 rounded-lg object-cover"
+                fallback={<div aria-hidden className="h-20 w-28 shrink-0 rounded-lg bg-slate-200 dark:bg-slate-700" />}
               />
             ))}
           </div>
