@@ -573,6 +573,35 @@ describe("Phase 3 (e2e)", () => {
       expect(verifyBusiness.body.verificationStatus).toBe("official");
       expect(verifyBusiness.body.owner.passwordHash).toBeUndefined();
 
+      // hotelBusinessId came from a self-claim, so it's still
+      // "submitted_for_review" — a trust-badge change (verificationStatus,
+      // above) is orthogonal to the publish/review lifecycle and doesn't
+      // touch it. It stays in the moderation queue's pendingBusinesses
+      // until an admin acts on the review status specifically.
+      const queueBeforeApproval = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        queueBeforeApproval.body.pendingBusinesses.some(
+          (b: { id: string }) => b.id === hotelBusinessId,
+        ),
+      ).toBe(true);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/businesses/${hotelBusinessId}/review-status`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ status: "approved" })
+        .expect(403);
+
+      const approveBusiness = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/businesses/${hotelBusinessId}/review-status`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ status: "approved" })
+        .expect(200);
+      expect(approveBusiness.body.reviewStatus).toBe("approved");
+      expect(approveBusiness.body.rejectionReason).toBeNull();
+
       const queue = await request(app.getHttpServer())
         .get("/api/v1/admin/moderation-queue")
         .set("Authorization", `Bearer ${adminToken}`)
@@ -581,7 +610,59 @@ describe("Phase 3 (e2e)", () => {
         queue.body.pendingBusinesses.some(
           (b: { id: string }) => b.id === hotelBusinessId,
         ),
-      ).toBe(false); // now "official", not "unverified" — no longer pending
+      ).toBe(false); // now "approved" — no longer pending
+
+      // Now approved, the listing is publicly visible again.
+      const byPlace = await request(app.getHttpServer())
+        .get(`/api/v1/businesses?placeId=${hotelPlace.id}`)
+        .expect(200);
+      expect(byPlace.body.id).toBe(hotelBusinessId);
+
+      // Reject a fresh claim and confirm the reason comes back, then
+      // confirm the owner's next edit auto-resubmits it for review. A
+      // brand-new place, not hotelPlace/unclaimedPlace — both already have
+      // (or, for unclaimedPlace, later get) a business linked, and only
+      // one Business per Place is allowed.
+      const placeRepo = dataSource.getRepository(Place);
+      const thirdPlace = await placeRepo.save(
+        placeRepo.create({
+          name: "Test Guesthouse",
+          slug: "test-guesthouse",
+          description: "A guesthouse for e2e testing.",
+          type: PlaceType.HOTEL,
+          category: cultureCategory,
+          tags: [],
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.28,
+          longitude: -10.78,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      const secondClaimant = await registerUser(
+        "second-claimant@example.com",
+        "Second Claimant",
+      );
+      const secondClaim = await request(app.getHttpServer())
+        .post("/api/v1/businesses")
+        .set("Authorization", `Bearer ${secondClaimant.token}`)
+        .send({ placeId: thirdPlace.id, name: "Guesthouse Biz", type: "hotel" })
+        .expect(201);
+      const rejected = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/businesses/${secondClaim.body.id}/review-status`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ status: "rejected", reason: "Phone number looks fake" })
+        .expect(200);
+      expect(rejected.body.reviewStatus).toBe("rejected");
+      expect(rejected.body.rejectionReason).toBe("Phone number looks fake");
+
+      const resubmitted = await request(app.getHttpServer())
+        .patch(`/api/v1/businesses/${secondClaim.body.id}`)
+        .set("Authorization", `Bearer ${secondClaimant.token}`)
+        .send({ phone: "+231770000001" })
+        .expect(200);
+      expect(resubmitted.body.reviewStatus).toBe("submitted_for_review");
+      expect(resubmitted.body.rejectionReason).toBeNull();
 
       // Both verification changes above are recorded — GET /admin/audit-log
       // is super-admin-only (403 for a plain admin), and every entry's
@@ -600,7 +681,42 @@ describe("Phase 3 (e2e)", () => {
       );
       expect(actions).toContain("place.verification_changed");
       expect(actions).toContain("business.verification_changed");
+      expect(actions).toContain("business.review_status_changed");
       expect(auditLog.body.data[0].adminUser.passwordHash).toBeUndefined();
+    });
+
+    it("lets a user report a business, and it surfaces in the moderation queue's flagged content once enough reports accumulate", async () => {
+      const reporters = await Promise.all(
+        [
+          "biz-reporter-1@example.com",
+          "biz-reporter-2@example.com",
+          "biz-reporter-3@example.com",
+        ].map((email) => registerUser(email, "Business Reporter")),
+      );
+      for (const reporter of reporters) {
+        await request(app.getHttpServer())
+          .post("/api/v1/reports")
+          .set("Authorization", `Bearer ${reporter.token}`)
+          .send({
+            targetType: "business",
+            targetId: hotelBusinessId,
+            reason: "fraudulent",
+          })
+          .expect(201);
+      }
+
+      const queue = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      const flagged = queue.body.flaggedContent.find(
+        (f: { targetType: string; targetId: string }) =>
+          f.targetType === "business" && f.targetId === hotelBusinessId,
+      );
+      expect(flagged).toBeDefined();
+      expect(flagged.reportCount).toBe(3);
+      expect(flagged.reasons.fraudulent).toBe(3);
+      expect(flagged.business.id).toBe(hotelBusinessId);
     });
 
     it("verifies a creator, stamping the same audit trail as places/businesses", async () => {

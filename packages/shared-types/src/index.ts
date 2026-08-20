@@ -169,14 +169,34 @@ export interface PaginatedReviews {
 }
 
 // api/src/businesses/entities/business.enums.ts
-export type BusinessType = "hotel" | "restaurant" | "tour_operator" | "transport";
+export type BusinessType =
+  | "hotel"
+  | "restaurant"
+  | "tour_operator"
+  | "transport"
+  | "travel_agency"
+  | "beach_resort"
+  | "attraction"
+  | "event_organizer"
+  | "shop"
+  | "cultural_org"
+  | "creative_business"
+  | "other";
 export type SubscriptionTier = "free" | "premium";
+export type BusinessReviewStatus =
+  | "draft"
+  | "submitted_for_review"
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "suspended";
 
 // api/src/businesses/entities/business.entity.ts (sanitized — owner is
 // the public user shape).
 export interface Business {
   id: string;
   name: string;
+  slug: string;
   type: BusinessType;
   owner: AuthUser | null;
   linkedPlaceId: string;
@@ -187,9 +207,38 @@ export interface Business {
   socialLinks: string[];
   description: string | null;
   images: string[];
+  logoImage: string | null;
+  videos: string[];
+  openingHours: string | null;
+  priceRangeMin: number | null;
+  priceRangeMax: number | null;
+  servicesOffered: string[];
+  reviewStatus: BusinessReviewStatus;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
   verificationStatus: VerificationStatus;
   subscriptionTier: SubscriptionTier;
   createdAt: string;
+}
+
+export interface PaginatedBusinesses {
+  data: Business[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface QueryBusinessesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: BusinessType;
+  countyId?: string;
+}
+
+export interface SetBusinessReviewStatusInput {
+  status: BusinessReviewStatus;
+  reason?: string;
 }
 
 // api/src/creators/entities/creator.entity.ts (sanitized — user is the
@@ -512,6 +561,12 @@ export interface CreateBusinessAdminInput {
   socialLinks?: string[];
   description?: string;
   images?: string[];
+  logoImage?: string;
+  videos?: string[];
+  openingHours?: string;
+  priceRangeMin?: number;
+  priceRangeMax?: number;
+  servicesOffered?: string[];
 }
 
 export interface UpdateBusinessAdminInput {
@@ -525,6 +580,12 @@ export interface UpdateBusinessAdminInput {
   socialLinks?: string[];
   description?: string;
   images?: string[];
+  logoImage?: string;
+  videos?: string[];
+  openingHours?: string;
+  priceRangeMin?: number;
+  priceRangeMax?: number;
+  servicesOffered?: string[];
 }
 
 export interface UpdateEventInput {
@@ -554,8 +615,15 @@ export interface PossiblyClosedPlace {
 }
 
 // api/src/reports/entities/content-report.enums.ts
-export type ReportTargetType = "review" | "event";
-export type ReportReason = "spam" | "inappropriate" | "fake" | "other";
+export type ReportTargetType = "review" | "event" | "business";
+export type ReportReason =
+  | "spam"
+  | "inappropriate"
+  | "fake"
+  | "fraudulent"
+  | "misleading_offer"
+  | "copyright"
+  | "other";
 
 export interface CreateContentReportInput {
   targetType: ReportTargetType;
@@ -574,6 +642,7 @@ export interface FlaggedContent {
   reasons: Record<ReportReason, number>;
   review: Review | null;
   event: Event | null;
+  business: Business | null;
 }
 
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).

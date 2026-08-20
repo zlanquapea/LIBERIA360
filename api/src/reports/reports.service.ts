@@ -5,6 +5,7 @@ import { ContentReport } from "./entities/content-report.entity";
 import { ReportTargetType } from "./entities/content-report.enums";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
+import { Business } from "../businesses/entities/business.entity";
 import { CreateContentReportDto } from "./dto/create-content-report.dto";
 
 @Injectable()
@@ -16,6 +17,8 @@ export class ReportsService {
     private readonly reviewRepo: Repository<Review>,
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
+    @InjectRepository(Business)
+    private readonly businessRepo: Repository<Business>,
   ) {}
 
   /** Upsert on (reporterUserId, targetType, targetId) — see the entity's
@@ -55,10 +58,11 @@ export class ReportsService {
     targetType: ReportTargetType,
     targetId: string,
   ): Promise<void> {
-    const exists =
-      targetType === ReportTargetType.REVIEW
-        ? await this.reviewRepo.exists({ where: { id: targetId } })
-        : await this.eventRepo.exists({ where: { id: targetId } });
+    const exists = await (targetType === ReportTargetType.REVIEW
+      ? this.reviewRepo.exists({ where: { id: targetId } })
+      : targetType === ReportTargetType.EVENT
+        ? this.eventRepo.exists({ where: { id: targetId } })
+        : this.businessRepo.exists({ where: { id: targetId } }));
     if (!exists) {
       throw new NotFoundException(`${targetType} "${targetId}" not found`);
     }

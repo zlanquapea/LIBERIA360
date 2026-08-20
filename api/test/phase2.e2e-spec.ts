@@ -230,7 +230,7 @@ describe("Phase 2 (e2e)", () => {
   });
 
   describe("Businesses", () => {
-    it("claims a listing, rejects a duplicate claim, and is findable by place", async () => {
+    it("claims a listing (pending review, not yet public), rejects a duplicate claim, and is only findable by its owner until approved", async () => {
       const claim = await request(app.getHttpServer())
         .post("/api/v1/businesses")
         .set("Authorization", `Bearer ${userAToken}`)
@@ -241,6 +241,8 @@ describe("Phase 2 (e2e)", () => {
         })
         .expect(201);
       expect(claim.body.owner.email).toBe("usera@example.com");
+      expect(claim.body.reviewStatus).toBe("submitted_for_review");
+      expect(claim.body.slug).toBe("test-hotel-business");
 
       await request(app.getHttpServer())
         .post("/api/v1/businesses")
@@ -248,16 +250,25 @@ describe("Phase 2 (e2e)", () => {
         .send({ placeId: hotelPlace.id, name: "Dup", type: "hotel" })
         .expect(409);
 
+      // Not yet approved — the public destination-page lookup and the
+      // slug-based public profile lookup both come back empty. (A Nest
+      // controller returning `null` serializes to a 200 with an *empty*
+      // body, not the text "null" — see web/src/lib/api.ts's apiFetch for
+      // how the frontend already accounts for this.)
       const byPlace = await request(app.getHttpServer())
         .get(`/api/v1/businesses?placeId=${hotelPlace.id}`)
         .expect(200);
-      expect(byPlace.body.name).toBe("Test Hotel Business");
+      expect(byPlace.text).toBe("");
+      await request(app.getHttpServer())
+        .get(`/api/v1/businesses/slug/${claim.body.slug}`)
+        .expect(404);
 
       const mine = await request(app.getHttpServer())
         .get("/api/v1/businesses/mine")
         .set("Authorization", `Bearer ${userAToken}`)
         .expect(200);
       expect(mine.body).toHaveLength(1);
+      expect(mine.body[0].reviewStatus).toBe("submitted_for_review");
     });
 
     it("lets the owner edit their own listing (including photos) after claiming, blocks everyone else", async () => {

@@ -11,6 +11,8 @@ import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { Activity } from "../activities/entities/activity.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { BusinessReviewStatus } from "../businesses/entities/business.enums";
+import { buildBusinessSlug } from "../businesses/businesses.service";
 import { Event } from "../events/entities/event.entity";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
@@ -263,6 +265,7 @@ export class AdminContentService {
     const business = await this.businessRepo.save(
       this.businessRepo.create({
         name: dto.name,
+        slug: await buildBusinessSlug(this.businessRepo, dto.name),
         type: dto.type,
         ownerUserId: dto.ownerUserId ?? null,
         linkedPlaceId: dto.placeId,
@@ -273,6 +276,16 @@ export class AdminContentService {
         socialLinks: dto.socialLinks ?? [],
         description: dto.description ?? null,
         images: dto.images ?? [],
+        logoImage: dto.logoImage ?? null,
+        videos: dto.videos ?? [],
+        openingHours: dto.openingHours ?? null,
+        priceRangeMin: dto.priceRangeMin ?? null,
+        priceRangeMax: dto.priceRangeMax ?? null,
+        servicesOffered: dto.servicesOffered ?? [],
+        // Admin-authored directly, not a self-claim — an admin doesn't
+        // need to review their own work before it goes live (see
+        // BusinessReviewStatus's doc comment).
+        reviewStatus: BusinessReviewStatus.APPROVED,
       }),
     );
     return this.businessRepo.findOneOrFail({ where: { id: business.id } });
