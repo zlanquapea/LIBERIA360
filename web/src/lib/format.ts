@@ -2,6 +2,7 @@ import type {
   BookingStatus,
   BudgetBand,
   BusinessType,
+  CreatorCategory,
   EventCategory,
   PlaceType,
   RecommendedVisitLength,
@@ -114,6 +115,29 @@ const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
 
 export function formatBookingStatus(status: BookingStatus): string {
   return BOOKING_STATUS_LABELS[status] ?? status;
+}
+
+const CREATOR_CATEGORY_LABELS: Record<CreatorCategory, string> = {
+  photographer: 'Photographer',
+  videographer: 'Videographer',
+  tour_guide: 'Tour Guide',
+  tour_operator: 'Tour Operator',
+  artist: 'Artist',
+  chef: 'Chef & Food Creator',
+  cultural: 'Cultural Creator',
+  other: 'Creator',
+};
+
+export function formatCreatorCategory(category: CreatorCategory): string {
+  return CREATOR_CATEGORY_LABELS[category] ?? category;
+}
+
+// Same "starting price" framing as an Activity/Offering card elsewhere —
+// null means the creator hasn't listed one, not that it's free (unlike
+// formatCost's 0-means-Free places/activities use).
+export function formatPriceFrom(amount: number | null): string | null {
+  if (amount === null) return null;
+  return `From $${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
 }
 
 export function formatEventDateRange(startDate: string, endDate: string | null): string {

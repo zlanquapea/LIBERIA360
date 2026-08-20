@@ -133,12 +133,32 @@ Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any
 
 ### Creators
 
+Profile fields cover the full "professional portfolio" set (category, home
+county, contact info, languages, years of experience, certifications,
+availability note) alongside the original social-handle/specialty fields.
+Portfolio items and offerings (services & experiences) are separate tables,
+not columns — see `CreatorPortfolioItem`/`CreatorOffering` — each with its
+own CRUD scoped to the caller's own profile. `verified` was replaced with a
+proper admin-set `verificationStatus` (`unverified`/`verified`), same shape
+as Place/Business's verification workflow (see Admin section below).
+`GET /creators/me` and `GET /creators/:username` both include `portfolioItems`
+and `offerings`; the paginated `GET /creators` list does not (kept lightweight
+for directory/card rendering), and additionally accepts `search`, `category`,
+`countyId`, and `featuredOnly` query params.
+
 | Method & path | Description | Auth |
 |---|---|---|
 | `POST /creators` | Create a creator profile (one per user) | JWT |
 | `PATCH /creators/me` | Update own profile | JWT |
-| `GET /creators` | Directory | — |
-| `GET /creators/:username` | Public profile | — |
+| `GET /creators/me` | Own profile, with portfolio + offerings | JWT |
+| `GET /creators` | Directory (paginated, filterable) | — |
+| `GET /creators/:username` | Public profile, with portfolio + offerings | — |
+| `POST /creators/me/portfolio` | Add a portfolio item (image upload or external video link) | JWT |
+| `PATCH /creators/me/portfolio/:itemId` | Edit a portfolio item's caption/category/order | JWT, owner |
+| `DELETE /creators/me/portfolio/:itemId` | Remove a portfolio item | JWT, owner |
+| `POST /creators/me/offerings` | Add a service/experience | JWT |
+| `PATCH /creators/me/offerings/:offeringId` | Edit an offering | JWT, owner |
+| `DELETE /creators/me/offerings/:offeringId` | Remove an offering | JWT, owner |
 
 ### Events
 
@@ -251,6 +271,7 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 |---|---|
 | `PATCH /admin/places/:id/verification` | Set place verification status |
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
+| `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
 | `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places, flagged content |
 | `POST` / `PATCH /admin/places` | Create/update places |
 | `DELETE /admin/places/:id` | Delete a place — blocked (409) if it still has a linked business or events | Super Admin |

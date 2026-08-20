@@ -309,7 +309,17 @@ describe("Phase 2 (e2e)", () => {
       await request(app.getHttpServer())
         .post("/api/v1/creators")
         .set("Authorization", `Bearer ${userAToken}`)
-        .send({ name: "Creator A", username: "creator_a" })
+        .send({
+          name: "Creator A",
+          username: "creator_a",
+          category: "photographer",
+          countyId: montserrado.id,
+          languages: ["English", "Kpelle"],
+          yearsExperience: 5,
+          certifications: ["Certified Drone Pilot"],
+          contactEmail: "creatora@example.com",
+          website: "https://creatora.example.com",
+        })
         .expect(201);
 
       await request(app.getHttpServer())
@@ -322,10 +332,147 @@ describe("Phase 2 (e2e)", () => {
         .get("/api/v1/creators/creator_a")
         .expect(200);
       expect(publicProfile.body.user.passwordHash).toBeUndefined();
+      expect(publicProfile.body.category).toBe("photographer");
+      expect(publicProfile.body.county.id).toBe(montserrado.id);
+      expect(publicProfile.body.verificationStatus).toBe("unverified");
+      expect(publicProfile.body.portfolioItems).toEqual([]);
+      expect(publicProfile.body.offerings).toEqual([]);
 
       await request(app.getHttpServer())
         .get("/api/v1/creators/does-not-exist")
         .expect(404);
+    });
+
+    it("lets a creator manage their own portfolio and offerings, but not someone else's", async () => {
+      // userB never created a creator profile of their own in this
+      // describe block (their attempt above 409'd on userA's username) —
+      // exactly the "not a creator at all" case addPortfolioItem/
+      // addOffering's getOwned() should reject.
+      await request(app.getHttpServer())
+        .post("/api/v1/creators/me/portfolio")
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ type: "image", url: "https://cdn.example.com/no-profile.jpg" })
+        .expect(404);
+
+      const item = await request(app.getHttpServer())
+        .post("/api/v1/creators/me/portfolio")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          type: "image",
+          url: "https://cdn.example.com/shoot-1.jpg",
+          caption: "Sunset at the beach",
+          category: "Nature",
+        })
+        .expect(201);
+      expect(item.body.sortOrder).toBe(0);
+
+      const videoItem = await request(app.getHttpServer())
+        .post("/api/v1/creators/me/portfolio")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ type: "video", url: "https://youtu.be/abc123" })
+        .expect(201);
+      expect(videoItem.body.sortOrder).toBe(1);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/creators/me/portfolio/${item.body.id}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ caption: "Golden hour at the beach" })
+        .expect(200);
+
+      // Register a third, unrelated creator to prove ownership is
+      // actually enforced, not just "any authenticated user."
+      const userC = await registerUser("creatorc@example.com", "User C");
+      await request(app.getHttpServer())
+        .post("/api/v1/creators")
+        .set("Authorization", `Bearer ${userC.token}`)
+        .send({ name: "Creator C", username: "creator_c" })
+        .expect(201);
+      await request(app.getHttpServer())
+        .patch(`/api/v1/creators/me/portfolio/${item.body.id}`)
+        .set("Authorization", `Bearer ${userC.token}`)
+        .send({ caption: "Hijacked" })
+        .expect(403);
+      await request(app.getHttpServer())
+        .delete(`/api/v1/creators/me/portfolio/${item.body.id}`)
+        .set("Authorization", `Bearer ${userC.token}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/creators/me/portfolio/${videoItem.body.id}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+
+      const offering = await request(app.getHttpServer())
+        .post("/api/v1/creators/me/offerings")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          title: "Half-day photo shoot",
+          description: "Portraits around central Monrovia",
+          priceFrom: 120,
+          durationLabel: "4 hours",
+          location: "Monrovia & surrounding areas",
+        })
+        .expect(201);
+      expect(offering.body.priceFrom).toBe(120);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/creators/me/offerings/${offering.body.id}`)
+        .set("Authorization", `Bearer ${userC.token}`)
+        .send({ priceFrom: 1 })
+        .expect(403);
+
+      const withRelated = await request(app.getHttpServer())
+        .get("/api/v1/creators/me")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+      expect(withRelated.body.portfolioItems).toHaveLength(1);
+      expect(withRelated.body.portfolioItems[0].caption).toBe(
+        "Golden hour at the beach",
+      );
+      expect(withRelated.body.offerings).toHaveLength(1);
+
+      const publicProfile = await request(app.getHttpServer())
+        .get("/api/v1/creators/creator_a")
+        .expect(200);
+      expect(publicProfile.body.portfolioItems).toHaveLength(1);
+      expect(publicProfile.body.offerings).toHaveLength(1);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/creators/me/offerings/${offering.body.id}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+    });
+
+    it("filters the directory by search, category, and county", async () => {
+      const byCategory = await request(app.getHttpServer())
+        .get("/api/v1/creators?category=photographer")
+        .expect(200);
+      expect(
+        byCategory.body.data.every(
+          (c: { category: string }) => c.category === "photographer",
+        ),
+      ).toBe(true);
+      expect(
+        byCategory.body.data.some(
+          (c: { username: string }) => c.username === "creator_a",
+        ),
+      ).toBe(true);
+
+      const bySearch = await request(app.getHttpServer())
+        .get("/api/v1/creators?search=creator_a")
+        .expect(200);
+      expect(
+        bySearch.body.data.map((c: { username: string }) => c.username),
+      ).toEqual(["creator_a"]);
+
+      const byCounty = await request(app.getHttpServer())
+        .get(`/api/v1/creators?countyId=${montserrado.id}`)
+        .expect(200);
+      expect(
+        byCounty.body.data.some(
+          (c: { username: string }) => c.username === "creator_a",
+        ),
+      ).toBe(true);
     });
   });
 

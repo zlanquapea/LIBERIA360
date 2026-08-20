@@ -1,16 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  createSponsoredPlacement,
-  getAllSponsoredPlacements,
-  revokeSponsoredPlacement,
-  setCreatorFeatured,
-} from '@/lib/admin-api';
-import { getCreatorByUsername, getPlaces } from '@/lib/api';
+import { createSponsoredPlacement, getAllSponsoredPlacements, revokeSponsoredPlacement } from '@/lib/admin-api';
+import { getPlaces } from '@/lib/api';
 import { HttpError } from '@/lib/http';
-import type { Creator, Place, SponsoredPlacement } from '@/lib/types';
+import type { Place, SponsoredPlacement } from '@/lib/types';
 
 const inputClass =
   'rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
@@ -66,82 +62,17 @@ export default function AdminSponsoredPlacementsPage() {
         )}
       </section>
 
-      <FeaturedCreatorToggle token={token} />
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Featured creators</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Verifying and featuring individual creators moved to{' '}
+          <Link href="/admin/content?tab=creators" className="text-brand-700 hover:underline">
+            Content &gt; Creators
+          </Link>
+          , where you can search the full list instead of looking one up by username.
+        </p>
+      </section>
     </div>
-  );
-}
-
-function FeaturedCreatorToggle({ token }: { token: string }) {
-  const [username, setUsername] = useState('');
-  const [creator, setCreator] = useState<Creator | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function lookup() {
-    setLoading(true);
-    setError(null);
-    setCreator(null);
-    try {
-      setCreator(await getCreatorByUsername(username.trim().replace(/^@/, '')));
-    } catch {
-      setError('No creator found with that username.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function toggle() {
-    if (!creator) return;
-    setToggling(true);
-    try {
-      const updated = await setCreatorFeatured(token, creator.id, !creator.featured);
-      setCreator(updated);
-    } finally {
-      setToggling(false);
-    }
-  }
-
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Feature a creator</h2>
-      <div className="flex gap-2">
-        <input
-          placeholder="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && lookup()}
-          className={inputClass}
-        />
-        <button
-          type="button"
-          disabled={loading || !username.trim()}
-          onClick={lookup}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200"
-        >
-          {loading ? 'Looking up…' : 'Find'}
-        </button>
-      </div>
-      {error && <p className="text-sm text-flag-700">{error}</p>}
-      {creator && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-          <div>
-            <p className="font-medium text-slate-900 dark:text-slate-50">{creator.name}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              @{creator.username} · currently {creator.featured ? 'featured' : 'not featured'}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={toggling}
-            onClick={toggle}
-            className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-          >
-            {toggling ? 'Saving…' : creator.featured ? 'Unfeature' : 'Feature'}
-          </button>
-        </div>
-      )}
-    </section>
   );
 }
 

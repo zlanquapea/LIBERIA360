@@ -3,6 +3,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { Creator } from "../creators/entities/creator.entity";
+import { CreatorVerificationStatus } from "../creators/entities/creator.enums";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { User } from "../users/entities/user.entity";
@@ -82,6 +84,8 @@ export class AdminService {
     private readonly placeRepo: Repository<Place>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(Creator)
+    private readonly creatorRepo: Repository<Creator>,
     @InjectRepository(Review)
     private readonly reviewRepo: Repository<Review>,
     @InjectRepository(PlaceFreshnessReport)
@@ -149,6 +153,34 @@ export class AdminService {
       requestInfo,
     );
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
+  }
+
+  async setCreatorVerification(
+    adminUserId: string,
+    creatorId: string,
+    status: CreatorVerificationStatus,
+    requestInfo?: RequestInfo,
+  ): Promise<Creator> {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+    const previousStatus = creator.verificationStatus;
+    creator.verificationStatus = status;
+    creator.verifiedByUserId = adminUserId;
+    creator.verifiedAt = new Date();
+    const saved = await this.creatorRepo.save(creator);
+    await this.adminAuditService.log(
+      adminUserId,
+      "creator.verification_changed",
+      "creator",
+      creatorId,
+      { from: previousStatus, to: status },
+      requestInfo,
+    );
+    return this.creatorRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
   /** Tech Spec §7/§8 — pending business claims, recent reviews, and

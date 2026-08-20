@@ -9,6 +9,8 @@ import { User } from "../users/entities/user.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
+import { CreatorPortfolioItem } from "../creators/entities/creator-portfolio-item.entity";
+import { CreatorOffering } from "../creators/entities/creator-offering.entity";
 import { Event } from "../events/entities/event.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
@@ -47,6 +49,8 @@ export const AppDataSource = new DataSource({
     Review,
     Business,
     Creator,
+    CreatorPortfolioItem,
+    CreatorOffering,
     Event,
     Itinerary,
     ItineraryCollaborator,

@@ -3,6 +3,7 @@ import type {
   Category,
   County,
   Creator,
+  CreatorCategory,
   Event,
   EventCategory,
   PaginatedCreators,
@@ -135,8 +136,21 @@ export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
   return apiFetch<SponsoredPlacement[]>('/sponsored-placements/active', undefined, []);
 }
 
-export function getCreators(query: { page?: number; limit?: number } = {}): Promise<PaginatedCreators> {
-  return apiFetch<PaginatedCreators>('/creators', query, emptyPage(query.limit));
+export interface CreatorsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: CreatorCategory;
+  countyId?: string;
+  featuredOnly?: boolean;
+}
+
+export function getCreators(query: CreatorsQuery = {}): Promise<PaginatedCreators> {
+  return apiFetch<PaginatedCreators>(
+    '/creators',
+    { ...query, featuredOnly: query.featuredOnly ? 'true' : undefined },
+    emptyPage(query.limit),
+  );
 }
 
 export function getCreatorByUsername(username: string): Promise<Creator> {

@@ -3,11 +3,14 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
+import { CreatorCategory, CreatorVerificationStatus } from "./creator.enums";
 
 /**
  * Creator profile (Tech Spec §5 Creator, §3.2). One per User — `userId` (not
@@ -15,10 +18,11 @@ import { User } from "../../users/entities/user.entity";
  * become a creator" actually work as an account extension rather than a
  * standalone record nobody owns.
  *
- * "places visited" from the spec bullet isn't tracked as a separate join
- * table here — no concrete feature depends on it yet, and it can be added
- * without a breaking change later. `contentLinks` covers the spec's
- * "linked content" (URLs to the creator's videos/posts).
+ * Portfolio items and offerings (services) are separate tables — see
+ * CreatorPortfolioItem and CreatorOffering — rather than columns here,
+ * since both are unbounded lists. "places visited" from the spec bullet
+ * still isn't tracked as a separate join table — no concrete feature
+ * depends on it yet, and it can be added without a breaking change later.
  */
 @Entity("creators")
 export class Creator {
@@ -49,6 +53,31 @@ export class Creator {
   })
   profileImage: string | null;
 
+  @Column({
+    name: "cover_image",
+    type: "varchar",
+    length: 500,
+    nullable: true,
+  })
+  coverImage: string | null;
+
+  @Column({
+    type: "enum",
+    enum: CreatorCategory,
+    default: CreatorCategory.OTHER,
+  })
+  category: CreatorCategory;
+
+  // Home base — same field/pattern as User.homeCounty, distinct from
+  // `locationsCovered` below (the areas this creator actually serves,
+  // which don't have to be limited to their home county).
+  @ManyToOne(() => County, { eager: true, nullable: true })
+  @JoinColumn({ name: "county_id" })
+  county: County | null;
+
+  @Column({ name: "county_id", nullable: true })
+  countyId: string | null;
+
   @Column({ type: "varchar", length: 100, nullable: true })
   instagram: string | null;
 
@@ -57,6 +86,44 @@ export class Creator {
 
   @Column({ type: "varchar", length: 100, nullable: true })
   youtube: string | null;
+
+  @Column({
+    name: "contact_email",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+  })
+  contactEmail: string | null;
+
+  @Column({
+    name: "contact_phone",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  contactPhone: string | null;
+
+  @Column({ type: "varchar", length: 40, nullable: true })
+  whatsapp: string | null;
+
+  @Column({ type: "varchar", length: 300, nullable: true })
+  website: string | null;
+
+  @Column({ type: "text", array: true, default: () => "'{}'" })
+  languages: string[];
+
+  @Column({ name: "years_experience", type: "smallint", nullable: true })
+  yearsExperience: number | null;
+
+  @Column({ type: "text", array: true, default: () => "'{}'" })
+  certifications: string[];
+
+  // Freeform for now ("Weekends only", "Booked through December") rather
+  // than a real calendar/availability system — see the [Later phase] task
+  // for extending the Booking system to creators, which is where a
+  // structured calendar would actually earn its keep.
+  @Column({ name: "availability_note", type: "text", nullable: true })
+  availabilityNote: string | null;
 
   // Self-reported — no social-platform API integration to verify this.
   @Column({ name: "follower_count", type: "int", default: 0 })
@@ -81,8 +148,23 @@ export class Creator {
   })
   contentLinks: string[];
 
-  @Column({ type: "boolean", default: false })
-  verified: boolean;
+  // Trust badge — see CreatorVerificationStatus's doc comment. Not an
+  // eager relation on verifiedByUserId (matches Place/Business) so a
+  // creator's own profile response never risks leaking another user's
+  // passwordHash through an accidental eager join.
+  @Column({
+    name: "verification_status",
+    type: "enum",
+    enum: CreatorVerificationStatus,
+    default: CreatorVerificationStatus.UNVERIFIED,
+  })
+  verificationStatus: CreatorVerificationStatus;
+
+  @Column({ name: "verified_by_user_id", type: "uuid", nullable: true })
+  verifiedByUserId: string | null;
+
+  @Column({ name: "verified_at", type: "timestamptz", nullable: true })
+  verifiedAt: Date | null;
 
   // Phase 3 creator promotion (Tech Spec §3.3) — admin-set, surfaces this
   // creator first in the directory. No self-service "sponsored content"

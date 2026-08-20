@@ -11,6 +11,7 @@ import type { Request } from "express";
 import { AdminService } from "./admin.service";
 import { getRequestInfo } from "../common/request-info";
 import { SetVerificationDto } from "./dto/set-verification.dto";
+import { SetCreatorVerificationDto } from "./dto/set-creator-verification.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -18,6 +19,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "../businesses/entities/business.entity";
+import { Creator } from "../creators/entities/creator.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { FlaggedContent } from "./admin.service";
@@ -28,6 +30,10 @@ function sanitizeBusiness(business: Business) {
     ...business,
     owner: business.owner ? toPublicUser(business.owner) : null,
   };
+}
+
+function sanitizeCreator(creator: Creator) {
+  return { ...creator, user: creator.user ? toPublicUser(creator.user) : null };
 }
 
 function sanitizeReview(review: Review) {
@@ -80,6 +86,23 @@ export class AdminController {
   ) {
     return sanitizeBusiness(
       await this.adminService.setBusinessVerification(
+        admin.id,
+        id,
+        dto.status,
+        getRequestInfo(req),
+      ),
+    );
+  }
+
+  @Patch("creators/:id/verification")
+  async setCreatorVerification(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetCreatorVerificationDto,
+    @Req() req: Request,
+  ) {
+    return sanitizeCreator(
+      await this.adminService.setCreatorVerification(
         admin.id,
         id,
         dto.status,

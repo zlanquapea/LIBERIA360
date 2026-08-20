@@ -602,6 +602,50 @@ describe("Phase 3 (e2e)", () => {
       expect(actions).toContain("business.verification_changed");
       expect(auditLog.body.data[0].adminUser.passwordHash).toBeUndefined();
     });
+
+    it("verifies a creator, stamping the same audit trail as places/businesses", async () => {
+      // A fresh user, not strangerToken — strangerToken already created a
+      // creator profile in the "Featured creators" describe above, and a
+      // user can only have one (POST /creators 409s on a second).
+      const toBeVerified = await registerUser(
+        "verify-me@example.com",
+        "Verify Me",
+      );
+      const create = await request(app.getHttpServer())
+        .post("/api/v1/creators")
+        .set("Authorization", `Bearer ${toBeVerified.token}`)
+        .send({ name: "Verify Me", username: "verify_me_creator" })
+        .expect(201);
+      const creatorId = create.body.id;
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/creators/${creatorId}/verification`)
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ status: "verified" })
+        .expect(403);
+
+      const verifyCreator = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/creators/${creatorId}/verification`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ status: "verified" })
+        .expect(200);
+      expect(verifyCreator.body.verificationStatus).toBe("verified");
+      expect(verifyCreator.body.verifiedAt).not.toBeNull();
+      expect(verifyCreator.body.user.passwordHash).toBeUndefined();
+
+      const publicProfile = await request(app.getHttpServer())
+        .get("/api/v1/creators/verify_me_creator")
+        .expect(200);
+      expect(publicProfile.body.verificationStatus).toBe("verified");
+
+      const auditLog = await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(
+        auditLog.body.data.map((a: { action: string }) => a.action),
+      ).toContain("creator.verification_changed");
+    });
   });
 
   describe("Content reporting & moderation", () => {

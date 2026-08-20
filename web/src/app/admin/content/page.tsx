@@ -9,14 +9,16 @@ import { CategoriesTab } from './CategoriesTab';
 import { PlacesTab } from './PlacesTab';
 import { EventsTab } from './EventsTab';
 import { CountiesTab } from './CountiesTab';
+import { CreatorsTab } from './CreatorsTab';
 
-type Tab = 'categories' | 'places' | 'events' | 'counties';
+type Tab = 'categories' | 'places' | 'events' | 'counties' | 'creators';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'categories', label: 'Categories' },
   { id: 'places', label: 'Places' },
   { id: 'events', label: 'Events' },
   { id: 'counties', label: 'Counties' },
+  { id: 'creators', label: 'Creators' },
 ];
 
 function isTab(value: string | null): value is Tab {
@@ -75,6 +77,7 @@ export default function AdminContentPage() {
       {tab === 'counties' && (
         <CountiesTab token={token} counties={counties} isSuperAdmin={isSuperAdmin} onChanged={setCounties} />
       )}
+      {tab === 'creators' && <CreatorsTab token={token} />}
     </div>
   );
 }
