@@ -18,6 +18,7 @@ import { formatBusinessType, formatPlaceType } from '@/lib/format';
 import { PhotoManager } from '@/components/PhotoManager';
 import type { Activity, ActivityDifficulty, Business, BusinessType, Category, County, Place, PlaceType } from '@/lib/types';
 import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from './content-shared';
+import { PlaceLocationPickerLoader } from './PlaceLocationPickerLoader';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
 const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'tour_operator', 'transport'];
@@ -204,8 +205,8 @@ function CreatePlaceForm({
   const [categoryId, setCategoryId] = useState('');
   const [countyId, setCountyId] = useState('');
   const [city, setCity] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +228,7 @@ function CreatePlaceForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (latitude === null || longitude === null) return; // guarded by the disabled submit button too
     setSubmitting(true);
     setError(null);
     try {
@@ -238,8 +240,8 @@ function CreatePlaceForm({
         categoryId,
         countyId,
         city,
-        latitude: Number(latitude),
-        longitude: Number(longitude),
+        latitude,
+        longitude,
         images,
       });
       onCreated(place);
@@ -324,32 +326,27 @@ function CreatePlaceForm({
         </label>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          City
-          <input
-            required
-            maxLength={150}
-            list="city-suggestions"
-            placeholder={citiesInCounty.length ? 'Pick or type a city' : 'Type a city'}
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className={inputClass}
-          />
-          <datalist id="city-suggestions">
-            {citiesInCounty.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Latitude
-          <input required type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputClass} />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Longitude
-          <input required type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputClass} />
-        </label>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        City
+        <input
+          required
+          maxLength={150}
+          list="city-suggestions"
+          placeholder={citiesInCounty.length ? 'Pick or type a city' : 'Type a city'}
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          className={inputClass}
+        />
+        <datalist id="city-suggestions">
+          {citiesInCounty.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+      </label>
+
+      <div className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        Location
+        <PlaceLocationPickerLoader latitude={latitude} longitude={longitude} onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} />
       </div>
 
       {error && (
@@ -360,7 +357,7 @@ function CreatePlaceForm({
 
       <button
         type="submit"
-        disabled={submitting || !categoryId || !countyId}
+        disabled={submitting || !categoryId || !countyId || latitude === null || longitude === null}
         className="self-start rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
       >
         {submitting ? 'Creating…' : 'Create place'}
@@ -394,6 +391,8 @@ function PlaceEditForm({
   const [categoryId, setCategoryId] = useState(place.category.id);
   const [countyId, setCountyId] = useState(place.county.id);
   const [city, setCity] = useState(place.city);
+  const [latitude, setLatitude] = useState<number | null>(place.latitude);
+  const [longitude, setLongitude] = useState<number | null>(place.longitude);
   const [contactPhone, setContactPhone] = useState(place.contactPhone ?? '');
   const [whatsapp, setWhatsapp] = useState(place.whatsapp ?? '');
   const [images, setImages] = useState(place.images);
@@ -408,6 +407,8 @@ function PlaceEditForm({
     setCategoryId(place.category.id);
     setCountyId(place.county.id);
     setCity(place.city);
+    setLatitude(place.latitude);
+    setLongitude(place.longitude);
     setContactPhone(place.contactPhone ?? '');
     setWhatsapp(place.whatsapp ?? '');
     setImages(place.images);
@@ -421,6 +422,7 @@ function PlaceEditForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (latitude === null || longitude === null) return; // guarded by the disabled submit button too
     setSubmitting(true);
     setError(null);
     setSuccess(false);
@@ -432,6 +434,8 @@ function PlaceEditForm({
         categoryId,
         countyId,
         city,
+        latitude,
+        longitude,
         contactPhone: contactPhone.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         images,
@@ -468,6 +472,14 @@ function PlaceEditForm({
         Description
         <textarea required rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>
+      <div className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        Location
+        {/* Previously not editable at all after creation — a typo made at
+            creation time had no way to be fixed short of a direct database
+            edit. The backend already accepted latitude/longitude on
+            update; this was purely a missing field in this form. */}
+        <PlaceLocationPickerLoader latitude={latitude} longitude={longitude} onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} />
+      </div>
       <div className="grid grid-cols-3 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Type
@@ -518,7 +530,7 @@ function PlaceEditForm({
       {success && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>}
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || latitude === null || longitude === null}
         className="self-start rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
       >
         {submitting ? 'Saving…' : 'Save place'}

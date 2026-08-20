@@ -53,7 +53,10 @@ test('admin sees a review flagged after 3 independent reports, and can remove it
   await promoteToAdmin(admin.email, { superAdmin: true });
   await loginAs(page, admin, { isAdmin: true, isSuperAdmin: true });
 
-  await page.goto('/admin');
+  // The flagged-content queue moved off the dashboard onto its own page
+  // (Content > Moderation) in the admin panel redesign — the dashboard
+  // itself only shows a summary count now, not the working queue.
+  await page.goto('/admin/content/moderation');
   // The same review's author name can also legitimately appear in the
   // "Recent reviews" section (any recent review, flagged or not) — scope
   // to the "Flagged content" row specifically by also requiring the
