@@ -26,6 +26,10 @@ import { AdminTeamController } from "./admin-team.controller";
 import { AdminAuditModule } from "./admin-audit.module";
 import { AdminAuditController } from "./admin-audit.controller";
 import { AdminSecurityController } from "./admin-security.controller";
+import { AdminUsersService } from "./admin-users.service";
+import { AdminUsersController } from "./admin-users.controller";
+import { AdminSystemService } from "./admin-system.service";
+import { AdminSystemController } from "./admin-system.controller";
 
 @Module({
   imports: [
@@ -55,12 +59,16 @@ import { AdminSecurityController } from "./admin-security.controller";
     AdminTeamController,
     AdminAuditController,
     AdminSecurityController,
+    AdminUsersController,
+    AdminSystemController,
   ],
   providers: [
     AdminService,
     AdminContentService,
     AdminAnalyticsService,
     AdminTeamService,
+    AdminUsersService,
+    AdminSystemService,
   ],
 })
 export class AdminModule {}

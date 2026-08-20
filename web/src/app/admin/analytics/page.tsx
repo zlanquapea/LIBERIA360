@@ -1,88 +1,115 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { getAggregateAnalytics } from '@/lib/admin-api';
-import type { AggregateAnalytics } from '@/lib/types';
+import { useState } from 'react';
+import { useAnalyticsOverview, findMetric } from '@/hooks/useAnalyticsOverview';
+import { AdminPageHeader, KpiCard, LoadingState, Panel, PeriodToggle } from '@/components/admin-ui';
 
-// B2B aggregate tourism analytics (Business Plan §8.4) — "aggregate,
-// anonymized insight into search trends and visitor interest ... offered
-// to hotels, tour operators, investors, government, and NGOs." Surfaced
-// through the admin dashboard rather than a separate external-stakeholder
-// account system (see api/src/admin/admin-analytics.service.ts's note on
-// why that's out of scope here).
-export default function AdminAnalyticsPage() {
-  const { token } = useAuth();
-  const [data, setData] = useState<AggregateAnalytics | null>(null);
+const METRIC_LABELS: { key: 'newUsers' | 'newReviews' | 'newBookings' | 'pageViews'; label: string }[] = [
+  { key: 'newUsers', label: 'New sign-ups' },
+  { key: 'newReviews', label: 'New reviews' },
+  { key: 'newBookings', label: 'New booking requests' },
+  { key: 'pageViews', label: 'Place page views' },
+];
 
-  useEffect(() => {
-    if (!token) return;
-    getAggregateAnalytics(token, 10).then(setData);
-  }, [token]);
-
-  if (!token) return null;
+// Analytics > Overview — the decision-driving landing page (Tech Spec §3):
+// every KPI carries its period-over-period delta and, where one exists,
+// a one-line insight, instead of a bare count. "What changed and why does
+// it matter" is answered on this one page before an admin drills into
+// User/Content/Engagement for more.
+export default function AnalyticsOverviewPage() {
+  const [days, setDays] = useState(7);
+  const overview = useAnalyticsOverview(days);
 
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">B2B Tourism Analytics</h1>
+    <div className="flex flex-col gap-6">
+      <AdminPageHeader
+        title="Analytics Overview"
+        description="What's growing, what's declining, and what to look at next."
+        action={<PeriodToggle days={days} onChange={setDays} />}
+      />
 
-      {!data ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      {!overview ? (
+        <LoadingState />
       ) : (
         <>
-          <section className="flex flex-col gap-3">
-            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Top places by visitor interest</h2>
-            {data.topPlaces.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {data.topPlaces.map((place, i) => (
-                  <li key={place.placeId} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Link href={`/places/${place.slug}`} className="font-medium text-slate-900 dark:text-slate-50 hover:text-brand-700">
-                        {i + 1}. {place.name}
-                      </Link>
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{place.total} events</span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {place.views} views · {place.saves} saves · {place.contactClicks} contact clicks ·{' '}
-                      {place.bookingRequests} booking requests
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {METRIC_LABELS.map(({ key, label }) => {
+              const m = findMetric(overview, key);
+              return (
+                <KpiCard
+                  key={key}
+                  label={label}
+                  value={m?.current ?? '—'}
+                  direction={m?.direction}
+                  deltaPct={m?.deltaPct}
+                />
+              );
+            })}
+          </div>
 
-          <BreakdownSection title="By category" rows={data.byCategory} />
-          <BreakdownSection title="By county" rows={data.byCounty} />
+          <Panel title="Insights">
+            <ul className="flex flex-col gap-2">
+              {overview.insights.map((insight, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" aria-hidden />
+                  {insight}
+                </li>
+              ))}
+            </ul>
+          </Panel>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel
+              title="Top performers"
+              action={
+                <Link href="/admin/analytics/content" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">
+                  Content Performance →
+                </Link>
+              }
+            >
+              {overview.topPlaces.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No engagement recorded yet.</p>
+              ) : (
+                <ol className="flex flex-col gap-2">
+                  {overview.topPlaces.map((p, i) => (
+                    <li key={p.placeId} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">{i + 1}</span>
+                        {p.name}
+                      </span>
+                      <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">{p.total}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Panel>
+
+            <Panel title="Needs attention">
+              {overview.neglectedPlaces.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Every catalog place got at least one view this period.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {overview.neglectedPlaces.map((p) => (
+                    <li key={p.placeId}>
+                      <Link
+                        href={`/places/${p.slug}`}
+                        target="_blank"
+                        className="text-sm text-slate-700 hover:text-brand-700 hover:underline dark:text-slate-200"
+                      >
+                        {p.name}
+                      </Link>
+                      <span className="ml-1.5 text-xs text-slate-400 dark:text-slate-500">— zero views</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </div>
         </>
       )}
     </div>
-  );
-}
-
-function BreakdownSection({ title, rows }: { title: string; rows: { id: string; name: string; totalEvents: number }[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.totalEvents));
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {rows.map((row) => (
-            <li key={row.id} className="flex items-center gap-3">
-              <span className="w-28 shrink-0 truncate text-sm text-slate-700 dark:text-slate-200">{row.name}</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div className="h-full rounded-full bg-brand-500" style={{ width: `${(row.totalEvents / max) * 100}%` }} />
-              </div>
-              <span className="w-10 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400">{row.totalEvents}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }

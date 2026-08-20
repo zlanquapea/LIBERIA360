@@ -4,46 +4,34 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { ComponentType, SVGProps } from 'react';
 import {
-  ClockIcon,
-  KeyIcon,
-  MapPinIcon,
-  UsersIcon,
-  ArrowTrendingUpIcon,
-  ChatBubbleBottomCenterTextIcon,
-  CalendarDaysIcon,
-  BuildingStorefrontIcon,
-  DocumentTextIcon,
-  ChartBarIcon,
+  ArrowRightIcon,
   ClipboardDocumentListIcon,
-  ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  MapPinIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  deleteEventAdmin,
-  deleteReviewAdmin,
-  getAggregateAnalytics,
+  getAnalyticsOverview,
+  getAuditLog,
   getModerationQueue,
   getPlatformKpis,
   getSecurityOverview,
   getTeamRoster,
-  setBusinessVerification,
-  setCreatorFeatured,
 } from '@/lib/admin-api';
-import { getActiveSponsoredPlacements, getCreatorByUsername, getPlaces } from '@/lib/api';
-import { formatBookingStatus, formatBusinessType } from '@/lib/format';
-import { HttpError } from '@/lib/http';
+import { getActiveSponsoredPlacements, getPlaces } from '@/lib/api';
+import { formatBookingStatus } from '@/lib/format';
 import type {
+  AdminAction,
+  AnalyticsOverview,
   BookingStatus,
-  Creator,
-  FlaggedContent,
   ModerationQueue,
   PlatformKpis,
   SecurityOverview,
-  TopPlace,
-  VerificationStatus,
 } from '@/lib/types';
+import { visibleAdminNav } from '@/lib/admin-nav';
+import { KpiCard, Panel } from '@/components/admin-ui';
 
 // Fixed status colors, validated for categorical/CVD separation against this
 // app's own brand palette (see dataviz skill) — not arbitrary. pending/
@@ -57,38 +45,36 @@ const BOOKING_STATUS_META: { key: BookingStatus; color: string }[] = [
   { key: 'cancelled', color: '#6478c2' },
 ];
 
-const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
-  { value: 'verified', label: 'Verified' },
-  { value: 'recommended', label: 'Recommended' },
-  { value: 'official', label: 'Official' },
-  { value: 'eco_certified', label: 'Eco-certified' },
-  { value: 'community_favorite', label: 'Community favorite' },
-];
-
-interface Kpis {
+interface AtAGlanceKpis {
   totalPlaces: number;
   activePlacements: number;
   teamSize: number | null; // null when not a super admin — nothing to show
 }
 
-// Admin dashboard home (Tech Spec §7/§8) — KPI tiles for at-a-glance
-// platform health, then "needs attention" (pending business claims,
-// followed by browsing/lower-urgency sections. Gated + given its sidebar
-// by admin/layout.tsx, so this is content only.
+// Admin dashboard home — an executive-level overview an admin can read in
+// a few seconds, built around the three questions the redesign is meant
+// to answer: what's happening (At a Glance / What's Happening), why it
+// matters (deltas + insight sentences on every KPI, not bare numbers),
+// and what to do about it (Needs Attention links straight into the
+// relevant management page; Quick Actions is the launchpad for
+// everything else). The working queues themselves (verify a business,
+// remove flagged content) now live on their own pages under Content —
+// see admin/content/moderation and admin/content/reports — so this page
+// stays a control-center summary, not a second copy of those forms.
 export default function AdminPage() {
   const { user, token } = useAuth();
+  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [queue, setQueue] = useState<ModerationQueue | null>(null);
-  const [kpis, setKpis] = useState<Kpis | null>(null);
+  const [kpis, setKpis] = useState<AtAGlanceKpis | null>(null);
   const [platformKpis, setPlatformKpis] = useState<PlatformKpis | null>(null);
-  const [topPlaces, setTopPlaces] = useState<TopPlace[] | null>(null);
   const [securityOverview, setSecurityOverview] = useState<SecurityOverview | null>(null);
+  const [recentActions, setRecentActions] = useState<AdminAction[] | null>(null);
 
-  function reload() {
+  useEffect(() => {
     if (!token) return;
+    getAnalyticsOverview(token).then(setOverview);
     getModerationQueue(token).then(setQueue);
-  }
-
-  useEffect(reload, [token]);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -109,18 +95,19 @@ export default function AdminPage() {
     if (!token || !user?.isSuperAdmin) return;
     getPlatformKpis(token).then(setPlatformKpis);
     getSecurityOverview(token).then(setSecurityOverview);
+    getAuditLog(token, 1, 5).then((res) => setRecentActions(res.data));
   }, [token, user?.isSuperAdmin]);
 
-  // Top places by engagement — same B2B analytics endpoint the dedicated
-  // Analytics page uses, any admin (not just super admin) can already call
-  // it; surfacing the top 5 here means the dashboard leads with something
-  // real instead of only a wall of counters.
-  useEffect(() => {
-    if (!token) return;
-    getAggregateAnalytics(token, 5).then((data) => setTopPlaces(data.topPlaces));
-  }, [token]);
-
   if (!token) return null;
+
+  const metric = (key: AnalyticsOverview['metrics'][number]['key']) =>
+    overview?.metrics.find((m) => m.key === key);
+
+  const needsAttentionTotal =
+    (queue?.pendingBusinesses.length ?? 0) +
+    (queue?.flaggedContent.length ?? 0) +
+    (queue?.possiblyClosedPlaces.length ?? 0) +
+    (securityOverview?.failedLoginsLast24h ?? 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -128,7 +115,7 @@ export default function AdminPage() {
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Dashboard</h1>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            user?.isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700'
+            user?.isSuperAdmin ? 'bg-gold-400/20 text-gold-600 dark:text-gold-400' : 'bg-brand-700/10 text-brand-700 dark:text-brand-300'
           }`}
         >
           {user?.isSuperAdmin && <StarIcon aria-hidden className="mr-1 inline h-3 w-3 align-[-1px]" />}
@@ -136,300 +123,314 @@ export default function AdminPage() {
         </span>
       </div>
 
-      <QuickActions isSuperAdmin={Boolean(user?.isSuperAdmin)} />
+      <QuickActions />
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiTile label="Catalog places" value={kpis?.totalPlaces} icon={MapPinIcon} />
-        <KpiTile
-          label="Needs attention"
-          value={queue?.pendingBusinesses.length}
-          icon={ClockIcon}
-          tone={queue && queue.pendingBusinesses.length > 0 ? 'warning' : undefined}
-        />
-        <KpiTile label="Featured this week" value={kpis?.activePlacements} icon={StarIcon} />
-        <KpiTile
-          label="Team members"
-          value={kpis?.teamSize ?? undefined}
-          icon={KeyIcon}
-          hint={user?.isSuperAdmin ? undefined : 'Super admin only'}
-        />
-      </section>
-
+      {/* 1. What is happening? — At a Glance */}
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-100">Top places by engagement</h2>
-          <Link href="/admin/analytics" className="text-xs font-medium text-brand-700 hover:underline">
-            Full analytics →
-          </Link>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-          {!topPlaces ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-          ) : topPlaces.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No activity recorded yet — views, saves, and bookings will show up here.</p>
-          ) : (
-            <TopPlacesChart places={topPlaces} />
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">At a Glance</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <KpiCard label="Catalog places" value={kpis?.totalPlaces ?? '…'} />
+          <KpiCard label="Featured this week" value={kpis?.activePlacements ?? '…'} />
+          {(() => {
+            const m = metric('newUsers');
+            return (
+              <KpiCard
+                label="New sign-ups (7d)"
+                value={m?.current ?? '…'}
+                direction={m?.direction}
+                deltaPct={m?.deltaPct}
+              />
+            );
+          })()}
+          {(() => {
+            const m = metric('pageViews');
+            return (
+              <KpiCard
+                label="Place views (7d)"
+                value={m?.current ?? '…'}
+                direction={m?.direction}
+                deltaPct={m?.deltaPct}
+              />
+            );
+          })()}
+          {user?.isSuperAdmin && (
+            <>
+              <KpiCard label="Team members" value={kpis?.teamSize ?? '…'} />
+              <KpiCard label="Total users" value={platformKpis?.totalUsers ?? '…'} />
+              {(() => {
+                const m = metric('newReviews');
+                return (
+                  <KpiCard
+                    label="New reviews (7d)"
+                    value={m?.current ?? '…'}
+                    direction={m?.direction}
+                    deltaPct={m?.deltaPct}
+                  />
+                );
+              })()}
+              {(() => {
+                const m = metric('newBookings');
+                return (
+                  <KpiCard
+                    label="New bookings (7d)"
+                    value={m?.current ?? '…'}
+                    direction={m?.direction}
+                    deltaPct={m?.deltaPct}
+                  />
+                );
+              })()}
+            </>
           )}
         </div>
       </section>
 
-      {user?.isSuperAdmin && (
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold text-slate-800 dark:text-slate-100">Platform</h2>
-            <div className="flex gap-2 text-xs font-medium text-brand-700">
-              <Link href="/admin/security" className="hover:underline">
-                Security →
-              </Link>
-              <Link href="/admin/audit-log" className="hover:underline">
-                Audit Log →
-              </Link>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <KpiTile label="Total users" value={platformKpis?.totalUsers} icon={UsersIcon} />
-            <KpiTile label="New users (7d)" value={platformKpis?.newUsersLast7Days} icon={ArrowTrendingUpIcon} />
-            <KpiTile label="Total reviews" value={platformKpis?.totalReviews} icon={ChatBubbleBottomCenterTextIcon} />
-            <KpiTile label="Total bookings" value={platformKpis?.totalBookings} icon={CalendarDaysIcon} />
-          </div>
-          {platformKpis && (
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-              <BuildingStorefrontIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-600" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-                  {platformKpis.claimedBusinessCount} of {platformKpis.totalPlaces} places claimed by a business
-                </p>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-brand-600"
-                    style={{ width: `${Math.round(platformKpis.businessClaimRate * 100)}%` }}
-                  />
-                </div>
-              </div>
-              <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900 dark:text-slate-50">
-                {Math.round(platformKpis.businessClaimRate * 100)}%
-              </span>
-            </div>
+      {/* 2. Why does it matter? — What's Happening */}
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">What&apos;s Happening</h2>
+        <Panel>
+          {!overview ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {overview.insights.map((insight, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" aria-hidden />
+                  {insight}
+                </li>
+              ))}
+            </ul>
           )}
+        </Panel>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Panel
+            title="Top places by engagement"
+            action={
+              <Link href="/admin/analytics" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">
+                Full analytics →
+              </Link>
+            }
+          >
+            {!overview ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+            ) : overview.topPlaces.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No activity recorded yet — views, saves, and bookings will show up here.
+              </p>
+            ) : (
+              <TopPlacesChart places={overview.topPlaces} />
+            )}
+          </Panel>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-              <p className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-50">Bookings by status</p>
+          {user?.isSuperAdmin ? (
+            <Panel title="Bookings by status">
               {platformKpis ? (
                 <BookingStatusBar counts={platformKpis.bookingsByStatus} />
               ) : (
                 <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
               )}
-            </div>
+            </Panel>
+          ) : (
+            <Panel title="Getting no attention">
+              {!overview ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+              ) : overview.neglectedPlaces.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">Every place got at least one view this period.</p>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {overview.neglectedPlaces.map((p) => (
+                    <li key={p.placeId}>
+                      <Link
+                        href={`/places/${p.slug}`}
+                        target="_blank"
+                        className="text-sm text-slate-700 hover:text-brand-700 hover:underline dark:text-slate-200"
+                      >
+                        {p.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          )}
+        </div>
+      </section>
 
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Security snapshot</p>
-                <Link href="/admin/security" className="text-xs font-medium text-brand-700 hover:underline">
-                  Details →
-                </Link>
-              </div>
-              {securityOverview ? <SecuritySnapshot overview={securityOverview} /> : <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
-            </div>
+      {/* 3. What can I do about it? — Needs Attention */}
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Needs Attention
+          {needsAttentionTotal > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {needsAttentionTotal}
+            </span>
+          )}
+        </h2>
+        {!queue ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        ) : needsAttentionTotal === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            All clear — nothing pending review right now.
           </div>
-        </section>
-      )}
-
-      <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
-          Needs attention
-          {queue && queue.pendingBusinesses.length > 0 && (
-            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
-              {queue.pendingBusinesses.length}
-            </span>
-          )}
-        </h2>
-        {!queue ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-        ) : queue.pendingBusinesses.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-            Nothing pending — the queue is clear.
-          </p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {queue.pendingBusinesses.map((business) => (
-              <li key={business.id} className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/20 p-3">
-                <p className="font-medium text-slate-900 dark:text-slate-50">{business.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
-                </p>
-                <VerifyBusinessControl businessId={business.id} onDone={reload} />
-              </li>
-            ))}
-          </ul>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <NeedsAttentionCard
+              label="Pending business claims"
+              count={queue.pendingBusinesses.length}
+              href="/admin/content/moderation"
+              icon={ClipboardDocumentListIcon}
+            />
+            <NeedsAttentionCard
+              label="Flagged reviews & events"
+              count={queue.flaggedContent.length}
+              href="/admin/content/moderation"
+              icon={ExclamationTriangleIcon}
+            />
+            <NeedsAttentionCard
+              label="Possibly closed places"
+              count={queue.possiblyClosedPlaces.length}
+              href="/admin/content/reports"
+              icon={MapPinIcon}
+            />
+            {user?.isSuperAdmin && (
+              <NeedsAttentionCard
+                label="Failed logins (24h)"
+                count={securityOverview?.failedLoginsLast24h ?? 0}
+                href="/admin/security/alerts"
+                icon={ShieldExclamationIcon}
+              />
+            )}
+          </div>
         )}
       </section>
 
+      {/* 4. Recent Activity */}
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
-          Possibly closed
-          {queue && queue.possiblyClosedPlaces.length > 0 && (
-            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
-              {queue.possiblyClosedPlaces.length}
-            </span>
-          )}
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Places where {/* keep in sync with FRESHNESS_FLAG_THRESHOLD */}3+ visitors independently reported
-          &quot;no longer here&quot; in the last 90 days.
-        </p>
-        {!queue ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-        ) : queue.possiblyClosedPlaces.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-            Nothing flagged.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {queue.possiblyClosedPlaces.map(({ place, noLongerHereCount }) => (
-              <li
-                key={place.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/20 p-3"
-              >
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-slate-50">{place.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {noLongerHereCount} report{noLongerHereCount === 1 ? '' : 's'} · {place.city}
-                  </p>
-                </div>
-                <Link
-                  href={`/places/${place.slug}`}
-                  target="_blank"
-                  className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
-                >
-                  View listing
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">Recent Activity</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Panel title="Recent reviews">
+            {!queue ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+            ) : queue.recentReviews.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">No reviews yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {queue.recentReviews.slice(0, 5).map((review) => (
+                  <li key={review.id} className="rounded-lg border border-slate-200 p-2.5 text-sm dark:border-slate-800">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-slate-900 dark:text-slate-50">{review.user?.name ?? 'A guest'}</p>
+                      <p className="flex items-center gap-0.5 text-slate-500 dark:text-slate-400">
+                        {review.overallRating.toFixed(1)}
+                        <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
+                      </p>
+                    </div>
+                    {review.comment && (
+                      <p className="mt-0.5 truncate text-slate-600 dark:text-slate-300">{review.comment}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          {user?.isSuperAdmin && (
+            <Panel
+              title="Recent admin actions"
+              action={
+                <Link href="/admin/audit-log" className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">
+                  Full log →
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
-          Flagged content
-          {queue && queue.flaggedContent.length > 0 && (
-            <span className="rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
-              {queue.flaggedContent.length}
-            </span>
+              }
+            >
+              {!recentActions ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+              ) : recentActions.length === 0 ? (
+                <p className="text-sm text-slate-500 dark:text-slate-400">No admin actions recorded yet.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {recentActions.map((action) => (
+                    <li key={action.id} className="text-sm">
+                      <p className="text-slate-800 dark:text-slate-100">
+                        <span className="font-medium">{action.adminUser.name}</span>{' '}
+                        <span className="text-slate-500 dark:text-slate-400">{action.action.replace(/_/g, ' ')}</span>
+                      </p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        {new Date(action.createdAt).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
           )}
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Reviews/events {/* keep in sync with REPORT_FLAG_THRESHOLD */}3+ users independently reported in the last
-          90 days.
-        </p>
-        {!queue ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-        ) : queue.flaggedContent.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-            Nothing flagged.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {queue.flaggedContent.map((flagged) => (
-              <FlaggedContentRow key={`${flagged.targetType}-${flagged.targetId}`} flagged={flagged} onDone={reload} />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <FeaturedCreatorToggle token={token} />
-
-      <section className="flex flex-col gap-3">
-        <h2 className="font-semibold text-slate-800 dark:text-slate-100">Recent reviews</h2>
-        {!queue ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-        ) : queue.recentReviews.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No reviews yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {queue.recentReviews.map((review) => (
-              <li key={review.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-slate-900 dark:text-slate-50">{review.user?.name ?? 'A guest'}</p>
-                  <p className="flex items-center gap-0.5 text-slate-500 dark:text-slate-400">
-                    {review.overallRating.toFixed(1)}
-                    <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
-                  </p>
-                </div>
-                {review.comment && <p className="mt-1 text-slate-600 dark:text-slate-300">{review.comment}</p>}
-              </li>
-            ))}
-          </ul>
-        )}
+        </div>
       </section>
     </div>
   );
 }
 
-function KpiTile({
+function NeedsAttentionCard({
   label,
-  value,
+  count,
+  href,
   icon: Icon,
-  tone,
-  hint,
 }: {
   label: string;
-  value: number | undefined;
+  count: number;
+  href: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-  tone?: 'warning';
-  hint?: string;
 }) {
+  if (count === 0) return null;
   return (
-    <div
-      className={`rounded-xl border p-3 shadow-card transition-shadow hover:shadow-card-hover ${tone === 'warning' && value ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30' : 'border-slate-200 dark:border-slate-800'}`}
+    <Link
+      href={href}
+      className="group flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3 transition-colors hover:border-amber-400 dark:border-amber-800 dark:bg-amber-900/20"
     >
-      <div className="flex items-center justify-between">
-        <Icon aria-hidden className="h-5 w-5 text-brand-600" />
-        {tone === 'warning' && Boolean(value) && (
-          <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
-        )}
+      <div className="flex items-center gap-2.5">
+        <Icon aria-hidden className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
+        <div>
+          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">{count}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">{label}</p>
+        </div>
       </div>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value ?? (hint ? '—' : '…')}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{hint ?? label}</p>
-    </div>
+      <ArrowRightIcon
+        aria-hidden
+        className="h-4 w-4 shrink-0 text-amber-700 opacity-0 transition-opacity group-hover:opacity-100 dark:text-amber-300"
+      />
+    </Link>
   );
 }
 
-// A launchpad into every management surface, not just a report page — the
-// sidebar already links these, but a dashboard that's supposed to feel like
-// a command center should surface them here too, not make you go find them.
-function QuickActions({ isSuperAdmin }: { isSuperAdmin: boolean }) {
-  const actions: { href: string; label: string; description: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
-    { href: '/admin/content', label: 'Content', description: 'Places, categories, events, counties', icon: DocumentTextIcon },
-    { href: '/admin/sponsored-placements', label: 'Sponsored placements', description: 'Featured listing slots', icon: StarIcon },
-    { href: '/admin/analytics', label: 'B2B analytics', description: 'Engagement by place & category', icon: ChartBarIcon },
-    ...(isSuperAdmin
-      ? [
-          { href: '/admin/team', label: 'Team & Access', description: 'Promote admins, manage roles', icon: KeyIcon },
-          { href: '/admin/audit-log', label: 'Audit Log', description: 'Every admin action, with device info', icon: ClipboardDocumentListIcon },
-          { href: '/admin/security', label: 'Security', description: 'Login activity, force sign-out', icon: ShieldCheckIcon },
-        ]
-      : []),
-  ];
+// A launchpad into every management surface a real admin panel needs to
+// get to fast — driven by the same admin-nav.ts the sidebar uses, so it
+// can never drift out of sync with what's actually in the IA (or with
+// what this user can actually see).
+function QuickActions() {
+  const { user } = useAuth();
+  const groups = visibleAdminNav(user).filter((g) => g.id !== 'dashboard');
 
   return (
-    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {actions.map(({ href, label, description, icon: Icon }) => (
-        <Link
-          key={href}
-          href={href}
-          className="group flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700/10 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
-            <Icon aria-hidden className="h-5 w-5" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold text-slate-900 dark:text-slate-50">{label}</span>
-            <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{description}</span>
-          </span>
-        </Link>
-      ))}
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {groups.map((group) => {
+        const Icon = group.icon;
+        const href = group.href ?? group.items?.[0]?.href ?? '/admin';
+        return (
+          <Link
+            key={group.id}
+            href={href}
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover dark:border-slate-800"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700/10 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white dark:bg-brand-900/40 dark:text-brand-300">
+              <Icon aria-hidden className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-900 dark:text-slate-50">{group.label}</span>
+              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                {group.items ? `${group.items.length} sections` : 'Overview'}
+              </span>
+            </span>
+          </Link>
+        );
+      })}
     </section>
   );
 }
@@ -438,7 +439,7 @@ function QuickActions({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // categorical one (this is one measure compared across items, not identity).
 // Value sits at the tip per the bar's own end, never crammed inside a short
 // bar. See the dataviz skill: ≤24px thick, 4px rounded tip, square origin.
-function TopPlacesChart({ places }: { places: TopPlace[] }) {
+function TopPlacesChart({ places }: { places: AnalyticsOverview['topPlaces'] }) {
   const max = Math.max(...places.map((p) => p.total), 1);
   return (
     <ul className="flex flex-col gap-3">
@@ -449,16 +450,13 @@ function TopPlacesChart({ places }: { places: TopPlace[] }) {
             <Link
               href={`/places/${place.slug}`}
               target="_blank"
-              className="group flex items-center gap-3 rounded-lg -mx-1 px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="group -mx-1 flex items-center gap-3 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
-              <span className="w-32 shrink-0 truncate text-sm text-slate-700 dark:text-slate-200 group-hover:text-brand-700 sm:w-44">
+              <span className="w-32 shrink-0 truncate text-sm text-slate-700 group-hover:text-brand-700 dark:text-slate-200 sm:w-44">
                 {place.name}
               </span>
               <span className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <span
-                  className="block h-full rounded-r rounded-l-none bg-brand-600"
-                  style={{ width: `${pct}%` }}
-                />
+                <span className="block h-full rounded-l-none rounded-r bg-brand-600" style={{ width: `${pct}%` }} />
               </span>
               <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300">
                 {place.total.toLocaleString()}
@@ -484,7 +482,11 @@ function BookingStatusBar({ counts }: { counts: Record<BookingStatus, number> })
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" role="img" aria-label="Bookings by status">
+      <div
+        className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+        role="img"
+        aria-label="Bookings by status"
+      >
         {BOOKING_STATUS_META.filter((s) => (counts[s.key] ?? 0) > 0).map((s) => (
           <div
             key={s.key}
@@ -503,233 +505,5 @@ function BookingStatusBar({ counts }: { counts: Record<BookingStatus, number> })
         ))}
       </div>
     </div>
-  );
-}
-
-// A handful of numbers, not a chart — correctly a stat row per the dataviz
-// skill's "is it even a chart?" check. The 2FA-adoption meter is the one
-// exception: severity reads across a filled track (danger below half,
-// warning below full, accent at/above), same convention as a battery meter.
-function SecuritySnapshot({ overview }: { overview: SecurityOverview }) {
-  const { total, enabled } = overview.adminTwoFactorAdoption;
-  const adoptionPct = total > 0 ? Math.round((enabled / total) * 100) : 0;
-  const meterColor = adoptionPct >= 100 ? '#059669' : adoptionPct >= 50 ? '#d97706' : '#c80305';
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <p className="flex items-center gap-1 text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">
-            {overview.failedLoginsLast1h > 0 && <ShieldExclamationIcon aria-hidden className="h-4 w-4 text-amber-500" />}
-            {overview.failedLoginsLast1h}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Failed logins (1h)</p>
-        </div>
-        <div>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">{overview.failedLoginsLast24h}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Failed logins (24h)</p>
-        </div>
-        <div>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">{overview.distinctFailingIpsLast24h}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Distinct failing IPs (24h)</p>
-        </div>
-        <div>
-          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-50">
-            {enabled}/{total}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Admin 2FA enabled</p>
-        </div>
-      </div>
-      <div>
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>2FA adoption</span>
-          <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">{adoptionPct}%</span>
-        </div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-          <div className="h-full rounded-full transition-[width]" style={{ width: `${adoptionPct}%`, backgroundColor: meterColor }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FeaturedCreatorToggle({ token }: { token: string }) {
-  const [username, setUsername] = useState('');
-  const [creator, setCreator] = useState<Creator | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function lookup() {
-    setLoading(true);
-    setError(null);
-    setCreator(null);
-    try {
-      setCreator(await getCreatorByUsername(username.trim().replace(/^@/, '')));
-    } catch {
-      setError('No creator found with that username.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function toggle() {
-    if (!creator) return;
-    setToggling(true);
-    try {
-      const updated = await setCreatorFeatured(token, creator.id, !creator.featured);
-      setCreator(updated);
-    } finally {
-      setToggling(false);
-    }
-  }
-
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="font-semibold text-slate-800 dark:text-slate-100">Feature a creator</h2>
-      <div className="flex gap-2">
-        <input
-          placeholder="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && lookup()}
-          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-        <button
-          type="button"
-          disabled={loading || !username.trim()}
-          onClick={lookup}
-          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
-        >
-          {loading ? 'Looking up…' : 'Find'}
-        </button>
-      </div>
-      {error && <p className="text-sm text-flag-700">{error}</p>}
-      {creator && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-          <div>
-            <p className="font-medium text-slate-900 dark:text-slate-50">{creator.name}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">@{creator.username} · currently {creator.featured ? 'featured' : 'not featured'}</p>
-          </div>
-          <button
-            type="button"
-            disabled={toggling}
-            onClick={toggle}
-            className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-          >
-            {toggling ? 'Saving…' : creator.featured ? 'Unfeature' : 'Feature'}
-          </button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onDone: () => void }) {
-  const { token } = useAuth();
-  const [status, setStatus] = useState<VerificationStatus>('verified');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function apply() {
-    if (!token) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await setBusinessVerification(token, businessId, status);
-      onDone();
-    } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <select
-        value={status}
-        onChange={(e) => setStatus(e.target.value as VerificationStatus)}
-        className="rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-      >
-        {VERIFICATION_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        disabled={submitting}
-        onClick={apply}
-        className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-      >
-        {submitting ? 'Applying…' : 'Apply'}
-      </button>
-      {error && <span className="text-xs text-flag-700">{error}</span>}
-    </div>
-  );
-}
-
-const REASON_LABELS: Record<string, string> = {
-  spam: 'spam',
-  inappropriate: 'inappropriate',
-  fake: 'fake',
-  other: 'other',
-};
-
-function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDone: () => void }) {
-  const { token } = useAuth();
-  const [removing, setRemoving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const reasonSummary = Object.entries(flagged.reasons)
-    .filter(([, count]) => count > 0)
-    .map(([reason, count]) => `${count} ${REASON_LABELS[reason] ?? reason}`)
-    .join(', ');
-
-  async function remove() {
-    if (!token) return;
-    setRemoving(true);
-    setError(null);
-    try {
-      if (flagged.targetType === 'review') {
-        await deleteReviewAdmin(token, flagged.targetId);
-      } else {
-        await deleteEventAdmin(token, flagged.targetId);
-      }
-      onDone();
-    } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
-      setRemoving(false);
-    }
-  }
-
-  return (
-    <li className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-900/20 p-3">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-          {flagged.targetType} · {flagged.reportCount} report{flagged.reportCount === 1 ? '' : 's'} ({reasonSummary})
-        </p>
-        {flagged.review && (
-          <>
-            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.review.user?.name ?? 'A guest'}</p>
-            {flagged.review.comment && <p className="text-sm text-slate-600 dark:text-slate-300">{flagged.review.comment}</p>}
-          </>
-        )}
-        {flagged.event && (
-          <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.event.name}</p>
-        )}
-        {error && <p className="mt-1 text-xs text-flag-700">{error}</p>}
-      </div>
-      <button
-        type="button"
-        disabled={removing}
-        onClick={remove}
-        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-600 hover:text-white disabled:opacity-60"
-      >
-        {removing ? 'Removing…' : 'Remove'}
-      </button>
-    </li>
   );
 }

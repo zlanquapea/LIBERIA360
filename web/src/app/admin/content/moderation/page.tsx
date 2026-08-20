@@ -1,0 +1,240 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  deleteEventAdmin,
+  deleteReviewAdmin,
+  getModerationQueue,
+  setBusinessVerification,
+} from '@/lib/admin-api';
+import { formatBusinessType } from '@/lib/format';
+import { HttpError } from '@/lib/http';
+import type { FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
+import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
+
+const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
+  { value: 'verified', label: 'Verified' },
+  { value: 'recommended', label: 'Recommended' },
+  { value: 'official', label: 'Official' },
+  { value: 'eco_certified', label: 'Eco-certified' },
+  { value: 'community_favorite', label: 'Community favorite' },
+];
+
+const REASON_LABELS: Record<string, string> = {
+  spam: 'spam',
+  inappropriate: 'inappropriate',
+  fake: 'fake',
+  other: 'other',
+};
+
+// Content > Moderation — the working queue moved off the dashboard so
+// Dashboard could stay a summary/control-center; this is where the
+// actual verify/remove actions happen. Any admin (AdminGuard on
+// GET /admin/moderation-queue), same as before.
+export default function ModerationPage() {
+  const { token } = useAuth();
+  const [queue, setQueue] = useState<ModerationQueue | null>(null);
+
+  function reload() {
+    if (!token) return;
+    getModerationQueue(token).then(setQueue);
+  }
+
+  useEffect(reload, [token]);
+
+  if (!token) return null;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <AdminPageHeader
+        title="Moderation"
+        description="Pending business verification and flagged reviews/events."
+      />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Pending business claims
+          {queue && queue.pendingBusinesses.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {queue.pendingBusinesses.length}
+            </span>
+          )}
+        </h2>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.pendingBusinesses.length === 0 ? (
+          <EmptyState title="Nothing pending — the queue is clear." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queue.pendingBusinesses.map((business) => (
+              <li
+                key={business.id}
+                className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
+              >
+                <p className="font-medium text-slate-900 dark:text-slate-50">{business.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
+                </p>
+                <VerifyBusinessControl businessId={business.id} onDone={reload} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Flagged content
+          {queue && queue.flaggedContent.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {queue.flaggedContent.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Reviews/events {/* keep in sync with REPORT_FLAG_THRESHOLD */}3+ users independently reported in the last
+          90 days.
+        </p>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.flaggedContent.length === 0 ? (
+          <EmptyState title="Nothing flagged." />
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {queue.flaggedContent.map((flagged) => (
+              <FlaggedContentRow key={`${flagged.targetType}-${flagged.targetId}`} flagged={flagged} onDone={reload} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">Recent reviews</h2>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.recentReviews.length === 0 ? (
+          <EmptyState title="No reviews yet." />
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {queue.recentReviews.map((review) => (
+              <li key={review.id} className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-slate-900 dark:text-slate-50">{review.user?.name ?? 'A guest'}</p>
+                  <p className="text-slate-500 dark:text-slate-400">{review.overallRating.toFixed(1)} ★</p>
+                </div>
+                {review.comment && <p className="mt-1 text-slate-600 dark:text-slate-300">{review.comment}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onDone: () => void }) {
+  const { token } = useAuth();
+  const [status, setStatus] = useState<VerificationStatus>('verified');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await setBusinessVerification(token, businessId, status);
+      onDone();
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <select
+        value={status}
+        onChange={(e) => setStatus(e.target.value as VerificationStatus)}
+        className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700"
+      >
+        {VERIFICATION_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        disabled={submitting}
+        onClick={apply}
+        className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+      >
+        {submitting ? 'Applying…' : 'Apply'}
+      </button>
+      {error && <span className="text-xs text-flag-700">{error}</span>}
+    </div>
+  );
+}
+
+function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDone: () => void }) {
+  const { token } = useAuth();
+  const [removing, setRemoving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reasonSummary = Object.entries(flagged.reasons)
+    .filter(([, count]) => count > 0)
+    .map(([reason, count]) => `${count} ${REASON_LABELS[reason] ?? reason}`)
+    .join(', ');
+
+  async function remove() {
+    if (!token) return;
+    setRemoving(true);
+    setError(null);
+    try {
+      if (flagged.targetType === 'review') {
+        await deleteReviewAdmin(token, flagged.targetId);
+      } else {
+        await deleteEventAdmin(token, flagged.targetId);
+      }
+      onDone();
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setRemoving(false);
+    }
+  }
+
+  return (
+    <li className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+          {flagged.targetType} · {flagged.reportCount} report{flagged.reportCount === 1 ? '' : 's'} ({reasonSummary})
+        </p>
+        {flagged.review && (
+          <>
+            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">
+              {flagged.review.user?.name ?? 'A guest'}
+            </p>
+            {flagged.review.comment && (
+              <p className="text-sm text-slate-600 dark:text-slate-300">{flagged.review.comment}</p>
+            )}
+          </>
+        )}
+        {flagged.event && (
+          <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.event.name}</p>
+        )}
+        {error && <p className="mt-1 text-xs text-flag-700">{error}</p>}
+      </div>
+      <button
+        type="button"
+        disabled={removing}
+        onClick={remove}
+        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+      >
+        {removing ? 'Removing…' : 'Remove'}
+      </button>
+    </li>
+  );
+}
