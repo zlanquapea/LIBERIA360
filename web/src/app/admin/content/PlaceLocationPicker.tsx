@@ -175,9 +175,12 @@ export function PlaceLocationPicker({
 
       <div className="h-64 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
         <MapContainer center={position ?? MONROVIA_CENTER} zoom={position ? 14 : 8} className="h-full w-full">
+          {/* CARTO's basemap tiles, not raw tile.openstreetmap.org — see
+              ExploreMapClient.tsx's comment on why. */}
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            subdomains="abcd"
           />
           <ClickToPlace onPick={onChange} />
           {flyTarget && <FlyTo position={flyTarget} />}
