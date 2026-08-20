@@ -12,22 +12,50 @@ import {
   ChatBubbleBottomCenterTextIcon,
   CalendarDaysIcon,
   BuildingStorefrontIcon,
+  DocumentTextIcon,
+  ChartBarIcon,
+  ClipboardDocumentListIcon,
+  ShieldCheckIcon,
+  ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import {
   deleteEventAdmin,
   deleteReviewAdmin,
+  getAggregateAnalytics,
   getModerationQueue,
   getPlatformKpis,
+  getSecurityOverview,
   getTeamRoster,
   setBusinessVerification,
   setCreatorFeatured,
 } from '@/lib/admin-api';
 import { getActiveSponsoredPlacements, getCreatorByUsername, getPlaces } from '@/lib/api';
-import { formatBusinessType } from '@/lib/format';
+import { formatBookingStatus, formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { Creator, FlaggedContent, ModerationQueue, PlatformKpis, VerificationStatus } from '@/lib/types';
+import type {
+  BookingStatus,
+  Creator,
+  FlaggedContent,
+  ModerationQueue,
+  PlatformKpis,
+  SecurityOverview,
+  TopPlace,
+  VerificationStatus,
+} from '@/lib/types';
+
+// Fixed status colors, validated for categorical/CVD separation against this
+// app's own brand palette (see dataviz skill) — not arbitrary. pending/
+// confirmed/declined reuse the semantic meaning readers already expect;
+// cancelled uses the app's existing brand-400 blue rather than a generic
+// gray, which failed the palette's chroma-floor check on its own.
+const BOOKING_STATUS_META: { key: BookingStatus; color: string }[] = [
+  { key: 'confirmed', color: '#059669' },
+  { key: 'pending', color: '#d97706' },
+  { key: 'declined', color: '#c80305' },
+  { key: 'cancelled', color: '#6478c2' },
+];
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -52,6 +80,8 @@ export default function AdminPage() {
   const [queue, setQueue] = useState<ModerationQueue | null>(null);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [platformKpis, setPlatformKpis] = useState<PlatformKpis | null>(null);
+  const [topPlaces, setTopPlaces] = useState<TopPlace[] | null>(null);
+  const [securityOverview, setSecurityOverview] = useState<SecurityOverview | null>(null);
 
   function reload() {
     if (!token) return;
@@ -78,7 +108,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (!token || !user?.isSuperAdmin) return;
     getPlatformKpis(token).then(setPlatformKpis);
+    getSecurityOverview(token).then(setSecurityOverview);
   }, [token, user?.isSuperAdmin]);
+
+  // Top places by engagement — same B2B analytics endpoint the dedicated
+  // Analytics page uses, any admin (not just super admin) can already call
+  // it; surfacing the top 5 here means the dashboard leads with something
+  // real instead of only a wall of counters.
+  useEffect(() => {
+    if (!token) return;
+    getAggregateAnalytics(token, 5).then((data) => setTopPlaces(data.topPlaces));
+  }, [token]);
 
   if (!token) return null;
 
@@ -96,6 +136,8 @@ export default function AdminPage() {
         </span>
       </div>
 
+      <QuickActions isSuperAdmin={Boolean(user?.isSuperAdmin)} />
+
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiTile label="Catalog places" value={kpis?.totalPlaces} icon={MapPinIcon} />
         <KpiTile
@@ -111,6 +153,24 @@ export default function AdminPage() {
           icon={KeyIcon}
           hint={user?.isSuperAdmin ? undefined : 'Super admin only'}
         />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-semibold text-slate-800">Top places by engagement</h2>
+          <Link href="/admin/analytics" className="text-xs font-medium text-brand-700 hover:underline">
+            Full analytics →
+          </Link>
+        </div>
+        <div className="rounded-xl border border-slate-200 p-4">
+          {!topPlaces ? (
+            <p className="text-sm text-slate-500">Loading…</p>
+          ) : topPlaces.length === 0 ? (
+            <p className="text-sm text-slate-500">No activity recorded yet — views, saves, and bookings will show up here.</p>
+          ) : (
+            <TopPlacesChart places={topPlaces} />
+          )}
+        </div>
       </section>
 
       {user?.isSuperAdmin && (
@@ -151,6 +211,27 @@ export default function AdminPage() {
               </span>
             </div>
           )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="mb-3 text-sm font-medium text-slate-900">Bookings by status</p>
+              {platformKpis ? (
+                <BookingStatusBar counts={platformKpis.bookingsByStatus} />
+              ) : (
+                <p className="text-sm text-slate-500">Loading…</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-slate-900">Security snapshot</p>
+                <Link href="/admin/security" className="text-xs font-medium text-brand-700 hover:underline">
+                  Details →
+                </Link>
+              </div>
+              {securityOverview ? <SecuritySnapshot overview={securityOverview} /> : <p className="text-sm text-slate-500">Loading…</p>}
+            </div>
+          </div>
         </section>
       )}
 
@@ -311,6 +392,163 @@ function KpiTile({
       </div>
       <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value ?? (hint ? '—' : '…')}</p>
       <p className="text-xs text-slate-500">{hint ?? label}</p>
+    </div>
+  );
+}
+
+// A launchpad into every management surface, not just a report page — the
+// sidebar already links these, but a dashboard that's supposed to feel like
+// a command center should surface them here too, not make you go find them.
+function QuickActions({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const actions: { href: string; label: string; description: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
+    { href: '/admin/content', label: 'Content', description: 'Places, categories, events, counties', icon: DocumentTextIcon },
+    { href: '/admin/sponsored-placements', label: 'Sponsored placements', description: 'Featured listing slots', icon: StarIcon },
+    { href: '/admin/analytics', label: 'B2B analytics', description: 'Engagement by place & category', icon: ChartBarIcon },
+    ...(isSuperAdmin
+      ? [
+          { href: '/admin/team', label: 'Team & Access', description: 'Promote admins, manage roles', icon: KeyIcon },
+          { href: '/admin/audit-log', label: 'Audit Log', description: 'Every admin action, with device info', icon: ClipboardDocumentListIcon },
+          { href: '/admin/security', label: 'Security', description: 'Login activity, force sign-out', icon: ShieldCheckIcon },
+        ]
+      : []),
+  ];
+
+  return (
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {actions.map(({ href, label, description, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700/10 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
+            <Icon aria-hidden className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-slate-900">{label}</span>
+            <span className="block truncate text-xs text-slate-500">{description}</span>
+          </span>
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+// Ranked magnitude across places → a single-hue horizontal bar chart, not a
+// categorical one (this is one measure compared across items, not identity).
+// Value sits at the tip per the bar's own end, never crammed inside a short
+// bar. See the dataviz skill: ≤24px thick, 4px rounded tip, square origin.
+function TopPlacesChart({ places }: { places: TopPlace[] }) {
+  const max = Math.max(...places.map((p) => p.total), 1);
+  return (
+    <ul className="flex flex-col gap-3">
+      {places.map((place) => {
+        const pct = Math.max((place.total / max) * 100, 3);
+        return (
+          <li key={place.placeId}>
+            <Link
+              href={`/places/${place.slug}`}
+              target="_blank"
+              className="group flex items-center gap-3 rounded-lg -mx-1 px-1 py-0.5 hover:bg-slate-50"
+            >
+              <span className="w-32 shrink-0 truncate text-sm text-slate-700 group-hover:text-brand-700 sm:w-44">
+                {place.name}
+              </span>
+              <span className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <span
+                  className="block h-full rounded-r rounded-l-none bg-brand-600"
+                  style={{ width: `${pct}%` }}
+                />
+              </span>
+              <span className="w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-600">
+                {place.total.toLocaleString()}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// Part-of-whole across a fixed, known set of statuses → one segmented bar
+// (not 4 separate bars, not a pie — see the dataviz skill's anti-patterns).
+// Colors are the validated BOOKING_STATUS_META set; a legend is mandatory
+// here since this is 4 series and color can't be the only identity channel.
+function BookingStatusBar({ counts }: { counts: Record<BookingStatus, number> }) {
+  const total = BOOKING_STATUS_META.reduce((sum, s) => sum + (counts[s.key] ?? 0), 0);
+
+  if (total === 0) {
+    return <p className="text-sm text-slate-500">No bookings yet.</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex h-4 w-full gap-0.5 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Bookings by status">
+        {BOOKING_STATUS_META.filter((s) => (counts[s.key] ?? 0) > 0).map((s) => (
+          <div
+            key={s.key}
+            style={{ width: `${((counts[s.key] ?? 0) / total) * 100}%`, backgroundColor: s.color }}
+            title={`${formatBookingStatus(s.key)}: ${counts[s.key]}`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {BOOKING_STATUS_META.map((s) => (
+          <div key={s.key} className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
+            {formatBookingStatus(s.key)}
+            <span className="font-semibold tabular-nums text-slate-900">{counts[s.key] ?? 0}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// A handful of numbers, not a chart — correctly a stat row per the dataviz
+// skill's "is it even a chart?" check. The 2FA-adoption meter is the one
+// exception: severity reads across a filled track (danger below half,
+// warning below full, accent at/above), same convention as a battery meter.
+function SecuritySnapshot({ overview }: { overview: SecurityOverview }) {
+  const { total, enabled } = overview.adminTwoFactorAdoption;
+  const adoptionPct = total > 0 ? Math.round((enabled / total) * 100) : 0;
+  const meterColor = adoptionPct >= 100 ? '#059669' : adoptionPct >= 50 ? '#d97706' : '#c80305';
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="flex items-center gap-1 text-lg font-bold tabular-nums text-slate-900">
+            {overview.failedLoginsLast1h > 0 && <ShieldExclamationIcon aria-hidden className="h-4 w-4 text-amber-500" />}
+            {overview.failedLoginsLast1h}
+          </p>
+          <p className="text-xs text-slate-500">Failed logins (1h)</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold tabular-nums text-slate-900">{overview.failedLoginsLast24h}</p>
+          <p className="text-xs text-slate-500">Failed logins (24h)</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold tabular-nums text-slate-900">{overview.distinctFailingIpsLast24h}</p>
+          <p className="text-xs text-slate-500">Distinct failing IPs (24h)</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold tabular-nums text-slate-900">
+            {enabled}/{total}
+          </p>
+          <p className="text-xs text-slate-500">Admin 2FA enabled</p>
+        </div>
+      </div>
+      <div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>2FA adoption</span>
+          <span className="font-semibold tabular-nums text-slate-900">{adoptionPct}%</span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full transition-[width]" style={{ width: `${adoptionPct}%`, backgroundColor: meterColor }} />
+        </div>
+      </div>
     </div>
   );
 }
