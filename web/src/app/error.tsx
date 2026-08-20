@@ -16,8 +16,8 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
 
   return (
     <main className="mx-auto flex max-w-sm flex-col items-center gap-4 px-4 py-16 text-center">
-      <h1 className="text-xl font-bold text-slate-900">Something went wrong</h1>
-      <p className="text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Something went wrong</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Sorry about that — this page hit an unexpected error. You can try again, or head back home.
       </p>
       <div className="flex gap-2">
@@ -30,7 +30,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </button>
         <Link
           href="/"
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Go home
         </Link>

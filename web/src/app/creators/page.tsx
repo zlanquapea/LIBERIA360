@@ -23,19 +23,19 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Creators</h1>
-          <p className="text-sm text-slate-500">Liberian storytellers, guides, and explorers sharing the country.</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Creators</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Liberian storytellers, guides, and explorers sharing the country.</p>
         </div>
         <Link
           href="/creators/me"
-          className="shrink-0 rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
         >
           Become a creator
         </Link>
       </div>
 
       {result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           No creator profiles yet — be the first.
         </p>
       ) : (
@@ -45,7 +45,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
               key={creator.id}
               href={`/creators/${creator.username}`}
               className={`flex items-start gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card ${
-                creator.featured ? 'border-gold-400 bg-gold-400/10' : 'border-slate-200'
+                creator.featured ? 'border-gold-400 bg-gold-400/10' : 'border-slate-200 dark:border-slate-800'
               }`}
             >
               <span
@@ -55,7 +55,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
                 {creator.name.trim().charAt(0).toUpperCase() || '?'}
               </span>
               <div className="min-w-0">
-                <p className="flex items-center gap-1 truncate font-medium text-slate-900">
+                <p className="flex items-center gap-1 truncate font-medium text-slate-900 dark:text-slate-50">
                   {creator.name}
                   {creator.verified && <CheckBadgeIcon aria-label="Verified creator" className="h-4 w-4 text-brand-600" />}
                 </p>
@@ -65,9 +65,9 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
                     Featured creator
                   </p>
                 )}
-                <p className="truncate text-xs text-slate-500">@{creator.username}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">@{creator.username}</p>
                 {creator.specialties.length > 0 && (
-                  <p className="mt-1 truncate text-xs text-slate-500">{creator.specialties.join(' · ')}</p>
+                  <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{creator.specialties.join(' · ')}</p>
                 )}
               </div>
             </Link>
@@ -80,18 +80,18 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
           <Link
             href={`/creators?page=${page - 1}`}
             aria-disabled={page <= 1}
-            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300' : 'text-brand-700 hover:underline'}`}
+            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'}`}
           >
             ← Previous
           </Link>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-500 dark:text-slate-400">
             Page {result.meta.page} of {result.meta.totalPages}
           </span>
           <Link
             href={`/creators?page=${page + 1}`}
             aria-disabled={page >= result.meta.totalPages}
             className={`text-sm font-medium ${
-              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300' : 'text-brand-700 hover:underline'
+              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'
             }`}
           >
             Next →

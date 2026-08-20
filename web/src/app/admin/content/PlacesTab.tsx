@@ -91,13 +91,13 @@ export function PlacesTab({
     <div className="flex flex-col gap-3">
       <TabListHeader title="Places" count={places.length} createLabel="+ New place" onCreate={() => setView({ mode: 'create' })} />
       {places.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
           No places yet — add the first one.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-4 py-2">Place</th>
                 <th className="px-4 py-2">Type</th>
@@ -106,13 +106,13 @@ export function PlacesTab({
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {places.map((place) => (
-                <tr key={place.id} onClick={() => setView({ mode: 'edit', slug: place.slug })} className="cursor-pointer hover:bg-slate-50">
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{place.name}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{formatPlaceType(place.type)}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{place.category.name}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{place.county.name}</td>
+                <tr key={place.id} onClick={() => setView({ mode: 'edit', slug: place.slug })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">{place.name}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatPlaceType(place.type)}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.category.name}</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.county.name}</td>
                   <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
                 </tr>
               ))}
@@ -158,7 +158,7 @@ function PlaceDetail({
   useEffect(reload, [slug]);
 
   if (!place) {
-    return <p className="text-sm text-slate-500">Loading…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
   }
 
   return (
@@ -251,16 +251,16 @@ function CreatePlaceForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <h3 className="text-sm font-semibold text-slate-700">New place</h3>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">New place</h3>
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input required maxLength={200} value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Slug
           <input
             required
@@ -273,19 +273,19 @@ function CreatePlaceForm({
             }}
             className={inputClass}
           />
-          <span className="text-xs font-normal text-slate-400">
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
             Auto-filled from the name — the web address for this place. Edit it if you want something different.
           </span>
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea required rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>
 
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Type
           <select value={type} onChange={(e) => setType(e.target.value as PlaceType)} className={inputClass}>
             {PLACE_TYPES.map((t) => (
@@ -295,7 +295,7 @@ function CreatePlaceForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Category
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
             {categories.map((c) => (
@@ -305,7 +305,7 @@ function CreatePlaceForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           County
           <select
             value={countyId}
@@ -325,7 +325,7 @@ function CreatePlaceForm({
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           City
           <input
             required
@@ -342,11 +342,11 @@ function CreatePlaceForm({
             ))}
           </datalist>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Latitude
           <input required type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Longitude
           <input required type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} className={inputClass} />
         </label>
@@ -446,30 +446,30 @@ function PlaceEditForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-700">Place details</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Place details</h3>
         {isSuperAdmin && (
           <DeleteButton label="Delete place" onDelete={() => deletePlace(token, place.id)} onDeleted={onDeleted} />
         )}
       </div>
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           City
           <input required maxLength={150} value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
         </label>
       </div>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea required rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>
       <div className="grid grid-cols-3 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Type
           <select value={type} onChange={(e) => setType(e.target.value as PlaceType)} className={inputClass}>
             {PLACE_TYPES.map((t) => (
@@ -479,7 +479,7 @@ function PlaceEditForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Category
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
             {categories.map((c) => (
@@ -489,7 +489,7 @@ function PlaceEditForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           County
           <select value={countyId} onChange={(e) => setCountyId(e.target.value)} className={inputClass}>
             {counties.map((c) => (
@@ -501,11 +501,11 @@ function PlaceEditForm({
         </label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Contact phone
           <input maxLength={40} value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           WhatsApp
           <input maxLength={40} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className={inputClass} />
         </label>
@@ -569,10 +569,10 @@ function ActivitiesEditor({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <h3 className="text-sm font-semibold text-slate-700">Activities</h3>
+    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Activities</h3>
       {(place.activities ?? []).length === 0 ? (
-        <p className="text-sm text-slate-500">No activities yet.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">No activities yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {(place.activities ?? []).map((activity) => (
@@ -609,7 +609,7 @@ function ActivitiesEditor({
         <button
           type="submit"
           disabled={submitting}
-          className="col-span-3 self-start rounded-full border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60 sm:col-span-3"
+          className="col-span-3 self-start rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60 sm:col-span-3"
         >
           {submitting ? 'Adding…' : '+ Add activity'}
         </button>
@@ -648,10 +648,10 @@ function ActivityRow({
 
   if (!editing) {
     return (
-      <li className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+      <li className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
         <span>
           {activity.name}
-          {activity.price !== null && <span className="text-slate-500"> · ${activity.price}</span>}
+          {activity.price !== null && <span className="text-slate-500 dark:text-slate-400"> · ${activity.price}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-2">
           <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-brand-700 hover:underline">
@@ -664,7 +664,7 @@ function ActivityRow({
   }
 
   return (
-    <li className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
+    <li className="flex items-center gap-2 rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2">
       <input value={name} onChange={(e) => setName(e.target.value)} className={`flex-1 ${inputClass}`} />
       <input type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} className={`w-24 ${inputClass}`} />
       <button
@@ -741,9 +741,9 @@ function BusinessEditor({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-700">
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
           {business ? 'Business listing' : 'Seed a business listing (unclaimed until an owner claims it)'}
         </h3>
         {isSuperAdmin && business && (
@@ -752,11 +752,11 @@ function BusinessEditor({
       </div>
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Type
           <select value={type} onChange={(e) => setType(e.target.value as BusinessType)} className={inputClass}>
             {BUSINESS_TYPES.map((t) => (
@@ -768,12 +768,12 @@ function BusinessEditor({
         </label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Phone
           <input maxLength={40} value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
         </label>
         {business && (
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
             Owner user ID
             <input
               placeholder="blank = unclaimed"

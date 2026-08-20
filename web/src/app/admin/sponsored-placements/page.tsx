@@ -8,7 +8,7 @@ import { HttpError } from '@/lib/http';
 import type { Place, SponsoredPlacement } from '@/lib/types';
 
 const inputClass =
-  'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -44,13 +44,13 @@ export default function AdminSponsoredPlacementsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-bold text-slate-900">Sponsored Placements</h1>
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Sponsored Placements</h1>
 
       <CreatePlacementForm token={token} places={places} onCreated={reload} />
 
       <section className="flex flex-col gap-3">
         {placements.length === 0 ? (
-          <p className="text-sm text-slate-500">No sponsored placements yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No sponsored placements yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {placements.map((p) => (
@@ -98,9 +98,9 @@ function CreatePlacementForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <h2 className="text-sm font-semibold text-slate-700">New placement</h2>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">New placement</h2>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Place
         <select value={placeId} onChange={(e) => setPlaceId(e.target.value)} className={inputClass}>
           {places.map((p) => (
@@ -111,11 +111,11 @@ function CreatePlacementForm({
         </select>
       </label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Start date
           <input required type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           End date
           <input required type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
         </label>
@@ -151,8 +151,8 @@ function PlacementRow({
     state === 'active'
       ? 'bg-emerald-100 text-emerald-800'
       : state === 'upcoming'
-        ? 'bg-amber-100 text-amber-800'
-        : 'bg-slate-100 text-slate-500';
+        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200'
+        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
 
   async function revoke() {
     setRevoking(true);
@@ -165,10 +165,10 @@ function PlacementRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+    <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="min-w-0">
-        <p className="truncate font-medium text-slate-900">{placement.place.name}</p>
-        <p className="text-xs text-slate-500">
+        <p className="truncate font-medium text-slate-900 dark:text-slate-50">{placement.place.name}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {placement.startDate} – {placement.endDate}
         </p>
       </div>
@@ -178,7 +178,7 @@ function PlacementRow({
           type="button"
           disabled={revoking}
           onClick={revoke}
-          className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
         >
           {revoking ? 'Revoking…' : 'Revoke'}
         </button>

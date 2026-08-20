@@ -24,7 +24,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky bottom-0 z-10 flex border-t border-slate-200 bg-white/95 backdrop-blur">
+    <nav className="sticky bottom-0 z-10 flex border-t border-slate-200 dark:border-slate-800 bg-white/95 backdrop-blur dark:bg-slate-950/95">
       {TABS.map((tab) => {
         const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
         const Icon = active ? tab.activeIcon : tab.icon;
@@ -33,7 +33,7 @@ export function BottomNav() {
             key={tab.href}
             href={tab.href}
             className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
-              active ? 'font-semibold text-brand-700' : 'text-slate-500 hover:text-brand-600'
+              active ? 'font-semibold text-brand-700' : 'text-slate-500 dark:text-slate-400 hover:text-brand-600'
             }`}
             aria-current={active ? 'page' : undefined}
           >

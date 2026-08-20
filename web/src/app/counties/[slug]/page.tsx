@@ -25,13 +25,13 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-50">
           <span aria-hidden className="text-2xl">
             {county.icon ?? <MapPinIcon className="h-6 w-6 text-brand-600" />}
           </span>
           {county.name} County
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {placesResult.meta.total} place{placesResult.meta.total === 1 ? '' : 's'} in the catalog
           {county.rolloutStage > 1 && ' (still growing)'}
         </p>
@@ -40,7 +40,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
       <CountySafetyPanel county={county} />
 
       {placesResult.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           No places here yet — we&apos;re still adding {county.name} to the catalog. Check back soon.
         </p>
       ) : (

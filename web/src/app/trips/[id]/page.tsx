@@ -50,7 +50,7 @@ export default function TripDetailPage() {
   if (!ready || loading) {
     return (
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -58,7 +58,7 @@ export default function TripDetailPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           <Link href="/login" className="font-medium text-brand-700 hover:underline">
             Log in
           </Link>{' '}
@@ -89,8 +89,8 @@ export default function TripDetailPage() {
         <Link href="/trips" className="text-sm font-medium text-brand-700 hover:underline">
           ← My Trips
         </Link>
-        <h1 className="mt-1 text-xl font-bold text-slate-900">{itinerary.title}</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">{itinerary.title}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {itinerary.durationDays} day{itinerary.durationDays === 1 ? '' : 's'} · {formatBudgetBand(itinerary.budgetBand)}
           {itinerary.interests.length > 0 && ` · ${itinerary.interests.join(', ')}`}
           {!isOwner && isCollaborator && ' · Shared with you'}

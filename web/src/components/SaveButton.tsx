@@ -26,7 +26,7 @@ export function SaveButton({ slug, placeId, className = '' }: { slug: string; pl
       onClick={handleClick}
       aria-pressed={saved}
       className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-        saved ? 'border-transparent bg-gold-500 text-white' : 'border-slate-300 text-slate-700 hover:border-brand-500'
+        saved ? 'border-transparent bg-gold-500 text-white' : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
       } ${className}`}
     >
       {saved ? (

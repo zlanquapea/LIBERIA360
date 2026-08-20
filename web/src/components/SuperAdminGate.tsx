@@ -12,9 +12,9 @@ export function SuperAdminGate({ children }: { children: ReactNode }) {
 
   if (!user?.isSuperAdmin) {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center">
-        <p className="font-medium text-slate-700">Super admin access required</p>
-        <p className="text-sm text-slate-500">Ask a super admin to grant it if you need to be here.</p>
+      <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+        <p className="font-medium text-slate-700 dark:text-slate-200">Super admin access required</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Ask a super admin to grant it if you need to be here.</p>
       </div>
     );
   }

@@ -33,7 +33,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   if (!user) return null;
 
   if (reported) {
-    return <span className="text-xs text-slate-400">Reported — thanks for flagging this.</span>;
+    return <span className="text-xs text-slate-400 dark:text-slate-500">Reported — thanks for flagging this.</span>;
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -57,7 +57,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1 text-xs text-slate-400 underline-offset-2 hover:text-flag-700 hover:underline"
+        className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 underline-offset-2 hover:text-flag-700 hover:underline"
       >
         <FlagIcon aria-hidden className="h-3 w-3" />
         Report
@@ -68,12 +68,12 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs"
+      className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-2 text-xs"
     >
       <select
         value={reason}
         onChange={(e) => setReason(e.target.value as ReportReason)}
-        className="rounded border border-slate-300 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       >
         {REASON_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -87,7 +87,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
         maxLength={500}
         rows={2}
         placeholder="Add details (optional)"
-        className="rounded border border-slate-300 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       />
       {error && (
         <p role="alert" className="text-flag-700">
@@ -102,7 +102,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
         >
           {submitting ? 'Submitting…' : 'Submit report'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-slate-500 hover:underline">
+        <button type="button" onClick={() => setOpen(false)} className="text-slate-500 dark:text-slate-400 hover:underline">
           Cancel
         </button>
       </div>

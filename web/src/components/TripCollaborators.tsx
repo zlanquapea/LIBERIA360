@@ -47,17 +47,17 @@ export function TripCollaborators({
   }
 
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
-      <p className="text-sm font-medium text-slate-700">Planning together</p>
+    <section className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Planning together</p>
 
       {collaborators.length === 0 ? (
-        <p className="text-xs text-slate-500">Just you so far — invite someone to plan this trip together.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Just you so far — invite someone to plan this trip together.</p>
       ) : (
         <ul className="flex flex-wrap gap-2">
           {collaborators.map((c) => (
             <li
               key={c.id}
-              className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+              className="flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200"
             >
               {c.name}
               {(isOwner || c.id === user?.id) && (
@@ -65,7 +65,7 @@ export function TripCollaborators({
                   type="button"
                   onClick={() => remove(c.id)}
                   aria-label={`Remove ${c.name}`}
-                  className="text-slate-400 hover:text-flag-700"
+                  className="text-slate-400 dark:text-slate-500 hover:text-flag-700"
                 >
                   ×
                 </button>
@@ -88,7 +88,7 @@ export function TripCollaborators({
               }
             }}
             placeholder="Invite by email"
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
           <button
             type="button"

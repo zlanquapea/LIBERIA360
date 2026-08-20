@@ -25,7 +25,7 @@ export default function AccountPage() {
   if (!ready) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -33,8 +33,8 @@ export default function AccountPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">You&apos;re not logged in</h1>
-        <p className="text-sm text-slate-500">Log in to save trips, write reviews, and claim your business.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">You&apos;re not logged in</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to save trips, write reviews, and claim your business.</p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -57,37 +57,37 @@ export default function AccountPage() {
           {user.name.trim().charAt(0).toUpperCase() || '?'}
         </span>
         <div>
-          <h1 className="text-lg font-bold text-slate-900">{user.name}</h1>
-          <p className="text-sm text-slate-500">{user.email}</p>
+          <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">{user.name}</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
         </div>
       </div>
 
       <EmailVerificationBanner />
 
-      <dl className="flex flex-col divide-y divide-slate-100 rounded-xl border border-slate-200 text-sm">
+      <dl className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
         <div className="flex justify-between px-4 py-3">
-          <dt className="text-slate-500">Home county</dt>
-          <dd className="font-medium text-slate-900">{user.homeCounty?.name ?? 'Not set'}</dd>
+          <dt className="text-slate-500 dark:text-slate-400">Home county</dt>
+          <dd className="font-medium text-slate-900 dark:text-slate-50">{user.homeCounty?.name ?? 'Not set'}</dd>
         </div>
         <div className="flex justify-between px-4 py-3">
-          <dt className="text-slate-500">Traveler type</dt>
-          <dd className="font-medium text-slate-900">
+          <dt className="text-slate-500 dark:text-slate-400">Traveler type</dt>
+          <dd className="font-medium text-slate-900 dark:text-slate-50">
             {user.travelerType ? formatTravelerType(user.travelerType) : 'Not set'}
           </dd>
         </div>
         <div className="flex flex-col gap-1.5 px-4 py-3">
-          <dt className="text-slate-500">Interests</dt>
+          <dt className="text-slate-500 dark:text-slate-400">Interests</dt>
           <dd>
             {user.interests.length === 0 ? (
-              <span className="font-medium text-slate-900">Not set</span>
+              <span className="font-medium text-slate-900 dark:text-slate-50">Not set</span>
             ) : (
-              <span className="text-slate-700">{user.interests.join(', ')}</span>
+              <span className="text-slate-700 dark:text-slate-200">{user.interests.join(', ')}</span>
             )}
           </dd>
         </div>
         <div className="flex justify-between px-4 py-3">
-          <dt className="text-slate-500">Member since</dt>
-          <dd className="font-medium text-slate-900">
+          <dt className="text-slate-500 dark:text-slate-400">Member since</dt>
+          <dd className="font-medium text-slate-900 dark:text-slate-50">
             {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </dd>
         </div>
@@ -103,28 +103,28 @@ export default function AccountPage() {
 
       <Link
         href="/trips"
-        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
       >
         My Trips
       </Link>
 
       <Link
         href="/account/bookings"
-        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
       >
         My Bookings
       </Link>
 
       <Link
         href="/account/analytics"
-        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
       >
         Business Analytics
       </Link>
 
       <Link
         href="/creators/me"
-        className="rounded-full border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
       >
         Manage creator profile
       </Link>
@@ -132,7 +132,7 @@ export default function AccountPage() {
       {user.isAdmin && (
         <Link
           href="/admin"
-          className="flex items-center justify-center gap-1.5 rounded-full border-2 border-gold-400 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:border-gold-600"
+          className="flex items-center justify-center gap-1.5 rounded-full border-2 border-gold-400 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-gold-600"
         >
           <StarIcon aria-hidden className="h-4 w-4 text-gold-500" />
           Admin dashboard
@@ -142,7 +142,7 @@ export default function AccountPage() {
       <button
         type="button"
         onClick={handleLogout}
-        className="rounded-full border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-flag-500 hover:text-flag-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700"
       >
         Log out
       </button>
@@ -205,14 +205,14 @@ function ProfileEditor() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Traveler type
         <TravelerTypeSelect value={travelerType} onChange={setTravelerType} />
       </label>
       {categories.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-sm font-medium text-slate-700">Interests</p>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Interests</p>
           <InterestChips categories={categories} selected={interests} onToggle={toggleInterest} />
         </div>
       )}
@@ -232,7 +232,7 @@ function ProfileEditor() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Cancel
         </button>

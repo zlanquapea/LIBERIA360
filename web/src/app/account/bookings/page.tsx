@@ -64,7 +64,7 @@ export default function BookingsPage() {
   if (!ready || loading) {
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -72,8 +72,8 @@ export default function BookingsPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">My Bookings</h1>
-        <p className="text-sm text-slate-500">Log in to see your booking requests.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My Bookings</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to see your booking requests.</p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -87,15 +87,15 @@ export default function BookingsPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
       <section className="flex flex-col gap-3">
-        <h1 className="text-xl font-bold text-slate-900">My booking requests</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My booking requests</h1>
         {myBookings.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
             No booking requests yet. Request to book on any claimed listing&apos;s page.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
             {myBookings.map((booking) => (
-              <li key={booking.id} className="rounded-xl border border-slate-200 p-3">
+              <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
                 <BookingCard booking={booking} />
                 {(booking.status === 'pending' || booking.status === 'confirmed') && (
                   <button
@@ -105,7 +105,7 @@ export default function BookingsPage() {
                       await cancelBooking(token, booking.id);
                       reloadMine();
                     }}
-                    className="mt-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-flag-500 hover:text-flag-700"
+                    className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700"
                   >
                     Cancel request
                   </button>
@@ -119,16 +119,16 @@ export default function BookingsPage() {
 
       {businesses.length > 0 && (
         <section className="flex flex-col gap-6">
-          <h2 className="text-xl font-bold text-slate-900">Requests for my listings</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my listings</h2>
           {businesses.map((business) => (
             <div key={business.id} className="flex flex-col gap-3">
-              <h3 className="font-semibold text-slate-800">{business.name}</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">{business.name}</h3>
               {(incoming[business.id] ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500">No requests yet.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
               ) : (
                 <ul className="flex flex-col gap-3">
                   {(incoming[business.id] ?? []).map((booking) => (
-                    <li key={booking.id} className="rounded-xl border border-slate-200 p-3">
+                    <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
                       <BookingCard booking={booking} showGuest />
                       {booking.status === 'pending' && (
                         <OwnerResponseForm
@@ -153,20 +153,20 @@ function BookingCard({ booking, showGuest }: { booking: Booking; showGuest?: boo
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-medium text-slate-900">
+        <p className="font-medium text-slate-900 dark:text-slate-50">
           {showGuest ? booking.guest?.name ?? 'A guest' : booking.business.name}
         </p>
         <StatusBadge status={booking.status} />
       </div>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-slate-600 dark:text-slate-300">
         {new Date(booking.requestedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         {booking.requestedEndDate &&
           ` – ${new Date(booking.requestedEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
         {booking.partySize && ` · Party of ${booking.partySize}`}
       </p>
-      {booking.notes && <p className="text-sm text-slate-500">&ldquo;{booking.notes}&rdquo;</p>}
+      {booking.notes && <p className="text-sm text-slate-500 dark:text-slate-400">&ldquo;{booking.notes}&rdquo;</p>}
       {booking.businessResponse && (
-        <p className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm text-slate-600">
+        <p className="rounded-lg bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 text-sm text-slate-600 dark:text-slate-300">
           Response: {booking.businessResponse}
         </p>
       )}
@@ -176,10 +176,10 @@ function BookingCard({ booking, showGuest }: { booking: Booking; showGuest?: boo
 
 function StatusBadge({ status }: { status: Booking['status'] }) {
   const styles: Record<Booking['status'], string> = {
-    pending: 'bg-amber-100 text-amber-800',
+    pending: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200',
     confirmed: 'bg-emerald-100 text-emerald-800',
-    declined: 'bg-slate-100 text-slate-600',
-    cancelled: 'bg-slate-100 text-slate-500',
+    declined: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    cancelled: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
   };
   return (
     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
@@ -215,7 +215,7 @@ function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: (
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         maxLength={1000}
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       />
       {error && <p className="text-xs text-flag-700">{error}</p>}
       <div className="flex gap-2">
@@ -231,7 +231,7 @@ function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: (
           type="button"
           disabled={submitting !== null}
           onClick={() => respond('decline')}
-          className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
         >
           {submitting === 'decline' ? 'Declining…' : 'Decline'}
         </button>

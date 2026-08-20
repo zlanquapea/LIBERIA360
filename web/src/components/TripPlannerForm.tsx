@@ -50,12 +50,12 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
   }
 
   if (!ready) {
-    return <p className="text-sm text-slate-500">Loading…</p>;
+    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
   }
 
   if (!user) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
           Log in
         </Link>{' '}
@@ -66,7 +66,7 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Trip name (optional)
         <input
           type="text"
@@ -74,11 +74,11 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
           placeholder={`${durationDays}-Day Liberia Trip`}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         How many days?
         <input
           type="number"
@@ -87,16 +87,16 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
           max={14}
           value={durationDays}
           onChange={(e) => setDurationDays(Number(e.target.value))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Budget
         <select
           value={budgetBand}
           onChange={(e) => setBudgetBand(e.target.value as BudgetBand)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         >
           {BUDGET_BANDS.map((b) => (
             <option key={b} value={b}>
@@ -107,7 +107,7 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
       </label>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="text-sm font-medium text-slate-700">Interests (optional — leave blank for all)</legend>
+        <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">Interests (optional — leave blank for all)</legend>
         <div className="flex flex-wrap gap-2">
           {categories.map((category) => {
             const selected = interests.includes(category.slug);
@@ -120,7 +120,7 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
                 className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
                   selected
                     ? 'border-transparent bg-brand-700 text-white'
-                    : 'border-slate-300 text-slate-700 hover:border-brand-500'
+                    : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                 }`}
               >
                 {category.icon} {category.name}

@@ -33,10 +33,21 @@ const displayFont = Plus_Jakarta_Sans({
   display: 'swap',
 });
 
+// Runs before hydration, before first paint — reads the stored theme (or
+// falls back to OS preference) and applies the `dark` class synchronously.
+// Without this, the page would always flash light-then-dark on every load
+// for anyone who's chosen dark mode, since useTheme's effect can't run
+// until after React hydrates. Inlined (not next/script) specifically
+// because it has to block, not defer.
+const themeInitScript = `(function(){try{var t=localStorage.getItem('liberia360:theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={displayFont.variable}>
-      <body className="flex min-h-screen flex-col">
+    <html lang="en" className={displayFont.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="flex min-h-screen flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-50">
         <Header />
         <div className="flex-1">
           {children}

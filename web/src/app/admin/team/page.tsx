@@ -36,16 +36,16 @@ function TeamDashboard() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-bold text-slate-900">Team &amp; Access</h1>
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Team &amp; Access</h1>
 
       <SearchAndPromote token={token} currentUserId={currentUser?.id} onChanged={reload} />
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-semibold text-slate-800">Current team</h2>
+        <h2 className="font-semibold text-slate-800 dark:text-slate-100">Current team</h2>
         {!roster ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : roster.length === 0 ? (
-          <p className="text-sm text-slate-500">No admins yet — that shouldn&apos;t be possible if you&apos;re seeing this page.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No admins yet — that shouldn&apos;t be possible if you&apos;re seeing this page.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {roster.map((member) => (
@@ -110,7 +110,7 @@ function SearchAndPromote({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-semibold text-slate-800">Grant access</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-100">Grant access</h2>
       <div className="flex gap-2">
         <input
           type="email"
@@ -118,13 +118,13 @@ function SearchAndPromote({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
           disabled={searching || !email.trim()}
           onClick={search}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
         >
           {searching ? 'Looking up…' : 'Find'}
         </button>
@@ -173,13 +173,13 @@ function TeamMemberRow({
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+    <li className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-900">
-            {member.name} {isSelf && <span className="text-xs font-normal text-slate-400">(you)</span>}
+          <p className="truncate font-medium text-slate-900 dark:text-slate-50">
+            {member.name} {isSelf && <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(you)</span>}
           </p>
-          <p className="truncate text-xs text-slate-500">{member.email}</p>
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{member.email}</p>
         </div>
         <RoleBadge isSuperAdmin={member.isSuperAdmin} />
       </div>
@@ -210,7 +210,7 @@ function TeamMemberRow({
             disabled={submitting !== null}
             onClick={() => apply(false, false, 'revoke')}
             title={isSelf && member.isSuperAdmin ? "You can't remove your own super admin access here" : undefined}
-            className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
           >
             {submitting === 'revoke' ? 'Revoking…' : 'Revoke all access'}
           </button>

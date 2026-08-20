@@ -92,7 +92,7 @@ export default function MyCreatorProfilePage() {
   if (!ready || loadingProfile) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -100,8 +100,8 @@ export default function MyCreatorProfilePage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Become a creator</h1>
-        <p className="text-sm text-slate-500">Log in to set up your creator profile.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Become a creator</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to set up your creator profile.</p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -115,8 +115,8 @@ export default function MyCreatorProfilePage() {
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">{creator ? 'Edit your creator profile' : 'Become a creator'}</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{creator ? 'Edit your creator profile' : 'Become a creator'}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {creator
             ? 'Update your public creator profile.'
             : 'Share your videos, photos, and guides with LIBERIA360 travelers.'}
@@ -129,7 +129,7 @@ export default function MyCreatorProfilePage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
           <input
             type="text"
@@ -137,11 +137,11 @@ export default function MyCreatorProfilePage() {
             maxLength={150}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Username
           <input
             type="text"
@@ -151,77 +151,77 @@ export default function MyCreatorProfilePage() {
             title="Lowercase letters, numbers, dots, and underscores only"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
-          <span className="text-xs font-normal text-slate-400">Lowercase letters, numbers, dots, and underscores only.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Lowercase letters, numbers, dots, and underscores only.</span>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Bio
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             maxLength={1000}
             rows={3}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
 
         <div className="grid grid-cols-1 gap-3">
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
             Instagram handle
             <input
               type="text"
               maxLength={100}
               value={instagram}
               onChange={(e) => setInstagram(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
             TikTok handle
             <input
               type="text"
               maxLength={100}
               value={tiktok}
               onChange={(e) => setTiktok(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
             YouTube handle
             <input
               type="text"
               maxLength={100}
               value={youtube}
               onChange={(e) => setYoutube(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
             />
           </label>
         </div>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Specialties
           <input
             type="text"
             placeholder="waterfalls, street food, nightlife"
             value={specialties}
             onChange={(e) => setSpecialties(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
-          <span className="text-xs font-normal text-slate-400">Comma-separated.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated.</span>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Locations covered
           <input
             type="text"
             placeholder="Montserrado, Bomi"
             value={locationsCovered}
             onChange={(e) => setLocationsCovered(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
-          <span className="text-xs font-normal text-slate-400">Comma-separated.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated.</span>
         </label>
 
         {error && (

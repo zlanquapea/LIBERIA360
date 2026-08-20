@@ -25,7 +25,7 @@ export function EventFilters({ counties }: { counties: County[] }) {
     <div className="flex flex-wrap gap-2">
       <select
         aria-label="Category"
-        className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
         value={searchParams.get('category') ?? ''}
         onChange={(e) => updateParam('category', e.target.value)}
       >
@@ -39,7 +39,7 @@ export function EventFilters({ counties }: { counties: County[] }) {
 
       <select
         aria-label="County"
-        className="rounded-full border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
         value={searchParams.get('county') ?? ''}
         onChange={(e) => updateParam('county', e.target.value)}
       >

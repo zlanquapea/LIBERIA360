@@ -44,7 +44,7 @@ export default function AnalyticsPage() {
   if (!ready || loading) {
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -52,8 +52,8 @@ export default function AnalyticsPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Business Analytics</h1>
-        <p className="text-sm text-slate-500">Log in to see how visitors are finding your listing.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Business Analytics</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to see how visitors are finding your listing.</p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -67,15 +67,15 @@ export default function AnalyticsPage() {
   if (businesses.length === 0) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Business Analytics</h1>
-        <p className="text-sm text-slate-500">Claim a listing to start tracking views, saves, and contact clicks.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Business Analytics</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Claim a listing to start tracking views, saves, and contact clicks.</p>
       </main>
     );
   }
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
-      <h1 className="text-xl font-bold text-slate-900">Business Analytics</h1>
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Business Analytics</h1>
       {businesses.map((business) => (
         <BusinessAnalyticsSection key={business.id} business={business} analytics={analytics[business.id]} />
       ))}
@@ -92,7 +92,7 @@ function BusinessAnalyticsSection({ business, analytics }: { business: Business;
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-semibold text-slate-800">{business.name}</h2>
+      <h2 className="font-semibold text-slate-800 dark:text-slate-100">{business.name}</h2>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Views" value={totals.view} icon={EyeIcon} />
@@ -102,11 +102,11 @@ function BusinessAnalyticsSection({ business, analytics }: { business: Business;
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-slate-600">Last 30 days</h3>
+        <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Last 30 days</h3>
         {byDay.length === 0 ? (
-          <p className="text-sm text-slate-500">No activity yet in this window.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No activity yet in this window.</p>
         ) : (
-          <div className="flex h-32 gap-1 overflow-x-auto rounded-xl border border-slate-200 p-3">
+          <div className="flex h-32 gap-1 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 p-3">
             {byDay.map((day) => {
               const dayTotal = day.view + day.save + day.contact_click + day.booking_request;
               const heightPct = Math.max(4, Math.round((dayTotal / maxDayTotal) * 100));
@@ -142,10 +142,10 @@ function StatCard({
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-3 text-center shadow-card">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center shadow-card">
       <Icon aria-hidden className="mx-auto h-5 w-5 text-brand-600" />
-      <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
-      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">{value}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   );
 }

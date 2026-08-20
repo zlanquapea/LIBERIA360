@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { HttpError } from '@/lib/http';
 
 export const inputClass =
-  'rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 // Mirrors the API's slug validation (CreatePlaceDto/CreateCategoryDto:
 // lowercase, kebab-case) so what's auto-filled here always passes
@@ -78,9 +78,9 @@ export function TabListHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+      <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
         {title}
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{count}</span>
+        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{count}</span>
       </h2>
       {createLabel && onCreate && (
         <button

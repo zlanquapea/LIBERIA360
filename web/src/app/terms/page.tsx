@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-      <div className="flex flex-col gap-2 text-sm leading-relaxed text-slate-600">{children}</div>
+      <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">{title}</h2>
+      <div className="flex flex-col gap-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{children}</div>
     </section>
   );
 }
@@ -21,14 +21,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function TermsOfServicePage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
-      <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
         <strong>Draft.</strong> This page hasn&apos;t been reviewed by a lawyer — have it reviewed, and fill in the
         bracketed placeholders, before relying on it for a public launch.
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Terms of Service</h1>
-        <p className="mt-1 text-xs text-slate-400">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Terms of Service</h1>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 
       <Section title="1. Acceptance">

@@ -14,7 +14,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
   if (!ready) {
     return (
       <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
@@ -22,8 +22,8 @@ export function AdminGate({ children }: { children: ReactNode }) {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Admin</h1>
-        <p className="text-sm text-slate-500">Log in with an admin account to continue.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Admin</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in with an admin account to continue.</p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -37,8 +37,8 @@ export function AdminGate({ children }: { children: ReactNode }) {
   if (!user.isAdmin) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900">Admin</h1>
-        <p className="text-sm text-slate-500">This account doesn&apos;t have admin access.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Admin</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">This account doesn&apos;t have admin access.</p>
       </main>
     );
   }

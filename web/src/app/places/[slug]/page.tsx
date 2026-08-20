@@ -88,13 +88,13 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <header className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold text-slate-900">{place.name}</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{place.name}</h1>
           <VerificationBadge status={place.verificationStatus} />
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {formatPlaceType(place.type)} · {place.city}, {place.county.name} County
         </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
           <span>{formatRating(place.rating, place.reviewCount)}</span>
           {distance && <span>· {distance}</span>}
           {travelTime && <span>· {travelTime}</span>}
@@ -103,7 +103,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         {place.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {place.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+              <span key={tag} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300">
                 {tag}
               </span>
             ))}
@@ -113,11 +113,11 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <PlaceFreshnessPrompt placeId={place.id} />
 
-      <p className="text-slate-700">{place.description}</p>
+      <p className="text-slate-700 dark:text-slate-200">{place.description}</p>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900">Location</h2>
-        <div className="h-48 overflow-hidden rounded-xl border border-slate-200">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Location</h2>
+        <div className="h-48 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
           <PlaceMiniMapLoader
             latitude={place.latitude}
             longitude={place.longitude}
@@ -134,13 +134,13 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
           <PaperAirplaneIcon aria-hidden className="h-4 w-4 -rotate-45" />
           Get Directions
         </a>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Getting there: private car, taxi, tour operator arrangement, or shared/bus transport where available.
         </p>
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900">Estimated cost</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Estimated cost</h2>
         <dl className="grid grid-cols-3 gap-3 text-sm">
           <CostItem label="Entry" value={formatCost(place.estimatedCostEntry)} />
           <CostItem label="Guide" value={formatCost(place.estimatedCostGuide)} />
@@ -150,16 +150,16 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       {place.activities && place.activities.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="font-semibold text-slate-900">Things to do</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Things to do</h2>
           <ul className="flex flex-col gap-2">
             {place.activities.map((activity) => (
-              <li key={activity.id} className="rounded-xl border border-slate-200 p-3">
+              <li key={activity.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-slate-900">{activity.name}</p>
-                  <p className="whitespace-nowrap text-sm text-slate-600">{formatCost(activity.price)}</p>
+                  <p className="font-medium text-slate-900 dark:text-slate-50">{activity.name}</p>
+                  <p className="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatCost(activity.price)}</p>
                 </div>
-                {activity.description && <p className="mt-1 text-sm text-slate-600">{activity.description}</p>}
-                <p className="mt-1 text-xs text-slate-500">
+                {activity.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{activity.description}</p>}
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   {[activity.duration, activity.difficulty, activity.guideRequired ? 'Guide required' : null]
                     .filter(Boolean)
                     .join(' · ')}
@@ -171,14 +171,14 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       )}
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900">Contact</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Contact</h2>
         {place.contactPhone || place.whatsapp ? (
           <div className="flex flex-wrap gap-2">
             {place.contactPhone && (
               <ContactLink
                 placeId={place.id}
                 href={`tel:${place.contactPhone}`}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-brand-500 hover:bg-brand-50"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50"
               >
                 <PhoneIcon aria-hidden className="h-4 w-4" />
                 Call
@@ -198,12 +198,12 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
             )}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">No verified contact on file yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No verified contact on file yet.</p>
         )}
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900">Business listing</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Business listing</h2>
         <BusinessClaimSection
           placeId={place.id}
           suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
@@ -213,25 +213,25 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900">Reviews</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Reviews</h2>
         <ReviewsSection placeId={place.id} initialReviews={reviewsResult.data} />
       </section>
 
       {Object.keys(nearbyByType).length > 0 && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-semibold text-slate-900">Nearby in {place.county.name}</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Nearby in {place.county.name}</h2>
           {Object.entries(nearbyByType).map(([type, places]) => (
             <div key={type} className="flex flex-col gap-2">
-              <h3 className="text-sm font-medium text-slate-600">{NEARBY_TYPE_LABELS[type as PlaceType] ?? formatPlaceType(type as PlaceType)}</h3>
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">{NEARBY_TYPE_LABELS[type as PlaceType] ?? formatPlaceType(type as PlaceType)}</h3>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {places.map((p) => (
                   <Link
                     key={p.id}
                     href={`/places/${p.slug}`}
-                    className="w-48 shrink-0 rounded-xl border border-slate-200 p-3 hover:border-brand-500"
+                    className="w-48 shrink-0 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
                   >
-                    <p className="font-medium text-slate-900">{p.name}</p>
-                    <p className="text-xs text-slate-500">{p.city}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-50">{p.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{p.city}</p>
                   </Link>
                 ))}
               </div>
@@ -240,12 +240,12 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         </section>
       )}
 
-      <section className="flex gap-3 border-t border-slate-200 pt-4">
+      <section className="flex gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
         <SaveButton slug={place.slug} placeId={place.id} className="flex-1 justify-center" />
         <button
           type="button"
           disabled
-          className="flex-1 rounded-full border border-dashed border-slate-300 py-2.5 text-sm font-medium text-slate-400"
+          className="flex-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-500"
           title="Trip planning arrives in Phase 2"
         >
           Plan Trip (Phase 2)
@@ -257,9 +257,9 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
 function CostItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-3 text-center">
-      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 font-semibold text-slate-900">{value}</dd>
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
+      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="mt-1 font-semibold text-slate-900 dark:text-slate-50">{value}</dd>
     </div>
   );
 }

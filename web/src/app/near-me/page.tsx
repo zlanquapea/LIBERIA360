@@ -80,14 +80,14 @@ export default function NearMePage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Near Me</h1>
-        <p className="text-sm text-slate-500">Find places close to where you are right now.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Near Me</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Find places close to where you are right now.</p>
       </div>
 
       {!coords ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-10 text-center">
           <ViewfinderCircleIcon aria-hidden className="h-10 w-10 text-gold-500" />
-          <p className="text-sm text-slate-500">Share your location to see what&apos;s nearby.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Share your location to see what&apos;s nearby.</p>
           <button
             type="button"
             onClick={requestLocation}
@@ -105,7 +105,7 @@ export default function NearMePage() {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-slate-500">Within</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">Within</span>
             {RADIUS_PRESETS.map((preset) => (
               <button
                 key={preset}
@@ -115,7 +115,7 @@ export default function NearMePage() {
                 className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
                   radiusKm === preset
                     ? 'border-transparent bg-brand-700 text-white'
-                    : 'border-slate-300 text-slate-700 hover:border-brand-500'
+                    : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                 }`}
               >
                 {preset} km
@@ -138,9 +138,9 @@ export default function NearMePage() {
           )}
 
           {loadingPlaces ? (
-            <p className="text-sm text-slate-500">Loading…</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
           ) : places.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+            <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
               Nothing within {radiusKm} km yet — try a wider radius.
             </p>
           ) : (

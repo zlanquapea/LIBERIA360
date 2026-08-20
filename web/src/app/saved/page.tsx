@@ -65,20 +65,20 @@ export default function SavedPage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Saved places</h1>
-        <p className="text-sm text-slate-500">Stored on this device — no account needed (Phase 1).</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Saved places</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Stored on this device — no account needed (Phase 1).</p>
       </div>
 
       {anyOffline && (
-        <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+        <p className="rounded-xl bg-amber-50 dark:bg-amber-900/30 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-200">
           You&apos;re offline — showing the last saved copy for some places. Details may be out of date.
         </p>
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
       ) : resolved.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500">
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           Nothing saved yet — tap &ldquo;Save&rdquo; on a destination profile to add it here.
         </p>
       ) : (

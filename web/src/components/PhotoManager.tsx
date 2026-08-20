@@ -57,12 +57,12 @@ export function PhotoManager({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium text-slate-700">{label}</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label}</p>
 
       {images.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {images.map((img) => (
-            <div key={img} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200">
+            <div key={img} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
               {/* Uploaded images are on the API's own origin, unknown ahead of
                   time — next/image would need that host allow-listed, so a
                   plain <img> is simpler here than fighting remotePatterns. */}
@@ -82,7 +82,7 @@ export function PhotoManager({
       )}
 
       {images.length < MAX_PHOTOS && (
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-brand-500 hover:text-brand-700">
+        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-brand-500 hover:text-brand-700">
           {uploading ? 'Uploading…' : '+ Add photos'}
           <input
             ref={inputRef}

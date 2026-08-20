@@ -44,17 +44,17 @@ export function CountiesTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-2 font-semibold text-slate-800">
+      <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
         Counties
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">{counties.length}</span>
+        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{counties.length}</span>
       </h2>
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Liberia&apos;s 15 counties are fixed — no &quot;create&quot; here on purpose. Click one to set its safety/practical-info
         panel (shown as a &quot;Before you go&quot; panel on the county page).
       </p>
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-50 dark:bg-slate-800 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             <tr>
               <th className="px-4 py-2">County</th>
               <th className="px-4 py-2">Rollout stage</th>
@@ -62,15 +62,15 @@ export function CountiesTab({
               <th className="px-4 py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {counties.map((county) => (
-              <tr key={county.id} onClick={() => setView({ mode: 'edit', county })} className="cursor-pointer hover:bg-slate-50">
-                <td className="px-4 py-2.5 font-medium text-slate-900">
+              <tr key={county.id} onClick={() => setView({ mode: 'edit', county })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">
                   {county.icon ? `${county.icon} ` : ''}
                   {county.name}
                 </td>
-                <td className="px-4 py-2.5 text-slate-500">{county.rolloutStage}</td>
-                <td className="px-4 py-2.5 text-slate-500">{county.emergencyNumber ? 'Yes' : 'Not yet'}</td>
+                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{county.rolloutStage}</td>
+                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{county.emergencyNumber ? 'Yes' : 'Not yet'}</td>
                 <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
               </tr>
             ))}
@@ -137,9 +137,9 @@ function CountyEditForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-700">
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
           {county.icon ? `${county.icon} ` : ''}
           {county.name}
         </h3>
@@ -147,7 +147,7 @@ function CountyEditForm({
           <DeleteButton label="Delete county" onDelete={() => deleteCountyAdmin(token, county.id)} onDeleted={onDeleted} />
         )}
       </div>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Emergency number
         <input
           maxLength={100}
@@ -157,11 +157,11 @@ function CountyEditForm({
           className={inputClass}
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Safety tips (one per line)
         <textarea rows={4} value={safetyTipsText} onChange={(e) => setSafetyTipsText(e.target.value)} className={inputClass} />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Local customs
         <textarea rows={3} value={localCustoms} onChange={(e) => setLocalCustoms(e.target.value)} className={inputClass} />
       </label>
