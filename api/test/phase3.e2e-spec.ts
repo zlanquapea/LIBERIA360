@@ -719,6 +719,44 @@ describe("Phase 3 (e2e)", () => {
       expect(flagged.business.id).toBe(hotelBusinessId);
     });
 
+    it("admin-only GET /admin/businesses lists every review status, unlike the public directory", async () => {
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/businesses")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+
+      const all = await request(app.getHttpServer())
+        .get("/api/v1/admin/businesses")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      // hotelBusinessId (approved, above) AND the rejected-then-resubmitted
+      // secondClaim business are both visible here — the public directory
+      // would only ever show the approved one.
+      const ids = all.body.data.map((b: { id: string }) => b.id);
+      expect(ids).toContain(hotelBusinessId);
+
+      const rejectedOnly = await request(app.getHttpServer())
+        .get("/api/v1/admin/businesses?reviewStatus=submitted_for_review")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        rejectedOnly.body.data.every(
+          (b: { reviewStatus: string }) =>
+            b.reviewStatus === "submitted_for_review",
+        ),
+      ).toBe(true);
+
+      const reportedOnly = await request(app.getHttpServer())
+        .get("/api/v1/admin/businesses?reportedOnly=true")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        reportedOnly.body.data.some(
+          (b: { id: string }) => b.id === hotelBusinessId,
+        ),
+      ).toBe(true);
+    });
+
     it("verifies a creator, stamping the same audit trail as places/businesses", async () => {
       // A fresh user, not strangerToken — strangerToken already created a
       // creator profile in the "Featured creators" describe above, and a

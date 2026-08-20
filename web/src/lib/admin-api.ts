@@ -4,6 +4,8 @@ import type {
   AnalyticsOverview,
   AuthUser,
   Business,
+  BusinessReviewStatus,
+  BusinessType,
   County,
   Category,
   CreateActivityInput,
@@ -15,6 +17,7 @@ import type {
   Event,
   ModerationQueue,
   PaginatedAdminActions,
+  PaginatedBusinesses,
   PaginatedLoginActivity,
   PaginatedUsers,
   Place,
@@ -54,6 +57,24 @@ export function setBusinessVerification(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status }),
+  });
+}
+
+// The publish/moderation lifecycle — approve/reject/request changes
+// (under_review)/suspend — distinct from setBusinessVerification's trust
+// badge above. `reason` is the rejection reason, reviewer guidance, or
+// suspension reason depending on `status` — see BusinessReviewStatus's
+// doc comment on the backend.
+export function setBusinessReviewStatus(
+  token: string,
+  businessId: string,
+  status: BusinessReviewStatus,
+  reason?: string,
+): Promise<Business> {
+  return apiRequest<Business>(`/admin/businesses/${businessId}/review-status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status, reason }),
   });
 }
 
@@ -115,6 +136,35 @@ export function updateActivity(token: string, id: string, input: UpdateActivityI
 
 export function deleteActivity(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/admin/activities/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
+// Every business regardless of review status — the admin Business
+// Management list, unlike the public directory (getBusinesses in api.ts),
+// which is approved-only.
+export function listBusinessesAdmin(
+  token: string,
+  {
+    page = 1,
+    limit = 20,
+    search,
+    reviewStatus,
+    type,
+    reportedOnly,
+  }: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    reviewStatus?: BusinessReviewStatus;
+    type?: BusinessType;
+    reportedOnly?: boolean;
+  } = {},
+): Promise<PaginatedBusinesses> {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search) query.set('search', search);
+  if (reviewStatus) query.set('reviewStatus', reviewStatus);
+  if (type) query.set('type', type);
+  if (reportedOnly) query.set('reportedOnly', 'true');
+  return apiRequest<PaginatedBusinesses>(`/admin/businesses?${query}`, { headers: authHeader(token) });
 }
 
 export function createBusinessAdmin(token: string, input: CreateBusinessAdminInput): Promise<Business> {

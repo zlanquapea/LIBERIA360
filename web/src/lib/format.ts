@@ -1,6 +1,7 @@
 import type {
   BookingStatus,
   BudgetBand,
+  BusinessReviewStatus,
   BusinessType,
   CreatorCategory,
   EventCategory,
@@ -32,12 +33,33 @@ const PLACE_TYPE_LABELS: Record<PlaceType, string> = {
 const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   hotel: 'Hotel',
   restaurant: 'Restaurant',
-  tour_operator: 'Tour Operator',
-  transport: 'Transport',
+  tour_operator: 'Tour Operator / Guide',
+  transport: 'Transportation',
+  travel_agency: 'Travel Agency',
+  beach_resort: 'Beach / Resort',
+  attraction: 'Attraction',
+  event_organizer: 'Event Organizer',
+  shop: 'Shop',
+  cultural_org: 'Cultural Organization',
+  creative_business: 'Creative Business',
+  other: 'Other',
 };
 
 export function formatBusinessType(type: BusinessType): string {
   return BUSINESS_TYPE_LABELS[type] ?? type;
+}
+
+const BUSINESS_REVIEW_STATUS_LABELS: Record<BusinessReviewStatus, string> = {
+  draft: 'Draft',
+  submitted_for_review: 'Submitted for review',
+  under_review: 'Under review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  suspended: 'Suspended',
+};
+
+export function formatBusinessReviewStatus(status: BusinessReviewStatus): string {
+  return BUSINESS_REVIEW_STATUS_LABELS[status] ?? status;
 }
 
 const VISIT_LENGTH_LABELS: Record<RecommendedVisitLength, string> = {

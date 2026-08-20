@@ -2,6 +2,7 @@ import {
   estimateTravelTime,
   formatBookingStatus,
   formatBudgetBand,
+  formatBusinessReviewStatus,
   formatBusinessType,
   formatCost,
   formatCreatorCategory,
@@ -24,10 +25,20 @@ describe('formatTravelerType', () => {
 describe('formatPlaceType / formatBusinessType / formatEventCategory / formatBudgetBand / formatBookingStatus', () => {
   it('map known values to their labels', () => {
     expect(formatPlaceType('hotel')).toBe('Hotel & Lodge');
-    expect(formatBusinessType('tour_operator')).toBe('Tour Operator');
+    expect(formatBusinessType('tour_operator')).toBe('Tour Operator / Guide');
+    expect(formatBusinessType('beach_resort')).toBe('Beach / Resort');
     expect(formatEventCategory('nightlife')).toBe('Nightlife');
     expect(formatBudgetBand('budget')).toBe('Budget (under $10/stop)');
     expect(formatBookingStatus('confirmed')).toBe('Confirmed');
+  });
+});
+
+describe('formatBusinessReviewStatus', () => {
+  it('maps every status to a distinct label', () => {
+    expect(formatBusinessReviewStatus('submitted_for_review')).toBe('Submitted for review');
+    expect(formatBusinessReviewStatus('approved')).toBe('Approved');
+    expect(formatBusinessReviewStatus('rejected')).toBe('Rejected');
+    expect(formatBusinessReviewStatus('suspended')).toBe('Suspended');
   });
 });
 

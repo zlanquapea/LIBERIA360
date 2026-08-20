@@ -11,16 +11,20 @@ const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
   { value: 'spam', label: 'Spam' },
   { value: 'inappropriate', label: 'Inappropriate content' },
   { value: 'fake', label: "Fake / doesn't seem real" },
+  { value: 'fraudulent', label: 'Fraudulent' },
+  { value: 'misleading_offer', label: 'Misleading offer' },
+  { value: 'copyright', label: 'Copyright violation' },
   { value: 'other', label: 'Other' },
 ];
 
-// Small "report this" affordance for reviews and events (the two
+// Small "report this" affordance — originally reviews and events (the two
 // free-text fields any logged-in user can post without an ownership
-// check, so the two most likely to attract spam/abuse). Signed out
-// visitors see nothing — reporting requires an account so the API can
-// enforce one report per user per target. Reports feed the admin
-// moderation queue's "Flagged content" section once enough independent
-// users flag the same thing (see api/README.md).
+// check), now also businesses (fraudulent/misleading claims a listing
+// makes about itself). Signed out visitors see nothing — reporting
+// requires an account so the API can enforce one report per user per
+// target. Reports feed the admin moderation queue's "Flagged content"
+// section once enough independent users flag the same thing (see
+// api/README.md).
 export function ReportButton({ targetType, targetId }: { targetType: ReportTargetType; targetId: string }) {
   const { user, token } = useAuth();
   const [open, setOpen] = useState(false);

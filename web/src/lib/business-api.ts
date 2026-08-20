@@ -10,6 +10,12 @@ export interface ClaimBusinessInput {
   email?: string;
   website?: string;
   description?: string;
+  logoImage?: string;
+  videos?: string[];
+  openingHours?: string;
+  priceRangeMin?: number;
+  priceRangeMax?: number;
+  servicesOffered?: string[];
 }
 
 export function claimBusiness(token: string, input: ClaimBusinessInput): Promise<Business> {
@@ -33,6 +39,12 @@ export interface UpdateBusinessInput {
   socialLinks?: string[];
   description?: string;
   images?: string[];
+  logoImage?: string;
+  videos?: string[];
+  openingHours?: string;
+  priceRangeMin?: number;
+  priceRangeMax?: number;
+  servicesOffered?: string[];
 }
 
 // Editing a listing after claiming it — the claim form above only ever

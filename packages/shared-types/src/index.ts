@@ -200,6 +200,9 @@ export interface Business {
   type: BusinessType;
   owner: AuthUser | null;
   linkedPlaceId: string;
+  // Always present — Business.linkedPlace is an eager, non-nullable
+  // relation on the backend (every Business is tied to an existing Place).
+  linkedPlace: Place;
   phone: string | null;
   whatsapp: string | null;
   email: string | null;
