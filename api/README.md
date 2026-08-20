@@ -253,13 +253,18 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
 | `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places, flagged content |
 | `POST` / `PATCH /admin/places` | Create/update places |
+| `DELETE /admin/places/:id` | Delete a place — blocked (409) if it still has a linked business or events | Super Admin |
 | `POST` / `PATCH /admin/categories` | Create/update catalog categories (previously seed-data-only) |
+| `DELETE /admin/categories/:id` | Delete a category — blocked (409) if any place still uses it | Super Admin |
 | `POST` / `PATCH /admin/activities` | Create/update activities |
+| `DELETE /admin/activities/:id` | Delete an activity | Super Admin |
 | `POST` / `PATCH /admin/businesses` | Create/update businesses, including unowned "shell" listings |
+| `DELETE /admin/businesses/:id` | Delete a business (its bookings cascade with it) | Super Admin |
 | `PATCH /admin/events/:id` | Update an event |
 | `DELETE /admin/events/:id` | Remove an event (moderation) |
 | `DELETE /admin/reviews/:id` | Remove a review (moderation) — recomputes the place's rating |
 | `PATCH /admin/counties/:id` | Update a county's safety/practical-info panel |
+| `DELETE /admin/counties/:id` | Delete a county — blocked (409) if it still has places or events in it | Super Admin |
 | `PATCH /creators/:id/featured` | Toggle featured status |
 | `GET /admin/analytics/aggregate?limit=` | B2B aggregate analytics: top places, category/county breakdowns |
 | `GET /admin/team` | List admins and super admins | Super Admin |

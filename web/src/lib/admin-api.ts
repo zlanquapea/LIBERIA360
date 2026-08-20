@@ -66,6 +66,13 @@ export function updatePlace(token: string, id: string, input: UpdatePlaceInput):
   });
 }
 
+// Super-admin only (the API's own SuperAdminGuard is the real
+// enforcement) — deleting a whole catalog entity, not moderating a piece
+// of content, so it sits above what a regular admin can do.
+export function deletePlace(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/places/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
 export function createCategory(token: string, input: CreateCategoryInput): Promise<Category> {
   return apiRequest<Category>('/admin/categories', {
     method: 'POST',
@@ -80,6 +87,10 @@ export function updateCategory(token: string, id: string, input: UpdateCategoryI
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
+}
+
+export function deleteCategory(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/categories/${id}`, { method: 'DELETE', headers: authHeader(token) });
 }
 
 export function createActivity(token: string, input: CreateActivityInput): Promise<Activity> {
@@ -98,6 +109,10 @@ export function updateActivity(token: string, id: string, input: UpdateActivityI
   });
 }
 
+export function deleteActivity(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/activities/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
 export function createBusinessAdmin(token: string, input: CreateBusinessAdminInput): Promise<Business> {
   return apiRequest<Business>('/admin/businesses', {
     method: 'POST',
@@ -112,6 +127,10 @@ export function updateBusinessAdmin(token: string, id: string, input: UpdateBusi
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
+}
+
+export function deleteBusinessAdmin(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/businesses/${id}`, { method: 'DELETE', headers: authHeader(token) });
 }
 
 export function updateEventAdmin(token: string, id: string, input: UpdateEventInput): Promise<Event> {
@@ -138,6 +157,10 @@ export function updateCountyAdmin(token: string, id: string, input: UpdateCounty
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
+}
+
+export function deleteCountyAdmin(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/admin/counties/${id}`, { method: 'DELETE', headers: authHeader(token) });
 }
 
 // Sponsored placements ("Featured this week" — Business Plan §8.3)
