@@ -80,12 +80,33 @@ services:
         value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com
       - key: WEB_APP_URL
         value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com
-      # Unset: STORAGE_DRIVER stays "local" — uploaded photos won't
-      # survive a redeploy on Render's free tier (ephemeral disk). Fine
-      # for a short friends-testing window; see DEPLOYMENT.md if this
-      # needs to last longer.
+      # s3, not local — Render's free tier disk is ephemeral, so "local"
+      # loses every uploaded photo on the next deploy (see DEPLOYMENT.md's
+      # Object storage section). The S3_* values below are `sync: false`
+      # on purpose: Render still provisions the env var slot so it shows
+      # up in the dashboard, but leaves the value alone instead of
+      # resetting it to blank on every Blueprint sync — the same reason a
+      # secret like this can't just be `value:`'d here, since that would
+      # mean committing real credentials to the repo. Fill in the actual
+      # bucket/keys in the Render dashboard once (Environment tab on the
+      # liberia360-api service) — a Blueprint sync after that won't touch
+      # them again.
       - key: STORAGE_DRIVER
-        value: local
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      # Only needed for a non-AWS S3-compatible endpoint (Cloudflare R2,
+      # MinIO, ...) — leave blank in the dashboard for real AWS S3.
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_URL_BASE
+        sync: false
       # Unset on purpose: SMTP_HOST left blank means password-reset and
       # email-verification links are logged to the API's Render logs
       # instead of actually emailed — fine for a quick test, add real
