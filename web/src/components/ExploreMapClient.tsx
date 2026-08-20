@@ -50,9 +50,16 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
   return (
     <div className="relative h-full w-full">
       <MapContainer center={MONROVIA_CENTER} zoom={11} scrollWheelZoom className="h-full w-full">
+        {/* CARTO's basemap tiles, not tile.openstreetmap.org directly —
+            OSM's own tile servers are explicitly not meant for production
+            traffic (see their tile usage policy) and can silently rate-limit
+            or block requests; CARTO's free basemap tiles are the same map
+            data (still OSM-sourced, hence the dual attribution below) served
+            from infrastructure meant to be used this way. No API key. */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+          subdomains="abcd"
         />
         {visiblePlaces.map((place) => (
           <Marker

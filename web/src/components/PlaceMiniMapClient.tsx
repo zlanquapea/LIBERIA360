@@ -41,7 +41,9 @@ export function PlaceMiniMapClient({
       attributionControl={false}
       className="h-full w-full"
     >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      {/* CARTO's basemap tiles, not raw tile.openstreetmap.org — see
+          ExploreMapClient.tsx's comment on why. */}
+      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains="abcd" />
       <Marker position={[latitude, longitude]} icon={pinIcon(color, icon)} />
     </MapContainer>
   );

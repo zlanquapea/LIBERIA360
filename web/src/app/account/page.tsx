@@ -9,11 +9,11 @@ import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import { TwoFactorSettings } from '@/components/TwoFactorSettings';
 import { AccountSecurity } from '@/components/AccountSecurity';
 import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
-import { InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
-import { getCategories } from '@/lib/api';
+import { CountySelect, InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
+import { getCategories, getCounties } from '@/lib/api';
 import { formatTravelerType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { Category, TravelerType } from '@/lib/types';
+import type { AuthUser, Category, County, TravelerType } from '@/lib/types';
 
 // Account screen — shows the signed-in profile, or prompts to log in.
 // No server-side gate: auth state lives in localStorage (see auth-storage.ts),
@@ -93,7 +93,7 @@ export default function AccountPage() {
         </div>
       </dl>
 
-      <ProfileEditor />
+      <ProfileEditor user={user} />
 
       <TwoFactorSettings />
 
@@ -150,15 +150,32 @@ export default function AccountPage() {
   );
 }
 
-// Traveler type and interests weren't editable after signup at all before
-// this — the account page's only lever was "log out." A compact inline
-// editor keeps that fixed without a whole separate settings page.
-function ProfileEditor() {
-  const { user, updateProfile } = useAuth();
+// Traveler type, interests, and home county weren't editable after signup
+// at all before this — the account page's only lever was "log out." A
+// compact inline editor keeps that fixed without a whole separate settings
+// page. Home county in particular (UpdateProfileDto.homeCountyId) was
+// already accepted by the API with nowhere in the UI to ever set it — the
+// "Home county" row above just read "Not set" forever.
+//
+// `user` comes in as a prop rather than a second `useAuth()` call here on
+// purpose: useAuth's `user`/`ready` state is local to each call site and
+// only syncs from localStorage in a useEffect, so a second call inside
+// this component would start out null on its very first render — the one
+// render whose values these useState initializers actually capture — even
+// though AccountPage's own `useAuth()` call already has the real user by
+// the time it mounts ProfileEditor at all (it gates on `!user` above).
+// Concretely reproduced this while testing homeCountyId: the field
+// defaulted to "Prefer not to say" for a user who did have one set, and
+// hitting Save with the editor otherwise untouched would have silently
+// wiped their real interests/traveler type/home county back to empty.
+function ProfileEditor({ user }: { user: AuthUser }) {
+  const { updateProfile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [travelerType, setTravelerType] = useState<TravelerType | ''>(user?.travelerType ?? '');
-  const [interests, setInterests] = useState<string[]>(user?.interests ?? []);
+  const [travelerType, setTravelerType] = useState<TravelerType | ''>(user.travelerType ?? '');
+  const [interests, setInterests] = useState<string[]>(user.interests ?? []);
+  const [homeCountyId, setHomeCountyId] = useState(user.homeCounty?.id ?? '');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [counties, setCounties] = useState<County[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -167,7 +184,10 @@ function ProfileEditor() {
     if (open && categories.length === 0) {
       getCategories().then(setCategories);
     }
-  }, [open, categories.length]);
+    if (open && counties.length === 0) {
+      getCounties().then(setCounties);
+    }
+  }, [open, categories.length, counties.length]);
 
   function toggleInterest(slug: string) {
     setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
@@ -179,7 +199,11 @@ function ProfileEditor() {
     setError(null);
     setSuccess(false);
     try {
-      await updateProfile({ travelerType: travelerType || undefined, interests });
+      await updateProfile({
+        travelerType: travelerType || undefined,
+        interests,
+        homeCountyId: homeCountyId || undefined,
+      });
       setSuccess(true);
       setOpen(false);
     } catch (err) {
@@ -210,6 +234,12 @@ function ProfileEditor() {
         Traveler type
         <TravelerTypeSelect value={travelerType} onChange={setTravelerType} />
       </label>
+      {counties.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+          Home county
+          <CountySelect value={homeCountyId} onChange={setHomeCountyId} counties={counties} />
+        </label>
+      )}
       {categories.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Interests</p>
