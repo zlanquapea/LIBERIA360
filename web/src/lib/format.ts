@@ -7,6 +7,7 @@ import type {
   BusinessType,
   CreatorCategory,
   EventCategory,
+  PlaceReviewStatus,
   PlaceType,
   RecommendedVisitLength,
   TravelerType,
@@ -62,6 +63,19 @@ const BUSINESS_REVIEW_STATUS_LABELS: Record<BusinessReviewStatus, string> = {
 
 export function formatBusinessReviewStatus(status: BusinessReviewStatus): string {
   return BUSINESS_REVIEW_STATUS_LABELS[status] ?? status;
+}
+
+const PLACE_REVIEW_STATUS_LABELS: Record<PlaceReviewStatus, string> = {
+  draft: 'Draft',
+  submitted_for_review: 'Submitted for review',
+  under_review: 'Under review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  suspended: 'Suspended',
+};
+
+export function formatPlaceReviewStatus(status: PlaceReviewStatus): string {
+  return PLACE_REVIEW_STATUS_LABELS[status] ?? status;
 }
 
 const BUSINESS_CONTENT_TYPE_LABELS: Record<BusinessContentType, string> = {

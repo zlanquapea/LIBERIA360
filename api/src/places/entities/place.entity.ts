@@ -12,8 +12,10 @@ import {
 import { Category } from "../../categories/entities/category.entity";
 import { County } from "../../counties/entities/county.entity";
 import { Activity } from "../../activities/entities/activity.entity";
+import { User } from "../../users/entities/user.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
 import {
+  PlaceReviewStatus,
   PlaceType,
   RecommendedVisitLength,
   VerificationStatus,
@@ -190,6 +192,46 @@ export class Place {
 
   @Column({ type: "boolean", default: false })
   featured: boolean;
+
+  // Who submitted this place, if it didn't come from an admin — null for
+  // every admin-authored catalog entry (the overwhelming majority; see
+  // PlaceReviewStatus's doc comment). Not `eager`, unlike Business.owner —
+  // Place is embedded in nearly every response in the app (Business,
+  // Review, Event, Booking, itinerary stops, ...), and an eager User
+  // relation here would mean auditing every one of those response paths
+  // for a passwordHash leak. Only the one admin query that actually needs
+  // it (AdminContentService.findPlaces/findPlaceById) joins it explicitly;
+  // everywhere else just gets `ownerUserId`, an id to cross-reference.
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: "owner_user_id" })
+  owner: User | null;
+
+  @Column({ name: "owner_user_id", type: "uuid", nullable: true })
+  ownerUserId: string | null;
+
+  @Column({
+    name: "review_status",
+    type: "enum",
+    enum: PlaceReviewStatus,
+    default: PlaceReviewStatus.APPROVED,
+  })
+  reviewStatus: PlaceReviewStatus;
+
+  // Reviewer-facing note — a rejection reason, "changes requested"
+  // guidance (UNDER_REVIEW), or a suspension reason, depending on which
+  // status it was set alongside. Cleared on APPROVED. See
+  // Business.rejectionReason for the identical pattern.
+  @Column({ name: "rejection_reason", type: "text", nullable: true })
+  rejectionReason: string | null;
+
+  @Column({ name: "submitted_at", type: "timestamptz", nullable: true })
+  submittedAt: Date | null;
+
+  @Column({ name: "reviewed_at", type: "timestamptz", nullable: true })
+  reviewedAt: Date | null;
+
+  @Column({ name: "reviewed_by_user_id", type: "uuid", nullable: true })
+  reviewedByUserId: string | null;
 
   @OneToMany(() => Activity, (activity) => activity.place)
   activities: Activity[];

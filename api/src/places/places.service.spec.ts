@@ -1,0 +1,245 @@
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { PlacesService, buildPlaceSlug } from "./places.service";
+import { Place } from "./entities/place.entity";
+import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
+
+const OWNER_ID = "owner-1";
+const STRANGER_ID = "stranger-1";
+const PLACE_ID = "place-1";
+
+describe("buildPlaceSlug", () => {
+  it("slugifies the name", async () => {
+    const repo = { exists: jest.fn().mockResolvedValue(false) };
+    const slug = await buildPlaceSlug(repo as never, "CeeCee Beach!");
+    expect(slug).toBe("ceecee-beach");
+  });
+
+  it("dedupes against an existing slug by appending -2, -3, ...", async () => {
+    const repo = {
+      exists: jest
+        .fn()
+        .mockResolvedValueOnce(true) // "ceecee-beach" taken
+        .mockResolvedValueOnce(true) // "ceecee-beach-2" taken
+        .mockResolvedValueOnce(false), // "ceecee-beach-3" free
+    };
+    const slug = await buildPlaceSlug(repo as never, "CeeCee Beach");
+    expect(slug).toBe("ceecee-beach-3");
+  });
+
+  it("falls back to 'place' for a name with no slugifiable characters", async () => {
+    const repo = { exists: jest.fn().mockResolvedValue(false) };
+    const slug = await buildPlaceSlug(repo as never, "!!!");
+    expect(slug).toBe("place");
+  });
+});
+
+describe("PlacesService.submitPlace", () => {
+  let service: PlacesService;
+  let placeRepo: {
+    exists: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+
+  beforeEach(async () => {
+    placeRepo = {
+      exists: jest.fn().mockResolvedValue(false),
+      create: jest.fn((data) => data),
+      save: jest.fn((data) => Promise.resolve({ id: PLACE_ID, ...data })),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PlacesService,
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
+      ],
+    }).compile();
+
+    service = module.get(PlacesService);
+  });
+
+  const dto = {
+    name: "Kpatawee Waterfall",
+    description: "A scenic waterfall.",
+    type: PlaceType.NATURE_SITE,
+    categoryId: "category-1",
+    countyId: "county-1",
+    city: "Gbarnga",
+    latitude: 6.9,
+    longitude: -9.4,
+  };
+
+  it("starts a submission as SUBMITTED_FOR_REVIEW, not live", async () => {
+    await service.submitPlace(OWNER_ID, dto);
+    expect(placeRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+        ownerUserId: OWNER_ID,
+        submittedAt: expect.any(Date),
+      }),
+    );
+    expect(placeRepo.save).toHaveBeenCalled();
+  });
+
+  it("slugifies the name for the new place", async () => {
+    await service.submitPlace(OWNER_ID, dto);
+    expect(placeRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "kpatawee-waterfall" }),
+    );
+  });
+
+  it("defaults optional array/nullable fields when omitted", async () => {
+    await service.submitPlace(OWNER_ID, dto);
+    expect(placeRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tags: [],
+        images: [],
+        videos: [],
+        openingHours: null,
+        contactPhone: null,
+        website: null,
+      }),
+    );
+  });
+});
+
+describe("PlacesService.updateMine", () => {
+  let service: PlacesService;
+  let placeRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+
+  beforeEach(async () => {
+    placeRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: PLACE_ID,
+        ownerUserId: OWNER_ID,
+        name: "Kpatawee Waterfall",
+        reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      }),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PlacesService,
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
+      ],
+    }).compile();
+
+    service = module.get(PlacesService);
+  });
+
+  it("404s an unknown place", async () => {
+    placeRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("403s a user who doesn't own the place", async () => {
+    await expect(
+      service.updateMine(STRANGER_ID, PLACE_ID, { name: "New name" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(placeRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("lets the owner update fields", async () => {
+    await service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "New name" }),
+    );
+  });
+
+  it("leaves a SUBMITTED_FOR_REVIEW place's status alone on edit", async () => {
+    await service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      }),
+    );
+  });
+
+  it("resubmits a REJECTED place for review on edit, clearing the rejection reason", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.REJECTED,
+      rejectionReason: "Photos are too blurry",
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, { description: "Updated." });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+        rejectionReason: null,
+        submittedAt: expect.any(Date),
+      }),
+    );
+  });
+
+  it("does NOT auto-resubmit a SUSPENDED place on edit", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.SUSPENDED,
+      rejectionReason: "Repeated complaints",
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, { description: "Updated." });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewStatus: PlaceReviewStatus.SUSPENDED }),
+    );
+  });
+});
+
+describe("PlacesService.findMine", () => {
+  it("looks up every place owned by the user regardless of review status", async () => {
+    const placeRepo = { find: jest.fn().mockResolvedValue([]) };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PlacesService,
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
+      ],
+    }).compile();
+    const service = module.get(PlacesService);
+
+    await service.findMine(OWNER_ID);
+    expect(placeRepo.find).toHaveBeenCalledWith({
+      where: { ownerUserId: OWNER_ID },
+      relations: ["category", "county"],
+      order: { createdAt: "DESC" },
+    });
+  });
+});
+
+describe("PlacesService.findBySlug", () => {
+  it("only ever queries for an APPROVED place", async () => {
+    const placeRepo = { findOne: jest.fn().mockResolvedValue(null) };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PlacesService,
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
+      ],
+    }).compile();
+    const service = module.get(PlacesService);
+
+    await expect(service.findBySlug("kpatawee-falls")).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(placeRepo.findOne).toHaveBeenCalledWith({
+      where: {
+        slug: "kpatawee-falls",
+        reviewStatus: PlaceReviewStatus.APPROVED,
+      },
+      relations: ["category", "county", "activities"],
+    });
+  });
+});

@@ -8,24 +8,51 @@ import {
   deleteActivity,
   deleteBusinessAdmin,
   deletePlace,
+  getPlaceAdmin,
+  listPlacesAdmin,
   updateActivity,
   updateBusinessAdmin,
   updatePlace,
 } from '@/lib/admin-api';
-import { getBusinessByPlace, getPlaceBySlug, getPlaces } from '@/lib/api';
+import { getBusinessByPlace } from '@/lib/api';
 import { HttpError } from '@/lib/http';
-import { formatBusinessType, formatPlaceType } from '@/lib/format';
+import { formatBusinessType, formatPlaceReviewStatus, formatPlaceType } from '@/lib/format';
 import { PhotoManager } from '@/components/PhotoManager';
-import type { Activity, ActivityDifficulty, Business, BusinessType, Category, County, Place, PlaceType } from '@/lib/types';
+import type { Activity, ActivityDifficulty, Business, BusinessType, Category, County, Place, PlaceReviewStatus, PlaceType } from '@/lib/types';
 import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from './content-shared';
 import { PlaceLocationPickerLoader } from './PlaceLocationPickerLoader';
+import { PlaceReviewPanel } from './PlaceReviewPanel';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
 const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'tour_operator', 'transport'];
 const ACTIVITY_DIFFICULTIES: ActivityDifficulty[] = ['easy', 'moderate', 'challenging'];
+const PAGE_SIZE = 20;
 
-type View = { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; slug: string };
+const STATUS_FILTERS: { id: PlaceReviewStatus | 'all'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'submitted_for_review', label: 'Pending review' },
+  { id: 'under_review', label: 'Under review' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'suspended', label: 'Suspended' },
+];
 
+const REVIEW_STATUS_BADGE: Record<PlaceReviewStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  submitted_for_review: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  under_review: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+  suspended: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+};
+
+type View = { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; id: string };
+
+// Content > Places — every place regardless of review status (unlike the
+// public catalog, which is approved-only), so a self-submitted place
+// waiting for a decision shows up here at all. Status filter chips surface
+// the review queue; opening a place navigates by id (not slug — a pending
+// submission may not even have a stable public URL to reason about yet).
 export function PlacesTab({
   token,
   categories,
@@ -38,16 +65,28 @@ export function PlacesTab({
   isSuperAdmin: boolean;
 }) {
   const [places, setPlaces] = useState<Place[]>([]);
+  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]['id']>('all');
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
   const [view, setView] = useState<View>({ mode: 'list' });
 
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
+
   function reload() {
-    // 100 is QueryPlacesDto's own validated ceiling (@Max(100)) — going
-    // over it 400s. Fine at the catalog's current size; this list has no
-    // pagination yet, so revisit once the catalog actually approaches it.
-    getPlaces({ limit: 100 }).then((res) => setPlaces(res.data));
+    listPlacesAdmin(token, {
+      page,
+      limit: PAGE_SIZE,
+      reviewStatus: statusFilter !== 'all' ? statusFilter : undefined,
+    }).then((res) => {
+      setPlaces(res.data);
+      setMeta(res.meta);
+    });
   }
 
-  useEffect(reload, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(reload, [page, statusFilter]);
 
   if (view.mode === 'create') {
     return (
@@ -60,7 +99,7 @@ export function PlacesTab({
           places={places}
           onCreated={(place) => {
             reload();
-            setView({ mode: 'edit', slug: place.slug });
+            setView({ mode: 'edit', id: place.id });
           }}
         />
       </div>
@@ -73,7 +112,7 @@ export function PlacesTab({
         <BackToListLink label="Back to places" onClick={() => setView({ mode: 'list' })} />
         <PlaceDetail
           token={token}
-          slug={view.slug}
+          id={view.id}
           categories={categories}
           counties={counties}
           places={places}
@@ -90,10 +129,29 @@ export function PlacesTab({
 
   return (
     <div className="flex flex-col gap-3">
-      <TabListHeader title="Places" count={places.length} createLabel="+ New place" onCreate={() => setView({ mode: 'create' })} />
+      <TabListHeader title="Places" count={meta.total} createLabel="+ New place" onCreate={() => setView({ mode: 'create' })} />
+
+      <div className="flex flex-wrap gap-1.5">
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setStatusFilter(f.id)}
+            aria-pressed={statusFilter === f.id}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+              statusFilter === f.id
+                ? 'border-transparent bg-brand-700 text-white'
+                : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {places.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-          No places yet — add the first one.
+          {statusFilter === 'all' ? 'No places yet — add the first one.' : 'No places match this filter.'}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
@@ -102,23 +160,53 @@ export function PlacesTab({
               <tr>
                 <th className="px-4 py-2">Place</th>
                 <th className="px-4 py-2">Type</th>
-                <th className="px-4 py-2">Category</th>
-                <th className="px-4 py-2">County</th>
+                <th className="px-4 py-2">Submitted by</th>
+                <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {places.map((place) => (
-                <tr key={place.id} onClick={() => setView({ mode: 'edit', slug: place.slug })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                <tr key={place.id} onClick={() => setView({ mode: 'edit', id: place.id })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
                   <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">{place.name}</td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatPlaceType(place.type)}</td>
-                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.category.name}</td>
-                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.county.name}</td>
-                  <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700 dark:text-brand-300">Edit →</td>
+                  <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.owner ? place.owner.name : 'Admin'}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${REVIEW_STATUS_BADGE[place.reviewStatus]}`}>
+                      {formatPlaceReviewStatus(place.reviewStatus)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700 dark:text-brand-300">
+                    {place.reviewStatus === 'submitted_for_review' || place.reviewStatus === 'under_review' ? 'Review →' : 'Edit →'}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {meta.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
+          >
+            ← Previous
+          </button>
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            Page {page} of {meta.totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= meta.totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>
@@ -129,7 +217,7 @@ export function PlacesTab({
 
 function PlaceDetail({
   token,
-  slug,
+  id,
   categories,
   counties,
   places,
@@ -138,7 +226,7 @@ function PlaceDetail({
   onDeleted,
 }: {
   token: string;
-  slug: string;
+  id: string;
   categories: Category[];
   counties: County[];
   places: Place[];
@@ -150,20 +238,39 @@ function PlaceDetail({
   const [business, setBusiness] = useState<Business | null>(null);
 
   function reload() {
-    getPlaceBySlug(slug).then(async (p) => {
+    getPlaceAdmin(token, id).then(async (p) => {
       setPlace(p);
       setBusiness(await getBusinessByPlace(p.id));
     });
   }
 
-  useEffect(reload, [slug]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(reload, [id]);
 
   if (!place) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
   }
 
+  // A pending/rejected/suspended place — or any place a user submitted
+  // themselves, even once approved — gets the full review panel above the
+  // plain edit form below it, so a reviewer always sees the "what was
+  // submitted" context, not just raw editable fields. An admin-authored
+  // place (ownerUserId null, always APPROVED) never shows it — there's
+  // nothing to review.
+  const showReviewPanel = place.reviewStatus !== 'approved' || place.ownerUserId !== null;
+
   return (
     <div className="flex flex-col gap-6">
+      {showReviewPanel && (
+        <PlaceReviewPanel
+          token={token}
+          place={place}
+          onUpdated={(updated) => {
+            setPlace(updated);
+            onChanged();
+          }}
+        />
+      )}
       <PlaceEditForm
         token={token}
         place={place}

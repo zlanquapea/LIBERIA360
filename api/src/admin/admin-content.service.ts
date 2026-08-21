@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { QueryFailedError, Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
+import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { Activity } from "../activities/entities/activity.entity";
@@ -57,6 +58,78 @@ export class AdminContentService {
   ) {}
 
   // ---- Places ----
+
+  // Every place regardless of review status (unlike the public GET
+  // /places, which is approved-only) — the admin Places list/moderation
+  // queue needs to see pending/rejected/suspended submissions too. Query
+  // builder with an explicit `owner` join, not find(): Place deliberately
+  // has no eager `owner` relation (see Place.ownerUserId's doc comment on
+  // why), and the admin moderation UI is exactly the one place that does
+  // need to show who submitted a pending place — same reasoning as
+  // findBusinesses' `owner` join above.
+  async findPlaces(
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      reviewStatus?: PlaceReviewStatus;
+    } = {},
+  ): Promise<{
+    data: Place[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 20;
+
+    const qb = this.placeRepo
+      .createQueryBuilder("place")
+      .leftJoinAndSelect("place.category", "category")
+      .leftJoinAndSelect("place.county", "county")
+      .leftJoinAndSelect("place.owner", "owner")
+      .orderBy("place.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (params.search) {
+      qb.andWhere(
+        "(place.name ILIKE :search OR place.description ILIKE :search)",
+        {
+          search: `%${params.search}%`,
+        },
+      );
+    }
+    if (params.reviewStatus) {
+      qb.andWhere("place.reviewStatus = :reviewStatus", {
+        reviewStatus: params.reviewStatus,
+      });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  // Single-place admin fetch by id (not slug) — works regardless of
+  // review status, unlike the public PlacesService.findBySlug. Used by the
+  // admin detail/review view, which navigates by id rather than a slug a
+  // pending submission may not even have settled yet.
+  async findPlaceById(id: string): Promise<Place> {
+    const place = await this.placeRepo.findOne({
+      where: { id },
+      relations: ["category", "county", "activities", "owner"],
+    });
+    if (!place) {
+      throw new NotFoundException(`Place "${id}" not found`);
+    }
+    return place;
+  }
 
   async createPlace(dto: CreatePlaceDto): Promise<Place> {
     await this.assertCategoryExists(dto.categoryId);

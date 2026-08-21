@@ -34,6 +34,18 @@ export type VerificationStatus =
 
 export type ActivityDifficulty = "easy" | "moderate" | "challenging";
 
+// api/src/places/entities/place.enums.ts — same shape and reasoning as
+// BusinessReviewStatus (see that type below): whether a place is visible
+// in the public catalog at all, orthogonal to VerificationStatus's "how
+// much do we vouch for it."
+export type PlaceReviewStatus =
+  | "draft"
+  | "submitted_for_review"
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "suspended";
+
 export interface Category {
   id: string;
   name: string;
@@ -101,6 +113,18 @@ export interface Place {
   // distance from the *search point*, distinct from distanceFromMonroviaKm
   // above (which is a fixed catalog field, always from Monrovia).
   distanceKm?: number | null;
+  // Self-service submission + admin review lifecycle (Place.reviewStatus
+  // et al.) — see PlaceReviewStatus above. `owner` is only ever populated
+  // on the admin list/detail responses (AdminContentService.findPlaces/
+  // findPlaceById); every public place response omits it (undefined),
+  // same reasoning as why the backend relation isn't eager.
+  reviewStatus: PlaceReviewStatus;
+  ownerUserId: string | null;
+  owner?: AuthUser | null;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
 }
 
 // api/src/users/entities/user.enums.ts

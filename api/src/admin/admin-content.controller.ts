@@ -17,6 +17,7 @@ import { AdminContentService } from "./admin-content.service";
 import { getRequestInfo } from "../common/request-info";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
+import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { CreateActivityDto } from "./dto/create-activity.dto";
@@ -31,6 +32,7 @@ import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
+import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import {
   BusinessReviewStatus,
@@ -38,6 +40,13 @@ import {
 } from "../businesses/entities/business.enums";
 import { Event } from "../events/entities/event.entity";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
+
+function sanitizePlace(place: Place) {
+  return {
+    ...place,
+    owner: place.owner ? toPublicUser(place.owner) : null,
+  };
+}
 
 function sanitizeBusiness(business: Business) {
   return {
@@ -68,6 +77,34 @@ function sanitizeEvent(event: Event) {
 @UseGuards(JwtAuthGuard, AdminGuard)
 export class AdminContentController {
   constructor(private readonly adminContentService: AdminContentService) {}
+
+  // Every place regardless of review status (unlike the public GET
+  // /places, which is approved-only) — the moderation queue needs to
+  // find pending/rejected/suspended submissions, same reasoning as
+  // GET /admin/businesses above.
+  @Get("places")
+  async listPlaces(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("reviewStatus") reviewStatus?: PlaceReviewStatus,
+  ) {
+    const result = await this.adminContentService.findPlaces({
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      search,
+      reviewStatus,
+    });
+    return { ...result, data: result.data.map(sanitizePlace) };
+  }
+
+  // Single-place admin fetch by id, works regardless of review status —
+  // what the admin Places detail/review view loads (it navigates by id,
+  // not the public findBySlug's approved-only slug lookup).
+  @Get("places/:id")
+  async getPlace(@Param("id") id: string) {
+    return sanitizePlace(await this.adminContentService.findPlaceById(id));
+  }
 
   @Post("places")
   createPlace(@Body() dto: CreatePlaceDto) {

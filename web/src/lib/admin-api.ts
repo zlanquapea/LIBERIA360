@@ -21,8 +21,10 @@ import type {
   PaginatedAdminActions,
   PaginatedBusinesses,
   PaginatedLoginActivity,
+  PaginatedPlaces,
   PaginatedUsers,
   Place,
+  PlaceReviewStatus,
   PlatformKpis,
   SecurityOverview,
   SponsoredPlacement,
@@ -94,6 +96,56 @@ export function setBusinessReviewStatus(
     headers: authHeader(token),
     body: JSON.stringify({ status, reason }),
   });
+}
+
+// The publish/moderation lifecycle for a self-submitted place — approve/
+// reject/request changes (under_review)/suspend — distinct from
+// setPlaceVerification's trust badge above. `reason` is the rejection
+// reason, reviewer guidance, or suspension reason depending on `status`,
+// same shape as setBusinessReviewStatus. This is what turns a pending
+// submission into a live, public catalog entry.
+export function setPlaceReviewStatus(
+  token: string,
+  placeId: string,
+  status: PlaceReviewStatus,
+  reason?: string,
+): Promise<Place> {
+  return apiRequest<Place>(`/admin/places/${placeId}/review-status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status, reason }),
+  });
+}
+
+// Every place regardless of review status — the admin Places list, unlike
+// the public catalog (getPlaces in api.ts), which is approved-only. Needed
+// so a pending/rejected/suspended submission shows up for review at all.
+export function listPlacesAdmin(
+  token: string,
+  {
+    page = 1,
+    limit = 20,
+    search,
+    reviewStatus,
+  }: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    reviewStatus?: PlaceReviewStatus;
+  } = {},
+): Promise<PaginatedPlaces> {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search) query.set('search', search);
+  if (reviewStatus) query.set('reviewStatus', reviewStatus);
+  return apiRequest<PaginatedPlaces>(`/admin/places?${query}`, { headers: authHeader(token) });
+}
+
+// Single-place admin fetch by id, works regardless of review status — what
+// the review panel loads (it navigates by id, not the public findBySlug's
+// approved-only slug lookup), and includes the `owner` relation the public
+// endpoints omit.
+export function getPlaceAdmin(token: string, id: string): Promise<Place> {
+  return apiRequest<Place>(`/admin/places/${id}`, { headers: authHeader(token) });
 }
 
 // Content management

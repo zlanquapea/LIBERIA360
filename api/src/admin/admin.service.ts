@@ -13,7 +13,10 @@ import { Event } from "../events/entities/event.entity";
 import { User } from "../users/entities/user.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BookingStatus } from "../bookings/entities/booking.enums";
-import { VerificationStatus } from "../places/entities/place.enums";
+import {
+  PlaceReviewStatus,
+  VerificationStatus,
+} from "../places/entities/place.enums";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { FreshnessResponse } from "../freshness/entities/place-freshness-report.enums";
 import { ContentReport } from "../reports/entities/content-report.entity";
@@ -194,6 +197,41 @@ export class AdminService {
       requestInfo,
     );
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
+  }
+
+  /** The publish/moderation lifecycle transition for a self-submitted
+   * place — mirrors setBusinessReviewStatus exactly; see
+   * PlaceReviewStatus's doc comment for what each status means. */
+  async setPlaceReviewStatus(
+    adminUserId: string,
+    placeId: string,
+    status: PlaceReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ): Promise<Place> {
+    const place = await this.placeRepo.findOne({ where: { id: placeId } });
+    if (!place) {
+      throw new NotFoundException(`Place "${placeId}" not found`);
+    }
+    const previousStatus = place.reviewStatus;
+    place.reviewStatus = status;
+    place.rejectionReason =
+      status === PlaceReviewStatus.APPROVED ? null : (reason ?? null);
+    place.reviewedByUserId = adminUserId;
+    place.reviewedAt = new Date();
+    const saved = await this.placeRepo.save(place);
+    await this.adminAuditService.log(
+      adminUserId,
+      "place.review_status_changed",
+      "place",
+      placeId,
+      { from: previousStatus, to: status, reason: reason ?? null },
+      requestInfo,
+    );
+    return this.placeRepo.findOneOrFail({
+      where: { id: saved.id },
+      relations: ["category", "county", "owner"],
+    });
   }
 
   /** Approve/reject one business-authored content item — mirrors
