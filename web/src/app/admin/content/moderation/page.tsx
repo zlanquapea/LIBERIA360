@@ -10,10 +10,11 @@ import {
   setBusinessVerification,
 } from '@/lib/admin-api';
 import { formatBusinessContentType, formatBusinessContentStatus, formatBusinessType } from '@/lib/format';
-import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import type { BusinessContent, BusinessContentStatus, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
 import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
 import { PlaceReviewPanel } from '../PlaceReviewPanel';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -211,7 +212,7 @@ function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onD
       await setBusinessVerification(token, businessId, status);
       onDone();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'set-business-verification', businessId } }));
     } finally {
       setSubmitting(false);
     }
@@ -264,7 +265,7 @@ function ContentReviewStatusControl({ content, onDone }: { content: BusinessCont
       await setBusinessContentReviewStatus(token, content.id, status, reason.trim() || undefined);
       onDone();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'set-business-content-review-status', contentId: content.id } }));
     } finally {
       setSubmitting(false);
     }
@@ -309,6 +310,7 @@ function ContentReviewStatusControl({ content, onDone }: { content: BusinessCont
 
 function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDone: () => void }) {
   const { token } = useAuth();
+  const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -327,9 +329,20 @@ function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDon
       } else {
         await deleteEventAdmin(token, flagged.targetId);
       }
+      setConfirming(false);
       onDone();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      if (isNotFoundError(err)) {
+        // Already removed (a duplicate report resolved it, or another
+        // admin already acted on it).
+        setConfirming(false);
+        onDone();
+      } else {
+        setError(
+          getFriendlyErrorMessage(err, { context: { action: 'remove-flagged-content', targetId: flagged.targetId } }),
+        );
+      }
+    } finally {
       setRemoving(false);
     }
   }
@@ -353,16 +366,30 @@ function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDon
         {flagged.event && (
           <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.event.name}</p>
         )}
-        {error && <p className="mt-1 text-xs text-flag-700 dark:text-flag-300">{error}</p>}
       </div>
       <button
         type="button"
-        disabled={removing}
-        onClick={remove}
-        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+        onClick={() => setConfirming(true)}
+        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white"
       >
-        {removing ? 'Removing…' : 'Remove'}
+        Remove
       </button>
+
+      <ConfirmDialog
+        open={confirming}
+        title={`Remove this ${flagged.targetType}?`}
+        description={`Reported by ${flagged.reportCount} independent ${flagged.reportCount === 1 ? 'user' : 'users'} (${reasonSummary}). Removing it deletes it permanently.`}
+        confirmLabel="Remove"
+        loadingLabel="Removing…"
+        isLoading={removing}
+        error={error}
+        onConfirm={remove}
+        onCancel={() => {
+          if (removing) return;
+          setConfirming(false);
+          setError(null);
+        }}
+      />
     </li>
   );
 }

@@ -5,7 +5,8 @@ import { PlayCircleIcon } from '@heroicons/react/24/solid';
 import { addPortfolioItem, removePortfolioItem, updatePortfolioItem } from '@/lib/creator-api';
 import { uploadImage } from '@/lib/uploads-api';
 import { resolveImageUrl } from '@/lib/images';
-import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { CreatorPortfolioItem } from '@/lib/types';
 
 // The creator dashboard's portfolio manager — each item is its own row on
@@ -29,6 +30,10 @@ export function CreatorPortfolioManager({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [pendingRemove, setPendingRemove] = useState<CreatorPortfolioItem | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
   async function handleImageFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setError(null);
@@ -40,7 +45,7 @@ export function CreatorPortfolioManager({
         onChange([...items, item]);
       }
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Upload failed. Please try again.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'add-portfolio-image' } }));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -56,7 +61,7 @@ export function CreatorPortfolioManager({
       onChange([...items, item]);
       setVideoUrl('');
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'add-portfolio-video' } }));
     } finally {
       setAddingVideo(false);
     }
@@ -74,12 +79,25 @@ export function CreatorPortfolioManager({
     }
   }
 
-  async function handleRemove(itemId: string) {
+  async function confirmRemove() {
+    if (!pendingRemove) return;
+    setRemoving(true);
+    setRemoveError(null);
     try {
-      await removePortfolioItem(token, itemId);
-      onChange(items.filter((i) => i.id !== itemId));
+      await removePortfolioItem(token, pendingRemove.id);
+      onChange(items.filter((i) => i.id !== pendingRemove.id));
+      setPendingRemove(null);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not remove that item. Please try again.');
+      if (isNotFoundError(err)) {
+        onChange(items.filter((i) => i.id !== pendingRemove.id));
+        setPendingRemove(null);
+      } else {
+        setRemoveError(
+          getFriendlyErrorMessage(err, { context: { action: 'remove-portfolio-item', itemId: pendingRemove.id } }),
+        );
+      }
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -103,7 +121,7 @@ export function CreatorPortfolioManager({
                 )}
                 <button
                   type="button"
-                  onClick={() => handleRemove(item.id)}
+                  onClick={() => setPendingRemove(item)}
                   aria-label="Remove item"
                   className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-white opacity-0 transition group-hover:opacity-100"
                 >
@@ -162,6 +180,22 @@ export function CreatorPortfolioManager({
       </div>
 
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+
+      <ConfirmDialog
+        open={pendingRemove != null}
+        title="Remove this portfolio item?"
+        description="It will no longer show on your public profile."
+        confirmLabel="Remove"
+        loadingLabel="Removing…"
+        isLoading={removing}
+        error={removeError}
+        onConfirm={confirmRemove}
+        onCancel={() => {
+          if (removing) return;
+          setPendingRemove(null);
+          setRemoveError(null);
+        }}
+      />
     </div>
   );
 }
