@@ -31,6 +31,7 @@ import { UpdateCountyDto } from "./dto/update-county.dto";
 import { ReviewsService } from "../reviews/reviews.service";
 import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
+import { clearStaleRelation } from "../common/typeorm-relations";
 
 /** Admin content management (Tech Spec §8) — create/edit Place, Category,
  * Business, Activity, and Event records. The first way to write to the
@@ -151,8 +152,18 @@ export class AdminContentService {
     if (!place) {
       throw new NotFoundException(`Place "${id}" not found`);
     }
-    if (dto.categoryId) await this.assertCategoryExists(dto.categoryId);
-    if (dto.countyId) await this.assertCountyExists(dto.countyId);
+    if (dto.categoryId) {
+      await this.assertCategoryExists(dto.categoryId);
+      // `category` is `eager: true`, so the findOne() above already
+      // populated it with the OLD category — see clearStaleRelation's doc
+      // comment for why that silently defeats the categoryId merged below
+      // if left in place.
+      clearStaleRelation(place, "category");
+    }
+    if (dto.countyId) {
+      await this.assertCountyExists(dto.countyId);
+      clearStaleRelation(place, "county");
+    }
     if (dto.slug && dto.slug !== place.slug) {
       const existingSlug = await this.placeRepo.exists({
         where: { slug: dto.slug },
@@ -438,6 +449,11 @@ export class AdminContentService {
     if (!business) {
       throw new NotFoundException(`Business "${id}" not found`);
     }
+    if (dto.ownerUserId !== undefined) {
+      // `owner` is `eager: true` — see clearStaleRelation's doc comment;
+      // without this, reassigning or clearing ownerUserId silently no-ops.
+      clearStaleRelation(business, "owner");
+    }
     this.businessRepo.merge(business, dto);
     await this.businessRepo.save(business);
     return this.businessRepo.findOneOrFail({ where: { id } });
@@ -485,6 +501,12 @@ export class AdminContentService {
     if (nextEnd && new Date(nextEnd) < new Date(nextStart)) {
       throw new BadRequestException("endDate cannot be before startDate");
     }
+
+    // `place`/`county` are both `eager: true` — see clearStaleRelation's
+    // doc comment; without this, reassigning placeId/countyId silently
+    // no-ops.
+    if (dto.placeId) clearStaleRelation(event, "place");
+    if (dto.countyId) clearStaleRelation(event, "county");
 
     this.eventRepo.merge(event, {
       ...dto,

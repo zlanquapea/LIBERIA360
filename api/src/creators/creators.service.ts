@@ -17,6 +17,7 @@ import { UpdatePortfolioItemDto } from "./dto/update-portfolio-item.dto";
 import { CreateOfferingDto } from "./dto/create-offering.dto";
 import { UpdateOfferingDto } from "./dto/update-offering.dto";
 import { CreatorCategory } from "./entities/creator.enums";
+import { clearStaleRelation } from "../common/typeorm-relations";
 
 export interface PaginatedCreators {
   data: Creator[];
@@ -89,6 +90,11 @@ export class CreatorsService {
       }
     }
 
+    if (dto.countyId) {
+      // `county` is `eager: true` — see clearStaleRelation's doc comment;
+      // without this, reassigning countyId (home county) silently no-ops.
+      clearStaleRelation(creator, "county");
+    }
     this.creatorRepo.merge(creator, dto);
     await this.creatorRepo.save(creator);
     return this.creatorRepo.findOneOrFail({ where: { userId } });

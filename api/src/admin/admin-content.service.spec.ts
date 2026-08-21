@@ -38,6 +38,9 @@ describe("AdminContentService", () => {
   let placeRepo: {
     exists: jest.Mock;
     findOne: jest.Mock;
+    merge: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
     delete: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
@@ -55,11 +58,17 @@ describe("AdminContentService", () => {
   let businessRepo: {
     exists: jest.Mock;
     findOne: jest.Mock;
+    merge: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
     delete: jest.Mock;
   };
   let eventRepo: {
     exists: jest.Mock;
     findOne: jest.Mock;
+    merge: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
     delete: jest.Mock;
   };
   let reviewsService: { remove: jest.Mock };
@@ -72,7 +81,14 @@ describe("AdminContentService", () => {
         id: "place-1",
         name: "CeeCee Beach",
         slug: "ceecee-beach",
+        categoryId: "category-1",
+        category: { id: "category-1", name: "Beaches" },
+        countyId: "county-1",
+        county: { id: "county-1", name: "Montserrado" },
       }),
+      merge: jest.fn((entity, dto) => Object.assign(entity, dto)),
+      save: jest.fn((entity) => Promise.resolve(entity)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
       delete: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
@@ -114,14 +130,30 @@ describe("AdminContentService", () => {
         id: "business-1",
         name: "CeeCee Tours",
         linkedPlaceId: "place-1",
+        ownerUserId: "owner-1",
+        owner: { id: "owner-1", name: "Old Owner" },
       }),
+      merge: jest.fn((entity, dto) => Object.assign(entity, dto)),
+      save: jest.fn((entity) => Promise.resolve(entity)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
       delete: jest.fn(),
     };
     eventRepo = {
       exists: jest.fn().mockResolvedValue(false),
-      findOne: jest
-        .fn()
-        .mockResolvedValue({ id: "event-1", name: "Test Event" }),
+      findOne: jest.fn().mockResolvedValue({
+        id: "event-1",
+        name: "Test Event",
+        placeId: "place-1",
+        place: { id: "place-1", name: "Old Place" },
+        countyId: "county-1",
+        county: { id: "county-1", name: "Montserrado" },
+        locationText: null,
+        startDate: new Date("2026-06-01T10:00:00Z"),
+        endDate: null,
+      }),
+      merge: jest.fn((entity, dto) => Object.assign(entity, dto)),
+      save: jest.fn((entity) => Promise.resolve(entity)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
       delete: jest.fn(),
     };
     reviewsService = { remove: jest.fn().mockResolvedValue(undefined) };
@@ -241,6 +273,136 @@ describe("AdminContentService", () => {
         "category-1",
         { name: "Beaches", slug: "beaches" },
         undefined,
+      );
+    });
+  });
+
+  describe("updatePlace", () => {
+    it("rejects an unknown place", async () => {
+      placeRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.updatePlace("nonexistent", { name: "New name" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects a slug already in use by another place", async () => {
+      placeRepo.exists.mockResolvedValue(true);
+      await expect(
+        service.updatePlace("place-1", { slug: "taken-slug" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(placeRepo.save).not.toHaveBeenCalled();
+    });
+
+    // Regression test: findOne() above eager-loads `category`/`county` with
+    // their OLD values. If that stale relation object is still attached to
+    // the entity when save() runs, TypeORM's persistence layer prioritizes
+    // it over the merged `countyId`/`categoryId` scalar and silently keeps
+    // the OLD county/category no matter what the caller asked for — the
+    // super admin panel bug this covers (confirmed against a live Postgres
+    // instance before this fix: editing a place's county appeared to
+    // succeed but the old value came back on every reload).
+    it("clears the stale eager-loaded county relation before saving a reassigned countyId", async () => {
+      countyRepo.exists.mockResolvedValue(true);
+      await service.updatePlace("place-1", { countyId: "county-2" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ countyId: "county-2", county: undefined }),
+      );
+    });
+
+    it("clears the stale eager-loaded category relation before saving a reassigned categoryId", async () => {
+      categoryRepo.exists.mockResolvedValue(true);
+      await service.updatePlace("place-1", { categoryId: "category-2" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoryId: "category-2",
+          category: undefined,
+        }),
+      );
+    });
+
+    it("leaves the category/county relation objects alone when their ids aren't part of the update", async () => {
+      await service.updatePlace("place-1", { name: "New name" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "New name",
+          county: { id: "county-1", name: "Montserrado" },
+          category: { id: "category-1", name: "Beaches" },
+        }),
+      );
+    });
+  });
+
+  describe("updateBusiness", () => {
+    it("rejects an unknown business", async () => {
+      businessRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.updateBusiness("nonexistent", { name: "New name" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    // Same class of bug as updatePlace's county/category above — `owner`
+    // is `eager: true` too.
+    it("clears the stale eager-loaded owner relation when reassigning ownerUserId", async () => {
+      await service.updateBusiness("business-1", { ownerUserId: "owner-2" });
+      expect(businessRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ ownerUserId: "owner-2", owner: undefined }),
+      );
+    });
+
+    // ownerUserId: null is how an admin unclaims a listing (see
+    // UpdateBusinessAdminDto's doc comment) — `!dto.ownerUserId` would
+    // wrongly treat that as "not part of the update" and skip clearing the
+    // stale relation, silently keeping the old owner.
+    it("clears the stale eager-loaded owner relation when unclaiming (ownerUserId: null)", async () => {
+      await service.updateBusiness("business-1", { ownerUserId: null });
+      expect(businessRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ ownerUserId: null, owner: undefined }),
+      );
+    });
+
+    it("leaves the owner relation object alone when ownerUserId isn't part of the update", async () => {
+      await service.updateBusiness("business-1", { name: "New name" });
+      expect(businessRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "New name",
+          owner: { id: "owner-1", name: "Old Owner" },
+        }),
+      );
+    });
+  });
+
+  describe("updateEvent", () => {
+    it("rejects an unknown event", async () => {
+      eventRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.updateEvent("nonexistent", { name: "New name" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    // Same class of bug as updatePlace's county/category above — `place`
+    // and `county` are both `eager: true` on Event too.
+    it("clears the stale eager-loaded place relation when reassigning placeId", async () => {
+      await service.updateEvent("event-1", { placeId: "place-2" });
+      expect(eventRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ placeId: "place-2", place: undefined }),
+      );
+    });
+
+    it("clears the stale eager-loaded county relation when reassigning countyId", async () => {
+      await service.updateEvent("event-1", { countyId: "county-2" });
+      expect(eventRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ countyId: "county-2", county: undefined }),
+      );
+    });
+
+    it("leaves the place/county relation objects alone when their ids aren't part of the update", async () => {
+      await service.updateEvent("event-1", { name: "New name" });
+      expect(eventRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "New name",
+          place: { id: "place-1", name: "Old Place" },
+          county: { id: "county-1", name: "Montserrado" },
+        }),
       );
     });
   });

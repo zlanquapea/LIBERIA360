@@ -140,6 +140,41 @@ describe("CreatorsService", () => {
         service.update(OWNER_ID, { username: "someone_else" }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
+
+    // Regression test: getOwned() below eager-loads `county` with its OLD
+    // value (Creator.county is `eager: true`). If that stale relation
+    // object is still attached when save() runs, TypeORM's persistence
+    // layer prioritizes it over the merged `countyId` scalar and silently
+    // keeps the OLD home county — same class of bug as
+    // AdminContentService.updatePlace's county/category (see that spec).
+    it("clears the stale eager-loaded county relation before saving a reassigned countyId", async () => {
+      creatorRepo.findOne.mockResolvedValue({
+        ...CREATOR,
+        countyId: "county-1",
+        county: { id: "county-1", name: "Montserrado" },
+      });
+      creatorRepo.save = jest.fn((entity) => Promise.resolve(entity));
+      await service.update(OWNER_ID, { countyId: "county-2" });
+      expect(creatorRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ countyId: "county-2", county: undefined }),
+      );
+    });
+
+    it("leaves the county relation object alone when countyId isn't part of the update", async () => {
+      creatorRepo.findOne.mockResolvedValue({
+        ...CREATOR,
+        countyId: "county-1",
+        county: { id: "county-1", name: "Montserrado" },
+      });
+      creatorRepo.save = jest.fn((entity) => Promise.resolve(entity));
+      await service.update(OWNER_ID, { name: "New Name" });
+      expect(creatorRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "New Name",
+          county: { id: "county-1", name: "Montserrado" },
+        }),
+      );
+    });
   });
 
   describe("portfolio ownership", () => {
