@@ -85,11 +85,21 @@ const config: Config = {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-6px)' },
         },
+        // The indeterminate loading bar on the first-load splash screen
+        // (see components/SplashScreen.tsx) — a short bar sliding across a
+        // track, standing in for real progress since there's nothing
+        // meaningful to measure (it hides on a fixed minimum-visible
+        // timer, not on any actual load event).
+        splashBar: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(300%)' },
+        },
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.5s ease-out both',
         'fade-in': 'fadeIn 0.6s ease-out both',
         float: 'float 3.5s ease-in-out infinite',
+        'splash-bar': 'splashBar 1.1s ease-in-out infinite',
       },
     },
   },

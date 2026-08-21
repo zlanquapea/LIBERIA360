@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Inject,
+  Logger,
   Post,
   UploadedFile,
   UseGuards,
@@ -32,13 +33,16 @@ const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 /**
  * Photo upload for reviews/business/place listings. Every upload is
  * re-encoded through `processUploadedImage` (EXIF stripped, resized,
- * recompressed) before it's handed to whichever `StorageProvider`
- * `STORAGE_DRIVER` selects (`StorageModule`) — local disk by default,
- * S3-compatible object storage with `STORAGE_DRIVER=s3`.
+ * recompressed into a full + thumbnail rendition) before both are handed
+ * to whichever `StorageProvider` `STORAGE_DRIVER` selects (`StorageModule`)
+ * — local disk by default, S3-compatible object storage with
+ * `STORAGE_DRIVER=s3`.
  */
 @ApiTags("Uploads")
 @Controller("uploads")
 export class UploadsController {
+  private readonly logger = new Logger(UploadsController.name);
+
   constructor(
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
@@ -94,12 +98,37 @@ export class UploadsController {
       );
     }
 
-    const filename = `${randomUUID()}.${processed.extension}`;
-    const { url } = await this.storage.save({
-      buffer: processed.buffer,
-      filename,
-      contentType: processed.contentType,
-    });
+    // Same UUID base for both files (`<id>.jpg` / `<id>-thumb.jpg`) so the
+    // frontend can derive the thumbnail's URL from the full URL by
+    // filename convention alone (see web/src/lib/images.ts's
+    // resolveThumbUrl) — every entity/DTO that stores an uploaded image
+    // still only stores the one `url` this endpoint returns.
+    const id = randomUUID();
+    const filename = `${id}.${processed.full.extension}`;
+    const thumbFilename = `${id}-thumb.${processed.thumb.extension}`;
+
+    const [{ url }] = await Promise.all([
+      this.storage.save({
+        buffer: processed.full.buffer,
+        filename,
+        contentType: processed.full.contentType,
+      }),
+      // Best-effort: a thumbnail is a bandwidth optimization, not a
+      // correctness requirement — SafeImage's thumbSrc falls back to the
+      // full-size image on a load error, so a failure here shouldn't fail
+      // the whole upload.
+      this.storage
+        .save({
+          buffer: processed.thumb.buffer,
+          filename: thumbFilename,
+          contentType: processed.thumb.contentType,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to save thumbnail for ${filename}: ${err instanceof Error ? err.message : err}`,
+          );
+        }),
+    ]);
     return { url };
   }
 }

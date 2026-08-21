@@ -1,4 +1,4 @@
-import { coverImage, galleryImages, resolveImageUrl } from './images';
+import { coverImage, galleryImages, resolveImageUrl, resolveThumbUrl } from './images';
 
 // NEXT_PUBLIC_API_URL isn't set in the test env, so resolveImageUrl falls
 // back to its documented default (http://localhost:3001/api/v1), and the
@@ -22,6 +22,37 @@ describe('resolveImageUrl', () => {
   it('passes a data: URL through untouched', () => {
     const dataUrl = 'data:image/png;base64,AAAA';
     expect(resolveImageUrl(dataUrl)).toBe(dataUrl);
+  });
+});
+
+describe('resolveThumbUrl', () => {
+  const uuid = 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d';
+
+  it('derives the thumbnail path from a local /uploads path matching our own upload naming convention', () => {
+    expect(resolveThumbUrl(`/uploads/${uuid}.jpg`)).toBe(`${API_ORIGIN}/uploads/${uuid}-thumb.jpg`);
+  });
+
+  it('derives the thumbnail path from an absolute S3/R2 URL matching the convention', () => {
+    expect(resolveThumbUrl(`https://cdn.example.com/${uuid}.jpg`)).toBe(
+      `https://cdn.example.com/${uuid}-thumb.jpg`,
+    );
+  });
+
+  it('returns null for an admin-pasted external URL that is not one of our own uploads', () => {
+    expect(resolveThumbUrl('https://images.unsplash.com/photo-12345')).toBeNull();
+  });
+
+  it('returns null for a data: URL', () => {
+    expect(resolveThumbUrl('data:image/png;base64,AAAA')).toBeNull();
+  });
+
+  it('returns null for a non-UUID filename, even under /uploads', () => {
+    expect(resolveThumbUrl('/uploads/photo.jpg')).toBeNull();
+  });
+
+  it('is idempotent when given an already-resolved absolute URL (safe to call on resolveImageUrl output)', () => {
+    const already = resolveImageUrl(`/uploads/${uuid}.jpg`);
+    expect(resolveThumbUrl(already)).toBe(`${API_ORIGIN}/uploads/${uuid}-thumb.jpg`);
   });
 });
 

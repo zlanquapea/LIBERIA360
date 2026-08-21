@@ -3,7 +3,7 @@ import { BuildingStorefrontIcon, MapPinIcon } from '@heroicons/react/24/solid';
 import type { Business } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { formatBusinessType } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { VerificationBadge } from './VerificationBadge';
 import { SafeImage } from './SafeImage';
 
@@ -15,11 +15,9 @@ import { SafeImage } from './SafeImage';
 // call sites never fetch anything else), so no review-status chrome here —
 // that belongs to the owner-facing claim/edit views, not a public card.
 export function BusinessCard({ business }: { business: Business }) {
-  const cover = business.logoImage
-    ? resolveImageUrl(business.logoImage)
-    : business.images[0]
-      ? resolveImageUrl(business.images[0])
-      : null;
+  const coverPath = business.logoImage ?? business.images[0] ?? null;
+  const cover = coverPath ? resolveImageUrl(coverPath) : null;
+  const coverThumb = coverPath ? resolveThumbUrl(coverPath) : null;
   const location = `${business.linkedPlace.city}, ${business.linkedPlace.county.name}`;
 
   return (
@@ -30,6 +28,7 @@ export function BusinessCard({ business }: { business: Business }) {
       <div className="h-32 overflow-hidden">
         <SafeImage
           src={cover}
+          thumbSrc={coverThumb}
           alt=""
           className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110"
           fallback={

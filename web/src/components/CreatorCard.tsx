@@ -3,7 +3,7 @@ import { CheckBadgeIcon, MapPinIcon, StarIcon } from '@heroicons/react/24/solid'
 import type { Creator } from '@/lib/types';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
 import { formatCreatorCategory, formatRating } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { SafeImage } from './SafeImage';
 
 // The professional-portfolio card the spec asks for throughout the app
@@ -18,7 +18,9 @@ import { SafeImage } from './SafeImage';
 // trust signal shown instead.
 export function CreatorCard({ creator }: { creator: Creator }) {
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
+  const coverThumb = creator.coverImage ? resolveThumbUrl(creator.coverImage) : null;
   const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
+  const avatarThumb = creator.profileImage ? resolveThumbUrl(creator.profileImage) : null;
   const location = creator.county?.name ?? creator.locationsCovered[0] ?? null;
 
   return (
@@ -31,6 +33,7 @@ export function CreatorCard({ creator }: { creator: Creator }) {
       <div className="relative h-28 overflow-hidden">
         <SafeImage
           src={cover}
+          thumbSrc={coverThumb}
           alt=""
           className="h-28 w-full object-cover transition-transform duration-500 group-hover:scale-110"
           fallback={
@@ -53,6 +56,7 @@ export function CreatorCard({ creator }: { creator: Creator }) {
         >
           <SafeImage
             src={avatar}
+            thumbSrc={avatarThumb}
             alt=""
             className="h-full w-full object-cover"
             fallback={<>{creator.name.trim().charAt(0).toUpperCase() || '?'}</>}

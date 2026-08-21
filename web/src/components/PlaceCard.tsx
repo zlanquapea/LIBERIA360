@@ -3,7 +3,7 @@ import { StarIcon, MapPinIcon } from '@heroicons/react/20/solid';
 import type { Place } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { formatDistance, formatPlaceType, formatRating } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { VerificationBadge } from './VerificationBadge';
 import { SafeImage } from './SafeImage';
 
@@ -18,6 +18,7 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
   // preview, so this falls back to the category placeholder same as before
   // for a listing that hasn't had a place-level photo set yet.
   const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
+  const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
   return (
     <Link
@@ -27,6 +28,7 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
       <div className="h-32 overflow-hidden">
         <SafeImage
           src={cover}
+          thumbSrc={coverThumb}
           alt=""
           className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110"
           fallback={

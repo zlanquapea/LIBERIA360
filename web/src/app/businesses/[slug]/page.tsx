@@ -11,7 +11,7 @@ import { BuildingStorefrontIcon } from '@heroicons/react/24/outline';
 import { ApiError, getBusinessBySlug, getBusinessContent, getReviews } from '@/lib/api';
 import { gradientForCategory } from '@/lib/category-colors';
 import { formatBusinessContentType, formatBusinessType, formatCost } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SafeImage } from '@/components/SafeImage';
@@ -239,6 +239,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
                   <SafeImage
                     key={img}
                     src={img}
+                    thumbSrc={resolveThumbUrl(img)}
                     alt={`${business.name} photo`}
                     className="aspect-square w-full rounded-lg object-cover"
                     fallback={<div aria-hidden className="aspect-square w-full rounded-lg bg-slate-200 dark:bg-slate-700" />}

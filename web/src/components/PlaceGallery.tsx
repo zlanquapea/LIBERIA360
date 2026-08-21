@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import { gradientForCategory } from '@/lib/category-colors';
+import { resolveThumbUrl } from '@/lib/images';
 import { SafeImage } from './SafeImage';
 
 // Destination profile hero. Real photos are the point — a traveler
@@ -69,6 +70,7 @@ export function PlaceGallery({
             >
               <SafeImage
                 src={img}
+                thumbSrc={resolveThumbUrl(img)}
                 alt=""
                 className="h-full w-full object-cover"
                 fallback={<div aria-hidden className="h-full w-full bg-slate-200 dark:bg-slate-700" />}

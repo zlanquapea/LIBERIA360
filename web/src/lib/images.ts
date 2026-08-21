@@ -20,6 +20,36 @@ export function resolveImageUrl(path: string): string {
   return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
+// Matches the filename this app's own upload pipeline writes — a random
+// UUID plus `.jpg` (see api/src/uploads/uploads.controller.ts) — at the end
+// of a URL, ignoring any query string. Used to tell "one of our own
+// uploads" apart from an admin-pasted external stock-photo URL, which has
+// no thumbnail sibling to derive.
+const OWN_UPLOAD_FILENAME =
+  /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jpg(?:[?#].*)?$/i;
+
+/**
+ * Every image this app's own upload pipeline stores is saved as two
+ * files sharing one UUID: the full-size rendition at `<uuid>.jpg` and a
+ * small pre-shrunk `<uuid>-thumb.jpg` right alongside it (see
+ * `UploadsController.uploadImage`) — cards/grids (PlaceCard, BusinessCard,
+ * CreatorCard, gallery grid cells, ...) should load the thumbnail, not the
+ * full photo, since dozens of them can appear on one page.
+ *
+ * Derived from the full URL by filename convention rather than plumbing a
+ * second URL through every entity/DTO/type that stores an image path.
+ * Returns null for anything that isn't one of our own uploads (an external
+ * URL, a data: URI) — those have no thumbnail, so the caller should just
+ * render the full-size image (SafeImage's `thumbSrc` prop already falls
+ * back to `src` when this is null, or when the thumbnail 404s).
+ */
+export function resolveThumbUrl(path: string): string | null {
+  const full = resolveImageUrl(path);
+  const match = full.match(OWN_UPLOAD_FILENAME);
+  if (!match) return null;
+  return full.slice(0, match.index) + `/${match[1]}-thumb.jpg`;
+}
+
 /** First available photo for a destination — business photos (what the
  * operator actually uploaded: rooms, pool, storefront) take priority over
  * the place's own general photos, since they're usually more specific and

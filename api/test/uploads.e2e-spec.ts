@@ -128,7 +128,46 @@ describe("Uploads (e2e)", () => {
 
     const metadata = await sharp(filePath).metadata();
     expect(metadata.format).toBe("jpeg");
-    expect(metadata.width).toBe(2000); // downscaled from the 3000px original
+    expect(metadata.width).toBe(1600); // downscaled from the 3000px original
     expect(metadata.exif).toBeUndefined();
+  });
+
+  it("also saves a smaller thumbnail rendition alongside the full-size image", async () => {
+    const original = await sharp({
+      create: {
+        width: 3000,
+        height: 2000,
+        channels: 3,
+        background: { r: 10, g: 100, b: 200 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const res = await request(app.getHttpServer())
+      .post("/api/v1/uploads/image")
+      .set("Authorization", `Bearer ${token}`)
+      .attach("file", original, {
+        filename: "room.jpg",
+        contentType: "image/jpeg",
+      })
+      .expect(201);
+
+    const filePath = join(
+      localUploadsDir(),
+      res.body.url.replace("/uploads/", ""),
+    );
+    writtenFiles.push(filePath);
+
+    // Same UUID base as the full rendition, with a `-thumb` suffix — see
+    // web/src/lib/images.ts's resolveThumbUrl, which derives this exact
+    // path by convention from the returned full URL.
+    const thumbPath = filePath.replace(/\.jpg$/, "-thumb.jpg");
+    writtenFiles.push(thumbPath);
+    expect(existsSync(thumbPath)).toBe(true);
+
+    const metadata = await sharp(thumbPath).metadata();
+    expect(metadata.format).toBe("jpeg");
+    expect(metadata.width).toBe(480);
   });
 });

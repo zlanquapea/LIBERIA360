@@ -4,6 +4,7 @@ import './globals.css';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { AuthRefresher } from '@/components/AuthRefresher';
 import { ErrorReportingInit } from '@/components/ErrorReportingInit';
+import { SplashScreen } from '@/components/SplashScreen';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Footer } from '@/components/Footer';
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="flex min-h-screen flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-50">
+        <SplashScreen />
         <Header />
         <div className="flex-1">
           {children}
