@@ -4,6 +4,8 @@ import type {
   AnalyticsOverview,
   AuthUser,
   Business,
+  BusinessContent,
+  BusinessContentStatus,
   BusinessReviewStatus,
   BusinessType,
   County,
@@ -57,6 +59,22 @@ export function setBusinessVerification(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status }),
+  });
+}
+
+// Approve/reject one business-authored content item — mirrors
+// setBusinessReviewStatus's shape, one level down (a single post, not
+// the whole listing).
+export function setBusinessContentReviewStatus(
+  token: string,
+  contentId: string,
+  status: BusinessContentStatus,
+  reason?: string,
+): Promise<BusinessContent> {
+  return apiRequest<BusinessContent>(`/admin/business-content/${contentId}/review-status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status, reason }),
   });
 }
 

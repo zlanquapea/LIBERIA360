@@ -227,6 +227,81 @@ describe("Phase 2 (e2e)", () => {
         .send({ placeId: beachPlace.id, overallRating: 3 })
         .expect(401);
     });
+
+    it("rejects a review with neither placeId nor creatorId, and with both", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ overallRating: 3 })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          placeId: beachPlace.id,
+          creatorId: "00000000-0000-0000-0000-000000000000",
+          overallRating: 3,
+        })
+        .expect(400);
+    });
+
+    it("creates a review for a creator, recalculates the creator's rating, rejects a duplicate, and lists it", async () => {
+      // A fresh user, not userA/userB — the Creators describe block below
+      // relies on userB never having created a creator profile of their
+      // own (see its "not a creator at all" comment), so this can't reuse
+      // either of them as the profile owner.
+      const creatorOwner = await registerUser(
+        "review-target-owner@example.com",
+        "Review Target Owner",
+      );
+      const creatorRes = await request(app.getHttpServer())
+        .post("/api/v1/creators")
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .send({
+          name: "Review Target Creator",
+          username: "review_target_creator",
+          category: "photographer",
+        })
+        .expect(201);
+      const creatorId = creatorRes.body.id;
+
+      const create = await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ creatorId, overallRating: 4, comment: "Great photos." })
+        .expect(201);
+      expect(create.body.user.passwordHash).toBeUndefined();
+      // No booking data links a reviewer to a creator yet — always false,
+      // unlike place reviews which can be verified via a confirmed
+      // booking (see the "requires auth" test's sibling above).
+      expect(create.body.verifiedVisit).toBe(false);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ creatorId, overallRating: 5 })
+        .expect(409);
+
+      const creator = await request(app.getHttpServer())
+        .get("/api/v1/creators/review_target_creator")
+        .expect(200);
+      expect(creator.body.rating).toBe(4);
+      expect(creator.body.reviewCount).toBe(1);
+
+      const list = await request(app.getHttpServer())
+        .get(`/api/v1/reviews?creatorId=${creatorId}`)
+        .expect(200);
+      expect(list.body.meta.total).toBe(1);
+
+      // Same user can still review a place separately — the unique
+      // constraint is per-target, not "one review ever".
+      await request(app.getHttpServer())
+        .post("/api/v1/reviews")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ placeId: hotelPlace.id, overallRating: 5 })
+        .expect(201);
+    });
   });
 
   describe("Businesses", () => {

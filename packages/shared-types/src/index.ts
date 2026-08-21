@@ -140,10 +140,12 @@ export interface PaginatedPlaces {
 }
 
 // api/src/reviews/entities/review.entity.ts (sanitized — user is the
-// public shape, never a passwordHash).
+// public shape, never a passwordHash). Targets either a Place or a
+// Creator — exactly one of placeId/creatorId is non-null, never both.
 export interface Review {
   id: string;
-  placeId: string;
+  placeId: string | null;
+  creatorId: string | null;
   user: AuthUser | null;
   overallRating: number;
   experienceRating: number | null;
@@ -317,6 +319,10 @@ export interface Creator {
   verifiedByUserId: string | null;
   verifiedAt: string | null;
   featured: boolean;
+  // Recomputed from the reviews table — see ReviewsService.
+  // recalculateCreatorRating, same convention as Place.rating/reviewCount.
+  rating: number;
+  reviewCount: number;
   createdAt: string;
   updatedAt: string;
   // Present on GET /creators/me and GET /creators/:username (which load
@@ -648,12 +654,74 @@ export interface FlaggedContent {
   business: Business | null;
 }
 
+// api/src/business-content/entities/business-content.enums.ts
+export type BusinessContentType =
+  | "offer"
+  | "announcement"
+  | "article"
+  | "travel_tip"
+  | "experience";
+export type BusinessContentStatus =
+  | "draft"
+  | "submitted_for_review"
+  | "approved"
+  | "rejected";
+
+// api/src/business-content/entities/business-content.entity.ts (sanitized
+// — business is the sanitized Business shape, present whenever the
+// backend loaded that relation, e.g. in the admin moderation queue).
+export interface BusinessContent {
+  id: string;
+  businessId: string;
+  business?: Business | null;
+  type: BusinessContentType;
+  title: string;
+  body: string;
+  images: string[];
+  externalLink: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  status: BusinessContentStatus;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedBusinessContent {
+  data: BusinessContent[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface CreateBusinessContentInput {
+  businessId: string;
+  type: BusinessContentType;
+  title: string;
+  body: string;
+  images?: string[];
+  externalLink?: string;
+  validFrom?: string;
+  validUntil?: string;
+}
+
+export type UpdateBusinessContentInput = Partial<
+  Omit<CreateBusinessContentInput, "businessId" | "type">
+>;
+
+export interface SetBusinessContentReviewStatusInput {
+  status: BusinessContentStatus;
+  reason?: string;
+}
+
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];
   recentReviews: Review[];
   possiblyClosedPlaces: PossiblyClosedPlace[];
   flaggedContent: FlaggedContent[];
+  pendingBusinessContent: BusinessContent[];
 }
 
 // api/src/freshness/entities/place-freshness-report.enums.ts

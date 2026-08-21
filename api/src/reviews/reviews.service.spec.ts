@@ -1,13 +1,19 @@
-import { ConflictException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { ReviewsService } from "./reviews.service";
 import { Review } from "./entities/review.entity";
 import { Place } from "../places/entities/place.entity";
+import { Creator } from "../creators/entities/creator.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BookingStatus } from "../bookings/entities/booking.enums";
 
 const DTO = { placeId: "place-1", overallRating: 5 };
+const CREATOR_DTO = { creatorId: "creator-1", overallRating: 5 };
 
 describe("ReviewsService", () => {
   let service: ReviewsService;
@@ -20,6 +26,7 @@ describe("ReviewsService", () => {
     delete: jest.Mock;
   };
   let placeRepo: { findOne: jest.Mock; update: jest.Mock };
+  let creatorRepo: { findOne: jest.Mock; update: jest.Mock };
   let bookingQueryBuilder: {
     innerJoin: jest.Mock;
     where: jest.Mock;
@@ -50,6 +57,10 @@ describe("ReviewsService", () => {
       findOne: jest.fn().mockResolvedValue({ id: "place-1" }),
       update: jest.fn(),
     };
+    creatorRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: "creator-1" }),
+      update: jest.fn(),
+    };
     bookingQueryBuilder = {
       innerJoin: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
@@ -65,11 +76,24 @@ describe("ReviewsService", () => {
         ReviewsService,
         { provide: getRepositoryToken(Review), useValue: reviewRepo },
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Creator), useValue: creatorRepo },
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
       ],
     }).compile();
 
     service = module.get(ReviewsService);
+  });
+
+  it("rejects a review with neither placeId nor creatorId", async () => {
+    await expect(
+      service.create("user-1", { overallRating: 5 } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects a review with both placeId and creatorId", async () => {
+    await expect(
+      service.create("user-1", { ...DTO, creatorId: "creator-1" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("rejects a review for a place that doesn't exist", async () => {
@@ -113,6 +137,32 @@ describe("ReviewsService", () => {
     });
   });
 
+  describe("creator reviews", () => {
+    it("rejects a review for a creator that doesn't exist", async () => {
+      creatorRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.create("user-1", CREATOR_DTO),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects a duplicate review for the same creator", async () => {
+      reviewRepo.findOne.mockResolvedValue({ id: "existing" });
+      await expect(
+        service.create("user-1", CREATOR_DTO),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(reviewRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("creates an unverified review and recalculates the creator's rating", async () => {
+      const result = await service.create("user-1", CREATOR_DTO);
+      expect(result.verifiedVisit).toBe(false);
+      expect(creatorRepo.update).toHaveBeenCalledWith(
+        "creator-1",
+        expect.objectContaining({ rating: 5, reviewCount: 1 }),
+      );
+    });
+  });
+
   describe("remove", () => {
     it("rejects an unknown review", async () => {
       reviewRepo.findOne.mockResolvedValue(null);
@@ -126,6 +176,7 @@ describe("ReviewsService", () => {
       reviewRepo.findOne.mockResolvedValue({
         id: "review-1",
         placeId: "place-1",
+        creatorId: null,
       });
       await service.remove("review-1");
       expect(reviewRepo.delete).toHaveBeenCalledWith({ id: "review-1" });
@@ -133,6 +184,34 @@ describe("ReviewsService", () => {
         "place-1",
         expect.objectContaining({ rating: 5, reviewCount: 1 }),
       );
+    });
+
+    it("deletes a creator review and recalculates the creator's rating", async () => {
+      reviewRepo.findOne.mockResolvedValue({
+        id: "review-1",
+        placeId: null,
+        creatorId: "creator-1",
+      });
+      await service.remove("review-1");
+      expect(reviewRepo.delete).toHaveBeenCalledWith({ id: "review-1" });
+      expect(creatorRepo.update).toHaveBeenCalledWith(
+        "creator-1",
+        expect.objectContaining({ rating: 5, reviewCount: 1 }),
+      );
+    });
+  });
+
+  describe("find", () => {
+    it("rejects a query with neither placeId nor creatorId", async () => {
+      await expect(service.find({} as never)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it("rejects a query with both placeId and creatorId", async () => {
+      await expect(
+        service.find({ placeId: "place-1", creatorId: "creator-1" } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

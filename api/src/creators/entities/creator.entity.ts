@@ -11,6 +11,7 @@ import {
 import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
 import { CreatorCategory, CreatorVerificationStatus } from "./creator.enums";
+import { decimalTransformer } from "../../database/decimal.transformer";
 
 /**
  * Creator profile (Tech Spec §5 Creator, §3.2). One per User — `userId` (not
@@ -172,6 +173,21 @@ export class Creator {
   // further detail to build against.
   @Column({ type: "boolean", default: false })
   featured: boolean;
+
+  // Same "recomputed from the reviews table, never incrementally
+  // maintained" convention as Place.rating/reviewCount — see
+  // ReviewsService.recalculateCreatorRating.
+  @Column({
+    type: "decimal",
+    precision: 2,
+    scale: 1,
+    default: 0,
+    transformer: decimalTransformer,
+  })
+  rating: number;
+
+  @Column({ name: "review_count", type: "int", default: 0 })
+  reviewCount: number;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

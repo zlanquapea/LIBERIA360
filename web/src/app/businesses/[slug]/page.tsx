@@ -8,15 +8,16 @@ import {
   PhoneIcon,
 } from '@heroicons/react/24/solid';
 import { BuildingStorefrontIcon } from '@heroicons/react/24/outline';
-import { ApiError, getBusinessBySlug, getReviews } from '@/lib/api';
+import { ApiError, getBusinessBySlug, getBusinessContent, getReviews } from '@/lib/api';
 import { gradientForCategory } from '@/lib/category-colors';
-import { formatBusinessType, formatCost } from '@/lib/format';
+import { formatBusinessContentType, formatBusinessType, formatCost } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { SafeImage } from '@/components/SafeImage';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ReportButton } from '@/components/ReportButton';
+import type { BusinessContent } from '@/lib/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -32,14 +33,54 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function formatValidityWindow(validFrom: string | null, validUntil: string | null): string | null {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+  if (validFrom && validUntil) {
+    return `${new Date(validFrom).toLocaleDateString('en-US', opts)} – ${new Date(validUntil).toLocaleDateString('en-US', opts)}`;
+  }
+  if (validUntil) return `Through ${new Date(validUntil).toLocaleDateString('en-US', opts)}`;
+  if (validFrom) return `From ${new Date(validFrom).toLocaleDateString('en-US', opts)}`;
+  return null;
+}
+
+function UpdateCard({ item }: { item: BusinessContent }) {
+  const validity = formatValidityWindow(item.validFrom, item.validUntil);
+  const cover = item.images[0] ? resolveImageUrl(item.images[0]) : null;
+
+  return (
+    <article className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      {cover && (
+        <SafeImage
+          src={cover}
+          alt=""
+          className="h-40 w-full rounded-lg object-cover"
+          fallback={<div aria-hidden className="h-40 w-full rounded-lg bg-slate-200 dark:bg-slate-700" />}
+        />
+      )}
+      <span className="w-fit rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+        {formatBusinessContentType(item.type)}
+      </span>
+      <h3 className="font-semibold text-slate-900 dark:text-slate-50">{item.title}</h3>
+      <p className="whitespace-pre-line text-sm text-slate-700 dark:text-slate-200">{item.body}</p>
+      {validity && <p className="text-xs text-slate-500 dark:text-slate-400">{validity}</p>}
+      {item.externalLink && (
+        <a
+          href={item.externalLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-fit text-sm font-medium text-brand-700 hover:underline"
+        >
+          Learn more
+        </a>
+      )}
+    </article>
+  );
+}
+
 // Public business profile — the "who is this business, what do they
 // offer, what does the place look like" page a traveler lands on from a
 // BusinessCard anywhere in the app. Mirrors the Creator public profile's
-// structure. "Events & Offers" from the spec's section list isn't here —
-// business-authored publishable content doesn't exist yet (explicitly
-// deferred, see the [Later phase] task) — omitted entirely rather than
-// shown as an empty/fake section, same posture as Creator reviews before
-// that existed.
+// structure.
 export default async function BusinessProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -52,6 +93,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
   }
 
   const reviewsResult = await getReviews(business.linkedPlaceId, { limit: 20 });
+  const contentResult = await getBusinessContent(business.id, { limit: 20 });
 
   const cover = business.logoImage
     ? resolveImageUrl(business.logoImage)
@@ -213,6 +255,21 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
                 ))}
               </ul>
             )}
+          </Section>
+        )}
+
+        {/* Updates — business-authored offers, announcements, articles,
+            travel tips & experiences. Approved-only (getBusinessContent's
+            gate), so a DRAFT/SUBMITTED/REJECTED item the owner is still
+            working on never shows here — same posture as the Business
+            listing itself only appearing once APPROVED. */}
+        {contentResult.data.length > 0 && (
+          <Section title="Updates">
+            <div className="flex flex-col gap-3">
+              {contentResult.data.map((item) => (
+                <UpdateCard key={item.id} item={item} />
+              ))}
+            </div>
           </Section>
         )}
 

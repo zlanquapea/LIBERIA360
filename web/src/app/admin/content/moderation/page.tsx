@@ -6,11 +6,12 @@ import {
   deleteEventAdmin,
   deleteReviewAdmin,
   getModerationQueue,
+  setBusinessContentReviewStatus,
   setBusinessVerification,
 } from '@/lib/admin-api';
-import { formatBusinessType } from '@/lib/format';
+import { formatBusinessContentType, formatBusinessContentStatus, formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
+import type { BusinessContent, BusinessContentStatus, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
 import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
@@ -77,6 +78,41 @@ export default function ModerationPage() {
                   {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
                 </p>
                 <VerifyBusinessControl businessId={business.id} onDone={reload} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Pending business content
+          {queue && queue.pendingBusinessContent.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {queue.pendingBusinessContent.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Offers, announcements, articles, travel tips &amp; experiences submitted by business owners.
+        </p>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.pendingBusinessContent.length === 0 ? (
+          <EmptyState title="Nothing pending — the queue is clear." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queue.pendingBusinessContent.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
+              >
+                <p className="font-medium text-slate-900 dark:text-slate-50">{item.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {formatBusinessContentType(item.type)} · {item.business?.name ?? 'Unknown business'}
+                </p>
+                <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{item.body}</p>
+                <ContentReviewStatusControl content={item} onDone={reload} />
               </li>
             ))}
           </ul>
@@ -175,6 +211,70 @@ function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onD
         {submitting ? 'Applying…' : 'Apply'}
       </button>
       {error && <span className="text-xs text-flag-700">{error}</span>}
+    </div>
+  );
+}
+
+const CONTENT_REVIEW_STATUSES: BusinessContentStatus[] = ['approved', 'rejected'];
+
+// Mirrors ReviewStatusControl (BusinessesTab.tsx) but for BusinessContent's
+// smaller lifecycle — no under_review/suspended here (see
+// BusinessContentStatus's doc comment), so only approve/reject apply, and
+// only reject needs a reason.
+function ContentReviewStatusControl({ content, onDone }: { content: BusinessContent; onDone: () => void }) {
+  const { token } = useAuth();
+  const [status, setStatus] = useState<BusinessContentStatus>('approved');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await setBusinessContentReviewStatus(token, content.id, status, reason.trim() || undefined);
+      onDone();
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as BusinessContentStatus)}
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700"
+        >
+          {CONTENT_REVIEW_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {formatBusinessContentStatus(s)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={apply}
+          className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {submitting ? 'Applying…' : 'Apply'}
+        </button>
+      </div>
+      {status === 'rejected' && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for rejection…"
+          maxLength={1000}
+          className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        />
+      )}
+      {error && <p className="text-xs text-flag-700">{error}</p>}
     </div>
   );
 }

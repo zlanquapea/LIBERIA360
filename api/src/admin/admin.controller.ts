@@ -13,6 +13,7 @@ import { getRequestInfo } from "../common/request-info";
 import { SetVerificationDto } from "./dto/set-verification.dto";
 import { SetCreatorVerificationDto } from "./dto/set-creator-verification.dto";
 import { SetBusinessReviewStatusDto } from "./dto/set-business-review-status.dto";
+import { SetBusinessContentReviewStatusDto } from "../business-content/dto/set-business-content-review-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -23,6 +24,7 @@ import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
+import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { FlaggedContent } from "./admin.service";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
@@ -45,6 +47,13 @@ function sanitizeEvent(event: Event) {
   return {
     ...event,
     createdBy: event.createdBy ? toPublicUser(event.createdBy) : null,
+  };
+}
+
+function sanitizeBusinessContent(content: BusinessContent) {
+  return {
+    ...content,
+    business: content.business ? sanitizeBusiness(content.business) : null,
   };
 }
 
@@ -114,6 +123,24 @@ export class AdminController {
     );
   }
 
+  @Patch("business-content/:id/review-status")
+  async setBusinessContentReviewStatus(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetBusinessContentReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return sanitizeBusinessContent(
+      await this.adminService.setBusinessContentReviewStatus(
+        admin.id,
+        id,
+        dto.status,
+        dto.reason,
+        getRequestInfo(req),
+      ),
+    );
+  }
+
   @Patch("creators/:id/verification")
   async setCreatorVerification(
     @CurrentUser() admin: User,
@@ -139,6 +166,9 @@ export class AdminController {
       recentReviews: queue.recentReviews.map(sanitizeReview),
       possiblyClosedPlaces: queue.possiblyClosedPlaces,
       flaggedContent: queue.flaggedContent.map(sanitizeFlaggedContent),
+      pendingBusinessContent: queue.pendingBusinessContent.map(
+        sanitizeBusinessContent,
+      ),
     };
   }
 

@@ -7,6 +7,7 @@ import type {
   CreatorCategory,
   Event,
   EventCategory,
+  PaginatedBusinessContent,
   PaginatedBusinesses,
   PaginatedCreators,
   PaginatedEvents,
@@ -128,6 +129,10 @@ export function getReviews(placeId: string, query: { page?: number; limit?: numb
   return apiFetch<PaginatedReviews>('/reviews', { placeId, ...query });
 }
 
+export function getCreatorReviews(creatorId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>('/reviews', { creatorId, ...query });
+}
+
 // GET /businesses?placeId=... returns `null` (200, not 404) when nothing's
 // been claimed yet — apiFetch's throw-on-!res.ok path never fires for it.
 // Only ever an APPROVED listing — see BusinessesService.findByPlace's doc
@@ -152,6 +157,18 @@ export function getBusinesses(query: BusinessesQuery = {}): Promise<PaginatedBus
 
 export function getBusinessBySlug(slug: string): Promise<Business> {
   return apiFetch<Business>(`/businesses/slug/${slug}`);
+}
+
+// Approved-only, same gate as every other public business lookup above.
+export function getBusinessContent(
+  businessId: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedBusinessContent> {
+  return apiFetch<PaginatedBusinessContent>(
+    '/business-content',
+    { businessId, ...query },
+    emptyPage(query.limit),
+  );
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {

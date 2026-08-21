@@ -32,8 +32,8 @@ export class ReviewsController {
   }
 
   @Get()
-  async findForPlace(@Query() query: QueryReviewsDto) {
-    const result = await this.reviewsService.findForPlace(query);
+  async find(@Query() query: QueryReviewsDto) {
+    const result = await this.reviewsService.find(query);
     return { ...result, data: result.data.map(sanitize) };
   }
 }

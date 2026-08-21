@@ -8,6 +8,7 @@ import { County } from "../counties/entities/county.entity";
 import { User } from "../users/entities/user.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { CreatorPortfolioItem } from "../creators/entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "../creators/entities/creator-offering.entity";
@@ -48,6 +49,7 @@ export const AppDataSource = new DataSource({
     User,
     Review,
     Business,
+    BusinessContent,
     Creator,
     CreatorPortfolioItem,
     CreatorOffering,

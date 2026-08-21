@@ -802,6 +802,152 @@ describe("Phase 3 (e2e)", () => {
     });
   });
 
+  describe("Business content", () => {
+    it("goes draft → submitted (hidden) → approved (public), and a rejected item resubmits on edit", async () => {
+      // hotelBusinessId is owned by ownerToken (claimed earlier in this
+      // spec) and was approved in the "Admin verification workflow" block
+      // above.
+      await request(app.getHttpServer())
+        .post("/api/v1/business-content")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({
+          businessId: hotelBusinessId,
+          type: "offer",
+          title: "20% off weekday stays",
+          body: "Book Mon-Thu and save.",
+        })
+        .expect(403);
+
+      const draft = await request(app.getHttpServer())
+        .post("/api/v1/business-content")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({
+          businessId: hotelBusinessId,
+          type: "offer",
+          title: "20% off weekday stays",
+          body: "Book Mon-Thu and save.",
+        })
+        .expect(201);
+      expect(draft.body.status).toBe("draft");
+      const contentId = draft.body.id;
+
+      // Not visible publicly while still a draft.
+      const publicBeforeSubmit = await request(app.getHttpServer())
+        .get(`/api/v1/business-content?businessId=${hotelBusinessId}`)
+        .expect(200);
+      expect(publicBeforeSubmit.body.data).toHaveLength(0);
+
+      const submitted = await request(app.getHttpServer())
+        .post(`/api/v1/business-content/${contentId}/submit`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .expect(201);
+      expect(submitted.body.status).toBe("submitted_for_review");
+
+      // Still not public while pending review.
+      const publicWhilePending = await request(app.getHttpServer())
+        .get(`/api/v1/business-content?businessId=${hotelBusinessId}`)
+        .expect(200);
+      expect(publicWhilePending.body.data).toHaveLength(0);
+
+      // Shows up in the moderation queue.
+      const queueBeforeApproval = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        queueBeforeApproval.body.pendingBusinessContent.some(
+          (c: { id: string }) => c.id === contentId,
+        ),
+      ).toBe(true);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/business-content/${contentId}/review-status`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ status: "approved" })
+        .expect(403);
+
+      const approved = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/business-content/${contentId}/review-status`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ status: "approved" })
+        .expect(200);
+      expect(approved.body.status).toBe("approved");
+
+      // Now public.
+      const publicAfterApproval = await request(app.getHttpServer())
+        .get(`/api/v1/business-content?businessId=${hotelBusinessId}`)
+        .expect(200);
+      expect(
+        publicAfterApproval.body.data.map((c: { id: string }) => c.id),
+      ).toContain(contentId);
+
+      // No longer pending.
+      const queueAfterApproval = await request(app.getHttpServer())
+        .get("/api/v1/admin/moderation-queue")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        queueAfterApproval.body.pendingBusinessContent.some(
+          (c: { id: string }) => c.id === contentId,
+        ),
+      ).toBe(false);
+
+      // A second item, rejected with a reason, then resubmitted on edit.
+      const secondDraft = await request(app.getHttpServer())
+        .post("/api/v1/business-content")
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({
+          businessId: hotelBusinessId,
+          type: "travel_tip",
+          body: "Bring cash — cards aren't widely accepted here.",
+          title: "Cash tip",
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/api/v1/business-content/${secondDraft.body.id}/submit`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .expect(201);
+
+      const rejected = await request(app.getHttpServer())
+        .patch(
+          `/api/v1/admin/business-content/${secondDraft.body.id}/review-status`,
+        )
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ status: "rejected", reason: "Not specific to this business" })
+        .expect(200);
+      expect(rejected.body.status).toBe("rejected");
+      expect(rejected.body.rejectionReason).toBe(
+        "Not specific to this business",
+      );
+
+      const resubmittedOnEdit = await request(app.getHttpServer())
+        .patch(`/api/v1/business-content/${secondDraft.body.id}`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .send({ title: "Cash tip (updated)" })
+        .expect(200);
+      expect(resubmittedOnEdit.body.status).toBe("submitted_for_review");
+      expect(resubmittedOnEdit.body.rejectionReason).toBeNull();
+
+      // The owner can delete their own item at any point.
+      await request(app.getHttpServer())
+        .delete(`/api/v1/business-content/${secondDraft.body.id}`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .delete(`/api/v1/business-content/${secondDraft.body.id}`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .expect(204);
+
+      const auditLog = await request(app.getHttpServer())
+        .get("/api/v1/admin/audit-log")
+        .set("Authorization", `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(
+        auditLog.body.data.map((a: { action: string }) => a.action),
+      ).toContain("business_content.review_status_changed");
+    });
+  });
+
   describe("Content reporting & moderation", () => {
     let reportedReview: { id: string; overallRating: number };
     let reportedEvent: { id: string };

@@ -37,13 +37,24 @@ function VerifiedVisitBadge() {
   );
 }
 
-// Reviews section of the Destination Profile screen (Tech Spec §3.2 /
-// Business Plan): read-only list plus, for logged-in users who haven't
-// reviewed this place yet, a form to post one. The API enforces one review
-// per user per place (409 on a second attempt) — `alreadyReviewed` below is
-// a best-effort local check against whatever's loaded, so a stale/duplicate
-// submit still gets a clean error message via the 409 branch, not a crash.
-export function ReviewsSection({ placeId, initialReviews }: { placeId: string; initialReviews: Review[] }) {
+// Reviews section — used on both the Destination Profile screen (Tech
+// Spec §3.2 / Business Plan) and the Creator public profile, so it takes
+// either a placeId or a creatorId (never both — same XOR as
+// CreateReviewInput). Read-only list plus, for logged-in users who
+// haven't reviewed this target yet, a form to post one. The API enforces
+// one review per user per target (409 on a second attempt) —
+// `alreadyReviewed` below is a best-effort local check against whatever's
+// loaded, so a stale/duplicate submit still gets a clean error message via
+// the 409 branch, not a crash.
+export function ReviewsSection({
+  placeId,
+  creatorId,
+  initialReviews,
+}: {
+  placeId?: string;
+  creatorId?: string;
+  initialReviews: Review[];
+}) {
   const { user, token, ready } = useAuth();
   const [reviews, setReviews] = useState(initialReviews);
   const [rating, setRating] = useState(5);
@@ -62,6 +73,7 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
     try {
       const review = await createReview(token, {
         placeId,
+        creatorId,
         overallRating: rating,
         comment: comment.trim() || undefined,
       });
@@ -116,7 +128,9 @@ export function ReviewsSection({ placeId, initialReviews }: { placeId: string; i
           to write a review.
         </p>
       ) : alreadyReviewed || posted ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">You&apos;ve already reviewed this place. Thanks for sharing!</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          You&apos;ve already reviewed this {creatorId ? 'creator' : 'place'}. Thanks for sharing!
+        </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
           <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">

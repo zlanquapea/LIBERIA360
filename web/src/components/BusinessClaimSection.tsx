@@ -16,6 +16,7 @@ import { ContactLink } from './ContactLink';
 import { PhotoManager } from './PhotoManager';
 import { SingleImageUploader } from './SingleImageUploader';
 import { SafeImage } from './SafeImage';
+import { BusinessContentManager } from './BusinessContentManager';
 import type { Business, BusinessType } from '@/lib/types';
 
 function splitList(value: string): string[] {
@@ -151,15 +152,18 @@ export function BusinessClaimSection({
 
     if (isOwner && editing && token) {
       return (
-        <BusinessEditForm
-          token={token}
-          business={business}
-          onSaved={(updated) => {
-            setBusiness(updated);
-            setEditing(false);
-          }}
-          onCancel={() => setEditing(false)}
-        />
+        <div className="flex flex-col gap-3">
+          <BusinessEditForm
+            token={token}
+            business={business}
+            onSaved={(updated) => {
+              setBusiness(updated);
+              setEditing(false);
+            }}
+            onCancel={() => setEditing(false)}
+          />
+          <BusinessContentManager token={token} businessId={business.id} />
+        </div>
       );
     }
 

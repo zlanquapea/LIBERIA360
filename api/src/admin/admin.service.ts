@@ -4,6 +4,8 @@ import { Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { BusinessReviewStatus } from "../businesses/entities/business.enums";
+import { BusinessContent } from "../business-content/entities/business-content.entity";
+import { BusinessContentStatus } from "../business-content/entities/business-content.enums";
 import { Creator } from "../creators/entities/creator.entity";
 import { CreatorVerificationStatus } from "../creators/entities/creator.enums";
 import { Review } from "../reviews/entities/review.entity";
@@ -60,6 +62,7 @@ export interface ModerationQueue {
   recentReviews: Review[];
   possiblyClosedPlaces: PossiblyClosedPlace[];
   flaggedContent: FlaggedContent[];
+  pendingBusinessContent: BusinessContent[];
 }
 
 // Real, honestly-computable numbers only — no revenue figure, since no
@@ -100,6 +103,8 @@ export class AdminService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
+    @InjectRepository(BusinessContent)
+    private readonly businessContentRepo: Repository<BusinessContent>,
     private readonly adminAuditService: AdminAuditService,
   ) {}
 
@@ -191,6 +196,50 @@ export class AdminService {
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
+  /** Approve/reject one business-authored content item — mirrors
+   * setBusinessReviewStatus's shape exactly, one level down (a single
+   * post, not the whole listing). */
+  async setBusinessContentReviewStatus(
+    adminUserId: string,
+    contentId: string,
+    status: BusinessContentStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ): Promise<BusinessContent> {
+    const content = await this.businessContentRepo.findOne({
+      where: { id: contentId },
+    });
+    if (!content) {
+      throw new NotFoundException(`Business content "${contentId}" not found`);
+    }
+    const previousStatus = content.status;
+    content.status = status;
+    content.rejectionReason =
+      status === BusinessContentStatus.APPROVED ? null : (reason ?? null);
+    content.reviewedByUserId = adminUserId;
+    content.reviewedAt = new Date();
+    const saved = await this.businessContentRepo.save(content);
+    await this.adminAuditService.log(
+      adminUserId,
+      "business_content.review_status_changed",
+      "business_content",
+      contentId,
+      { from: previousStatus, to: status, reason: reason ?? null },
+      requestInfo,
+    );
+    return this.businessContentRepo.findOneOrFail({ where: { id: saved.id } });
+  }
+
+  /** Every business-authored content item awaiting a review decision,
+   * across every business — the admin content-moderation list. */
+  findPendingBusinessContent(): Promise<BusinessContent[]> {
+    return this.businessContentRepo.find({
+      where: { status: BusinessContentStatus.SUBMITTED_FOR_REVIEW },
+      relations: ["business"],
+      order: { submittedAt: "DESC" },
+    });
+  }
+
   async setCreatorVerification(
     adminUserId: string,
     creatorId: string,
@@ -230,6 +279,7 @@ export class AdminService {
       recentReviews,
       possiblyClosedPlaces,
       flaggedContent,
+      pendingBusinessContent,
     ] = await Promise.all([
       // "Pending" now means "awaiting a review-lifecycle decision," not the
       // old "never been given a trust badge" (VerificationStatus stayed
@@ -251,8 +301,10 @@ export class AdminService {
       }),
       this.findPossiblyClosedPlaces(),
       this.findFlaggedContent(),
+      this.findPendingBusinessContent(),
     ]);
     return {
+      pendingBusinessContent,
       pendingBusinesses,
       recentReviews,
       possiblyClosedPlaces,
