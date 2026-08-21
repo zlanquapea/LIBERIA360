@@ -1344,6 +1344,41 @@ describe("Phase 3 (e2e)", () => {
         .send({ featured: true })
         .expect(200);
       expect(update.body.featured).toBe(true);
+
+      // Regression test: reassigning a place's county/category from the
+      // admin panel appeared to succeed but silently kept the OLD value
+      // (TypeORM prioritizes an eager-loaded relation object over the
+      // merged scalar FK column — see clearStaleRelation's doc comment).
+      // Assert against a fresh GET, not just the PATCH response, since the
+      // bug only shows up in what's actually persisted.
+      const bong = await dataSource.getRepository(County).save(
+        dataSource.getRepository(County).create({
+          name: "Bong",
+          slug: "bong",
+          rolloutStage: 2,
+        }),
+      );
+      const nature = await dataSource.getRepository(Category).save(
+        dataSource.getRepository(Category).create({
+          name: "Nature",
+          slug: "nature",
+          icon: "🌿",
+        }),
+      );
+      const reassigned = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/places/${placeId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ countyId: bong.id, categoryId: nature.id })
+        .expect(200);
+      expect(reassigned.body.county.id).toBe(bong.id);
+      expect(reassigned.body.category.id).toBe(nature.id);
+
+      const reloaded = await request(app.getHttpServer())
+        .get(`/api/v1/admin/places/${placeId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(reloaded.body.county.id).toBe(bong.id);
+      expect(reloaded.body.category.id).toBe(nature.id);
     });
 
     it("creates an activity under a place and updates it", async () => {
@@ -1382,6 +1417,58 @@ describe("Phase 3 (e2e)", () => {
         .expect((res) => {
           if (!res.body.owner) throw new Error("business was not claimed");
         });
+
+      // Regression test: an admin reassigning or clearing a business's
+      // owner (see UpdateBusinessAdminDto's doc comment) appeared to
+      // succeed but silently kept the OLD owner — same
+      // eager-relation-vs-scalar-FK hazard as the Place county/category
+      // regression above (`owner` is `eager: true` on Business too). A
+      // fresh place + shell + owner, not the business/guestToken above —
+      // guestToken's business claim needs to stay intact for the "edits
+      // an event" test below (POST /events requires a claimed business,
+      // creator profile, or admin), and a place can only have one linked
+      // business.
+      const secondPlace = await dataSource.getRepository(Place).save(
+        dataSource.getRepository(Place).create({
+          name: "Second Unclaimed Landmark",
+          slug: "second-unclaimed-landmark-p3",
+          description: "For the owner-reassignment regression test.",
+          type: PlaceType.ATTRACTION,
+          category: cultureCategory,
+          tags: [],
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.32,
+          longitude: -10.82,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      const secondShell = await request(app.getHttpServer())
+        .post("/api/v1/admin/businesses")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          placeId: secondPlace.id,
+          name: "Second Seeded Business",
+          type: "tour_operator",
+        })
+        .expect(201);
+      const otherUser = await registerUser(
+        "reassigned-owner@example.com",
+        "Reassigned Owner",
+      );
+      const reassigned = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/businesses/${secondShell.body.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ ownerUserId: otherUser.id })
+        .expect(200);
+      expect(reassigned.body.owner.id).toBe(otherUser.id);
+
+      const unclaimed = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/businesses/${secondShell.body.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ ownerUserId: null })
+        .expect(200);
+      expect(unclaimed.body.owner).toBeNull();
     });
 
     it("edits an event, rejecting an update that violates the location invariant", async () => {
@@ -1410,6 +1497,19 @@ describe("Phase 3 (e2e)", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ endDate: "2020-01-01T00:00:00Z" })
         .expect(400);
+
+      // Regression test: reassigning an event's place/county from the
+      // admin panel appeared to succeed but silently kept the OLD value —
+      // same eager-relation-vs-scalar-FK hazard as the Place/Business
+      // regressions above (`place`/`county` are both `eager: true` on
+      // Event too).
+      const reassigned = await request(app.getHttpServer())
+        .patch(`/api/v1/admin/events/${event.body.id}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ placeId: unclaimedPlace.id })
+        .expect(200);
+      expect(reassigned.body.place.id).toBe(unclaimedPlace.id);
+      expect(reassigned.body.placeId).toBe(unclaimedPlace.id);
     });
 
     it("updates a county's safety & practical-info panel, admin-only", async () => {
