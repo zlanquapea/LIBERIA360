@@ -58,6 +58,24 @@ export function removeCollaborator(token: string, itineraryId: string, userId: s
   });
 }
 
+// Owner or any collaborator can rename — shared planning metadata, not
+// an ownership-only action (same tier as editing a stop's notes).
+export function renameItinerary(token: string, itineraryId: string, title: string): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ title }),
+  });
+}
+
+// Owner-only, permanent — deletes the trip and everyone's access to it.
+export async function deleteItinerary(token: string, itineraryId: string): Promise<void> {
+  await apiRequest<void>(`/itineraries/${itineraryId}`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
+}
+
 export interface AddStopInput {
   placeId: string;
   day: number;

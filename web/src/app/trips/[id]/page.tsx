@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { getItinerary, removeItineraryStop } from '@/lib/itinerary-api';
+import { deleteItinerary, getItinerary, removeItineraryStop, renameItinerary } from '@/lib/itinerary-api';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
 import { ItineraryStops } from '@/components/ItineraryStops';
@@ -14,10 +15,13 @@ import type { ItineraryDetail } from '@/lib/types';
 
 export default function TripDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { user, token, ready } = useAuth();
   const [itinerary, setItinerary] = useState<ItineraryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -83,18 +87,67 @@ export default function TripDetailPage() {
   const isCollaborator = itinerary.collaborators.some((c) => c.id === user.id);
   const canEdit = isOwner || isCollaborator;
 
+  async function handleRename(newTitle: string) {
+    if (!token || !itinerary) return;
+    const trimmed = newTitle.trim();
+    if (!trimmed || trimmed === itinerary.title) return;
+    setActionError(null);
+    try {
+      await renameItinerary(token, itinerary.id, trimmed);
+      reload();
+    } catch (err) {
+      setActionError(err instanceof HttpError ? err.message : 'Could not rename this trip.');
+    }
+  }
+
+  async function handleDelete() {
+    if (!token || !itinerary) return;
+    const collaboratorCount = itinerary.collaborators.length;
+    const warning =
+      collaboratorCount > 0
+        ? ` This trip is shared with ${collaboratorCount} other ${collaboratorCount === 1 ? 'person' : 'people'} — deleting it removes their access too.`
+        : '';
+    if (!confirm(`Delete "${itinerary.title}"? This cannot be undone.${warning}`)) return;
+    setDeleting(true);
+    setActionError(null);
+    try {
+      await deleteItinerary(token, itinerary.id);
+      router.push('/trips');
+    } catch (err) {
+      setActionError(err instanceof HttpError ? err.message : 'Could not delete this trip.');
+      setDeleting(false);
+    }
+  }
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
       <div>
-        <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          ← My Trips
-        </Link>
-        <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">{itinerary.title}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
+            ← My Trips
+          </Link>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 disabled:opacity-60 dark:border-flag-600 dark:text-flag-300"
+            >
+              <TrashIcon aria-hidden className="h-3.5 w-3.5" />
+              {deleting ? 'Deleting…' : 'Delete trip'}
+            </button>
+          )}
+        </div>
+
+        <TripTitle title={itinerary.title} editable={canEdit} onRename={handleRename} />
+
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {itinerary.durationDays} day{itinerary.durationDays === 1 ? '' : 's'} · {formatBudgetBand(itinerary.budgetBand)}
           {itinerary.interests.length > 0 && ` · ${itinerary.interests.join(', ')}`}
           {!isOwner && isCollaborator && ' · Shared with you'}
         </p>
+
+        {actionError && <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">{actionError}</p>}
       </div>
 
       <TripPeoplePanel
@@ -121,5 +174,79 @@ export default function TripDetailPage() {
         <AddTripStop itineraryId={itinerary.id} durationDays={itinerary.durationDays} onAdded={reload} />
       )}
     </main>
+  );
+}
+
+// Click-to-edit trip title — owner or any collaborator (shared planning
+// metadata, same tier as editing a stop's notes). Generated trips default
+// to a generic title ("5-Day Liberia Trip"), so this is the only way to
+// turn it into something that actually means something to the people
+// planning it.
+function TripTitle({
+  title,
+  editable,
+  onRename,
+}: {
+  title: string;
+  editable: boolean;
+  onRename: (title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDraft(title);
+  }, [title]);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  function commit() {
+    setEditing(false);
+    onRename(draft);
+  }
+
+  if (!editable) {
+    return <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">{title}</h1>;
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={draft}
+        maxLength={200}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+          } else if (e.key === 'Escape') {
+            setDraft(title);
+            setEditing(false);
+          }
+        }}
+        className="mt-1 w-full rounded-lg border border-brand-500 bg-transparent px-2 py-0.5 text-xl font-bold text-slate-900 outline-none ring-1 ring-brand-500 dark:text-slate-50"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="group mt-1 flex items-center gap-1.5 text-left"
+      aria-label={`Rename trip (currently "${title}")`}
+    >
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{title}</h1>
+      <PencilIcon
+        aria-hidden
+        className="h-4 w-4 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-slate-600"
+      />
+    </button>
   );
 }

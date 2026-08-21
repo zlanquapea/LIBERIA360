@@ -204,6 +204,8 @@ Requires a VAPID keypair (`npx web-push generate-vapid-keys`); unconfigured, sub
 | `GET /itineraries` | List own itineraries | JWT |
 | `GET /itineraries/:id` | Itinerary detail, stops resolved to full places | Owner or collaborator |
 | `GET /itineraries/shared-with-me` | Itineraries owned by others the user was invited to | JWT |
+| `PATCH /itineraries/:id` | Rename the trip | Owner or collaborator |
+| `DELETE /itineraries/:id` | Delete the trip outright — collaborators and invitations cascade away with it | Owner |
 | `DELETE /itineraries/:id/collaborators/:userId` | Remove a confirmed collaborator, or leave | Owner or self |
 | `POST /itineraries/:id/stops` | Add a stop | Owner or collaborator |
 | `PATCH /itineraries/:id/stops/:placeId` | Edit stop notes | Owner or collaborator |

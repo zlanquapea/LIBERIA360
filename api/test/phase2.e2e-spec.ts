@@ -898,6 +898,103 @@ describe("Phase 2 (e2e)", () => {
     });
   });
 
+  describe("Trip rename and delete", () => {
+    let tripId: string;
+
+    beforeAll(async () => {
+      const trip = await request(app.getHttpServer())
+        .post("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          durationDays: 1,
+          interests: ["culture-heritage"],
+          budgetBand: "moderate",
+        })
+        .expect(201);
+      tripId = trip.body.id;
+    });
+
+    it("404s a stranger renaming or deleting", async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ title: "Hijacked" })
+        .expect(404);
+      await request(app.getHttpServer())
+        .delete(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(404);
+    });
+
+    it("lets the owner rename the trip", async () => {
+      const renamed = await request(app.getHttpServer())
+        .patch(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ title: "Mom's 60th birthday trip" })
+        .expect(200);
+      expect(renamed.body.title).toBe("Mom's 60th birthday trip");
+    });
+
+    it("lets a collaborator rename the trip too, but not delete it", async () => {
+      const invite = await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ invitees: [{ userId: userBId }] })
+        .expect(201);
+      const pending = invite.body.find(
+        (i: { email: string }) => i.email === "userb@example.com",
+      );
+      await request(app.getHttpServer())
+        .post(`/api/v1/invitations/${pending.id}/accept`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(201);
+
+      const renamed = await request(app.getHttpServer())
+        .patch(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ title: "Renamed by collaborator" })
+        .expect(200);
+      expect(renamed.body.title).toBe("Renamed by collaborator");
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(403);
+    });
+
+    it("deleting the trip cascades — collaborators and invitations lose access, and it vanishes from every list", async () => {
+      await request(app.getHttpServer())
+        .delete(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(404);
+      await request(app.getHttpServer())
+        .get(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(404);
+
+      const shared = await request(app.getHttpServer())
+        .get("/api/v1/itineraries/shared-with-me")
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(200);
+      expect(shared.body.some((t: { id: string }) => t.id === tripId)).toBe(
+        false,
+      );
+
+      const mine = await request(app.getHttpServer())
+        .get("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+      expect(mine.body.some((t: { id: string }) => t.id === tripId)).toBe(
+        false,
+      );
+    });
+  });
+
   describe("Push", () => {
     it("exposes the VAPID public key and requires auth to subscribe", async () => {
       await request(app.getHttpServer())

@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -14,6 +16,7 @@ import { GenerateTripDto } from "./dto/generate-trip.dto";
 import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
 import { CreateInvitationsDto } from "./dto/create-invitations.dto";
 import { SearchInvitableUsersDto } from "./dto/search-invitable-users.dto";
+import { RenameItineraryDto } from "./dto/rename-itinerary.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -54,6 +57,23 @@ export class ItinerariesController {
   @Get(":id")
   findOne(@CurrentUser() user: User, @Param("id") id: string) {
     return this.itinerariesService.findOne(user.id, id);
+  }
+
+  /** Owner or any collaborator can rename the trip. */
+  @Patch(":id")
+  renameTrip(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: RenameItineraryDto,
+  ) {
+    return this.itinerariesService.renameTrip(user.id, id, dto.title);
+  }
+
+  /** Owner-only, permanent — deletes the trip and everyone's access to it. */
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteTrip(@CurrentUser() user: User, @Param("id") id: string) {
+    await this.itinerariesService.deleteTrip(user.id, id);
   }
 
   /** Owner-only: "People you may want to invite" — platform users

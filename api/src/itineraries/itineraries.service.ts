@@ -268,6 +268,37 @@ export class ItinerariesService {
     return this.toResponse(itinerary, places, collaborators);
   }
 
+  /** Rename a trip — owner or any collaborator, same tier as editing a
+   * stop's notes: this is shared planning metadata, not an
+   * ownership-only action. Generated trips default to a generic title
+   * ("5-Day Liberia Trip", "Weekend Explorer Trip"); this is the only way
+   * to turn that into "Mom's 60th birthday trip" or whatever it actually
+   * is for the people planning it. */
+  async renameTrip(
+    userId: string,
+    itineraryId: string,
+    title: string,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    itinerary.title = title;
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
+  }
+
+  /** Owner-only, permanent. Collaborator rows and any open/resolved
+   * invitations cascade away with it at the DB level (both FK to
+   * itineraries with ON DELETE CASCADE — see ItineraryCollaborator and
+   * TripInvitation) so this never leaves orphaned rows; a collaborator
+   * who had view/edit access simply loses it, the same outcome as if the
+   * owner had removed them individually. There's no separate "leave" path
+   * for the owner the way collaborators get one — deleting the trip *is*
+   * the owner's way out, and only they can take it (matches every other
+   * owner-only action here: inviting, cancelling an invitation, ...). */
+  async deleteTrip(userId: string, itineraryId: string): Promise<void> {
+    await this.getOwned(userId, itineraryId);
+    await this.itineraryRepo.delete({ id: itineraryId });
+  }
+
   /** Owner can remove anyone; a collaborator can remove themself ("leave
    * this trip") — same self-service-cancel pattern BookingsService uses
    * for a guest cancelling their own booking. */
