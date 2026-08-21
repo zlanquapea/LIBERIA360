@@ -103,7 +103,9 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
   const gallery = business.images.map(resolveImageUrl);
   const location = `${business.linkedPlace.city}, ${business.linkedPlace.county.name}`;
   const hasContactMethod = Boolean(business.phone || business.whatsapp || business.email || business.website);
-  const hasPriceRange = business.priceRangeMin !== null || business.priceRangeMax !== null;
+  // Loose comparison — see formatCost's doc comment for why a field the
+  // backend omitted comes through as `undefined`, not `null`.
+  const hasPriceRange = business.priceRangeMin != null || business.priceRangeMax != null;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
@@ -205,7 +207,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
               {hasPriceRange && (
                 <p>
                   Price range: {formatCost(business.priceRangeMin)}
-                  {business.priceRangeMax !== null && ` – ${formatCost(business.priceRangeMax)}`}
+                  {business.priceRangeMax != null && ` – ${formatCost(business.priceRangeMax)}`}
                 </p>
               )}
             </div>

@@ -167,7 +167,11 @@ export function BusinessClaimSection({
       );
     }
 
-    const hasPriceRange = business.priceRangeMin !== null || business.priceRangeMax !== null;
+    // Loose comparison: a field the backend omitted from the JSON response
+    // (rather than sending an explicit null) comes through as `undefined`
+    // at runtime, not `null` — `!= null` treats both as "no value" (see
+    // formatCost's doc comment for the same reasoning).
+    const hasPriceRange = business.priceRangeMin != null || business.priceRangeMax != null;
 
     return (
       <div className="flex flex-col gap-2">
@@ -203,7 +207,7 @@ export function BusinessClaimSection({
           {hasPriceRange && (
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Price range: {formatCost(business.priceRangeMin)}
-              {business.priceRangeMax !== null && ` – ${formatCost(business.priceRangeMax)}`}
+              {business.priceRangeMax != null && ` – ${formatCost(business.priceRangeMax)}`}
             </p>
           )}
           {business.servicesOffered.length > 0 && (

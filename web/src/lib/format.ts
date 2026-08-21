@@ -119,8 +119,12 @@ export function estimateTravelTime(km: number | null): string | null {
   return `~${hours}h${rem > 0 ? ` ${rem}m` : ''} drive (estimated)`;
 }
 
-export function formatCost(amount: number | null): string {
-  if (amount === null) return 'Not listed';
+// `amount` is typed `number | null`, but a field the backend omitted from
+// a JSON response (rather than sending an explicit `null`) comes through
+// as `undefined` at runtime — treat that the same as "not listed" rather
+// than crashing on `undefined.toFixed`.
+export function formatCost(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return 'Not listed';
   if (amount === 0) return 'Free';
   return `$${amount.toFixed(2)}`;
 }

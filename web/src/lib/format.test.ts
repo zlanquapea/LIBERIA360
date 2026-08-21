@@ -98,6 +98,12 @@ describe('formatCost', () => {
   it('labels null as Not listed', () => {
     expect(formatCost(null)).toBe('Not listed');
   });
+
+  it('labels undefined as Not listed, same as null', () => {
+    // A field the backend omitted from a JSON response (rather than
+    // sending an explicit null) comes through as `undefined` at runtime.
+    expect(formatCost(undefined)).toBe('Not listed');
+  });
 });
 
 describe('formatCreatorCategory', () => {

@@ -96,9 +96,14 @@ export async function claimBusiness(
   });
   if (res.ok()) return res.json();
   if (res.status() === 409) {
-    // GET /businesses?placeId= returns a single object (or null), not a list.
+    // GET /businesses?placeId= returns a single object (or null), not a
+    // list — and an unapproved business (not yet reviewed, e.g. one a
+    // prior/concurrent test run just claimed) comes back as a 200 with an
+    // *empty* body rather than the text "null" (see web/src/lib/api.ts's
+    // apiFetch for the same case), which .json() can't parse.
     const existing = await request.get(`${API_URL}/businesses?placeId=${placeId}`);
-    const business = await existing.json();
+    const text = await existing.text();
+    const business = text ? JSON.parse(text) : null;
     if (business) return business;
   }
   throw new Error(`business claim failed (${res.status()}): ${await res.text()}`);
