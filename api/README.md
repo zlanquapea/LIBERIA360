@@ -176,7 +176,7 @@ Creating an event triggers a best-effort push notification to users whose home c
 |---|---|---|
 | `POST /uploads/image` | Upload an image | JWT, 30/min |
 
-Every upload is re-encoded (auto-oriented, quality-82 JPEG, capped at 2000px) — strips EXIF metadata and reduces file size. Stored via `LocalStorageProvider` (default) or `S3StorageProvider` (`STORAGE_DRIVER=s3`, any S3-compatible provider), selected at boot.
+Every upload is re-encoded into two renditions (auto-oriented, EXIF stripped): a full/hero JPEG (quality 78, capped at 1600px) and a small `-thumb` JPEG for card/grid thumbnails (quality 68, capped at 480px), sharing one UUID filename base (`<uuid>.jpg` / `<uuid>-thumb.jpg`) so the frontend can derive the thumbnail's URL from the returned full URL alone. Stored via `LocalStorageProvider` (default) or `S3StorageProvider` (`STORAGE_DRIVER=s3`, any S3-compatible provider), selected at boot.
 
 ### Push notifications
 

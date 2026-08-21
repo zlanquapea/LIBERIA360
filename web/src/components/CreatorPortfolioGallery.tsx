@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, PlayCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import type { CreatorPortfolioItem } from '@/lib/types';
-import { resolveImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { SafeImage } from './SafeImage';
 
 // The "visually appealing rather than a basic image list" gallery the spec
@@ -92,6 +92,7 @@ export function CreatorPortfolioGallery({ items }: { items: CreatorPortfolioItem
             >
               <SafeImage
                 src={resolveImageUrl(item.url)}
+                thumbSrc={resolveThumbUrl(item.url)}
                 alt={item.caption ?? ''}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 fallback={<div aria-hidden className="h-full w-full bg-slate-200 dark:bg-slate-700" />}

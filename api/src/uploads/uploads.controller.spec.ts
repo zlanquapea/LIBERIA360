@@ -42,25 +42,71 @@ describe("UploadsController", () => {
     expect(processUploadedImage).not.toHaveBeenCalled();
   });
 
-  it("processes the upload and saves it through the injected StorageProvider", async () => {
+  it("processes the upload and saves both renditions through the injected StorageProvider", async () => {
     processUploadedImage.mockResolvedValue({
-      buffer: Buffer.from("processed"),
-      contentType: "image/jpeg",
-      extension: "jpg",
+      full: {
+        buffer: Buffer.from("processed-full"),
+        contentType: "image/jpeg",
+        extension: "jpg",
+      },
+      thumb: {
+        buffer: Buffer.from("processed-thumb"),
+        contentType: "image/jpeg",
+        extension: "jpg",
+      },
     });
-    storage.save.mockResolvedValue({ url: "/uploads/some-uuid.jpg" });
+    storage.save.mockImplementation(({ filename }: { filename: string }) =>
+      Promise.resolve({ url: `/uploads/${filename}` }),
+    );
 
     const result = await controller.uploadImage(makeFile());
 
     expect(processUploadedImage).toHaveBeenCalledWith(Buffer.from("raw-bytes"));
+    expect(storage.save).toHaveBeenCalledTimes(2);
     expect(storage.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        buffer: Buffer.from("processed"),
+        buffer: Buffer.from("processed-full"),
         contentType: "image/jpeg",
         filename: expect.stringMatching(/^[0-9a-f-]{36}\.jpg$/),
       }),
     );
-    expect(result).toEqual({ url: "/uploads/some-uuid.jpg" });
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buffer: Buffer.from("processed-thumb"),
+        contentType: "image/jpeg",
+        filename: expect.stringMatching(/^[0-9a-f-]{36}-thumb\.jpg$/),
+      }),
+    );
+    // Both renditions share one UUID base, so the frontend can derive the
+    // thumbnail's URL from the returned full URL alone.
+    const fullFilename = storage.save.mock.calls[0][0].filename as string;
+    const thumbFilename = storage.save.mock.calls[1][0].filename as string;
+    expect(thumbFilename).toBe(fullFilename.replace(/\.jpg$/, "-thumb.jpg"));
+    expect(result).toEqual({ url: `/uploads/${fullFilename}` });
+  });
+
+  it("still returns the full-size URL when the thumbnail save fails (best-effort)", async () => {
+    processUploadedImage.mockResolvedValue({
+      full: {
+        buffer: Buffer.from("processed-full"),
+        contentType: "image/jpeg",
+        extension: "jpg",
+      },
+      thumb: {
+        buffer: Buffer.from("processed-thumb"),
+        contentType: "image/jpeg",
+        extension: "jpg",
+      },
+    });
+    storage.save.mockImplementation(({ filename }: { filename: string }) =>
+      filename.includes("-thumb")
+        ? Promise.reject(new Error("disk full"))
+        : Promise.resolve({ url: `/uploads/${filename}` }),
+    );
+
+    const result = await controller.uploadImage(makeFile());
+
+    expect(result.url).toMatch(/^\/uploads\/[0-9a-f-]{36}\.jpg$/);
   });
 
   it("turns a processing failure (corrupted/fake image) into a 400, not a 500", async () => {
