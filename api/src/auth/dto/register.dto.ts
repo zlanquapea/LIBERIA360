@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Length,
   MaxLength,
   MinLength,
 } from "class-validator";
@@ -41,4 +42,16 @@ export class RegisterDto {
   @ArrayMaxSize(10)
   @IsString({ each: true })
   interests?: string[];
+
+  // Carried through from an invite link (Section 3: "Invitation → Create
+  // Account → Confirm Account → Accept Invitation → Join Trip") so the
+  // new account gets linked to the pending trip invitation automatically
+  // — see ItinerariesService.linkInvitationToNewAccount. Optional and
+  // never validated against anything here: an unknown/stale/already-used
+  // token just silently fails to link (registration must never fail
+  // because of it), exactly like the token-hash lookup it feeds.
+  @IsOptional()
+  @IsString()
+  @Length(64, 64)
+  inviteToken?: string;
 }

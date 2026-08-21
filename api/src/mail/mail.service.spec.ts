@@ -73,6 +73,21 @@ describe("MailService", () => {
       expect(result.success).toBe(false);
       expect(result.error).toMatch(/not configured/i);
     });
+
+    it("sendTripInvitation returns false (logged, not delivered)", async () => {
+      const { service, sendMail } = await buildService(UNCONFIGURED_MAIL);
+      const delivered = await service.sendTripInvitation({
+        to: "friend@example.com",
+        inviterName: "Ada",
+        tripTitle: "Sapo Forest Trek",
+        durationDays: 3,
+        destinationSummary: "Sinoe County",
+        inviteUrl: "https://liberia360.example/invite/abc",
+        hasAccount: false,
+      });
+      expect(sendMail).not.toHaveBeenCalled();
+      expect(delivered).toBe(false);
+    });
   });
 
   describe("configured — successful delivery", () => {
@@ -129,6 +144,72 @@ describe("MailService", () => {
       expect(sendMail.mock.calls[0][0].to).toBe("admin@example.com");
       expect(result).toEqual({ success: true, error: null });
     });
+
+    it("sendTripInvitation delivers and reports true, with different copy for an account-holder vs not", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      const delivered = await service.sendTripInvitation({
+        to: "friend@example.com",
+        inviterName: "Ada",
+        tripTitle: "Sapo Forest Trek",
+        durationDays: 3,
+        destinationSummary: "Sinoe County",
+        inviteUrl: "https://liberia360.example/invite/abc",
+        hasAccount: true,
+      });
+      expect(delivered).toBe(true);
+      const call = sendMail.mock.calls[0][0];
+      expect(call.to).toBe("friend@example.com");
+      expect(call.subject).toContain("Ada invited you");
+      expect(call.html).toContain("https://liberia360.example/invite/abc");
+      expect(call.html).toContain("View invitation");
+      expect(call.html).not.toContain("Create account");
+    });
+
+    it("sendTripInvitation prompts account creation for someone without one", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      await service.sendTripInvitation({
+        to: "friend@example.com",
+        inviterName: "Ada",
+        tripTitle: "Sapo Forest Trek",
+        durationDays: 3,
+        destinationSummary: "Sinoe County",
+        inviteUrl: "https://liberia360.example/invite/abc",
+        hasAccount: false,
+      });
+      expect(sendMail.mock.calls[0][0].html).toContain(
+        "Create account & view invitation",
+      );
+    });
+
+    it("sendTripInvitation escapes HTML in a user-controlled trip title or name", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      await service.sendTripInvitation({
+        to: "friend@example.com",
+        inviterName: "<script>alert(1)</script>",
+        tripTitle: "Trip <b>2</b>",
+        durationDays: 1,
+        destinationSummary: "Montserrado",
+        inviteUrl: "https://liberia360.example/invite/abc",
+        hasAccount: true,
+      });
+      const html = sendMail.mock.calls[0][0].html;
+      expect(html).not.toContain("<script>");
+      expect(html).toContain("&lt;script&gt;");
+    });
+
+    it("sendInvitationAccepted notifies the organizer", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      await service.sendInvitationAccepted(
+        "organizer@example.com",
+        "Ada",
+        "Sapo Forest Trek",
+        "https://liberia360.example/trips/1",
+      );
+      const call = sendMail.mock.calls[0][0];
+      expect(call.to).toBe("organizer@example.com");
+      expect(call.subject).toContain("Ada joined your trip");
+      expect(call.html).toContain("https://liberia360.example/trips/1");
+    });
   });
 
   describe("configured — delivery fails", () => {
@@ -165,6 +246,21 @@ describe("MailService", () => {
       const { service } = await buildService(CONFIGURED_MAIL, sendMail);
       const result = await service.sendTest("admin@example.com");
       expect(result).toEqual({ success: false, error: "Connection timed out" });
+    });
+
+    it("sendTripInvitation returns false instead of throwing, so a failed invite email never fails the invite itself", async () => {
+      const sendMail = jest.fn().mockRejectedValue(new Error("boom"));
+      const { service } = await buildService(CONFIGURED_MAIL, sendMail);
+      const delivered = await service.sendTripInvitation({
+        to: "friend@example.com",
+        inviterName: "Ada",
+        tripTitle: "Sapo Forest Trek",
+        durationDays: 3,
+        destinationSummary: "Sinoe County",
+        inviteUrl: "https://liberia360.example/invite/abc",
+        hasAccount: true,
+      });
+      expect(delivered).toBe(false);
     });
   });
 });

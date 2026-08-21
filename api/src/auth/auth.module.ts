@@ -5,6 +5,7 @@ import { PassportModule } from "@nestjs/passport";
 import { UsersModule } from "../users/users.module";
 import { MailModule } from "../mail/mail.module";
 import { SecurityModule } from "../security/security.module";
+import { ItinerariesModule } from "../itineraries/itineraries.module";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./strategies/jwt.strategy";
@@ -15,6 +16,7 @@ import { AppConfig } from "../config/configuration";
     UsersModule,
     MailModule,
     SecurityModule,
+    ItinerariesModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

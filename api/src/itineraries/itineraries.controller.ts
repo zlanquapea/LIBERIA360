@@ -6,12 +6,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ItinerariesService } from "./itineraries.service";
 import { GenerateTripDto } from "./dto/generate-trip.dto";
 import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
-import { InviteCollaboratorDto } from "./dto/invite-collaborator.dto";
+import { CreateInvitationsDto } from "./dto/create-invitations.dto";
+import { SearchInvitableUsersDto } from "./dto/search-invitable-users.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -54,14 +56,54 @@ export class ItinerariesController {
     return this.itinerariesService.findOne(user.id, id);
   }
 
-  /** Owner-only: invite a collaborator by email. */
-  @Post(":id/collaborators")
-  inviteCollaborator(
+  /** Owner-only: "People you may want to invite" — platform users
+   * matching the search, minus anyone already on this trip. */
+  @Get(":id/invitations/search-people")
+  searchInvitablePeople(
     @CurrentUser() user: User,
     @Param("id") id: string,
-    @Body() dto: InviteCollaboratorDto,
+    @Query() query: SearchInvitableUsersDto,
   ) {
-    return this.itinerariesService.inviteCollaborator(user.id, id, dto.email);
+    return this.itinerariesService.searchInvitablePeople(user.id, id, query.q);
+  }
+
+  /** Owner-only: invite one or many people at once — each either an
+   * existing platform user (userId) or a bare email address. */
+  @Post(":id/invitations")
+  createInvitations(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreateInvitationsDto,
+  ) {
+    return this.itinerariesService.createInvitations(user.id, id, dto.invitees);
+  }
+
+  /** Owner-only: the People/Participants panel's invitation list, with
+   * each one's current status. */
+  @Get(":id/invitations")
+  listInvitations(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.listInvitations(user.id, id);
+  }
+
+  /** Owner-only: resend a still-pending invite (fresh token, fresh
+   * expiry). */
+  @Post(":id/invitations/:invitationId/resend")
+  resendInvitation(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Param("invitationId") invitationId: string,
+  ) {
+    return this.itinerariesService.resendInvitation(user.id, id, invitationId);
+  }
+
+  /** Owner-only: revoke an invitation outright. */
+  @Delete(":id/invitations/:invitationId")
+  cancelInvitation(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Param("invitationId") invitationId: string,
+  ) {
+    return this.itinerariesService.cancelInvitation(user.id, id, invitationId);
   }
 
   /** Owner removes anyone, or a collaborator removes themself ("leave this trip"). */

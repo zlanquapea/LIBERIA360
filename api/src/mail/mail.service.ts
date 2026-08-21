@@ -23,6 +23,21 @@ export interface MailDiagnostics {
   lastAttempt: MailAttempt | null;
 }
 
+/** Escapes user-controlled text (trip titles, person names) before it's
+ * interpolated into an email's HTML body — the pre-existing templates
+ * below only ever interpolate fixed copy plus a URL, but trip
+ * invitations put real user input (someone's display name, a
+ * self-chosen trip title) directly into the message, which needs this
+ * guard the older templates never needed. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * Transactional email (password reset, email verification). Same
  * progressive-enhancement shape as PushService: an unconfigured SMTP host
@@ -114,6 +129,69 @@ export class MailService {
     });
   }
 
+  /** Trip Collaboration & Invitations (Section 8) — sent to every
+   * invitee, whether or not they already have an account; the copy and
+   * CTA adjust slightly (`hasAccount`) but the link always goes to the
+   * same `/invite/:token` preview, which itself branches on whether an
+   * account is needed. Returns whether it actually delivered (see
+   * `attempt()`) so the caller can record it on the invitation row — the
+   * same real-outcome visibility as everything else MailService tracks,
+   * here surfaced per-invitation instead of just "last attempt overall". */
+  async sendTripInvitation(opts: {
+    to: string;
+    inviterName: string;
+    tripTitle: string;
+    durationDays: number;
+    destinationSummary: string;
+    inviteUrl: string;
+    hasAccount: boolean;
+  }): Promise<boolean> {
+    const dayLabel = opts.durationDays === 1 ? "day" : "days";
+    const tripLine = `${opts.tripTitle} (${opts.durationDays} ${dayLabel}, ${opts.destinationSummary})`;
+    const accountNote = opts.hasAccount
+      ? "Click below to view the trip and accept or decline."
+      : "You'll need a free LIBERIA360 account to view and join — creating one takes under a minute, and you'll land right back on this invitation.";
+
+    return this.attempt({
+      to: opts.to,
+      subject: `${opts.inviterName} invited you to a trip on LIBERIA360`,
+      text: `You've been invited to join a trip on LIBERIA360!\n\n${opts.inviterName} invited you to join "${tripLine}".\n\n${accountNote}\n\n${opts.inviteUrl}\n\nThis invitation expires in 14 days.`,
+      html: this.render({
+        heading: "You've been invited to a trip",
+        intro: `You've been invited to join a trip on LIBERIA360. <strong>${escapeHtml(opts.inviterName)}</strong> invited you to join <strong>${escapeHtml(opts.tripTitle)}</strong> — ${opts.durationDays} ${dayLabel}, ${escapeHtml(opts.destinationSummary)}. ${accountNote}`,
+        ctaLabel: opts.hasAccount
+          ? "View invitation"
+          : "Create account & view invitation",
+        ctaUrl: opts.inviteUrl,
+        note: "This invitation link expires in 14 days. If you weren't expecting this, you can safely ignore this email — nothing happens unless you accept it.",
+      }),
+    });
+  }
+
+  /** Fire-and-forget notice to the organizer once someone actually
+   * accepts (Section 8: "the organizer should receive a notification
+   * that the person has joined the trip") — same swallow-errors contract
+   * as sendEmailVerification/sendPasswordReset, since a failed notice
+   * here must never fail the accept request that triggered it. */
+  async sendInvitationAccepted(
+    to: string,
+    accepterName: string,
+    tripTitle: string,
+    tripUrl: string,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `${accepterName} joined your trip`,
+      text: `${accepterName} accepted your invitation and joined "${tripTitle}".\n\n${tripUrl}`,
+      html: this.render({
+        heading: "Good news — they're in!",
+        intro: `<strong>${escapeHtml(accepterName)}</strong> accepted your invitation and is now planning <strong>${escapeHtml(tripTitle)}</strong> with you.`,
+        ctaLabel: "View trip",
+        ctaUrl: tripUrl,
+      }),
+    });
+  }
+
   /** POST /admin/system/test-email — deliberately does NOT swallow the
    * error, unlike every send above: the whole point is letting a super
    * admin tell "SMTP isn't configured" apart from "SMTP is configured but
@@ -162,21 +240,30 @@ export class MailService {
   }
 
   private async send(message: MailMessage): Promise<void> {
+    await this.attempt(message);
+  }
+
+  /** Same fire-and-forget delivery as send() — never throws, a broken
+   * mail provider must never fail whatever flow triggered this — but
+   * tells the caller whether it actually went out. send() itself just
+   * discards that; callers that want to note the real outcome somewhere
+   * of their own (e.g. TripInvitation.emailDelivered) use this directly
+   * instead. */
+  private async attempt(message: MailMessage): Promise<boolean> {
     if (!this.configured || !this.transporter) {
-      // Fire-and-forget by design (see class doc) — never throw out of
-      // here and never block whatever flow triggered the email. Not
-      // recorded as a `lastAttempt`: unconfigured means nothing was ever
-      // really attempted, and `configured: false` alone already tells the
-      // System & Operations panel everything it needs to.
+      // Not recorded as a `lastAttempt`: unconfigured means nothing was
+      // ever really attempted, and `configured: false` alone already
+      // tells the System & Operations panel everything it needs to.
       this.logger.log(
         `[DEV] Email to ${message.to} — ${message.subject}\n${message.text}`,
       );
-      return;
+      return false;
     }
 
     try {
       await this.deliver(message);
       this.recordAttempt(message, true, null);
+      return true;
     } catch (error) {
       // A broken mail provider shouldn't fail registration or a password
       // reset request — the flow degrades to "the link doesn't arrive,"
@@ -186,6 +273,7 @@ export class MailService {
         `Failed to send email to ${message.to}: ${errorMessage}`,
       );
       this.recordAttempt(message, false, errorMessage);
+      return false;
     }
   }
 

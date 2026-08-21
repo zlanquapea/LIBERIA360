@@ -28,6 +28,7 @@ import { AppConfig } from "../config/configuration";
 import { MailService } from "../mail/mail.service";
 import { LoginActivityService } from "../security/login-activity.service";
 import { RequestInfo } from "../common/request-info";
+import { ItinerariesService } from "../itineraries/itineraries.service";
 
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1h
@@ -64,6 +65,7 @@ export class AuthService {
     private readonly configService: ConfigService<AppConfig, true>,
     private readonly mailService: MailService,
     private readonly loginActivityService: LoginActivityService,
+    private readonly itinerariesService: ItinerariesService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResult> {
@@ -94,6 +96,18 @@ export class AuthService {
     await this.mailService
       .sendEmailVerification(user.email, this.verifyEmailUrl(verificationToken))
       .catch(() => undefined);
+
+    // "Invitation → Create Account → Confirm Account → Accept Invitation
+    // → Join Trip" (Section 3): if this registration came from an invite
+    // link, connect the pending invitation to the new account right now
+    // so the person lands back on it already recognized — never lets a
+    // bad/stale token fail registration itself (see
+    // linkInvitationToNewAccount's doc comment).
+    if (dto.inviteToken) {
+      await this.itinerariesService
+        .linkInvitationToNewAccount(dto.inviteToken, user.id)
+        .catch(() => undefined);
+    }
 
     return this.buildAuthResult(user);
   }

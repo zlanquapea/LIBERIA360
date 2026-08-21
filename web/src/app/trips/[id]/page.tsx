@@ -8,7 +8,7 @@ import { getItinerary, removeItineraryStop } from '@/lib/itinerary-api';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
 import { ItineraryStops } from '@/components/ItineraryStops';
-import { TripCollaborators } from '@/components/TripCollaborators';
+import { TripPeoplePanel } from '@/components/TripPeoplePanel';
 import { AddTripStop } from '@/components/AddTripStop';
 import type { ItineraryDetail } from '@/lib/types';
 
@@ -97,7 +97,7 @@ export default function TripDetailPage() {
         </p>
       </div>
 
-      <TripCollaborators
+      <TripPeoplePanel
         itineraryId={itinerary.id}
         collaborators={itinerary.collaborators}
         isOwner={isOwner}
