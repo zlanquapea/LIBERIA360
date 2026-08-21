@@ -7,6 +7,7 @@ import {
   ArrowRightIcon,
   ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
+  MapIcon,
   MapPinIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
@@ -105,6 +106,7 @@ export default function AdminPage() {
 
   const needsAttentionTotal =
     (queue?.pendingBusinesses.length ?? 0) +
+    (queue?.pendingPlaces.length ?? 0) +
     (queue?.flaggedContent.length ?? 0) +
     (queue?.possiblyClosedPlaces.length ?? 0) +
     (securityOverview?.failedLoginsLast24h ?? 0);
@@ -273,6 +275,12 @@ export default function AdminPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <NeedsAttentionCard
+              label="Pending places"
+              count={queue.pendingPlaces.length}
+              href="/admin/content/moderation"
+              icon={MapIcon}
+            />
             <NeedsAttentionCard
               label="Pending business claims"
               count={queue.pendingBusinesses.length}

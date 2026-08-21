@@ -300,7 +300,7 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
 | `PATCH /admin/businesses/:id/review-status` | Approve/reject/request changes/suspend a business's publish status (`{status, reason?}`) |
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
-| `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places, flagged content |
+| `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
 | `GET /admin/places/:id` | Single place by id, any review status, with `owner`, `category`, `county`, `activities` — what the review panel loads |
 | `POST` / `PATCH /admin/places` | Create/update places |

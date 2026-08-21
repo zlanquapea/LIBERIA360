@@ -133,3 +133,94 @@ describe("AdminService.setPlaceReviewStatus", () => {
     });
   });
 });
+
+// A self-submitted place sits invisible to the public until an admin acts
+// on it (PlacesService.findAll's APPROVED-only gate) — so it must show up
+// *somewhere* an admin will actually look, or it's stuck forever. This
+// covers that it does.
+describe("AdminService.getModerationQueue", () => {
+  let service: AdminService;
+  let placeRepo: { find: jest.Mock };
+  let businessRepo: { find: jest.Mock };
+
+  const PENDING_PLACE = {
+    id: "place-2",
+    name: "Sapo National Park Trailhead",
+    reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+  };
+
+  // The three other queue sources (possibly-closed places, flagged
+  // content) drive their queries off QueryBuilder, not repo.find — stub
+  // a chainable builder that resolves to no rows so those branches
+  // short-circuit and never touch the other repo mocks.
+  function emptyQueryBuilder() {
+    const qb: Record<string, jest.Mock> = {};
+    for (const method of [
+      "select",
+      "addSelect",
+      "where",
+      "andWhere",
+      "groupBy",
+      "addGroupBy",
+      "having",
+      "orderBy",
+    ]) {
+      qb[method] = jest.fn().mockReturnValue(qb);
+    }
+    qb.getRawMany = jest.fn().mockResolvedValue([]);
+    return qb;
+  }
+
+  beforeEach(async () => {
+    placeRepo = { find: jest.fn().mockResolvedValue([PENDING_PLACE]) };
+    businessRepo = { find: jest.fn().mockResolvedValue([]) };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Business), useValue: businessRepo },
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        {
+          provide: getRepositoryToken(Review),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: getRepositoryToken(PlaceFreshnessReport),
+          useValue: { createQueryBuilder: jest.fn(() => emptyQueryBuilder()) },
+        },
+        { provide: getRepositoryToken(Event), useValue: {} },
+        {
+          provide: getRepositoryToken(ContentReport),
+          useValue: { createQueryBuilder: jest.fn(() => emptyQueryBuilder()) },
+        },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(Booking), useValue: {} },
+        {
+          provide: getRepositoryToken(BusinessContent),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
+        { provide: AdminAuditService, useValue: { log: jest.fn() } },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it("surfaces places awaiting a review decision, not just business claims", async () => {
+    const queue = await service.getModerationQueue();
+    expect(queue.pendingPlaces).toEqual([PENDING_PLACE]);
+  });
+
+  it("queries SUBMITTED_FOR_REVIEW/UNDER_REVIEW places with reviewer-facing relations, newest first", async () => {
+    await service.getModerationQueue();
+    expect(placeRepo.find).toHaveBeenCalledWith({
+      where: [
+        { reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW },
+        { reviewStatus: PlaceReviewStatus.UNDER_REVIEW },
+      ],
+      relations: ["category", "county", "owner"],
+      order: { submittedAt: "DESC" },
+    });
+  });
+});

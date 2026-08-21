@@ -1,12 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ViewfinderCircleIcon } from '@heroicons/react/24/outline';
 import { ApiError, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import type { Place } from '@/lib/types';
 
-const RADIUS_PRESETS = [5, 10, 25, 50] as const;
+const MAX_RADIUS_KM = 200; // QueryPlacesDto's radiusKm ceiling — "anywhere in Liberia"
+const RADIUS_PRESETS = [5, 10, 25, 50, MAX_RADIUS_KM] as const;
+
+function radiusLabel(km: number): string {
+  return km === MAX_RADIUS_KM ? 'Anywhere in Liberia' : `${km} km`;
+}
 
 type Coords = { lat: number; lng: number };
 
@@ -36,6 +42,19 @@ export default function NearMePage() {
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [placesError, setPlacesError] = useState<string | null>(null);
 
+  // Two real, independent reasons "nothing nearby" can happen and neither
+  // is a bug: the catalog is still thin in a tester's area (only a
+  // handful of places exist anywhere), or the tester's actual GPS
+  // location just isn't near Liberia at all (a remote tester testing
+  // from wherever they physically are — no radius trick fixes that).
+  // Rather than dead-ending on "try a wider radius" when the selected
+  // preset comes back empty, silently also check the widest possible
+  // radius so we can either show what's genuinely closest in the whole
+  // country, or — if that's empty too — say so plainly instead of
+  // suggesting a retry that can't help.
+  const [fallbackPlaces, setFallbackPlaces] = useState<Place[] | null>(null);
+  const [loadingFallback, setLoadingFallback] = useState(false);
+
   const requestLocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
       setLocationError('Geolocation is not supported by this browser.');
@@ -61,9 +80,26 @@ export default function NearMePage() {
     let cancelled = false;
     setLoadingPlaces(true);
     setPlacesError(null);
+    setFallbackPlaces(null);
     getPlaces({ lat: coords.lat, lng: coords.lng, radiusKm, limit: 30 })
       .then((result) => {
-        if (!cancelled) setPlaces(result.data);
+        if (cancelled) return;
+        setPlaces(result.data);
+        if (result.data.length === 0 && radiusKm !== MAX_RADIUS_KM) {
+          setLoadingFallback(true);
+          getPlaces({ lat: coords.lat, lng: coords.lng, radiusKm: MAX_RADIUS_KM, limit: 30 })
+            .then((fallbackResult) => {
+              if (!cancelled) setFallbackPlaces(fallbackResult.data);
+            })
+            .catch(() => {
+              // Fail open to the plain "try a wider radius" copy rather
+              // than getting stuck on a permanent loading state.
+              if (!cancelled) setFallbackPlaces([]);
+            })
+            .finally(() => {
+              if (!cancelled) setLoadingFallback(false);
+            });
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -76,6 +112,15 @@ export default function NearMePage() {
       cancelled = true;
     };
   }, [coords, radiusKm]);
+
+  const isMaxRadius = radiusKm === MAX_RADIUS_KM;
+  const checkingFallback = !loadingPlaces && places.length === 0 && !isMaxRadius && fallbackPlaces === null;
+  const showingFallback = !checkingFallback && places.length === 0 && !isMaxRadius && (fallbackPlaces?.length ?? 0) > 0;
+  const displayPlaces = showingFallback ? fallbackPlaces! : places;
+  // Reached once we've either searched the max radius directly, or
+  // silently confirmed it's empty via the fallback check above — at that
+  // point "try a wider radius" would be a lie, so the copy changes.
+  const confirmedCatalogEmpty = displayPlaces.length === 0 && !checkingFallback && (isMaxRadius || fallbackPlaces?.length === 0);
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
@@ -101,6 +146,9 @@ export default function NearMePage() {
               {locationError}
             </p>
           )}
+          <Link href="/explore" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
+            Or browse all places instead
+          </Link>
         </div>
       ) : (
         <>
@@ -118,7 +166,7 @@ export default function NearMePage() {
                     : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                 }`}
               >
-                {preset} km
+                {radiusLabel(preset)}
               </button>
             ))}
             <button
@@ -137,21 +185,37 @@ export default function NearMePage() {
             </p>
           )}
 
-          {loadingPlaces ? (
+          {loadingPlaces || checkingFallback ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
-          ) : places.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-              Nothing within {radiusKm} km yet — try a wider radius.
-            </p>
+          ) : displayPlaces.length > 0 ? (
+            <>
+              {showingFallback && (
+                <p className="rounded-lg bg-brand-700/5 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
+                  Nothing within {radiusKm} km — here&apos;s what&apos;s closest in Liberia.
+                </p>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {displayPlaces.map((place) => (
+                  <PlaceCard
+                    key={place.id}
+                    place={place}
+                    distanceOverride={place.distanceKm != null ? `${place.distanceKm} km away` : null}
+                  />
+                ))}
+              </div>
+            </>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {places.map((place) => (
-                <PlaceCard
-                  key={place.id}
-                  place={place}
-                  distanceOverride={place.distanceKm != null ? `${place.distanceKm} km away` : null}
-                />
-              ))}
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+              <p>
+                {confirmedCatalogEmpty
+                  ? isMaxRadius
+                    ? "We don't have any approved places in our catalog yet — check back soon."
+                    : `Nothing within ${radiusKm} km — and we don't have any approved places anywhere in Liberia yet. Check back soon.`
+                  : `Nothing within ${radiusKm} km yet — try a wider radius.`}
+              </p>
+              <Link href="/explore" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
+                Browse all places
+              </Link>
             </div>
           )}
         </>

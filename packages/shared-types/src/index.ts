@@ -809,6 +809,7 @@ export interface SetBusinessContentReviewStatusInput {
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];
+  pendingPlaces: Place[];
   recentReviews: Review[];
   possiblyClosedPlaces: PossiblyClosedPlace[];
   flaggedContent: FlaggedContent[];
