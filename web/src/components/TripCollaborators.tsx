@@ -65,7 +65,7 @@ export function TripCollaborators({
                   type="button"
                   onClick={() => remove(c.id)}
                   aria-label={`Remove ${c.name}`}
-                  className="text-slate-400 dark:text-slate-500 hover:text-flag-700"
+                  className="text-slate-400 dark:text-slate-400 hover:text-flag-700 dark:hover:text-flag-300"
                 >
                   ×
                 </button>
@@ -100,7 +100,7 @@ export function TripCollaborators({
           </button>
         </div>
       )}
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </section>
   );
 }

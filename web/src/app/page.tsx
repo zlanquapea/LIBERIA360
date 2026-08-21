@@ -52,7 +52,7 @@ export default async function Home() {
             />
             <button
               type="submit"
-              className="flex items-center px-4 text-brand-700 transition-colors hover:bg-brand-50"
+              className="flex items-center px-4 text-brand-700 dark:text-brand-300 transition-colors hover:bg-brand-50"
               aria-label="Search"
             >
               <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
@@ -154,7 +154,7 @@ export default async function Home() {
           </h2>
           <Link
             href="/search"
-            className="flex items-center gap-0.5 text-sm font-medium text-brand-700 hover:underline"
+            className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
           >
             See all
             <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
@@ -175,7 +175,7 @@ export default async function Home() {
             </h2>
             <Link
               href="/events"
-              className="flex items-center gap-0.5 text-sm font-medium text-brand-700 hover:underline"
+              className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
             >
               See all
               <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />

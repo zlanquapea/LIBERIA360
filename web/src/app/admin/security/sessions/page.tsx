@@ -68,7 +68,7 @@ function RevokeSessions() {
 
       <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <FingerPrintIcon aria-hidden className="h-5 w-5 text-brand-600" />
+          <FingerPrintIcon aria-hidden className="h-5 w-5 text-brand-600 dark:text-brand-300" />
           <h2 className="font-semibold text-slate-800 dark:text-slate-100">Force sign-out</h2>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -93,7 +93,7 @@ function RevokeSessions() {
             {searching ? 'Looking up…' : 'Find'}
           </button>
         </div>
-        {error && <p className="text-sm text-flag-700">{error}</p>}
+        {error && <p className="text-sm text-flag-700 dark:text-flag-300">{error}</p>}
         {found && (
           <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
             <div className="min-w-0">
@@ -101,7 +101,7 @@ function RevokeSessions() {
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">{found.email}</p>
             </div>
             {done ? (
-              <span className="shrink-0 text-xs font-medium text-emerald-600">Sessions revoked</span>
+              <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-300">Sessions revoked</span>
             ) : (
               <button
                 type="button"

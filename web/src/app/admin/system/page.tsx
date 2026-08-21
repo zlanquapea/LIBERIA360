@@ -80,12 +80,12 @@ function SystemStatusPanel() {
           {integrations.map(({ label, on, icon: Icon }) => (
             <li key={label} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
               <span className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                <Icon aria-hidden className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                <Icon aria-hidden className="h-4 w-4 text-slate-400 dark:text-slate-400" />
                 {label}
               </span>
               <span
                 className={`flex items-center gap-1 text-xs font-semibold ${
-                  on ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
+                  on ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-400'
                 }`}
               >
                 {on && <CheckCircleIcon aria-hidden className="h-3.5 w-3.5" />}
@@ -112,7 +112,7 @@ function StatusCard({
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-card dark:border-slate-800 dark:bg-slate-900">
-      <Icon aria-hidden className={`h-5 w-5 ${tone === 'ok' ? 'text-emerald-600' : 'text-brand-600'}`} />
+      <Icon aria-hidden className={`h-5 w-5 ${tone === 'ok' ? 'text-emerald-600 dark:text-emerald-300' : 'text-brand-600 dark:text-brand-300'}`} />
       <p className="mt-1 truncate text-lg font-bold text-slate-900 dark:text-slate-50">{value}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>

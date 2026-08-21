@@ -41,13 +41,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
         <p className="flex items-center gap-1.5">
-          <CalendarDaysIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600" />
+          <CalendarDaysIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
           {formatEventDateRange(event.startDate, event.endDate)}
         </p>
         <p className="flex items-center gap-1.5">
-          <MapPinIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600" />
+          <MapPinIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
           {event.place ? (
-            <Link href={`/places/${event.place.slug}`} className="text-brand-700 hover:underline">
+            <Link href={`/places/${event.place.slug}`} className="text-brand-700 dark:text-brand-300 hover:underline">
               {event.place.name}
             </Link>
           ) : (
@@ -68,7 +68,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       <div className="flex items-center justify-between gap-2">
         {event.createdBy ? (
-          <p className="text-xs text-slate-400 dark:text-slate-500">Posted by {event.createdBy.name}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-400">Posted by {event.createdBy.name}</p>
         ) : (
           <span />
         )}

@@ -68,7 +68,7 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
           <Link
             href={pageHref(page - 1)}
             aria-disabled={page <= 1}
-            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'}`}
+            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'}`}
           >
             ← Previous
           </Link>
@@ -79,7 +79,7 @@ export default async function BusinessesPage({ searchParams }: { searchParams: P
             href={pageHref(page + 1)}
             aria-disabled={page >= result.meta.totalPages}
             className={`text-sm font-medium ${
-              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'
+              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'
             }`}
           >
             Next →

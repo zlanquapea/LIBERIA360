@@ -9,7 +9,7 @@ const PlaceLocationPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+      <div className="flex h-64 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
         Loading map…
       </div>
     ),

@@ -245,7 +245,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         <button
           type="button"
           disabled
-          className="flex-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-500"
+          className="flex-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-400"
           title="Trip planning arrives in Phase 2"
         >
           Plan Trip (Phase 2)

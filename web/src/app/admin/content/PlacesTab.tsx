@@ -114,7 +114,7 @@ export function PlacesTab({
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatPlaceType(place.type)}</td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.category.name}</td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{place.county.name}</td>
-                  <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
+                  <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700 dark:text-brand-300">Edit →</td>
                 </tr>
               ))}
             </tbody>
@@ -275,7 +275,7 @@ function CreatePlaceForm({
             }}
             className={inputClass}
           />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
             Auto-filled from the name — the web address for this place. Edit it if you want something different.
           </span>
         </label>
@@ -350,7 +350,7 @@ function CreatePlaceForm({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -523,7 +523,7 @@ function PlaceEditForm({
         </label>
       </div>
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -625,7 +625,7 @@ function ActivitiesEditor({
         >
           {submitting ? 'Adding…' : '+ Add activity'}
         </button>
-        {error && <p className="col-span-3 text-xs text-flag-700">{error}</p>}
+        {error && <p className="col-span-3 text-xs text-flag-700 dark:text-flag-300">{error}</p>}
       </form>
     </div>
   );
@@ -666,7 +666,7 @@ function ActivityRow({
           {activity.price !== null && <span className="text-slate-500 dark:text-slate-400"> · ${activity.price}</span>}
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-brand-700 hover:underline">
+          <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline">
             Edit
           </button>
           {isSuperAdmin && <DeleteButton label="Delete" onDelete={() => deleteActivity(token, activity.id)} onDeleted={onChanged} />}
@@ -797,7 +797,7 @@ function BusinessEditor({
         )}
       </div>
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

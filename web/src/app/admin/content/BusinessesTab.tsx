@@ -26,8 +26,8 @@ const REVIEW_STATUS_BADGE: Record<BusinessReviewStatus, string> = {
   submitted_for_review: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
   under_review: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
   approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
-  rejected: 'bg-flag-500/10 text-flag-700',
-  suspended: 'bg-flag-500/10 text-flag-700',
+  rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+  suspended: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
 };
 
 // Content > Businesses — the "Business Management" area: every business
@@ -145,7 +145,7 @@ export function BusinessesTab({ token }: { token: string }) {
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="text-sm font-medium text-brand-700 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
           >
             ← Previous
           </button>
@@ -156,7 +156,7 @@ export function BusinessesTab({ token }: { token: string }) {
             type="button"
             disabled={page >= result.meta.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="text-sm font-medium text-brand-700 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
           >
             Next →
           </button>
@@ -230,7 +230,7 @@ function ReviewStatusControl({
         </button>
         <Link
           href="/admin/content/moderation"
-          className="text-xs text-slate-400 dark:text-slate-500 hover:text-flag-700 hover:underline"
+          className="text-xs text-slate-400 dark:text-slate-400 hover:text-flag-700 dark:hover:text-flag-300 hover:underline"
         >
           See reports
         </Link>
@@ -244,7 +244,7 @@ function ReviewStatusControl({
           className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       )}
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   if (!user) return null;
 
   if (reported) {
-    return <span className="text-xs text-slate-400 dark:text-slate-500">Reported — thanks for flagging this.</span>;
+    return <span className="text-xs text-slate-400 dark:text-slate-400">Reported — thanks for flagging this.</span>;
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -61,7 +61,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 underline-offset-2 hover:text-flag-700 hover:underline"
+        className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-400 underline-offset-2 hover:text-flag-700 dark:hover:text-flag-300 hover:underline"
       >
         <FlagIcon aria-hidden className="h-3 w-3" />
         Report
@@ -94,7 +94,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
         className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       />
       {error && (
-        <p role="alert" className="text-flag-700">
+        <p role="alert" className="text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

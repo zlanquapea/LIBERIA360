@@ -219,7 +219,7 @@ export default function MyCreatorProfilePage() {
             : 'Share your work and services with LIBERIA360 travelers.'}
         </p>
         {creator && (
-          <Link href={`/creators/${creator.username}`} className="mt-1 inline-block text-sm text-brand-700 hover:underline">
+          <Link href={`/creators/${creator.username}`} className="mt-1 inline-block text-sm text-brand-700 dark:text-brand-300 hover:underline">
             View public profile →
           </Link>
         )}
@@ -234,7 +234,7 @@ export default function MyCreatorProfilePage() {
           <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
             <div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${completionPercent(creator)}%` }} />
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-400 dark:text-slate-400">
             {creator.verificationStatus === 'verified'
               ? 'Your account is verified — the badge shows on your public profile.'
               : 'Fill in photos, contact info, specialties, and add portfolio work to reach 100%.'}
@@ -267,7 +267,7 @@ export default function MyCreatorProfilePage() {
             onChange={(e) => setUsername(e.target.value)}
             className={FIELD_CLASS}
           />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Lowercase letters, numbers, dots, and underscores only.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">Lowercase letters, numbers, dots, and underscores only.</span>
         </label>
 
         <label className={LABEL_CLASS}>
@@ -329,13 +329,13 @@ export default function MyCreatorProfilePage() {
         <label className={LABEL_CLASS}>
           Skills &amp; specialties
           <input type="text" placeholder="drone photography, weddings, wildlife" value={specialties} onChange={(e) => setSpecialties(e.target.value)} className={FIELD_CLASS} />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">Comma-separated.</span>
         </label>
 
         <label className={LABEL_CLASS}>
           Languages spoken
           <input type="text" placeholder="English, Kpelle, Bassa" value={languages} onChange={(e) => setLanguages(e.target.value)} className={FIELD_CLASS} />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">Comma-separated.</span>
         </label>
 
         <label className={LABEL_CLASS}>
@@ -353,13 +353,13 @@ export default function MyCreatorProfilePage() {
         <label className={LABEL_CLASS}>
           Certifications &amp; credentials
           <input type="text" placeholder="Certified Drone Pilot, First Aid" value={certifications} onChange={(e) => setCertifications(e.target.value)} className={FIELD_CLASS} />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">Comma-separated.</span>
         </label>
 
         <label className={LABEL_CLASS}>
           Areas served
           <input type="text" placeholder="Montserrado, Bomi" value={locationsCovered} onChange={(e) => setLocationsCovered(e.target.value)} className={FIELD_CLASS} />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">Comma-separated.</span>
         </label>
 
         <label className={LABEL_CLASS}>
@@ -377,15 +377,15 @@ export default function MyCreatorProfilePage() {
         <label className={LABEL_CLASS}>
           Featured content links
           <input type="text" placeholder="https://…, https://…" value={contentLinks} onChange={(e) => setContentLinks(e.target.value)} className={FIELD_CLASS} />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">Comma-separated links to your best work elsewhere.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">Comma-separated links to your best work elsewhere.</span>
         </label>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
             {error}
           </p>
         )}
-        {saved && !error && <p className="text-sm text-emerald-700">Saved!</p>}
+        {saved && !error && <p className="text-sm text-emerald-700 dark:text-emerald-300">Saved!</p>}
 
         <button
           type="submit"
@@ -431,7 +431,7 @@ export default function MyCreatorProfilePage() {
               {creator.reviewCount > 0
                 ? `${creator.reviewCount} review${creator.reviewCount === 1 ? '' : 's'} so far.`
                 : 'No reviews yet.'}{' '}
-              <Link href={`/creators/${creator.username}`} className="font-medium text-brand-700 hover:underline">
+              <Link href={`/creators/${creator.username}`} className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
                 View on your public profile
               </Link>
               .
@@ -442,7 +442,7 @@ export default function MyCreatorProfilePage() {
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Inquiries &amp; bookings</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Booking requests and messages from travelers show up under{' '}
-              <Link href="/account/bookings" className="font-medium text-brand-700 hover:underline">
+              <Link href="/account/bookings" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
                 My Bookings
               </Link>
               .

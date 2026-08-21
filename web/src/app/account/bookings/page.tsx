@@ -118,7 +118,7 @@ export default function BookingsPage() {
                       await cancelBooking(token, booking.id);
                       reloadMine();
                     }}
-                    className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700"
+                    className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
                   >
                     Cancel request
                   </button>
@@ -251,7 +251,7 @@ function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: (
         maxLength={1000}
         className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       />
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
       <div className="flex gap-2">
         <button
           type="button"
@@ -265,7 +265,7 @@ function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: (
           type="button"
           disabled={submitting !== null}
           onClick={() => respond('decline')}
-          className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300 disabled:opacity-60"
         >
           {submitting === 'decline' ? 'Declining…' : 'Decline'}
         </button>

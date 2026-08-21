@@ -49,7 +49,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
         </div>
         <Link
           href="/creators/me"
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
         >
           Become a creator
         </Link>
@@ -74,7 +74,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
           <Link
             href={pageHref(page - 1)}
             aria-disabled={page <= 1}
-            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'}`}
+            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'}`}
           >
             ← Previous
           </Link>
@@ -85,7 +85,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
             href={pageHref(page + 1)}
             aria-disabled={page >= result.meta.totalPages}
             className={`text-sm font-medium ${
-              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline'
+              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'
             }`}
           >
             Next →

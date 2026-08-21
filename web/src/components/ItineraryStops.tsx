@@ -62,7 +62,7 @@ export function ItineraryStops({
                         type="button"
                         onClick={() => onRemove(stop.place.id)}
                         aria-label={`Remove ${stop.place.name} from this trip`}
-                        className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:border-flag-500 hover:text-flag-700"
+                        className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
                       >
                         Remove
                       </button>

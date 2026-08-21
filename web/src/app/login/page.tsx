@@ -89,12 +89,12 @@ export default function LoginPage() {
           />
         </label>
 
-        <Link href="/forgot-password" className="self-end text-xs font-medium text-brand-700 hover:underline">
+        <Link href="/forgot-password" className="self-end text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Forgot your password?
         </Link>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
             {error}
           </p>
         )}
@@ -110,7 +110,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-slate-500 dark:text-slate-400">
         New here?{' '}
-        <Link href="/signup" className="font-medium text-brand-700 hover:underline">
+        <Link href="/signup" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Create an account
         </Link>
       </p>
@@ -171,7 +171,7 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
         </label>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
             {error}
           </p>
         )}
@@ -193,7 +193,7 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
             setCode('');
             setError(null);
           }}
-          className="font-medium text-brand-700 hover:underline"
+          className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
         >
           {useRecoveryCode ? 'Use your authenticator app instead' : 'Use a recovery code instead'}
         </button>

@@ -68,7 +68,7 @@ function RoleBadge({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-        isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700'
+        isSuperAdmin ? 'bg-gold-400/20 text-gold-600' : 'bg-brand-700/10 text-brand-700 dark:text-brand-300'
       }`}
     >
       {isSuperAdmin && <StarIcon aria-hidden className="h-3 w-3" />}
@@ -129,7 +129,7 @@ function SearchAndPromote({
           {searching ? 'Looking up…' : 'Find'}
         </button>
       </div>
-      {searchError && <p className="text-sm text-flag-700">{searchError}</p>}
+      {searchError && <p className="text-sm text-flag-700 dark:text-flag-300">{searchError}</p>}
       {found && (
         <TeamMemberRow
           token={token}
@@ -177,7 +177,7 @@ function TeamMemberRow({
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900 dark:text-slate-50">
-            {member.name} {isSelf && <span className="text-xs font-normal text-slate-400 dark:text-slate-500">(you)</span>}
+            {member.name} {isSelf && <span className="text-xs font-normal text-slate-400 dark:text-slate-400">(you)</span>}
           </p>
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">{member.email}</p>
         </div>
@@ -210,13 +210,13 @@ function TeamMemberRow({
             disabled={submitting !== null}
             onClick={() => apply(false, false, 'revoke')}
             title={isSelf && member.isSuperAdmin ? "You can't remove your own super admin access here" : undefined}
-            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300 disabled:opacity-60"
           >
             {submitting === 'revoke' ? 'Revoking…' : 'Revoke all access'}
           </button>
         )}
       </div>
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </li>
   );
 }

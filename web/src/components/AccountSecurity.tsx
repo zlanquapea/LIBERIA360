@@ -61,7 +61,7 @@ function ChangePasswordSection() {
       <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
         <div>
           <p className="text-sm font-medium text-slate-900 dark:text-slate-50">Password</p>
-          {success && <p className="text-xs text-emerald-700">Password updated.</p>}
+          {success && <p className="text-xs text-emerald-700 dark:text-emerald-300">Password updated.</p>}
         </div>
         <button
           type="button"
@@ -69,7 +69,7 @@ function ChangePasswordSection() {
             setOpen(true);
             setSuccess(false);
           }}
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
         >
           Change
         </button>
@@ -102,11 +102,11 @@ function ChangePasswordSection() {
           onChange={(e) => setNewPassword(e.target.value)}
           className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
-        <span className="text-xs font-normal text-slate-400 dark:text-slate-500">At least 8 characters.</span>
+        <span className="text-xs font-normal text-slate-400 dark:text-slate-400">At least 8 characters.</span>
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -164,13 +164,13 @@ function LogoutAllDevicesSection() {
           type="button"
           onClick={handleClick}
           disabled={submitting}
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 disabled:opacity-60"
         >
           {submitting ? 'Signing out…' : 'Sign out everywhere else'}
         </button>
       </div>
-      {done && <p className="text-xs text-emerald-700">Done — other devices are signed out.</p>}
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {done && <p className="text-xs text-emerald-700 dark:text-emerald-300">Done — other devices are signed out.</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }
@@ -207,7 +207,7 @@ function DeleteAccountSection() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="shrink-0 rounded-full border border-flag-500 px-3 py-1.5 text-xs font-medium text-flag-700 hover:bg-flag-500/10"
+          className="shrink-0 rounded-full border border-flag-500 px-3 py-1.5 text-xs font-medium text-flag-700 dark:text-flag-300 hover:bg-flag-500/10"
         >
           Delete…
         </button>
@@ -236,7 +236,7 @@ function DeleteAccountSection() {
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

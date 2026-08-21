@@ -68,7 +68,7 @@ export default function TripsPage() {
         <div className="flex shrink-0 gap-2">
           <Link
             href="/trips/weekend/new"
-            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
           >
             Weekend Explorer
           </Link>

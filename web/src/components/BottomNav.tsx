@@ -33,7 +33,7 @@ export function BottomNav() {
             key={tab.href}
             href={tab.href}
             className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
-              active ? 'font-semibold text-brand-700' : 'text-slate-500 dark:text-slate-400 hover:text-brand-600'
+              active ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300'
             }`}
             aria-current={active ? 'page' : undefined}
           >

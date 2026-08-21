@@ -29,7 +29,7 @@ export default function PrivacyPolicyPage() {
 
       <div>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Privacy Policy</h1>
-        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-400">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 
       <Section title="What we collect">

@@ -66,7 +66,7 @@ export default function AdminSponsoredPlacementsPage() {
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Featured creators</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Verifying and featuring individual creators moved to{' '}
-          <Link href="/admin/content?tab=creators" className="text-brand-700 hover:underline">
+          <Link href="/admin/content?tab=creators" className="text-brand-700 dark:text-brand-300 hover:underline">
             Content &gt; Creators
           </Link>
           , where you can search the full list instead of looking one up by username.
@@ -134,7 +134,7 @@ function CreatePlacementForm({
         </label>
       </div>
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -191,7 +191,7 @@ function PlacementRow({
           type="button"
           disabled={revoking}
           onClick={revoke}
-          className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 disabled:opacity-60"
+          className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300 disabled:opacity-60"
         >
           {revoking ? 'Revoking…' : 'Revoke'}
         </button>

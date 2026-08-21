@@ -22,7 +22,7 @@ const STATUS_TONE: Record<BusinessContent['status'], string> = {
   draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
   submitted_for_review: 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300',
   approved: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300',
-  rejected: 'bg-flag-500/10 text-flag-700',
+  rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
 };
 
 function StatusBadge({ status }: { status: BusinessContent['status'] }) {
@@ -113,14 +113,14 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
         >
           + New
         </button>
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -145,13 +145,13 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
                 <StatusBadge status={item.status} />
               </div>
               {item.status === 'rejected' && item.rejectionReason && (
-                <p className="text-xs italic text-flag-700">Reviewer note: {item.rejectionReason}</p>
+                <p className="text-xs italic text-flag-700 dark:text-flag-300">Reviewer note: {item.rejectionReason}</p>
               )}
               <div className="flex flex-wrap gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setEditingItem(item)}
-                  className="text-xs font-medium text-brand-700 hover:underline"
+                  className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
                 >
                   Edit
                 </button>
@@ -160,7 +160,7 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
                     type="button"
                     disabled={busyId === item.id}
                     onClick={() => handleSubmitForReview(item.id)}
-                    className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-60"
+                    className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:opacity-60"
                   >
                     Submit for review
                   </button>
@@ -169,7 +169,7 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
                   type="button"
                   disabled={busyId === item.id}
                   onClick={() => handleDelete(item.id)}
-                  className="text-xs font-medium text-flag-700 hover:underline disabled:opacity-60"
+                  className="text-xs font-medium text-flag-700 dark:text-flag-300 hover:underline disabled:opacity-60"
                 >
                   Delete
                 </button>
@@ -244,7 +244,7 @@ function BusinessContentForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{item ? 'Edit update' : 'New update'}</p>
       {item?.status === 'rejected' && (
-        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-xs text-flag-700">Saving resubmits this for admin review.</p>
+        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-xs text-flag-700 dark:text-flag-300">Saving resubmits this for admin review.</p>
       )}
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -322,7 +322,7 @@ function BusinessContentForm({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

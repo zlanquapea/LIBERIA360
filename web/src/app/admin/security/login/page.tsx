@@ -43,7 +43,7 @@ function LoginActivityList() {
             setOnlyFailed(e.target.checked);
             setPage(1);
           }}
-          className="rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-700"
+          className="rounded border-slate-300 text-brand-600 dark:text-brand-300 focus:ring-brand-500 dark:border-slate-700"
         />
         Failed attempts only
       </label>

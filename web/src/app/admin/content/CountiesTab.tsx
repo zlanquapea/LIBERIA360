@@ -71,7 +71,7 @@ export function CountiesTab({
                 </td>
                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{county.rolloutStage}</td>
                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{county.emergencyNumber ? 'Yes' : 'Not yet'}</td>
-                <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
+                <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700 dark:text-brand-300">Edit →</td>
               </tr>
             ))}
           </tbody>
@@ -166,7 +166,7 @@ function CountyEditForm({
         <textarea rows={3} value={localCustoms} onChange={(e) => setLocalCustoms(e.target.value)} className={inputClass} />
       </label>
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

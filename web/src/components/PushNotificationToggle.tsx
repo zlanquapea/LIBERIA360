@@ -26,14 +26,14 @@ export function PushNotificationToggle() {
           aria-pressed={subscribed}
           className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium disabled:opacity-60 ${
             subscribed
-              ? 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700'
+              ? 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300'
               : 'bg-brand-700 text-white hover:bg-brand-800'
           }`}
         >
           {busy ? '…' : subscribed ? 'Turn off' : 'Turn on'}
         </button>
       </div>
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }

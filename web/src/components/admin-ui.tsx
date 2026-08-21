@@ -171,7 +171,7 @@ export function LoadingState({ label = 'Loading…' }: { label?: string }) {
 
 export function ErrorState({ message }: { message: string }) {
   return (
-    <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+    <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
       {message}
     </p>
   );
@@ -194,10 +194,10 @@ export function PlaceholderPage({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-6 py-12 text-center dark:border-slate-700">
-      <WrenchScrewdriverIcon aria-hidden className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+      <WrenchScrewdriverIcon aria-hidden className="h-8 w-8 text-slate-400 dark:text-slate-400" />
       <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
       <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">{description}</p>
-      <p className="max-w-md text-xs text-slate-400 dark:text-slate-500">{reason}</p>
+      <p className="max-w-md text-xs text-slate-400 dark:text-slate-400">{reason}</p>
     </div>
   );
 }

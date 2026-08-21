@@ -42,7 +42,7 @@ export default function ContentPerformancePage() {
                       <Link
                         href={`/places/${place.slug}`}
                         target="_blank"
-                        className="font-medium text-slate-900 hover:text-brand-700 dark:text-slate-50"
+                        className="font-medium text-slate-900 hover:text-brand-700 dark:hover:text-brand-300 dark:text-slate-50"
                       >
                         {i + 1}. {place.name}
                       </Link>

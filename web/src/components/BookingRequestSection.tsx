@@ -64,7 +64,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         You manage this listing —{' '}
-        <Link href="/account/bookings" className="font-medium text-brand-700 hover:underline">
+        <Link href="/account/bookings" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           view incoming requests
         </Link>
         .
@@ -92,7 +92,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
   if (!user) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/login" className="font-medium text-brand-700 hover:underline">
+        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Log in
         </Link>{' '}
         to request a booking with {targetName}.
@@ -160,7 +160,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

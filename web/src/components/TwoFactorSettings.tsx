@@ -76,7 +76,7 @@ export function TwoFactorSettings() {
         <button
           type="button"
           onClick={() => setStep({ name: 'disable' })}
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
         >
           Turn off
         </button>
@@ -189,7 +189,7 @@ function SetupFlow({
             </label>
 
             {error && (
-              <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+              <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
                 {error}
               </p>
             )}
@@ -217,7 +217,7 @@ function SetupFlow({
       {!loading && !qrCodeDataUrl && (
         <>
           {error && (
-            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
               {error}
             </p>
           )}
@@ -303,7 +303,7 @@ function DisableFlow({
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

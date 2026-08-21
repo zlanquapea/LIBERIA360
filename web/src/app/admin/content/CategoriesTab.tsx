@@ -93,7 +93,7 @@ export function CategoriesTab({
                   </td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{category.slug}</td>
                   <td className="max-w-xs truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">{category.description ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700">Edit →</td>
+                  <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700 dark:text-brand-300">Edit →</td>
                 </tr>
               ))}
             </tbody>
@@ -169,7 +169,7 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
         <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -261,7 +261,7 @@ function CategoryEditForm({
         <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
       </label>
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

@@ -75,7 +75,7 @@ export default function AnalyticsOverviewPage() {
                   {overview.topPlaces.map((p, i) => (
                     <li key={p.placeId} className="flex items-center justify-between gap-2 text-sm">
                       <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">{i + 1}</span>
+                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">{i + 1}</span>
                         {p.name}
                       </span>
                       <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">{p.total}</span>
@@ -97,11 +97,11 @@ export default function AnalyticsOverviewPage() {
                       <Link
                         href={`/places/${p.slug}`}
                         target="_blank"
-                        className="text-sm text-slate-700 hover:text-brand-700 hover:underline dark:text-slate-200"
+                        className="text-sm text-slate-700 hover:text-brand-700 dark:hover:text-brand-300 hover:underline dark:text-slate-200"
                       >
                         {p.name}
                       </Link>
-                      <span className="ml-1.5 text-xs text-slate-400 dark:text-slate-500">— zero views</span>
+                      <span className="ml-1.5 text-xs text-slate-400 dark:text-slate-400">— zero views</span>
                     </li>
                   ))}
                 </ul>

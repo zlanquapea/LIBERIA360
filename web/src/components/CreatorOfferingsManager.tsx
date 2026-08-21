@@ -85,7 +85,7 @@ export function CreatorOfferingsManager({
                     type="button"
                     onClick={() => handleRemove(offering.id)}
                     aria-label="Remove offering"
-                    className="text-xs text-flag-700 hover:underline"
+                    className="text-xs text-flag-700 dark:text-flag-300 hover:underline"
                   >
                     Remove
                   </button>
@@ -99,7 +99,7 @@ export function CreatorOfferingsManager({
                 maxLength={2000}
                 className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-slate-600 dark:text-slate-300 outline-none hover:border-slate-300 focus:border-brand-500 dark:hover:border-slate-700"
               />
-              <p className="flex flex-wrap gap-x-3 px-1 text-xs text-slate-400 dark:text-slate-500">
+              <p className="flex flex-wrap gap-x-3 px-1 text-xs text-slate-400 dark:text-slate-400">
                 {offering.durationLabel && <span>{offering.durationLabel}</span>}
                 {offering.location && <span>{offering.location}</span>}
               </p>
@@ -159,7 +159,7 @@ export function CreatorOfferingsManager({
         </button>
       </form>
 
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }

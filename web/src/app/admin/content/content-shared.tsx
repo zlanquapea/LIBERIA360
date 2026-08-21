@@ -53,11 +53,11 @@ export function DeleteButton({
         type="button"
         disabled={deleting}
         onClick={handleClick}
-        className="rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+        className="rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white disabled:opacity-60"
       >
         {deleting ? 'Deleting…' : label}
       </button>
-      {error && <p className="max-w-xs text-right text-xs text-flag-700">{error}</p>}
+      {error && <p className="max-w-xs text-right text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }
@@ -100,7 +100,7 @@ export function BackToListLink({ label, onClick }: { label: string; onClick: () 
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1 self-start text-sm font-medium text-brand-700 hover:underline"
+      className="flex items-center gap-1 self-start text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
     >
       ← {label}
     </button>

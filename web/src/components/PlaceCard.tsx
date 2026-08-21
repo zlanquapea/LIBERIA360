@@ -44,7 +44,7 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700">
+          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
             {place.name}
           </h3>
           <VerificationBadge status={place.verificationStatus} />
@@ -60,7 +60,7 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
           </span>
           {distance && (
             <span className="flex items-center gap-0.5">
-              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-400" />
               {distance}
             </span>
           )}

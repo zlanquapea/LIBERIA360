@@ -27,7 +27,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-50">
           <span aria-hidden className="text-2xl">
-            {county.icon ?? <MapPinIcon className="h-6 w-6 text-brand-600" />}
+            {county.icon ?? <MapPinIcon className="h-6 w-6 text-brand-600 dark:text-brand-300" />}
           </span>
           {county.name} County
         </h1>
