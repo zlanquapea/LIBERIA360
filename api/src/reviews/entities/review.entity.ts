@@ -11,14 +11,25 @@ import {
 } from "typeorm";
 import { Place } from "../../places/entities/place.entity";
 import { User } from "../../users/entities/user.entity";
+import { Creator } from "../../creators/entities/creator.entity";
 
 /**
  * Review sub-scores per Tech Spec §3.2 / Business Plan: experience,
  * accessibility, cleanliness, value, safety, service — all optional,
  * `overallRating` is the only required score.
+ *
+ * A review targets either a Place or a Creator, never both — enforced at
+ * the service layer (ReviewsService.create), not a DB CHECK constraint.
+ * Both FK columns are nullable so a single `reviews` table serves both; the two
+ * @Unique constraints below still work as "one review per user per
+ * target" because Postgres treats NULL as distinct from NULL — a
+ * creator-targeted review (placeId NULL) never collides with another
+ * creator-targeted review on the (userId, placeId) constraint, and vice
+ * versa for (userId, creatorId).
  */
 @Entity("reviews")
 @Unique(["userId", "placeId"]) // one review per user per place — edit, don't spam
+@Unique(["userId", "creatorId"]) // same, for creator-targeted reviews
 export class Review {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -31,13 +42,21 @@ export class Review {
   @Column({ name: "user_id" })
   userId: string;
 
-  @ManyToOne(() => Place, { onDelete: "CASCADE" })
+  @ManyToOne(() => Place, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "place_id" })
-  place: Place;
+  place: Place | null;
 
   @Index()
-  @Column({ name: "place_id" })
-  placeId: string;
+  @Column({ name: "place_id", nullable: true })
+  placeId: string | null;
+
+  @ManyToOne(() => Creator, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "creator_id" })
+  creator: Creator | null;
+
+  @Index()
+  @Column({ name: "creator_id", nullable: true })
+  creatorId: string | null;
 
   @Column({ name: "overall_rating", type: "smallint" })
   overallRating: number;

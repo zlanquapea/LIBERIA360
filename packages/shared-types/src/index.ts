@@ -140,10 +140,12 @@ export interface PaginatedPlaces {
 }
 
 // api/src/reviews/entities/review.entity.ts (sanitized — user is the
-// public shape, never a passwordHash).
+// public shape, never a passwordHash). Targets either a Place or a
+// Creator — exactly one of placeId/creatorId is non-null, never both.
 export interface Review {
   id: string;
-  placeId: string;
+  placeId: string | null;
+  creatorId: string | null;
   user: AuthUser | null;
   overallRating: number;
   experienceRating: number | null;
@@ -317,6 +319,10 @@ export interface Creator {
   verifiedByUserId: string | null;
   verifiedAt: string | null;
   featured: boolean;
+  // Recomputed from the reviews table — see ReviewsService.
+  // recalculateCreatorRating, same convention as Place.rating/reviewCount.
+  rating: number;
+  reviewCount: number;
   createdAt: string;
   updatedAt: string;
   // Present on GET /creators/me and GET /creators/:username (which load

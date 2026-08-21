@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Review } from "./entities/review.entity";
 import { Place } from "../places/entities/place.entity";
+import { Creator } from "../creators/entities/creator.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BookingStatus } from "../bookings/entities/booking.enums";
 import { CreateReviewDto } from "./dto/create-review.dto";
@@ -24,29 +26,85 @@ export class ReviewsService {
     private readonly reviewRepo: Repository<Review>,
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    @InjectRepository(Creator)
+    private readonly creatorRepo: Repository<Creator>,
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
   ) {}
 
   async create(userId: string, dto: CreateReviewDto): Promise<Review> {
-    const place = await this.placeRepo.findOne({ where: { id: dto.placeId } });
+    if (!dto.placeId === !dto.creatorId) {
+      throw new BadRequestException(
+        "Provide exactly one of placeId or creatorId",
+      );
+    }
+
+    if (dto.placeId) {
+      return this.createForPlace(userId, dto.placeId, dto);
+    }
+    return this.createForCreator(userId, dto.creatorId!, dto);
+  }
+
+  private async createForPlace(
+    userId: string,
+    placeId: string,
+    dto: CreateReviewDto,
+  ): Promise<Review> {
+    const place = await this.placeRepo.findOne({ where: { id: placeId } });
     if (!place) {
-      throw new NotFoundException(`Place "${dto.placeId}" not found`);
+      throw new NotFoundException(`Place "${placeId}" not found`);
     }
 
     const existing = await this.reviewRepo.findOne({
-      where: { userId, placeId: dto.placeId },
+      where: { userId, placeId },
     });
     if (existing) {
       throw new ConflictException("You have already reviewed this place");
     }
 
-    const verifiedVisit = await this.hasConfirmedBooking(userId, dto.placeId);
+    const verifiedVisit = await this.hasConfirmedBooking(userId, placeId);
 
     const review = await this.reviewRepo.save(
-      this.reviewRepo.create({ ...dto, userId, verifiedVisit }),
+      this.reviewRepo.create({ ...dto, userId, placeId, verifiedVisit }),
     );
-    await this.recalculatePlaceRating(dto.placeId);
+    await this.recalculatePlaceRating(placeId);
+    return this.reviewRepo.findOneOrFail({
+      where: { id: review.id },
+      relations: ["user"],
+    });
+  }
+
+  private async createForCreator(
+    userId: string,
+    creatorId: string,
+    dto: CreateReviewDto,
+  ): Promise<Review> {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+
+    const existing = await this.reviewRepo.findOne({
+      where: { userId, creatorId },
+    });
+    if (existing) {
+      throw new ConflictException("You have already reviewed this creator");
+    }
+
+    // No booking data links a reviewer to a creator yet (see the [Later
+    // phase] task extending Booking to creators) — always false for now,
+    // same starting point Place reviews had before Bookings existed.
+    const review = await this.reviewRepo.save(
+      this.reviewRepo.create({
+        ...dto,
+        userId,
+        creatorId,
+        verifiedVisit: false,
+      }),
+    );
+    await this.recalculateCreatorRating(creatorId);
     return this.reviewRepo.findOneOrFail({
       where: { id: review.id },
       relations: ["user"],
@@ -70,22 +128,34 @@ export class ReviewsService {
   }
 
   /** Admin removal (moderation) — deletes the review and recomputes the
-   * place's rating/reviewCount so it never reflects a removed review. */
+   * target's rating/reviewCount so it never reflects a removed review. */
   async remove(id: string): Promise<void> {
     const review = await this.reviewRepo.findOne({ where: { id } });
     if (!review) {
       throw new NotFoundException(`Review "${id}" not found`);
     }
     await this.reviewRepo.delete({ id });
-    await this.recalculatePlaceRating(review.placeId);
+    if (review.placeId) {
+      await this.recalculatePlaceRating(review.placeId);
+    } else if (review.creatorId) {
+      await this.recalculateCreatorRating(review.creatorId);
+    }
   }
 
-  async findForPlace(query: QueryReviewsDto): Promise<PaginatedReviews> {
+  async find(query: QueryReviewsDto): Promise<PaginatedReviews> {
+    if (!query.placeId === !query.creatorId) {
+      throw new BadRequestException(
+        "Provide exactly one of placeId or creatorId",
+      );
+    }
+
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
 
     const [data, total] = await this.reviewRepo.findAndCount({
-      where: { placeId: query.placeId },
+      where: query.placeId
+        ? { placeId: query.placeId }
+        : { creatorId: query.creatorId },
       relations: ["user"],
       order: { createdAt: "DESC" },
       skip: (page - 1) * limit,
@@ -115,6 +185,22 @@ export class ReviewsService {
       .getRawOne();
 
     await this.placeRepo.update(placeId, {
+      rating: Math.round(parseFloat(avg) * 10) / 10,
+      reviewCount: parseInt(count, 10),
+    });
+  }
+
+  /** Same convention as recalculatePlaceRating, for Creator.rating/
+   * reviewCount. */
+  private async recalculateCreatorRating(creatorId: string): Promise<void> {
+    const { avg, count } = await this.reviewRepo
+      .createQueryBuilder("review")
+      .select("AVG(review.overallRating)", "avg")
+      .addSelect("COUNT(*)", "count")
+      .where("review.creatorId = :creatorId", { creatorId })
+      .getRawOne();
+
+    await this.creatorRepo.update(creatorId, {
       rating: Math.round(parseFloat(avg) * 10) / 10,
       reviewCount: parseInt(count, 10),
     });

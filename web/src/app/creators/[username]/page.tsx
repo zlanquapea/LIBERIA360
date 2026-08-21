@@ -7,12 +7,13 @@ import {
   StarIcon,
 } from '@heroicons/react/24/solid';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import { ApiError, getCreatorByUsername } from '@/lib/api';
+import { ApiError, getCreatorByUsername, getCreatorReviews } from '@/lib/api';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
-import { formatCreatorCategory, formatPriceFrom } from '@/lib/format';
+import { formatCreatorCategory, formatPriceFrom, formatRating } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { CreatorPortfolioGallery } from '@/components/CreatorPortfolioGallery';
+import { ReviewsSection } from '@/components/ReviewsSection';
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -49,10 +50,10 @@ function TagList({ items }: { items: string[] }) {
 // Public creator profile (Tech Spec §5 Creator / §3.2) — the "who is this
 // creator, what do they offer, what does their work look like" page a
 // tourist lands on from a CreatorCard anywhere in the app. Sections with no
-// real feature behind them yet (reviews, a structured tourism-experiences
-// link to specific places/events, a booking flow) are left out entirely
-// rather than shown empty or faked — see the [Later phase] tasks tracking
-// each of those as separate, deliberately deferred work.
+// real feature behind them yet (a structured tourism-experiences link to
+// specific places/events, a booking flow) are left out entirely rather
+// than shown empty or faked — see the [Later phase] tasks tracking each of
+// those as separate, deliberately deferred work.
 export default async function CreatorProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
 
@@ -63,6 +64,8 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   if (!creator) {
     notFound();
   }
+
+  const reviewsResult = await getCreatorReviews(creator.id, { limit: 20 });
 
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
   const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
@@ -132,6 +135,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
               @{creator.username}
               {creator.followerCount > 0 && ` · ${creator.followerCount.toLocaleString()} followers`}
             </p>
+            <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{formatRating(creator.rating, creator.reviewCount)}</p>
           </div>
 
           {creator.bio && <p className="text-slate-700 dark:text-slate-200">{creator.bio}</p>}
@@ -287,6 +291,11 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             </ul>
           </Section>
         )}
+
+        {/* Reviews */}
+        <Section title="Reviews">
+          <ReviewsSection creatorId={creator.id} initialReviews={reviewsResult.data} />
+        </Section>
       </div>
     </main>
   );

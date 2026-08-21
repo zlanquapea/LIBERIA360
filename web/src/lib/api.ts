@@ -129,6 +129,10 @@ export function getReviews(placeId: string, query: { page?: number; limit?: numb
   return apiFetch<PaginatedReviews>('/reviews', { placeId, ...query });
 }
 
+export function getCreatorReviews(creatorId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>('/reviews', { creatorId, ...query });
+}
+
 // GET /businesses?placeId=... returns `null` (200, not 404) when nothing's
 // been claimed yet — apiFetch's throw-on-!res.ok path never fires for it.
 // Only ever an APPROVED listing — see BusinessesService.findByPlace's doc

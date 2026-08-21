@@ -10,9 +10,17 @@ import {
   Min,
 } from "class-validator";
 
+// Exactly one of placeId/creatorId — enforced in ReviewsService.create,
+// not here (class-validator's XOR-style decorators are awkward for two
+// independently-optional UUIDs; a plain service-level check reads clearer).
 export class CreateReviewDto {
+  @IsOptional()
   @IsUUID()
-  placeId: string;
+  placeId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  creatorId?: string;
 
   @IsInt()
   @Min(1)

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { CheckBadgeIcon, MapPinIcon, StarIcon } from '@heroicons/react/24/solid';
 import type { Creator } from '@/lib/types';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
-import { formatCreatorCategory } from '@/lib/format';
+import { formatCreatorCategory, formatRating } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
 import { SafeImage } from './SafeImage';
 
@@ -12,10 +12,10 @@ import { SafeImage } from './SafeImage';
 // creator card reads as part of the same marketplace, not a bolted-on
 // social-profile widget.
 //
-// No star rating here (yet) — Creator reviews are a later phase (see
-// CreatorsService's doc comment); a fabricated "0.0 (0)" would be worse
-// than omitting it. Follower count is real, self-reported data that's
-// already there, so that's the trust signal shown instead.
+// Star rating shows only once the creator has at least one real review
+// (same "no fabricated 0.0 (0)" posture as PlaceCard) — until then,
+// follower count (real, self-reported data that's already there) is the
+// trust signal shown instead.
 export function CreatorCard({ creator }: { creator: Creator }) {
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
   const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
@@ -81,6 +81,12 @@ export function CreatorCard({ creator }: { creator: Creator }) {
         {creator.bio && <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{creator.bio}</p>}
         {creator.specialties.length > 0 && (
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">{creator.specialties.join(' · ')}</p>
+        )}
+        {creator.reviewCount > 0 && (
+          <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
+            {formatRating(creator.rating, creator.reviewCount)}
+          </p>
         )}
         <div className="mt-auto flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
           <span>@{creator.username}</span>
