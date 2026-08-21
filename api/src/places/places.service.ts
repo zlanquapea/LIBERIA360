@@ -1,14 +1,41 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Place } from "./entities/place.entity";
+import { PlaceReviewStatus } from "./entities/place.enums";
 import { QueryPlacesDto } from "./dto/query-places.dto";
+import { CreatePlaceSubmissionDto } from "./dto/create-place-submission.dto";
+import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
 
 export type PlaceWithDistance = Place & { distanceKm: number | null };
+
+/** Slugifies `name`, deduping against any existing row by appending -2,
+ * -3, ... — unlike the admin's CreatePlaceDto (where an admin types the
+ * slug by hand), a self-submitted place has no one to ask for one; see
+ * buildBusinessSlug for the identical pattern. */
+export async function buildPlaceSlug(
+  placeRepo: Repository<Place>,
+  name: string,
+): Promise<string> {
+  const base =
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "place";
+  let slug = base;
+  let suffix = 2;
+  while (await placeRepo.exists({ where: { slug } })) {
+    slug = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return slug;
+}
 
 export interface PaginatedPlaces {
   data: PlaceWithDistance[];
@@ -79,7 +106,16 @@ export class PlacesService {
     const qb = this.placeRepo
       .createQueryBuilder("place")
       .leftJoinAndSelect("place.category", "category")
-      .leftJoinAndSelect("place.county", "county");
+      .leftJoinAndSelect("place.county", "county")
+      // Public catalog browsing (this method's only two callers: the
+      // public PlacesController and CountiesController's per-county
+      // listing) never surfaces a place still pending review — see
+      // PlaceReviewStatus's doc comment. The admin moderation queue uses
+      // its own separate query (AdminContentService.findPlaces), which
+      // deliberately does NOT apply this filter.
+      .where("place.reviewStatus = :reviewStatus", {
+        reviewStatus: PlaceReviewStatus.APPROVED,
+      });
 
     const effectiveCounty = countySlug ?? query.county;
     if (effectiveCounty) {
@@ -192,15 +228,107 @@ export class PlacesService {
     };
   }
 
-  /** GET /places/:slug — full destination profile, required fields per Tech Spec §4.2. */
+  /** GET /places/:slug — full destination profile, required fields per Tech Spec §4.2.
+   * APPROVED-only, same reasoning as findAll — a place a submitter can
+   * already reach by slug (e.g. a stale bookmark, or a guess) still isn't
+   * public until an admin's approved it. The submitter's own pending/
+   * rejected place is still reachable — via findMine, not this method. */
   async findBySlug(slug: string): Promise<Place> {
     const place = await this.placeRepo.findOne({
-      where: { slug },
+      where: { slug, reviewStatus: PlaceReviewStatus.APPROVED },
       relations: ["category", "county", "activities"],
     });
     if (!place) {
       throw new NotFoundException(`Place "${slug}" not found`);
     }
     return place;
+  }
+
+  /** Self-service submission (POST /places) — a business owner listing a
+   * destination that isn't in the catalog yet. Starts in
+   * SUBMITTED_FOR_REVIEW, not live until an admin approves it — see
+   * PlaceReviewStatus's doc comment. */
+  async submitPlace(
+    userId: string,
+    dto: CreatePlaceSubmissionDto,
+  ): Promise<Place> {
+    const place = this.placeRepo.create({
+      name: dto.name,
+      slug: await buildPlaceSlug(this.placeRepo, dto.name),
+      description: dto.description,
+      type: dto.type,
+      categoryId: dto.categoryId,
+      countyId: dto.countyId,
+      city: dto.city,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      tags: dto.tags ?? [],
+      recommendedVisitLength: dto.recommendedVisitLength ?? null,
+      estimatedCostEntry: dto.estimatedCostEntry ?? null,
+      estimatedCostGuide: dto.estimatedCostGuide ?? null,
+      estimatedCostTransport: dto.estimatedCostTransport ?? null,
+      images: dto.images ?? [],
+      videos: dto.videos ?? [],
+      openingHours: dto.openingHours ?? null,
+      contactPhone: dto.contactPhone ?? null,
+      whatsapp: dto.whatsapp ?? null,
+      website: dto.website ?? null,
+      instagram: dto.instagram ?? null,
+      facebook: dto.facebook ?? null,
+      ownerUserId: userId,
+      reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      submittedAt: new Date(),
+    });
+    const saved = await this.placeRepo.save(place);
+    return this.placeRepo.findOneOrFail({
+      where: { id: saved.id },
+      relations: ["category", "county"],
+    });
+  }
+
+  /** Lets a submitter edit their own place — mirrors
+   * BusinessesService.updateMine, including the same auto-resubmit-on-edit
+   * behavior for a REJECTED place (an owner acting on reviewer feedback
+   * shouldn't also have to find a separate "resubmit" button; SUSPENDED
+   * deliberately does not auto-resubmit, same reasoning as businesses).
+   * Deliberately excludes `categoryId`/`countyId`/`slug`/`ownerUserId` —
+   * what this place fundamentally *is* and where it lives isn't something
+   * a submitter should be able to change themselves after the fact
+   * (that stays admin-only, via UpdatePlaceDto). */
+  async updateMine(
+    userId: string,
+    placeId: string,
+    dto: UpdateMyPlaceDto,
+  ): Promise<Place> {
+    const place = await this.placeRepo.findOne({ where: { id: placeId } });
+    if (!place) {
+      throw new NotFoundException(`Place "${placeId}" not found`);
+    }
+    if (place.ownerUserId !== userId) {
+      throw new ForbiddenException("You don't manage this place");
+    }
+
+    Object.assign(place, dto);
+    if (place.reviewStatus === PlaceReviewStatus.REJECTED) {
+      place.reviewStatus = PlaceReviewStatus.SUBMITTED_FOR_REVIEW;
+      place.submittedAt = new Date();
+      place.rejectionReason = null;
+    }
+    await this.placeRepo.save(place);
+    return this.placeRepo.findOneOrFail({
+      where: { id: placeId },
+      relations: ["category", "county"],
+    });
+  }
+
+  /** GET /places/mine — a submitter's own places regardless of review
+   * status, so they can track a pending submission or fix a rejected one
+   * (findBySlug/findAll won't surface either — approved-only). */
+  findMine(userId: string): Promise<Place[]> {
+    return this.placeRepo.find({
+      where: { ownerUserId: userId },
+      relations: ["category", "county"],
+      order: { createdAt: "DESC" },
+    });
   }
 }

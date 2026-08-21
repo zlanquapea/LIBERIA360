@@ -4,6 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { QueryFailedError } from "typeorm";
 import { AdminContentService } from "./admin-content.service";
 import { Place } from "../places/entities/place.entity";
+import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { Activity } from "../activities/entities/activity.entity";
@@ -20,12 +21,25 @@ function fkViolation(): QueryFailedError {
   return err;
 }
 
+function fakePlaceQueryBuilder(result: [Place[], number]) {
+  const qb = {
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn().mockResolvedValue(result),
+  };
+  return qb;
+}
+
 describe("AdminContentService", () => {
   let service: AdminContentService;
   let placeRepo: {
     exists: jest.Mock;
     findOne: jest.Mock;
     delete: jest.Mock;
+    createQueryBuilder: jest.Mock;
   };
   let categoryRepo: {
     exists: jest.Mock;
@@ -60,6 +74,7 @@ describe("AdminContentService", () => {
         slug: "ceecee-beach",
       }),
       delete: jest.fn(),
+      createQueryBuilder: jest.fn(),
     };
     categoryRepo = {
       exists: jest.fn().mockResolvedValue(false),
@@ -379,6 +394,74 @@ describe("AdminContentService", () => {
         { name: "Test Event" },
         undefined,
       );
+    });
+  });
+
+  describe("findPlaces", () => {
+    it("joins category, county, and owner, and paginates", async () => {
+      const qb = fakePlaceQueryBuilder([[{ id: "place-1" } as Place], 1]);
+      placeRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findPlaces({ page: 1, limit: 20 });
+
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith(
+        "place.category",
+        "category",
+      );
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith(
+        "place.county",
+        "county",
+      );
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith("place.owner", "owner");
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+    });
+
+    it("does NOT filter by review status when none is given — every status is visible to admins", async () => {
+      const qb = fakePlaceQueryBuilder([[], 0]);
+      placeRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findPlaces({});
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        expect.stringContaining("reviewStatus"),
+        expect.anything(),
+      );
+    });
+
+    it("filters by reviewStatus when given", async () => {
+      const qb = fakePlaceQueryBuilder([[], 0]);
+      placeRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findPlaces({
+        reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "place.reviewStatus = :reviewStatus",
+        { reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW },
+      );
+    });
+  });
+
+  describe("findPlaceById", () => {
+    it("404s an unknown place", async () => {
+      placeRepo.findOne.mockResolvedValue(null);
+      await expect(service.findPlaceById("nonexistent")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("loads the place with category, county, activities, and owner relations", async () => {
+      await service.findPlaceById("place-1");
+      expect(placeRepo.findOne).toHaveBeenCalledWith({
+        where: { id: "place-1" },
+        relations: ["category", "county", "activities", "owner"],
+      });
     });
   });
 

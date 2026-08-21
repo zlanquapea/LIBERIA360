@@ -13,6 +13,7 @@ import { getRequestInfo } from "../common/request-info";
 import { SetVerificationDto } from "./dto/set-verification.dto";
 import { SetCreatorVerificationDto } from "./dto/set-creator-verification.dto";
 import { SetBusinessReviewStatusDto } from "./dto/set-business-review-status.dto";
+import { SetPlaceReviewStatusDto } from "./dto/set-place-review-status.dto";
 import { SetBusinessContentReviewStatusDto } from "../business-content/dto/set-business-content-review-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
@@ -20,6 +21,7 @@ import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
+import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Review } from "../reviews/entities/review.entity";
@@ -27,6 +29,13 @@ import { Event } from "../events/entities/event.entity";
 import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { FlaggedContent } from "./admin.service";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
+
+function sanitizePlace(place: Place) {
+  return {
+    ...place,
+    owner: place.owner ? toPublicUser(place.owner) : null,
+  };
+}
 
 function sanitizeBusiness(business: Business) {
   return {
@@ -85,6 +94,24 @@ export class AdminController {
       id,
       dto.status,
       getRequestInfo(req),
+    );
+  }
+
+  @Patch("places/:id/review-status")
+  async setPlaceReviewStatus(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetPlaceReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return sanitizePlace(
+      await this.adminService.setPlaceReviewStatus(
+        admin.id,
+        id,
+        dto.status,
+        dto.reason,
+        getRequestInfo(req),
+      ),
     );
   }
 

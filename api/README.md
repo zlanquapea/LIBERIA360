@@ -107,11 +107,16 @@ Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any
 |---|---|---|
 | `GET /places` | List/search places — `category`, `county`, `tag`, `type`, `q` (full-text search), `sort`, `page`, `limit`, `lat`/`lng`/`radiusKm` (all three or none) | — |
 | `GET /places/:slug` | Place detail | — |
+| `POST /places` | Self-service place submission — same field set as the admin's `POST /admin/places`, minus `slug`/`featured` (server-generated / editorial-only). Starts `submitted_for_review`, hidden from every route above until an admin approves it | JWT |
+| `GET /places/mine` | The current user's own submitted places, regardless of review status | JWT |
+| `PATCH /places/:id` | Edit a place the current user submitted. Editing a `rejected` place automatically resubmits it (`submitted_for_review`, clearing the rejection reason) — a `suspended` place does not auto-resubmit | JWT, owner |
 | `GET /counties` | List counties | — |
 | `GET /counties/:id/places` | Places scoped to a county | — |
 | `GET /categories` | List categories | — |
 
 `q` runs Postgres full-text search (`websearch_to_tsquery`, weighted `name`/`description`, GIN-indexed) rather than substring matching — supports stemming, multi-word queries, and search-engine syntax (quoted phrases, `or`, leading `-` to exclude). A `q` search with no explicit `sort` ranks by relevance; `sort` otherwise defaults to `featured`.
+
+`GET /places`/`GET /places/:slug` only ever return an `approved` place — the same `reviewStatus` gate as `Business` (see the Businesses section below), reusing its exact enum shape (`draft`/`submitted_for_review`/`under_review`/`approved`/`rejected`/`suspended`). Every place created directly through the admin catalog (`POST /admin/places`, and every pre-existing row) defaults to `approved` — only self-service submissions start out unlisted.
 
 ### Reviews
 
@@ -270,9 +275,13 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | Method & path | Description |
 |---|---|
 | `PATCH /admin/places/:id/verification` | Set place verification status |
+| `PATCH /admin/places/:id/review-status` | Approve/reject/request changes (`under_review`)/suspend a place's publish status (`{status, reason?}`) — distinct from verification above: this is "is it visible at all," not "how much do we vouch for it" |
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
+| `PATCH /admin/businesses/:id/review-status` | Approve/reject/request changes/suspend a business's publish status (`{status, reason?}`) |
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
 | `GET /admin/moderation-queue` | Pending businesses, recent reviews, possibly-closed places, flagged content |
+| `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
+| `GET /admin/places/:id` | Single place by id, any review status, with `owner`, `category`, `county`, `activities` — what the review panel loads |
 | `POST` / `PATCH /admin/places` | Create/update places |
 | `DELETE /admin/places/:id` | Delete a place — blocked (409) if it still has a linked business or events | Super Admin |
 | `POST` / `PATCH /admin/categories` | Create/update catalog categories (previously seed-data-only) |

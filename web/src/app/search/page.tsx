@@ -78,6 +78,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </div>
       )}
 
+      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
+        Don&apos;t see your destination?{' '}
+        <Link href="/places/submit" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+          Add it to LIBERIA360
+        </Link>
+      </p>
+
       {result.meta.totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <Link

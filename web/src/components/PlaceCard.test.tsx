@@ -40,6 +40,12 @@ const BASE_PLACE: Place = {
   reviewCount: 3,
   verificationStatus: 'verified',
   featured: false,
+  reviewStatus: 'approved',
+  ownerUserId: null,
+  rejectionReason: null,
+  submittedAt: null,
+  reviewedAt: null,
+  reviewedByUserId: null,
 };
 
 describe('PlaceCard', () => {
