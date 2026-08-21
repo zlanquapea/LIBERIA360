@@ -88,7 +88,7 @@ export function CreatorsTab({ token }: { token: string }) {
                   <p className="flex items-center gap-1 truncate font-medium text-slate-900 dark:text-slate-50">
                     {creator.name}
                     {creator.verificationStatus === 'verified' && (
-                      <CheckBadgeIcon aria-label="Verified" className="h-4 w-4 shrink-0 text-brand-600" />
+                      <CheckBadgeIcon aria-label="Verified" className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
                     )}
                   </p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">
@@ -130,7 +130,7 @@ export function CreatorsTab({ token }: { token: string }) {
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="text-sm font-medium text-brand-700 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
           >
             ← Previous
           </button>
@@ -141,7 +141,7 @@ export function CreatorsTab({ token }: { token: string }) {
             type="button"
             disabled={page >= result.meta.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="text-sm font-medium text-brand-700 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:pointer-events-none disabled:text-slate-300 dark:disabled:text-slate-700"
           >
             Next →
           </button>

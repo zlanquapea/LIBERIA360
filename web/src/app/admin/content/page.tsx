@@ -61,7 +61,7 @@ export default function AdminContentPage() {
             type="button"
             onClick={() => setTab(t.id)}
             className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t.id ? 'border-brand-700 text-brand-700' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              tab === t.id ? 'border-brand-700 text-brand-700 dark:text-brand-300' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
             {t.label}

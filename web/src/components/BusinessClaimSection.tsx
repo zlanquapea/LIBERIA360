@@ -43,11 +43,11 @@ function ReviewStatusBanner({ business }: { business: Business }) {
       message: 'An admin is reviewing this listing.',
     },
     rejected: {
-      tone: 'border-flag-300 bg-flag-500/10 text-flag-700 dark:border-flag-800',
+      tone: 'border-flag-300 bg-flag-500/10 text-flag-700 dark:text-flag-300 dark:border-flag-800',
       message: 'This listing was rejected. Editing it below resubmits it for review.',
     },
     suspended: {
-      tone: 'border-flag-300 bg-flag-500/10 text-flag-700 dark:border-flag-800',
+      tone: 'border-flag-300 bg-flag-500/10 text-flag-700 dark:text-flag-300 dark:border-flag-800',
       message: 'This listing has been suspended and is not publicly visible.',
     },
   };
@@ -200,7 +200,7 @@ export function BusinessClaimSection({
           {business.description && <p className="text-sm text-slate-600 dark:text-slate-300">{business.description}</p>}
           {business.openingHours && (
             <p className="flex items-start gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-              <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+              <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-400" />
               {business.openingHours}
             </p>
           )}
@@ -256,7 +256,7 @@ export function BusinessClaimSection({
             )}
           </div>
           {business.reviewStatus === 'approved' && (
-            <Link href={`/businesses/${business.slug}`} className="self-start text-xs font-medium text-brand-700 hover:underline">
+            <Link href={`/businesses/${business.slug}`} className="self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline">
               View full listing
             </Link>
           )}
@@ -264,7 +264,7 @@ export function BusinessClaimSection({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="self-start text-xs font-medium text-brand-700 hover:underline"
+              className="self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
             >
               Manage this listing (contact info, photos &amp; more)
             </button>
@@ -280,7 +280,7 @@ export function BusinessClaimSection({
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         Own this business?{' '}
-        <Link href="/login" className="font-medium text-brand-700 hover:underline">
+        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Log in
         </Link>{' '}
         to claim this listing.
@@ -295,7 +295,7 @@ export function BusinessClaimSection({
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+          className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
         >
           Claim this listing
         </button>
@@ -439,7 +439,7 @@ export function BusinessClaimSection({
       </p>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}
@@ -527,7 +527,7 @@ function BusinessEditForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Manage listing</p>
       {business.reviewStatus === 'rejected' && (
-        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-xs text-flag-700">
+        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-xs text-flag-700 dark:text-flag-300">
           Saving resubmits this listing for admin review.
         </p>
       )}
@@ -662,7 +662,7 @@ function BusinessEditForm({
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

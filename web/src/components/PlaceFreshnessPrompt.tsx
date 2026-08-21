@@ -44,12 +44,12 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm">
       {existing === undefined ? (
-        <span className="text-slate-400 dark:text-slate-500">Checking…</span>
+        <span className="text-slate-400 dark:text-slate-400">Checking…</span>
       ) : existing ? (
         <>
           <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
             {existing.response === 'still_here' && (
-              <CheckCircleIcon aria-hidden className="h-4 w-4 shrink-0 text-emerald-600" />
+              <CheckCircleIcon aria-hidden className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
             )}
             {existing.response === 'still_here'
               ? 'You confirmed this place is still here.'
@@ -58,7 +58,7 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
           <button
             type="button"
             onClick={() => setExisting(null)}
-            className="font-medium text-brand-700 hover:underline"
+            className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
           >
             Change
           </button>
@@ -84,7 +84,7 @@ export function PlaceFreshnessPrompt({ placeId }: { placeId: string }) {
           </button>
         </>
       )}
-      {error && <span className="text-flag-700">{error}</span>}
+      {error && <span className="text-flag-700 dark:text-flag-300">{error}</span>}
     </div>
   );
 }

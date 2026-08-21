@@ -66,10 +66,10 @@ export function CreatorCard({ creator }: { creator: Creator }) {
 
       <div className="flex flex-1 flex-col gap-1.5 p-3 pt-7">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="flex items-center gap-1 truncate font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700">
+          <h3 className="flex items-center gap-1 truncate font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
             {creator.name}
             {creator.verificationStatus === 'verified' && (
-              <CheckBadgeIcon aria-label="Verified creator" className="h-4 w-4 shrink-0 text-brand-600" />
+              <CheckBadgeIcon aria-label="Verified creator" className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
             )}
           </h3>
         </div>

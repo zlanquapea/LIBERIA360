@@ -135,7 +135,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 </>
               )}
             </p>
-            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-400">
               @{creator.username}
               {creator.followerCount > 0 && ` · ${creator.followerCount.toLocaleString()} followers`}
             </p>
@@ -196,7 +196,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                     href={`${prefix}${handle.replace(/^@/, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-brand-700 hover:underline"
+                    className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
                   >
                     {label}
                   </a>
@@ -259,7 +259,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-slate-900 dark:text-slate-50">{offering.title}</h3>
                     {offering.priceFrom !== null && (
-                      <span className="shrink-0 text-sm font-medium text-brand-700">{formatPriceFrom(offering.priceFrom)}</span>
+                      <span className="shrink-0 text-sm font-medium text-brand-700 dark:text-brand-300">{formatPriceFrom(offering.priceFrom)}</span>
                     )}
                   </div>
                   {offering.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{offering.description}</p>}
@@ -292,7 +292,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             <ul className="flex flex-col gap-1.5">
               {creator.contentLinks.map((link) => (
                 <li key={link}>
-                  <a href={link} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-brand-700 hover:underline">
+                  <a href={link} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-brand-700 dark:text-brand-300 hover:underline">
                     {link}
                   </a>
                 </li>

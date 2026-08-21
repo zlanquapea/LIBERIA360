@@ -87,7 +87,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
   if (!user) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/login" className="font-medium text-brand-700 hover:underline">
+        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Log in
         </Link>{' '}
         to post an event.
@@ -106,7 +106,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
           Posting events is limited to businesses and creators, so listings stay tied to a real, accountable account.
         </p>
         <p>
-          <Link href="/creators/me" className="font-medium text-brand-700 hover:underline">
+          <Link href="/creators/me" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
             Set up a creator profile
           </Link>{' '}
           or claim a business from its destination page to unlock this.
@@ -220,7 +220,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

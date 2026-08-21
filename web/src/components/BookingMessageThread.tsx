@@ -65,7 +65,7 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-xs font-medium text-brand-700 hover:underline"
+        className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
       >
         {open ? 'Hide messages' : messages.length > 0 ? `Messages (${messages.length})` : 'Messages'}
       </button>
@@ -99,7 +99,7 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
             </ul>
           )}
 
-          {error && <p className="text-xs text-flag-700">{error}</p>}
+          {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
 
           <div className="flex gap-2">
             <input

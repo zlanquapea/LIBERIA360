@@ -24,7 +24,7 @@ export function StatCard({
     <div
       className={`rounded-xl border p-3 shadow-card ${tone === 'warning' ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 dark:border-slate-800'}`}
     >
-      <Icon aria-hidden className={`h-5 w-5 ${tone === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600'}`} />
+      <Icon aria-hidden className={`h-5 w-5 ${tone === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600 dark:text-brand-300'}`} />
       <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
@@ -41,9 +41,9 @@ export function LoginActivityRow({ entry }: { entry: LoginActivity }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-50">
           {entry.success ? (
-            <CheckCircleIcon aria-hidden className="h-4 w-4 text-emerald-600" />
+            <CheckCircleIcon aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
           ) : (
-            <XCircleIcon aria-hidden className="h-4 w-4 text-flag-600" />
+            <XCircleIcon aria-hidden className="h-4 w-4 text-flag-600 dark:text-flag-300" />
           )}
           {entry.emailAttempted}
           {entry.user?.isSuperAdmin && (
@@ -57,7 +57,7 @@ export function LoginActivityRow({ entry }: { entry: LoginActivity }) {
             </span>
           )}
         </p>
-        <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(entry.createdAt).toLocaleString()}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-400">{new Date(entry.createdAt).toLocaleString()}</span>
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400">
         {entry.success
@@ -66,7 +66,7 @@ export function LoginActivityRow({ entry }: { entry: LoginActivity }) {
             ? 'Wrong 2FA code'
             : 'Wrong password / unknown email'}
       </p>
-      <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-400">
         <ComputerDesktopIcon aria-hidden className="h-3.5 w-3.5" />
         {parseUserAgent(entry.userAgent)}
         {entry.ipAddress && <> · {entry.ipAddress}</>}

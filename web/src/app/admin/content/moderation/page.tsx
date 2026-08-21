@@ -210,7 +210,7 @@ function VerifyBusinessControl({ businessId, onDone }: { businessId: string; onD
       >
         {submitting ? 'Applying…' : 'Apply'}
       </button>
-      {error && <span className="text-xs text-flag-700">{error}</span>}
+      {error && <span className="text-xs text-flag-700 dark:text-flag-300">{error}</span>}
     </div>
   );
 }
@@ -274,7 +274,7 @@ function ContentReviewStatusControl({ content, onDone }: { content: BusinessCont
           className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       )}
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }
@@ -325,13 +325,13 @@ function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDon
         {flagged.event && (
           <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.event.name}</p>
         )}
-        {error && <p className="mt-1 text-xs text-flag-700">{error}</p>}
+        {error && <p className="mt-1 text-xs text-flag-700 dark:text-flag-300">{error}</p>}
       </div>
       <button
         type="button"
         disabled={removing}
         onClick={remove}
-        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white disabled:opacity-60"
       >
         {removing ? 'Removing…' : 'Remove'}
       </button>

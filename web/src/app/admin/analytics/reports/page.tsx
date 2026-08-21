@@ -130,7 +130,7 @@ function ExportButton({ onExport, disabled }: { onExport: () => void; disabled?:
       type="button"
       onClick={onExport}
       disabled={disabled}
-      className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
+      className="flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
     >
       <ArrowDownTrayIcon aria-hidden className="h-3.5 w-3.5" />
       Export CSV

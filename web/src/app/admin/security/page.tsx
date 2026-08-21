@@ -101,7 +101,7 @@ function SectionLink({ href, label, description }: { href: string; label: string
       </div>
       <ArrowRightIcon
         aria-hidden
-        className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700"
+        className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300"
       />
     </Link>
   );

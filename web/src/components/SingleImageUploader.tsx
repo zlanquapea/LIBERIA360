@@ -52,7 +52,7 @@ export function SingleImageUploader({
             fallback={
               <div
                 aria-hidden
-                className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+                className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-400 dark:bg-slate-800 dark:text-slate-400"
               >
                 Image unavailable
               </div>
@@ -69,7 +69,7 @@ export function SingleImageUploader({
         </div>
       ) : (
         <label
-          className={`inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs font-medium text-slate-500 dark:text-slate-400 hover:border-brand-500 hover:text-brand-700 ${className}`}
+          className={`inline-flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs font-medium text-slate-500 dark:text-slate-400 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 ${className}`}
         >
           {uploading ? 'Uploading…' : '+ Upload'}
           <input
@@ -81,7 +81,7 @@ export function SingleImageUploader({
           />
         </label>
       )}
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }

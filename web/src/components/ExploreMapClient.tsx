@@ -73,7 +73,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
                 <p className="text-xs text-slate-500 dark:text-slate-400">{place.category.name}</p>
                 <Link
                   href={`/places/${place.slug}`}
-                  className="flex items-center gap-0.5 text-sm font-medium text-brand-700 hover:underline"
+                  className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
                 >
                   View details
                   <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />

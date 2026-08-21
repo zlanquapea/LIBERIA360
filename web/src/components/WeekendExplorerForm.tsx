@@ -104,7 +104,7 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
   if (!user) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/login" className="font-medium text-brand-700 hover:underline">
+        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Log in
         </Link>{' '}
         to use Weekend Explorer.
@@ -126,7 +126,7 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
           {locating ? 'Finding you…' : 'Use my location'}
         </button>
         {locationError && (
-          <p role="alert" className="max-w-sm text-sm text-flag-700">
+          <p role="alert" className="max-w-sm text-sm text-flag-700 dark:text-flag-300">
             {locationError}
           </p>
         )}
@@ -210,7 +210,7 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
       </fieldset>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

@@ -103,28 +103,28 @@ export default function AccountPage() {
 
       <Link
         href="/trips"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
       >
         My Trips
       </Link>
 
       <Link
         href="/account/bookings"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
       >
         My Bookings
       </Link>
 
       <Link
         href="/account/analytics"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
       >
         Business Analytics
       </Link>
 
       <Link
         href="/creators/me"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
       >
         Manage creator profile
       </Link>
@@ -142,7 +142,7 @@ export default function AccountPage() {
       <button
         type="button"
         onClick={handleLogout}
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
       >
         Log out
       </button>
@@ -219,11 +219,11 @@ function ProfileEditor({ user }: { user: AuthUser }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="self-start text-sm font-medium text-brand-700 hover:underline"
+          className="self-start text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
         >
           Edit traveler type &amp; interests
         </button>
-        {success && <p className="text-xs text-emerald-700">Saved.</p>}
+        {success && <p className="text-xs text-emerald-700 dark:text-emerald-300">Saved.</p>}
       </div>
     );
   }
@@ -247,7 +247,7 @@ function ProfileEditor({ user }: { user: AuthUser }) {
         </div>
       )}
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
         </p>
       )}

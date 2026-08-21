@@ -76,7 +76,7 @@ function VerifyEmailStatus() {
       <p className="text-sm text-slate-500 dark:text-slate-400">
         {error ?? 'This link is invalid or has expired.'} You can request a new one from your account page.
       </p>
-      <Link href="/account" className="mx-auto text-sm font-medium text-brand-700 hover:underline">
+      <Link href="/account" className="mx-auto text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
         Go to my account
       </Link>
     </main>

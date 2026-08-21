@@ -44,7 +44,7 @@ export function BusinessCard({ business }: { business: Business }) {
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700">
+          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
             {business.name}
           </h3>
           <VerificationBadge status={business.verificationStatus} />
@@ -55,7 +55,7 @@ export function BusinessCard({ business }: { business: Business }) {
         {business.description && (
           <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{business.description}</p>
         )}
-        <div className="mt-auto flex items-center gap-1 pt-1 text-xs font-medium text-brand-700">
+        <div className="mt-auto flex items-center gap-1 pt-1 text-xs font-medium text-brand-700 dark:text-brand-300">
           <MapPinIcon aria-hidden className="h-3.5 w-3.5" />
           View listing
         </div>

@@ -242,7 +242,7 @@ export default function AdminPage() {
                       <Link
                         href={`/places/${p.slug}`}
                         target="_blank"
-                        className="text-sm text-slate-700 hover:text-brand-700 hover:underline dark:text-slate-200"
+                        className="text-sm text-slate-700 hover:text-brand-700 dark:hover:text-brand-300 hover:underline dark:text-slate-200"
                       >
                         {p.name}
                       </Link>
@@ -353,7 +353,7 @@ export default function AdminPage() {
                         <span className="font-medium">{action.adminUser.name}</span>{' '}
                         <span className="text-slate-500 dark:text-slate-400">{action.action.replace(/_/g, ' ')}</span>
                       </p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                      <p className="text-xs text-slate-400 dark:text-slate-400">
                         {new Date(action.createdAt).toLocaleString()}
                       </p>
                     </li>
@@ -452,7 +452,7 @@ function TopPlacesChart({ places }: { places: AnalyticsOverview['topPlaces'] }) 
               target="_blank"
               className="group -mx-1 flex items-center gap-3 rounded-lg px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800"
             >
-              <span className="w-32 shrink-0 truncate text-sm text-slate-700 group-hover:text-brand-700 dark:text-slate-200 sm:w-44">
+              <span className="w-32 shrink-0 truncate text-sm text-slate-700 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300 dark:text-slate-200 sm:w-44">
                 {place.name}
               </span>
               <span className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">

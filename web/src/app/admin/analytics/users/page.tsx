@@ -58,7 +58,7 @@ export default function UserAnalyticsPage() {
                 {overview.topReviewers.map((reviewer, i) => (
                   <li key={reviewer.userId} className="flex items-center justify-between gap-2 text-sm">
                     <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                      <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">{i + 1}</span>
+                      <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">{i + 1}</span>
                       {reviewer.name}
                     </span>
                     <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">

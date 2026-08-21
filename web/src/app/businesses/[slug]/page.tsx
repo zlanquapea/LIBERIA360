@@ -68,7 +68,7 @@ function UpdateCard({ item }: { item: BusinessContent }) {
           href={item.externalLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-fit text-sm font-medium text-brand-700 hover:underline"
+          className="w-fit text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
         >
           Learn more
         </a>
@@ -200,7 +200,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
             <div className="flex flex-col gap-2 text-sm text-slate-700 dark:text-slate-200">
               {business.openingHours && (
                 <p className="flex items-start gap-1.5">
-                  <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                  <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-400" />
                   {business.openingHours}
                 </p>
               )}
@@ -251,7 +251,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
               <ul className="flex flex-col gap-1.5">
                 {business.videos.map((url) => (
                   <li key={url}>
-                    <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-brand-700 hover:underline">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-brand-700 dark:text-brand-300 hover:underline">
                       {url}
                     </a>
                   </li>

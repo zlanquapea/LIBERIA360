@@ -97,7 +97,7 @@ export default function NearMePage() {
             {locating ? 'Finding you…' : 'Use my location'}
           </button>
           {locationError && (
-            <p role="alert" className="max-w-sm text-sm text-flag-700">
+            <p role="alert" className="max-w-sm text-sm text-flag-700 dark:text-flag-300">
               {locationError}
             </p>
           )}
@@ -125,14 +125,14 @@ export default function NearMePage() {
               type="button"
               onClick={requestLocation}
               disabled={locating}
-              className="ml-auto text-sm font-medium text-brand-700 hover:underline disabled:opacity-60"
+              className="ml-auto text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:opacity-60"
             >
               {locating ? 'Updating…' : 'Update my location'}
             </button>
           </div>
 
           {placesError && (
-            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
               {placesError}
             </p>
           )}

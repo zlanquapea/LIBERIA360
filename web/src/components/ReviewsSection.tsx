@@ -29,7 +29,7 @@ function VerifiedVisitBadge() {
   return (
     <span
       title="This reviewer had a confirmed booking with this listing"
-      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300"
     >
       <CheckBadgeIcon aria-hidden className="h-3.5 w-3.5" />
       Verified booking
@@ -106,7 +106,7 @@ export function ReviewsSection({
               </div>
               {review.comment && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{review.comment}</p>}
               <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-xs text-slate-400 dark:text-slate-500">
+                <p className="text-xs text-slate-400 dark:text-slate-400">
                   {new Date(review.createdAt).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -122,7 +122,7 @@ export function ReviewsSection({
 
       {!ready ? null : !user ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/login" className="font-medium text-brand-700 hover:underline">
+          <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
             Log in
           </Link>{' '}
           to write a review.
@@ -157,7 +157,7 @@ export function ReviewsSection({
             className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
           {error && (
-            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
               {error}
             </p>
           )}

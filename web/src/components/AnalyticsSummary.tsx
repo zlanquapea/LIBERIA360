@@ -80,7 +80,7 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center shadow-card">
-      <Icon aria-hidden className="mx-auto h-5 w-5 text-brand-600" />
+      <Icon aria-hidden className="mx-auto h-5 w-5 text-brand-600 dark:text-brand-300" />
       <p className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">{value}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>

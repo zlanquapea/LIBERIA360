@@ -35,7 +35,7 @@ function ResetPasswordForm() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           This link is missing its token. Request a new one from the forgot-password page.
         </p>
-        <Link href="/forgot-password" className="mx-auto text-sm font-medium text-brand-700 hover:underline">
+        <Link href="/forgot-password" className="mx-auto text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Request a new link
         </Link>
       </main>
@@ -90,11 +90,11 @@ function ResetPasswordForm() {
             onChange={(e) => setNewPassword(e.target.value)}
             className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
-          <span className="text-xs font-normal text-slate-400 dark:text-slate-500">At least 8 characters.</span>
+          <span className="text-xs font-normal text-slate-400 dark:text-slate-400">At least 8 characters.</span>
         </label>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700">
+          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
             {error}
           </p>
         )}

@@ -87,13 +87,13 @@ export function AddTripStop({
           type="button"
           disabled={searching || !query.trim()}
           onClick={search}
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 disabled:opacity-60"
         >
           {searching ? 'Searching…' : 'Search'}
         </button>
       </div>
 
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
 
       {results.length > 0 && (
         <ul className="flex flex-col gap-1.5">
@@ -106,7 +106,7 @@ export function AddTripStop({
                 className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
               >
                 <span className="truncate">{place.name}</span>
-                <span className="shrink-0 text-xs font-medium text-brand-700">
+                <span className="shrink-0 text-xs font-medium text-brand-700 dark:text-brand-300">
                   {addingId === place.id ? 'Adding…' : `+ Day ${day}`}
                 </span>
               </button>

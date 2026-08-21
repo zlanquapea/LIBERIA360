@@ -37,13 +37,13 @@ export function EmailVerificationBanner() {
     <div className="flex flex-col gap-2 rounded-xl border border-gold-400 bg-amber-50 dark:bg-amber-900/30 p-3 text-sm">
       <p className="font-medium text-slate-900 dark:text-slate-50">Verify your email</p>
       {sent ? (
-        <p className="text-xs text-emerald-700">Sent — check your inbox for a verification link.</p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-300">Sent — check your inbox for a verification link.</p>
       ) : (
         <>
           <p className="text-xs text-slate-600 dark:text-slate-300">
             We haven&apos;t confirmed <span className="font-medium">{user.email}</span> yet.
           </p>
-          {error && <p className="text-xs text-flag-700">{error}</p>}
+          {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
           <button
             type="button"
             onClick={handleResend}

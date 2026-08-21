@@ -48,6 +48,17 @@ const config: Config = {
           600: '#d99400',
         },
         flag: {
+          // Light tints, same hue as 500-700 below, added for dark-mode
+          // text/icons — 700 (the shade used for nearly all error/danger
+          // text) computes to ~2:1 contrast against the dark-mode page
+          // background, well under WCAG AA's 4.5:1 floor for text, so it
+          // needs a genuinely light tint here rather than reusing a base
+          // shade. 300 is what error text/links switch to via `dark:`;
+          // 400 is available for icons/accents that don't need quite as
+          // much lift (icons only need to clear the looser 3:1 non-text
+          // threshold).
+          300: '#e9aaab',
+          400: '#e57678',
           500: '#e21f22',
           600: '#c80305',
           700: '#a10204',

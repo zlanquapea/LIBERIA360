@@ -103,7 +103,7 @@ function AuditLogRow({ entry }: { entry: AdminAction }) {
     <li className="flex flex-col gap-1 rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium text-slate-900 dark:text-slate-50">{ACTION_LABELS[entry.action] ?? entry.action}</p>
-        <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+        <span className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-400">
           <ClockIcon aria-hidden className="h-3.5 w-3.5" />
           {new Date(entry.createdAt).toLocaleString()}
         </span>
@@ -113,11 +113,11 @@ function AuditLogRow({ entry }: { entry: AdminAction }) {
         {entry.targetType && entry.targetId && (
           <>
             {' '}
-            · {entry.targetType} <code className="text-slate-400 dark:text-slate-500">{entry.targetId.slice(0, 8)}</code>
+            · {entry.targetType} <code className="text-slate-400 dark:text-slate-400">{entry.targetId.slice(0, 8)}</code>
           </>
         )}
       </p>
-      <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-400">
         <ComputerDesktopIcon aria-hidden className="h-3.5 w-3.5" />
         {parseUserAgent(entry.userAgent)}
         {entry.ipAddress && <> · {entry.ipAddress}</>}

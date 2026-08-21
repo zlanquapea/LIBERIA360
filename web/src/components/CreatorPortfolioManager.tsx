@@ -130,7 +130,7 @@ export function CreatorPortfolioManager({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-brand-500 hover:text-brand-700">
+        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300">
           {uploading ? 'Uploading…' : '+ Add photos'}
           <input
             ref={fileInputRef}
@@ -161,7 +161,7 @@ export function CreatorPortfolioManager({
         </button>
       </div>
 
-      {error && <p className="text-xs text-flag-700">{error}</p>}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }
