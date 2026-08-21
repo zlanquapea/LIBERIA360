@@ -3,15 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { HttpError } from '@/lib/http';
-
-function friendlyError(err: unknown): string {
-  if (err instanceof HttpError) {
-    if (err.status === 429) return 'Too many attempts. Please wait a minute and try again.';
-    return err.message;
-  }
-  return 'Something went wrong. Please try again.';
-}
+import { getFriendlyErrorMessage } from '@/lib/errors';
 
 // Account-page security section: change password, sign out of all other
 // devices, and delete account. Mirrors TwoFactorSettings' inline-expand
@@ -50,7 +42,7 @@ function ChangePasswordSection() {
       setSuccess(true);
       setOpen(false);
     } catch (err) {
-      setError(friendlyError(err));
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -147,7 +139,7 @@ function LogoutAllDevicesSection() {
       await logoutAllDevices();
       setDone(true);
     } catch (err) {
-      setError(friendlyError(err));
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +183,7 @@ function DeleteAccountSection() {
       await deleteAccount(password);
       router.push('/');
     } catch (err) {
-      setError(friendlyError(err));
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

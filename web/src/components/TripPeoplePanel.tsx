@@ -5,8 +5,9 @@ import { UserPlusIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { removeCollaborator } from '@/lib/itinerary-api';
 import { cancelInvitation, listInvitations, resendInvitation } from '@/lib/invitations-api';
-import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { InvitePeopleModal } from './InvitePeopleModal';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { AuthUser, InvitationDisplayStatus, InvitationSummary } from '@/lib/types';
 
 const STATUS_STYLES: Record<InvitationDisplayStatus, string> = {
@@ -46,6 +47,10 @@ export function TripPeoplePanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [pendingRemove, setPendingRemove] = useState<AuthUser | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!token || !isOwner) return;
     listInvitations(token, itineraryId)
@@ -58,10 +63,28 @@ export function TripPeoplePanel({
     listInvitations(token, itineraryId).then(setInvitations).catch(() => undefined);
   }
 
-  async function remove(userId: string) {
-    if (!token) return;
-    await removeCollaborator(token, itineraryId, userId);
-    onChange();
+  async function confirmRemove() {
+    if (!token || !pendingRemove) return;
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      await removeCollaborator(token, itineraryId, pendingRemove.id);
+      setPendingRemove(null);
+      onChange();
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        // Already off the trip (or the trip itself is gone) — same
+        // outcome either way.
+        setPendingRemove(null);
+        onChange();
+      } else {
+        setRemoveError(
+          getFriendlyErrorMessage(err, { context: { action: 'remove-collaborator', userId: pendingRemove.id } }),
+        );
+      }
+    } finally {
+      setRemoving(false);
+    }
   }
 
   async function handleResend(invitationId: string) {
@@ -71,7 +94,7 @@ export function TripPeoplePanel({
     try {
       setInvitations(await resendInvitation(token, itineraryId, invitationId));
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not resend this invitation.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'resend-invitation', invitationId } }));
     } finally {
       setBusyId(null);
     }
@@ -84,7 +107,7 @@ export function TripPeoplePanel({
     try {
       setInvitations(await cancelInvitation(token, itineraryId, invitationId));
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not cancel this invitation.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'cancel-invitation', invitationId } }));
     } finally {
       setBusyId(null);
     }
@@ -125,7 +148,7 @@ export function TripPeoplePanel({
               {(isOwner || c.id === user?.id) && (
                 <button
                   type="button"
-                  onClick={() => remove(c.id)}
+                  onClick={() => setPendingRemove(c)}
                   aria-label={`Remove ${c.name}`}
                   className="text-slate-400 hover:text-flag-700 dark:hover:text-flag-300"
                 >
@@ -197,6 +220,30 @@ export function TripPeoplePanel({
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={pendingRemove != null}
+        title={
+          pendingRemove && pendingRemove.id === user?.id
+            ? 'Leave this trip?'
+            : `Remove ${pendingRemove?.name ?? 'this person'} from this trip?`
+        }
+        description={
+          pendingRemove && pendingRemove.id === user?.id
+            ? "You'll lose access to this trip's itinerary unless the owner invites you again."
+            : "They'll lose access to this trip's itinerary unless invited again."
+        }
+        confirmLabel={pendingRemove && pendingRemove.id === user?.id ? 'Leave Trip' : 'Remove'}
+        loadingLabel={pendingRemove && pendingRemove.id === user?.id ? 'Leaving…' : 'Removing…'}
+        isLoading={removing}
+        error={removeError}
+        onConfirm={confirmRemove}
+        onCancel={() => {
+          if (removing) return;
+          setPendingRemove(null);
+          setRemoveError(null);
+        }}
+      />
     </section>
   );
 }

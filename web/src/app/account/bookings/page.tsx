@@ -8,7 +8,8 @@ import { cancelBooking, getBusinessBookings, getCreatorBookings, getMyBookings, 
 import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
 import { formatBookingStatus } from '@/lib/format';
-import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Booking, Business, Creator } from '@/lib/types';
 
 // "My Bookings" (Tech Spec §3.3) — client-only, same reasoning as
@@ -110,18 +111,8 @@ export default function BookingsPage() {
             {myBookings.map((booking) => (
               <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
                 <BookingCard booking={booking} />
-                {(booking.status === 'pending' || booking.status === 'confirmed') && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!token) return;
-                      await cancelBooking(token, booking.id);
-                      reloadMine();
-                    }}
-                    className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
-                  >
-                    Cancel request
-                  </button>
+                {(booking.status === 'pending' || booking.status === 'confirmed') && token && (
+                  <CancelBookingButton token={token} bookingId={booking.id} onCancelled={reloadMine} />
                 )}
                 <BookingMessageThread bookingId={booking.id} />
               </li>
@@ -183,6 +174,73 @@ export default function BookingsPage() {
   );
 }
 
+// A guest cancelling their own pending/confirmed booking — notifies the
+// listing and can't be undone from here (they'd have to submit a fresh
+// request), so it gets the same confirm-dialog treatment as any other
+// destructive action rather than firing immediately on click.
+function CancelBookingButton({
+  token,
+  bookingId,
+  onCancelled,
+}: {
+  token: string;
+  bookingId: string;
+  onCancelled: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setCancelling(true);
+    setError(null);
+    try {
+      await cancelBooking(token, bookingId);
+      setConfirming(false);
+      onCancelled();
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        // Already gone (cancelled elsewhere, or the listing removed it) —
+        // that's the outcome the user was asking for either way.
+        setConfirming(false);
+        onCancelled();
+      } else {
+        setError(getFriendlyErrorMessage(err, { context: { action: 'cancel-booking', bookingId } }));
+      }
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
+      >
+        Cancel request
+      </button>
+      <ConfirmDialog
+        open={confirming}
+        title="Cancel this booking request?"
+        description="The listing will be notified you're no longer interested. You can always submit a new request later."
+        confirmLabel="Cancel Request"
+        cancelLabel="Keep Booking"
+        loadingLabel="Cancelling…"
+        isLoading={cancelling}
+        error={error}
+        onConfirm={handleConfirm}
+        onCancel={() => {
+          if (cancelling) return;
+          setConfirming(false);
+          setError(null);
+        }}
+      />
+    </>
+  );
+}
+
 function BookingCard({ booking, showGuest }: { booking: Booking; showGuest?: boolean }) {
   return (
     <div className="flex flex-col gap-1">
@@ -236,7 +294,7 @@ function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: (
       await respondToBooking(token, bookingId, action, message.trim() || undefined);
       onDone();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(getFriendlyErrorMessage(err, { context: { action: 'respond-to-booking', bookingId } }));
       setSubmitting(null);
     }
   }
