@@ -729,9 +729,9 @@ describe("Phase 2 (e2e)", () => {
 
     it("404s inviting/viewing/editing for anyone but the owner, before any invite exists", async () => {
       await request(app.getHttpServer())
-        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
         .set("Authorization", `Bearer ${strangerToken}`)
-        .send({ email: "userB@example.com" })
+        .send({ invitees: [{ email: "userB@example.com" }] })
         .expect(404);
 
       await request(app.getHttpServer())
@@ -740,29 +740,79 @@ describe("Phase 2 (e2e)", () => {
         .expect(404);
     });
 
-    it("404s inviting an email with no account", async () => {
-      await request(app.getHttpServer())
-        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+    it("creates a pending invitation for a bare email with no account yet — no 404, unlike the old immediate-add-only flow", async () => {
+      const invite = await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
         .set("Authorization", `Bearer ${userAToken}`)
-        .send({ email: "nobody@example.com" })
-        .expect(404);
+        .send({ invitees: [{ email: "nobody@example.com" }] })
+        .expect(201);
+      const created = invite.body.find(
+        (i: { email: string }) => i.email === "nobody@example.com",
+      );
+      expect(created.status).toBe("pending");
+      expect(created.invitee).toBeNull();
+
+      // Cancel it — this test's invitee doesn't participate in the rest
+      // of the flow below.
+      await request(app.getHttpServer())
+        .delete(`/api/v1/itineraries/${tripId}/invitations/${created.id}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
     });
 
-    it("lets the owner invite a collaborator by email, who can then view and edit the trip", async () => {
+    it("lets the owner invite an existing user by id, who accepts and can then view and edit the trip", async () => {
       const invite = await request(app.getHttpServer())
-        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
         .set("Authorization", `Bearer ${userAToken}`)
-        .send({ email: "userB@example.com" })
+        .send({ invitees: [{ userId: userBId }] })
         .expect(201);
-      expect(invite.body).toHaveLength(1);
-      expect(invite.body[0].id).toBe(userBId);
-      expect(invite.body[0].passwordHash).toBeUndefined();
+      const pending = invite.body.find(
+        (i: { email: string }) => i.email === "userb@example.com",
+      );
+      expect(pending.status).toBe("pending");
+      expect(pending.invitee.id).toBe(userBId);
+      expect(pending.invitee.passwordHash).toBeUndefined();
 
-      // Duplicate invite is rejected.
+      // Re-inviting a still-pending person resends rather than erroring.
       await request(app.getHttpServer())
-        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
         .set("Authorization", `Bearer ${userAToken}`)
-        .send({ email: "userB@example.com" })
+        .send({ invitees: [{ userId: userBId }] })
+        .expect(201);
+
+      // Not a collaborator yet — invited, not accepted.
+      await request(app.getHttpServer())
+        .get(`/api/v1/itineraries/${tripId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(404);
+
+      // The invitee finds it in their own inbox without the emailed link...
+      const mine = await request(app.getHttpServer())
+        .get("/api/v1/invitations/mine")
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(200);
+      const mineEntry = mine.body.find(
+        (i: { tripId: string }) => i.tripId === tripId,
+      );
+      expect(mineEntry).toBeDefined();
+
+      // ...and accepting there makes them a real collaborator.
+      await request(app.getHttpServer())
+        .post(`/api/v1/invitations/${pending.id}/accept`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(201);
+
+      // Accepting again 409s (already resolved).
+      await request(app.getHttpServer())
+        .post(`/api/v1/invitations/${pending.id}/accept`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(409);
+
+      // Inviting an already-confirmed collaborator again is a conflict.
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ invitees: [{ userId: userBId }] })
         .expect(409);
 
       const asCollaborator = await request(app.getHttpServer())
@@ -773,9 +823,9 @@ describe("Phase 2 (e2e)", () => {
 
       // A collaborator can't invite further collaborators onto the trip.
       await request(app.getHttpServer())
-        .post(`/api/v1/itineraries/${tripId}/collaborators`)
+        .post(`/api/v1/itineraries/${tripId}/invitations`)
         .set("Authorization", `Bearer ${userBToken}`)
-        .send({ email: "tripStranger@example.com" })
+        .send({ invitees: [{ email: "tripStranger@example.com" }] })
         .expect(403);
 
       // A collaborator can add, annotate, and remove a stop.
