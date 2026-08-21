@@ -2,11 +2,13 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -30,6 +32,10 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "../businesses/entities/business.entity";
+import {
+  BusinessReviewStatus,
+  BusinessType,
+} from "../businesses/entities/business.enums";
 import { Event } from "../events/entities/event.entity";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
@@ -136,6 +142,29 @@ export class AdminContentController {
       id,
       getRequestInfo(req),
     );
+  }
+
+  // Every business regardless of review status (unlike the public
+  // GET /businesses, which is approved-only) — the admin Business
+  // Management list needs to see pending/rejected/suspended listings too.
+  @Get("businesses")
+  async listBusinesses(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("reviewStatus") reviewStatus?: BusinessReviewStatus,
+    @Query("type") type?: BusinessType,
+    @Query("reportedOnly") reportedOnly?: string,
+  ) {
+    const result = await this.adminContentService.findBusinesses({
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      search,
+      reviewStatus,
+      type,
+      reportedOnly: reportedOnly === "true",
+    });
+    return { ...result, data: result.data.map(sanitizeBusiness) };
   }
 
   @Post("businesses")

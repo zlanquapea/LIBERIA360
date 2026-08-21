@@ -4,6 +4,7 @@ import type { Creator } from '@/lib/types';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
 import { formatCreatorCategory } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
+import { SafeImage } from './SafeImage';
 
 // The professional-portfolio card the spec asks for throughout the app
 // (directory, and anywhere else a creator gets surfaced) — same visual
@@ -28,20 +29,18 @@ export function CreatorCard({ creator }: { creator: Creator }) {
       }`}
     >
       <div className="relative h-28 overflow-hidden">
-        {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={cover}
-            alt=""
-            className="h-28 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="h-28 w-full transition-transform duration-500 group-hover:scale-110"
-            style={{ backgroundImage: gradientForCategory(creator.category) }}
-          />
-        )}
+        <SafeImage
+          src={cover}
+          alt=""
+          className="h-28 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          fallback={
+            <div
+              aria-hidden
+              className="h-28 w-full transition-transform duration-500 group-hover:scale-110"
+              style={{ backgroundImage: gradientForCategory(creator.category) }}
+            />
+          }
+        />
         {creator.featured && (
           <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-gold-500 px-2 py-0.5 text-xs font-medium text-white shadow-sm">
             <StarIcon aria-hidden className="h-3 w-3" />
@@ -52,12 +51,12 @@ export function CreatorCard({ creator }: { creator: Creator }) {
           className="absolute -bottom-5 left-3 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white text-base font-semibold text-white shadow-sm dark:border-slate-900"
           style={{ backgroundColor: colorForCreator(creator.username) }}
         >
-          {avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatar} alt="" className="h-full w-full object-cover" />
-          ) : (
-            creator.name.trim().charAt(0).toUpperCase() || '?'
-          )}
+          <SafeImage
+            src={avatar}
+            alt=""
+            className="h-full w-full object-cover"
+            fallback={<>{creator.name.trim().charAt(0).toUpperCase() || '?'}</>}
+          />
         </span>
       </div>
 

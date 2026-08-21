@@ -3,11 +3,14 @@ import {
   IsArray,
   IsEmail,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   IsUrl,
+  Max,
   MaxLength,
+  Min,
 } from "class-validator";
 import { BusinessType } from "../entities/business.enums";
 
@@ -43,4 +46,26 @@ export class CreateBusinessDto {
   @ArrayMaxSize(10)
   @IsString({ each: true })
   images?: string[];
+
+  @IsOptional() @IsUrl() logoImage?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  videos?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  openingHours?: string;
+
+  @IsOptional() @IsNumber() @Min(0) @Max(1000000) priceRangeMin?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(1000000) priceRangeMax?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  servicesOffered?: string[];
 }

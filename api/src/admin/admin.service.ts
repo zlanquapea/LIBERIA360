@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { BusinessReviewStatus } from "../businesses/entities/business.enums";
 import { Creator } from "../creators/entities/creator.entity";
 import { CreatorVerificationStatus } from "../creators/entities/creator.enums";
 import { Review } from "../reviews/entities/review.entity";
@@ -51,6 +52,7 @@ export interface FlaggedContent {
   reasons: Record<ReportReason, number>;
   review: Review | null;
   event: Event | null;
+  business: Business | null;
 }
 
 export interface ModerationQueue {
@@ -155,6 +157,40 @@ export class AdminService {
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
+  /** The publish/moderation lifecycle transition — approve, reject,
+   * request changes, or suspend — see BusinessReviewStatus's doc comment
+   * for what each status means and how `reason` is used per-transition. */
+  async setBusinessReviewStatus(
+    adminUserId: string,
+    businessId: string,
+    status: BusinessReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ): Promise<Business> {
+    const business = await this.businessRepo.findOne({
+      where: { id: businessId },
+    });
+    if (!business) {
+      throw new NotFoundException(`Business "${businessId}" not found`);
+    }
+    const previousStatus = business.reviewStatus;
+    business.reviewStatus = status;
+    business.rejectionReason =
+      status === BusinessReviewStatus.APPROVED ? null : (reason ?? null);
+    business.reviewedByUserId = adminUserId;
+    business.reviewedAt = new Date();
+    const saved = await this.businessRepo.save(business);
+    await this.adminAuditService.log(
+      adminUserId,
+      "business.review_status_changed",
+      "business",
+      businessId,
+      { from: previousStatus, to: status, reason: reason ?? null },
+      requestInfo,
+    );
+    return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
+  }
+
   async setCreatorVerification(
     adminUserId: string,
     creatorId: string,
@@ -195,9 +231,18 @@ export class AdminService {
       possiblyClosedPlaces,
       flaggedContent,
     ] = await Promise.all([
+      // "Pending" now means "awaiting a review-lifecycle decision," not the
+      // old "never been given a trust badge" (VerificationStatus stayed
+      // UNVERIFIED forever on plenty of perfectly legitimate live
+      // businesses — that was never a real signal of what needed
+      // attention). SUBMITTED_FOR_REVIEW is a fresh claim; UNDER_REVIEW is
+      // one an admin picked up but hasn't resolved yet — both belong here.
       this.businessRepo.find({
-        where: { verificationStatus: VerificationStatus.UNVERIFIED },
-        order: { createdAt: "DESC" },
+        where: [
+          { reviewStatus: BusinessReviewStatus.SUBMITTED_FOR_REVIEW },
+          { reviewStatus: BusinessReviewStatus.UNDER_REVIEW },
+        ],
+        order: { submittedAt: "DESC" },
       }),
       this.reviewRepo.find({
         relations: ["user", "place"],
@@ -277,8 +322,11 @@ export class AdminService {
     const eventIds = rows
       .filter((r) => r.targetType === ReportTargetType.EVENT)
       .map((r) => r.targetId);
+    const businessIds = rows
+      .filter((r) => r.targetType === ReportTargetType.BUSINESS)
+      .map((r) => r.targetId);
 
-    const [reviews, events, allReports] = await Promise.all([
+    const [reviews, events, businesses, allReports] = await Promise.all([
       reviewIds.length
         ? this.reviewRepo.find({
             where: reviewIds.map((id) => ({ id })),
@@ -287,6 +335,9 @@ export class AdminService {
         : Promise.resolve([]),
       eventIds.length
         ? this.eventRepo.find({ where: eventIds.map((id) => ({ id })) })
+        : Promise.resolve([]),
+      businessIds.length
+        ? this.businessRepo.find({ where: businessIds.map((id) => ({ id })) })
         : Promise.resolve([]),
       this.contentReportRepo.find({
         where: rows.map((r) => ({
@@ -297,12 +348,16 @@ export class AdminService {
     ]);
     const reviewById = new Map(reviews.map((r) => [r.id, r]));
     const eventById = new Map(events.map((e) => [e.id, e]));
+    const businessById = new Map(businesses.map((b) => [b.id, b]));
 
     return rows.map((r) => {
       const reasons: Record<ReportReason, number> = {
         [ReportReason.SPAM]: 0,
         [ReportReason.INAPPROPRIATE]: 0,
         [ReportReason.FAKE]: 0,
+        [ReportReason.FRAUDULENT]: 0,
+        [ReportReason.MISLEADING_OFFER]: 0,
+        [ReportReason.COPYRIGHT]: 0,
         [ReportReason.OTHER]: 0,
       };
       for (const report of allReports) {
@@ -325,6 +380,10 @@ export class AdminService {
         event:
           r.targetType === ReportTargetType.EVENT
             ? (eventById.get(r.targetId) ?? null)
+            : null,
+        business:
+          r.targetType === ReportTargetType.BUSINESS
+            ? (businessById.get(r.targetId) ?? null)
             : null,
       };
     });

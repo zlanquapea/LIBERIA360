@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import { gradientForCategory } from '@/lib/category-colors';
+import { SafeImage } from './SafeImage';
 
 // Destination profile hero. Real photos are the point — a traveler
 // deciding on a hotel wants to see the room and the pool, not a category
@@ -37,11 +38,20 @@ export function PlaceGallery({
   return (
     <div className="flex flex-col gap-2">
       <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <SafeImage
           src={images[active]}
           alt={alt}
+          loading="eager"
           className="h-64 w-full object-cover sm:h-80"
+          fallback={
+            <div
+              aria-hidden
+              className="flex h-64 items-center justify-center text-6xl sm:h-80"
+              style={{ backgroundImage: gradientForCategory(categorySlug) }}
+            >
+              {categoryIcon ?? <MapPinIcon className="h-14 w-14 text-white/90" />}
+            </div>
+          }
         />
       </div>
       {images.length > 1 && (
@@ -57,8 +67,12 @@ export function PlaceGallery({
                 i === active ? 'border-brand-600' : 'border-transparent'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img} alt="" className="h-full w-full object-cover" />
+              <SafeImage
+                src={img}
+                alt=""
+                className="h-full w-full object-cover"
+                fallback={<div aria-hidden className="h-full w-full bg-slate-200 dark:bg-slate-700" />}
+              />
             </button>
           ))}
         </div>

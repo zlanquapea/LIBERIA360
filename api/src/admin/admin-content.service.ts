@@ -11,6 +11,11 @@ import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { Activity } from "../activities/entities/activity.entity";
 import { Business } from "../businesses/entities/business.entity";
+import {
+  BusinessReviewStatus,
+  BusinessType,
+} from "../businesses/entities/business.enums";
+import { buildBusinessSlug } from "../businesses/businesses.service";
 import { Event } from "../events/entities/event.entity";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
@@ -246,6 +251,69 @@ export class AdminContentService {
 
   // ---- Businesses ----
 
+  /** Admin Business Management list — every business regardless of review
+   * status (query builder, not find(): owner/linkedPlace are `eager: true`
+   * on Business but eager relations only auto-join through find*()
+   * methods, not a query builder — same gotcha as
+   * BusinessesService.findAllApproved/CreatorsService.findAll). */
+  async findBusinesses(
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      reviewStatus?: BusinessReviewStatus;
+      type?: BusinessType;
+      reportedOnly?: boolean;
+    } = {},
+  ): Promise<{
+    data: Business[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const page = params.page ?? 1;
+    const limit = params.limit ?? 20;
+
+    const qb = this.businessRepo
+      .createQueryBuilder("business")
+      .leftJoinAndSelect("business.owner", "owner")
+      .leftJoinAndSelect("business.linkedPlace", "linkedPlace")
+      .leftJoinAndSelect("linkedPlace.category", "category")
+      .leftJoinAndSelect("linkedPlace.county", "county")
+      .orderBy("business.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (params.search) {
+      qb.andWhere(
+        "(business.name ILIKE :search OR business.description ILIKE :search)",
+        { search: `%${params.search}%` },
+      );
+    }
+    if (params.reviewStatus) {
+      qb.andWhere("business.reviewStatus = :reviewStatus", {
+        reviewStatus: params.reviewStatus,
+      });
+    }
+    if (params.type) {
+      qb.andWhere("business.type = :type", { type: params.type });
+    }
+    if (params.reportedOnly) {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM content_reports cr WHERE cr.target_type = 'business' AND cr.target_id = business.id)`,
+      );
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
   async createBusiness(dto: CreateBusinessAdminDto): Promise<Business> {
     const place = await this.placeRepo.findOne({
       where: { id: dto.placeId },
@@ -263,6 +331,7 @@ export class AdminContentService {
     const business = await this.businessRepo.save(
       this.businessRepo.create({
         name: dto.name,
+        slug: await buildBusinessSlug(this.businessRepo, dto.name),
         type: dto.type,
         ownerUserId: dto.ownerUserId ?? null,
         linkedPlaceId: dto.placeId,
@@ -273,6 +342,16 @@ export class AdminContentService {
         socialLinks: dto.socialLinks ?? [],
         description: dto.description ?? null,
         images: dto.images ?? [],
+        logoImage: dto.logoImage ?? null,
+        videos: dto.videos ?? [],
+        openingHours: dto.openingHours ?? null,
+        priceRangeMin: dto.priceRangeMin ?? null,
+        priceRangeMax: dto.priceRangeMax ?? null,
+        servicesOffered: dto.servicesOffered ?? [],
+        // Admin-authored directly, not a self-claim — an admin doesn't
+        // need to review their own work before it goes live (see
+        // BusinessReviewStatus's doc comment).
+        reviewStatus: BusinessReviewStatus.APPROVED,
       }),
     );
     return this.businessRepo.findOneOrFail({ where: { id: business.id } });

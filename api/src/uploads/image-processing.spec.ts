@@ -46,12 +46,27 @@ describe("processUploadedImage", () => {
   });
 
   it("never upscales an image smaller than the cap", async () => {
-    const input = await makeTestImage(200, 150);
+    const input = await makeTestImage(300, 225);
     const result = await processUploadedImage(input);
 
     const metadata = await sharp(result.buffer).metadata();
+    expect(metadata.width).toBe(300);
+    expect(metadata.height).toBe(225);
+  });
+
+  it("rejects an image below the minimum dimension floor", async () => {
+    const input = await makeTestImage(120, 80);
+    await expect(processUploadedImage(input)).rejects.toThrow(
+      /at least 200x200/,
+    );
+  });
+
+  it("accepts an image exactly at the minimum dimension floor", async () => {
+    const input = await makeTestImage(200, 200);
+    const result = await processUploadedImage(input);
+    const metadata = await sharp(result.buffer).metadata();
     expect(metadata.width).toBe(200);
-    expect(metadata.height).toBe(150);
+    expect(metadata.height).toBe(200);
   });
 
   it("strips EXIF metadata from the output", async () => {

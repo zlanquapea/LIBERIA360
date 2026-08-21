@@ -12,6 +12,7 @@ import { AdminService } from "./admin.service";
 import { getRequestInfo } from "../common/request-info";
 import { SetVerificationDto } from "./dto/set-verification.dto";
 import { SetCreatorVerificationDto } from "./dto/set-creator-verification.dto";
+import { SetBusinessReviewStatusDto } from "./dto/set-business-review-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -52,6 +53,7 @@ function sanitizeFlaggedContent(flagged: FlaggedContent) {
     ...flagged,
     review: flagged.review ? sanitizeReview(flagged.review) : null,
     event: flagged.event ? sanitizeEvent(flagged.event) : null,
+    business: flagged.business ? sanitizeBusiness(flagged.business) : null,
   };
 }
 
@@ -89,6 +91,24 @@ export class AdminController {
         admin.id,
         id,
         dto.status,
+        getRequestInfo(req),
+      ),
+    );
+  }
+
+  @Patch("businesses/:id/review-status")
+  async setBusinessReviewStatus(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetBusinessReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return sanitizeBusiness(
+      await this.adminService.setBusinessReviewStatus(
+        admin.id,
+        id,
+        dto.status,
+        dto.reason,
         getRequestInfo(req),
       ),
     );

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -16,6 +17,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { Business } from "./entities/business.entity";
+import { BusinessType } from "./entities/business.enums";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize(business: Business) {
@@ -66,12 +68,39 @@ export class BusinessesController {
     return sanitize(business);
   }
 
+  // Public destination-page lookup (`?placeId=`) or the discovery
+  // directory (no placeId, optional search/type/county filters +
+  // pagination) — both approved-listings-only, see BusinessesService's
+  // doc comments.
   @Get()
-  async byPlace(@Query("placeId") placeId: string) {
-    if (!placeId) {
-      return null;
+  async list(
+    @Query("placeId") placeId?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("type") type?: BusinessType,
+    @Query("countyId") countyId?: string,
+  ) {
+    if (placeId) {
+      const business = await this.businessesService.findByPlace(placeId);
+      return business ? sanitize(business) : null;
     }
-    const business = await this.businessesService.findByPlace(placeId);
-    return business ? sanitize(business) : null;
+    const result = await this.businessesService.findAllApproved({
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      search,
+      type,
+      countyId,
+    });
+    return { ...result, data: result.data.map(sanitize) };
+  }
+
+  @Get("slug/:slug")
+  async findBySlug(@Param("slug") slug: string) {
+    const business = await this.businessesService.findBySlug(slug);
+    if (!business) {
+      throw new NotFoundException(`Business "${slug}" not found`);
+    }
+    return sanitize(business);
   }
 }

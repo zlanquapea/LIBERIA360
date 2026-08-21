@@ -1,11 +1,13 @@
 import type {
   Business,
+  BusinessType,
   Category,
   County,
   Creator,
   CreatorCategory,
   Event,
   EventCategory,
+  PaginatedBusinesses,
   PaginatedCreators,
   PaginatedEvents,
   PaginatedPlaces,
@@ -128,8 +130,28 @@ export function getReviews(placeId: string, query: { page?: number; limit?: numb
 
 // GET /businesses?placeId=... returns `null` (200, not 404) when nothing's
 // been claimed yet — apiFetch's throw-on-!res.ok path never fires for it.
+// Only ever an APPROVED listing — see BusinessesService.findByPlace's doc
+// comment for why a still-pending/rejected claim isn't returned here.
 export function getBusinessByPlace(placeId: string): Promise<Business | null> {
   return apiFetch<Business | null>('/businesses', { placeId });
+}
+
+export interface BusinessesQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: BusinessType;
+  countyId?: string;
+}
+
+// The discovery directory — approved listings only, same as
+// getBusinessByPlace above.
+export function getBusinesses(query: BusinessesQuery = {}): Promise<PaginatedBusinesses> {
+  return apiFetch<PaginatedBusinesses>('/businesses', { ...query }, emptyPage(query.limit));
+}
+
+export function getBusinessBySlug(slug: string): Promise<Business> {
+  return apiFetch<Business>(`/businesses/slug/${slug}`);
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {

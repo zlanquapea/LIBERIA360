@@ -5,6 +5,7 @@ import { gradientForCategory } from '@/lib/category-colors';
 import { formatDistance, formatPlaceType, formatRating } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
 import { VerificationBadge } from './VerificationBadge';
+import { SafeImage } from './SafeImage';
 
 // `distanceOverride` lets a caller show a more relevant distance than the
 // catalog's fixed distanceFromMonroviaKm — e.g. Near Me results show
@@ -24,22 +25,20 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
       className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
     >
       <div className="h-32 overflow-hidden">
-        {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={cover}
-            alt=""
-            className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110"
-            style={{ backgroundImage: gradientForCategory(place.category.slug) }}
-          >
-            {place.category.icon ?? <MapPinIcon className="h-9 w-9 text-white/90" />}
-          </div>
-        )}
+        <SafeImage
+          src={cover}
+          alt=""
+          className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          fallback={
+            <div
+              aria-hidden
+              className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110"
+              style={{ backgroundImage: gradientForCategory(place.category.slug) }}
+            >
+              {place.category.icon ?? <MapPinIcon className="h-9 w-9 text-white/90" />}
+            </div>
+          }
+        />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         <div className="flex items-start justify-between gap-2">

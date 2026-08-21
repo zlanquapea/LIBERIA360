@@ -9,6 +9,7 @@ import {
 } from "./entities/content-report.enums";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
+import { Business } from "../businesses/entities/business.entity";
 
 const DTO = {
   targetType: ReportTargetType.REVIEW,
@@ -25,6 +26,7 @@ describe("ReportsService", () => {
   };
   let reviewRepo: { exists: jest.Mock };
   let eventRepo: { exists: jest.Mock };
+  let businessRepo: { exists: jest.Mock };
 
   beforeEach(async () => {
     reportRepo = {
@@ -34,6 +36,7 @@ describe("ReportsService", () => {
     };
     reviewRepo = { exists: jest.fn().mockResolvedValue(true) };
     eventRepo = { exists: jest.fn().mockResolvedValue(true) };
+    businessRepo = { exists: jest.fn().mockResolvedValue(true) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +44,7 @@ describe("ReportsService", () => {
         { provide: getRepositoryToken(ContentReport), useValue: reportRepo },
         { provide: getRepositoryToken(Review), useValue: reviewRepo },
         { provide: getRepositoryToken(Event), useValue: eventRepo },
+        { provide: getRepositoryToken(Business), useValue: businessRepo },
       ],
     }).compile();
 
@@ -59,6 +63,16 @@ describe("ReportsService", () => {
     eventRepo.exists.mockResolvedValue(false);
     await expect(
       service.report("user-1", { ...DTO, targetType: ReportTargetType.EVENT }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("rejects reporting a business that doesn't exist", async () => {
+    businessRepo.exists.mockResolvedValue(false);
+    await expect(
+      service.report("user-1", {
+        ...DTO,
+        targetType: ReportTargetType.BUSINESS,
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
