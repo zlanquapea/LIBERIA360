@@ -6,12 +6,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteItinerary, getItinerary, removeItineraryStop, renameItinerary } from '@/lib/itinerary-api';
-import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand } from '@/lib/format';
 import { ItineraryStops } from '@/components/ItineraryStops';
 import { TripPeoplePanel } from '@/components/TripPeoplePanel';
 import { AddTripStop } from '@/components/AddTripStop';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { SuccessBanner } from '@/components/SuccessBanner';
 import type { ItineraryDetail } from '@/lib/types';
+
+// Kept in sync with the same threshold on the trips list page — a trip
+// with this many saved stops, or any collaborators at all, gets an extra
+// type-to-confirm safeguard on deletion instead of a single click.
+const SUBSTANTIAL_STOPS_THRESHOLD = 5;
+
+const NOT_FOUND_MESSAGE = 'This trip is no longer available. It may have already been deleted.';
 
 export default function TripDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,15 +28,19 @@ export default function TripDetailPage() {
   const { user, token, ready } = useAuth();
   const [itinerary, setItinerary] = useState<ItineraryDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!token) return;
     getItinerary(token, id)
       .then((result) => setItinerary(result))
-      .catch((err) => setError(err instanceof HttpError ? err.message : 'Could not load this trip.'));
+      .catch((err) => setLoadError(getFriendlyErrorMessage(err, { notFoundMessage: NOT_FOUND_MESSAGE })));
   }, [token, id]);
 
   useEffect(() => {
@@ -41,7 +54,14 @@ export default function TripDetailPage() {
         if (!cancelled) setItinerary(result);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof HttpError ? err.message : 'Could not load this trip.');
+        if (!cancelled) {
+          setLoadError(
+            getFriendlyErrorMessage(err, {
+              notFoundMessage: NOT_FOUND_MESSAGE,
+              context: { action: 'load-itinerary', itineraryId: id },
+            }),
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -72,10 +92,12 @@ export default function TripDetailPage() {
     );
   }
 
-  if (error || !itinerary) {
+  if (loadError || !itinerary) {
     return (
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">{error ?? 'Trip not found.'}</p>
+        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
+          {loadError ?? NOT_FOUND_MESSAGE}
+        </p>
         <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
           ← Back to My Trips
         </Link>
@@ -96,28 +118,52 @@ export default function TripDetailPage() {
       await renameItinerary(token, itinerary.id, trimmed);
       reload();
     } catch (err) {
-      setActionError(err instanceof HttpError ? err.message : 'Could not rename this trip.');
+      setActionError(
+        getFriendlyErrorMessage(err, {
+          notFoundMessage: NOT_FOUND_MESSAGE,
+          context: { action: 'rename-itinerary', itineraryId: itinerary.id },
+        }),
+      );
     }
   }
 
-  async function handleDelete() {
+  async function handleDeleteConfirmed() {
     if (!token || !itinerary) return;
-    const collaboratorCount = itinerary.collaborators.length;
-    const warning =
-      collaboratorCount > 0
-        ? ` This trip is shared with ${collaboratorCount} other ${collaboratorCount === 1 ? 'person' : 'people'} — deleting it removes their access too.`
-        : '';
-    if (!confirm(`Delete "${itinerary.title}"? This cannot be undone.${warning}`)) return;
     setDeleting(true);
-    setActionError(null);
+    setDeleteError(null);
     try {
       await deleteItinerary(token, itinerary.id);
-      router.push('/trips');
+      finishDelete('Trip deleted successfully.');
     } catch (err) {
-      setActionError(err instanceof HttpError ? err.message : 'Could not delete this trip.');
-      setDeleting(false);
+      if (isNotFoundError(err)) {
+        // Already gone — that's the outcome the user wanted, just not by
+        // this click (another tab, another device, a previous attempt
+        // that actually succeeded before the response came back).
+        finishDelete('This trip was already deleted.');
+      } else {
+        setDeleteError(
+          getFriendlyErrorMessage(err, { context: { action: 'delete-itinerary', itineraryId: itinerary.id } }),
+        );
+        setDeleting(false);
+      }
     }
   }
+
+  function finishDelete(message: string) {
+    setConfirmingDelete(false);
+    setDeleting(false);
+    setSuccessMessage(message);
+    // Give the confirmation a beat to register before navigating away,
+    // rather than yanking the user straight back to the list.
+    setTimeout(() => router.push('/trips'), 900);
+  }
+
+  const collaboratorCount = itinerary.collaborators.length;
+  const consequences =
+    collaboratorCount > 0
+      ? [`${collaboratorCount} ${collaboratorCount === 1 ? 'person' : 'people'} will lose access to this trip.`]
+      : undefined;
+  const requiresTypedConfirmation = itinerary.stops.length >= SUBSTANTIAL_STOPS_THRESHOLD || collaboratorCount > 0;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
@@ -129,12 +175,11 @@ export default function TripDetailPage() {
           {isOwner && (
             <button
               type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 disabled:opacity-60 dark:border-flag-600 dark:text-flag-300"
+              onClick={() => setConfirmingDelete(true)}
+              className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 dark:border-flag-600 dark:text-flag-300"
             >
               <TrashIcon aria-hidden className="h-3.5 w-3.5" />
-              {deleting ? 'Deleting…' : 'Delete trip'}
+              Delete trip
             </button>
           )}
         </div>
@@ -147,6 +192,11 @@ export default function TripDetailPage() {
           {!isOwner && isCollaborator && ' · Shared with you'}
         </p>
 
+        {successMessage && (
+          <div className="mt-2">
+            <SuccessBanner>{successMessage}</SuccessBanner>
+          </div>
+        )}
         {actionError && <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">{actionError}</p>}
       </div>
 
@@ -173,6 +223,24 @@ export default function TripDetailPage() {
       {canEdit && (
         <AddTripStop itineraryId={itinerary.id} durationDays={itinerary.durationDays} onAdded={reload} />
       )}
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title={`Delete "${itinerary.title}"?`}
+        description="This will permanently delete this trip, including its itinerary, saved plans, and associated trip information."
+        consequences={consequences}
+        confirmationPhrase={requiresTypedConfirmation ? itinerary.title : undefined}
+        confirmLabel="Delete Trip"
+        loadingLabel="Deleting trip…"
+        isLoading={deleting}
+        error={deleteError}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => {
+          if (deleting) return;
+          setConfirmingDelete(false);
+          setDeleteError(null);
+        }}
+      />
     </main>
   );
 }
