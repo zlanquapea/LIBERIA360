@@ -35,9 +35,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
       }),
       save: jest.fn((data) => Promise.resolve(data)),
-      findOneOrFail: jest.fn((opts) =>
-        Promise.resolve({ id: opts.where.id }),
-      ),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
     };
     adminAuditService = { log: jest.fn() };
 

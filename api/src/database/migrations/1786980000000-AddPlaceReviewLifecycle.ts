@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddPlaceReviewLifecycle1786980000000
-  implements MigrationInterface
-{
+export class AddPlaceReviewLifecycle1786980000000 implements MigrationInterface {
   name = "AddPlaceReviewLifecycle1786980000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
