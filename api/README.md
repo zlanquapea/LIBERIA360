@@ -75,6 +75,8 @@ Environment variables (`.env.example` has the full annotated list):
 
 `JWT_SECRET` and `TWO_FACTOR_ENCRYPTION_KEY` ship with placeholder dev values; the app refuses to start in production with either unset. Every other integration (SMTP, VAPID, S3, Sentry) degrades gracefully when unconfigured — the app runs, the corresponding feature is a no-op.
 
+Without `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` set, verification and password-reset emails are only logged to the server console (`[DEV] Email to ...`), never actually delivered — the API still reports success, since a broken mail provider must never block registration or a password-reset request. If a real deployment is missing these, "Sent — check your inbox" will show with no email ever arriving. The System & Operations admin page (`GET /admin/system/status`'s `mail` field, `POST /admin/system/test-email`) surfaces whether SMTP is configured and the outcome of the last real send attempt, and lets a super admin send themselves a one-click test email — the fastest way to confirm delivery actually works end to end without digging through logs.
+
 ## API reference
 
 Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any authenticated user, `Owner` authenticated + resource-ownership check, `Admin` / `Super Admin` role-gated.
@@ -299,7 +301,8 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `GET /admin/analytics/aggregate?limit=` | B2B aggregate analytics: top places, category/county breakdowns |
 | `GET /admin/analytics/overview?days=` | Decision-driving analytics: current-vs-previous-period deltas for sign-ups/reviews/bookings/page views (computed live from existing timestamped tables, not a stored snapshot), top places, neglected (zero-view) places, top reviewers, and rule-based insight sentences |
 | `GET /admin/users?page=&limit=&search=&travelerType=&isAdmin=` | Every account (not just admins — see `/admin/team` for that), paginated, searchable by name/email | Super Admin |
-| `GET /admin/system/status` | Runtime status: environment, API uptime, storage driver, DB SSL, and which optional integrations (email, push, crash reporting) are configured — flags only, never credentials | Super Admin |
+| `GET /admin/system/status` | Runtime status: environment, API uptime, storage driver, DB SSL, which optional integrations (email, push, crash reporting) are configured, and email delivery diagnostics (SMTP configured? what happened on the last real send attempt, success or failure with the error) — flags and outcomes only, never credentials | Super Admin |
+| `POST /admin/system/test-email` | Send a real test email to the calling admin's own address and report the actual outcome — the fastest way to tell "SMTP isn't configured" apart from "SMTP is configured but wrong" without reading server logs | Super Admin |
 | `GET /admin/team` | List admins and super admins | Super Admin |
 | `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
 | `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |

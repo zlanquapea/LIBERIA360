@@ -428,3 +428,13 @@ export function getUsers(
 export function getSystemStatus(token: string): Promise<SystemStatus> {
   return apiRequest<SystemStatus>('/admin/system/status', { headers: authHeader(token) });
 }
+
+// Sends a real test email to the calling super admin's own address and
+// reports whether it actually delivered — the concrete "does this work or
+// not" check behind the mail diagnostics on the same page.
+export function sendTestEmail(token: string): Promise<{ success: boolean; error: string | null }> {
+  return apiRequest<{ success: boolean; error: string | null }>('/admin/system/test-email', {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
