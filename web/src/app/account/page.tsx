@@ -123,6 +123,13 @@ export default function AccountPage() {
       </Link>
 
       <Link
+        href="/account/my-events"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
+      >
+        My Events
+      </Link>
+
+      <Link
         href="/places/submit"
         className="rounded-full border border-dashed border-brand-400 px-4 py-2.5 text-center text-sm font-medium text-brand-700 dark:border-brand-600 dark:text-brand-300 hover:border-solid hover:bg-brand-50 dark:hover:bg-brand-950/30"
       >

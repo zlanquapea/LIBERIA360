@@ -8,7 +8,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Event } from "./entities/event.entity";
 import { CreateEventDto } from "./dto/create-event.dto";
+import { UpdateEventDto } from "./dto/update-event.dto";
 import { QueryEventsDto } from "./dto/query-events.dto";
+import { clearStaleRelation } from "../common/typeorm-relations";
 import { PushService } from "../push/push.service";
 import { UsersService } from "../users/users.service";
 import { BusinessesService } from "../businesses/businesses.service";
@@ -123,6 +125,14 @@ export class EventsService {
     }
     if (query.dateFrom) {
       qb.andWhere("event.startDate >= :dateFrom", { dateFrom: query.dateFrom });
+    } else if (!query.includePast) {
+      // Public browsing (the /events page) never passes dateFrom or
+      // includePast — without this, an event that already happened stays
+      // in the results forever and, being the earliest startDate, sorts
+      // to the very top ahead of everything actually upcoming. Admin's
+      // events management table passes includePast so a past event is
+      // still reachable to edit or remove.
+      qb.andWhere("event.startDate >= :now", { now: new Date() });
     }
     if (query.dateTo) {
       qb.andWhere("event.startDate <= :dateTo", { dateTo: query.dateTo });
@@ -150,5 +160,67 @@ export class EventsService {
       throw new NotFoundException(`Event "${id}" not found`);
     }
     return event;
+  }
+
+  /** Everything a user has posted, regardless of date — the "My Events"
+   * account page, which needs past events too (so someone can see what
+   * they've already run), unlike the public listing above. */
+  async findMine(userId: string): Promise<Event[]> {
+    return this.eventRepo.find({
+      where: { createdByUserId: userId },
+      order: { startDate: "ASC" },
+    });
+  }
+
+  /** Self-service edit for the organizer who posted it (or an admin) —
+   * previously the only way to fix a typo or a wrong date was asking an
+   * admin to do it through the separate admin-only endpoint. Mirrors
+   * AdminContentService.updateEvent's validation/merge logic exactly. */
+  async update(user: User, id: string, dto: UpdateEventDto): Promise<Event> {
+    const event = await this.getOwned(user, id);
+
+    const nextPlaceId = dto.placeId ?? event.placeId;
+    const nextLocationText = dto.locationText ?? event.locationText;
+    if (!nextPlaceId && !nextLocationText) {
+      throw new BadRequestException(
+        "Provide either placeId or locationText for the event location",
+      );
+    }
+    const nextStart = dto.startDate ?? event.startDate.toISOString();
+    const nextEnd = dto.endDate ?? event.endDate?.toISOString();
+    if (nextEnd && new Date(nextEnd) < new Date(nextStart)) {
+      throw new BadRequestException("endDate cannot be before startDate");
+    }
+
+    // `place`/`county` are both `eager: true` — see clearStaleRelation's
+    // doc comment; without this, reassigning placeId/countyId silently
+    // no-ops.
+    if (dto.placeId) clearStaleRelation(event, "place");
+    if (dto.countyId) clearStaleRelation(event, "county");
+
+    this.eventRepo.merge(event, {
+      ...dto,
+      startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+      endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+    });
+    await this.eventRepo.save(event);
+    return this.eventRepo.findOneOrFail({ where: { id } });
+  }
+
+  /** Self-service cancel/remove — same ownership rule as update. */
+  async remove(user: User, id: string): Promise<void> {
+    const event = await this.getOwned(user, id);
+    await this.eventRepo.delete({ id: event.id });
+  }
+
+  private async getOwned(user: User, id: string): Promise<Event> {
+    const event = await this.eventRepo.findOne({ where: { id } });
+    if (!event) {
+      throw new NotFoundException(`Event "${id}" not found`);
+    }
+    if (event.createdByUserId === user.id || user.isAdmin) {
+      return event;
+    }
+    throw new ForbiddenException("Only the event's organizer can do this");
   }
 }

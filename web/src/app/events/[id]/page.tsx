@@ -3,9 +3,12 @@ import { notFound } from 'next/navigation';
 import { CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { ApiError, getEvent } from '@/lib/api';
 import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+import { resolveImageUrl } from '@/lib/images';
 import { JsonLd } from '@/components/JsonLd';
 import { eventJsonLd } from '@/lib/structured-data';
 import { ReportButton } from '@/components/ReportButton';
+import { EventOwnerActions } from '@/components/EventOwnerActions';
+import { SafeImage } from '@/components/SafeImage';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,9 +33,26 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  const gallery = event.images.map(resolveImageUrl);
+
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
       <JsonLd data={eventJsonLd(event)} />
+
+      {gallery.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {gallery.map((img) => (
+            <SafeImage
+              key={img}
+              src={img}
+              alt={`${event.name} photo`}
+              className="aspect-square w-full rounded-lg object-cover"
+              fallback={<div aria-hidden className="aspect-square w-full rounded-lg bg-slate-200 dark:bg-slate-700" />}
+            />
+          ))}
+        </div>
+      )}
+
       <span className="w-fit rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
         {formatEventCategory(event.category)}
       </span>
@@ -56,6 +76,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           · {event.county.name} County
         </p>
       </div>
+
+      <EventOwnerActions event={event} />
 
       {event.description && <p className="text-slate-700 dark:text-slate-200">{event.description}</p>}
 

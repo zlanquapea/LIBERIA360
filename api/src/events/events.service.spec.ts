@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { EventsService } from "./events.service";
@@ -24,11 +24,42 @@ describe("EventsService", () => {
     create: jest.Mock;
     save: jest.Mock;
     findOneOrFail: jest.Mock;
+    find: jest.Mock;
+    findOne: jest.Mock;
+    delete: jest.Mock;
+    merge: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let queryBuilder: {
+    leftJoinAndSelect: jest.Mock;
+    andWhere: jest.Mock;
+    orderBy: jest.Mock;
+    skip: jest.Mock;
+    take: jest.Mock;
+    getManyAndCount: jest.Mock;
+    wheres: Array<{ sql: string; params: unknown }>;
   };
   let businessesService: { findMine: jest.Mock };
   let creatorsService: { findMine: jest.Mock };
 
   beforeEach(async () => {
+    queryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      andWhere: jest.fn(function (
+        this: typeof queryBuilder,
+        sql: string,
+        params: unknown,
+      ) {
+        this.wheres.push({ sql, params });
+        return this;
+      }),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      wheres: [],
+    };
+
     eventRepo = {
       create: jest.fn((data) => data),
       save: jest.fn((data) => ({ id: "event-1", ...data })),
@@ -38,6 +69,11 @@ describe("EventsService", () => {
         county: { name: "Montserrado" },
         createdByUserId: "user-1",
       })),
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      merge: jest.fn((event, patch) => Object.assign(event, patch)),
+      createQueryBuilder: jest.fn(() => queryBuilder),
     };
     businessesService = { findMine: jest.fn().mockResolvedValue([]) };
     creatorsService = { findMine: jest.fn().mockResolvedValue(null) };
@@ -104,6 +140,130 @@ describe("EventsService", () => {
         }),
       ).rejects.toBeInstanceOf(Error);
       expect(eventRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("findAll — past-event filtering", () => {
+    it("defaults to hiding past events (no dateFrom, no includePast)", async () => {
+      await service.findAll({});
+      const startDateWhere = queryBuilder.wheres.find((w) =>
+        w.sql.includes("event.startDate >= :now"),
+      );
+      expect(startDateWhere).toBeDefined();
+    });
+
+    it("does not add the implicit now-filter when includePast is set", async () => {
+      await service.findAll({ includePast: true } as never);
+      const startDateWhere = queryBuilder.wheres.find((w) =>
+        w.sql.includes("event.startDate >= :now"),
+      );
+      expect(startDateWhere).toBeUndefined();
+    });
+
+    it("does not add the implicit now-filter when dateFrom is given explicitly", async () => {
+      await service.findAll({ dateFrom: "2020-01-01" } as never);
+      const nowWhere = queryBuilder.wheres.find((w) =>
+        w.sql.includes("event.startDate >= :now"),
+      );
+      const dateFromWhere = queryBuilder.wheres.find((w) =>
+        w.sql.includes("event.startDate >= :dateFrom"),
+      );
+      expect(nowWhere).toBeUndefined();
+      expect(dateFromWhere).toBeDefined();
+    });
+  });
+
+  describe("findMine", () => {
+    it("looks up events by createdByUserId, soonest first", async () => {
+      await service.findMine("user-1");
+      expect(eventRepo.find).toHaveBeenCalledWith({
+        where: { createdByUserId: "user-1" },
+        order: { startDate: "ASC" },
+      });
+    });
+  });
+
+  describe("update / remove — ownership", () => {
+    const existing = {
+      id: "event-1",
+      createdByUserId: "user-1",
+      placeId: null,
+      locationText: "City Hall",
+      countyId: "county-1",
+      startDate: new Date("2026-09-01T18:00:00Z"),
+      endDate: null,
+    };
+
+    it("lets the organizer update their own event", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+      await expect(
+        service.update({ id: "user-1", isAdmin: false } as never, "event-1", {
+          name: "Updated name",
+        }),
+      ).resolves.toBeDefined();
+      expect(eventRepo.merge).toHaveBeenCalled();
+      expect(eventRepo.save).toHaveBeenCalled();
+    });
+
+    it("lets an admin update someone else's event", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+      await expect(
+        service.update({ id: "admin-1", isAdmin: true } as never, "event-1", {
+          name: "Updated name",
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it("rejects a non-owner, non-admin with ForbiddenException", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+      await expect(
+        service.update({ id: "user-2", isAdmin: false } as never, "event-1", {
+          name: "Nope",
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(eventRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("throws NotFoundException for a nonexistent event id", async () => {
+      eventRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.update({ id: "user-1", isAdmin: false } as never, "missing", {
+          name: "Nope",
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("lets the organizer remove their own event", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+      await service.remove(
+        { id: "user-1", isAdmin: false } as never,
+        "event-1",
+      );
+      expect(eventRepo.delete).toHaveBeenCalledWith({ id: "event-1" });
+    });
+
+    it("lets an admin remove someone else's event", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+      await service.remove(
+        { id: "admin-1", isAdmin: true } as never,
+        "event-1",
+      );
+      expect(eventRepo.delete).toHaveBeenCalledWith({ id: "event-1" });
+    });
+
+    it("rejects a non-owner, non-admin trying to remove", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+      await expect(
+        service.remove({ id: "user-2", isAdmin: false } as never, "event-1"),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(eventRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("throws NotFoundException when removing a nonexistent event id", async () => {
+      eventRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.remove({ id: "user-1", isAdmin: false } as never, "missing"),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

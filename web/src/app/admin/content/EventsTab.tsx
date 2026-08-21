@@ -6,6 +6,7 @@ import { deleteEventAdmin, updateEventAdmin } from '@/lib/admin-api';
 import { getEvents } from '@/lib/api';
 import { HttpError } from '@/lib/http';
 import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+import { PhotoManager } from '@/components/PhotoManager';
 import type { County, Event, EventCategory } from '@/lib/types';
 import { BackToListLink, DeleteButton, inputClass } from './content-shared';
 
@@ -22,7 +23,10 @@ export function EventsTab({ token, counties }: { token: string; counties: County
   const [view, setView] = useState<View>({ mode: 'list' });
 
   function reload() {
-    getEvents({ limit: 100 }).then((res) => setEvents(res.data));
+    // includePast: the public listing hides events that already happened
+    // by default (see EventsService.findAll) — this management table
+    // still needs to reach them to edit or remove.
+    getEvents({ limit: 100, includePast: true }).then((res) => setEvents(res.data));
   }
 
   useEffect(reload, []);
@@ -115,6 +119,7 @@ function EventEditForm({
   const [category, setCategory] = useState<EventCategory>(event.category);
   const [countyId, setCountyId] = useState(event.county.id);
   const [description, setDescription] = useState(event.description ?? '');
+  const [images, setImages] = useState<string[]>(event.images);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -124,6 +129,7 @@ function EventEditForm({
     setCategory(event.category);
     setCountyId(event.county.id);
     setDescription(event.description ?? '');
+    setImages(event.images);
     setSuccess(false);
     // Keyed on event.id — a save replaces this event with a new object of
     // the same id, which must not wipe the success message just set.
@@ -141,6 +147,7 @@ function EventEditForm({
         category,
         countyId,
         description: description.trim() || undefined,
+        images,
       });
       setSuccess(true);
       onSaved(updated);
@@ -164,6 +171,7 @@ function EventEditForm({
             "Flagged content" queue, so it isn't gated to super admin here. */}
         <DeleteButton label="Delete event" onDelete={handleDelete} onDeleted={onDeleted} />
       </div>
+      <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name

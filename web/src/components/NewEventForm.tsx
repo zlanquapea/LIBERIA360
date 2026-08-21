@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { createEvent } from '@/lib/event-api';
+import { createEvent, updateEvent } from '@/lib/event-api';
 import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
 import { HttpError } from '@/lib/http';
-import { formatEventCategory } from '@/lib/format';
-import type { County, EventCategory } from '@/lib/types';
+import { formatEventCategory, toDatetimeLocalInput } from '@/lib/format';
+import { PhotoManager } from './PhotoManager';
+import type { County, Event, EventCategory } from '@/lib/types';
 
 const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nightlife', 'seasonal', 'other'];
 
@@ -17,26 +18,45 @@ const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nig
 // posting requires a claimed business, a creator profile, or admin — not
 // just any logged-in account. Checked client-side too so a traveler with
 // neither sees a clear next step instead of filling out the whole form
-// and hitting a 403 at the end.
+// and hitting a 403 at the end. Not checked at all when editing (`event`
+// passed in) — an organizer who already posted one is allowed to fix it
+// even if they later lose eligibility, same as the API's ownership-only
+// check on PATCH/DELETE.
 type Eligibility = 'checking' | 'eligible' | 'ineligible';
 
-export function NewEventForm({ counties }: { counties: County[] }) {
+// Same component handles both posting a new event (from /events/new) and
+// editing one you already posted (from /account/my-events) — the `event`
+// prop switches it into edit mode, mirroring PlaceSubmissionForm's
+// create/edit dual-mode pattern. Editing calls `onSaved` instead of
+// redirecting, so the caller decides what happens next (e.g. update a list
+// in place) rather than this component hardcoding a destination.
+export function NewEventForm({
+  counties,
+  event,
+  onSaved,
+}: {
+  counties: County[];
+  event?: Event;
+  onSaved?: (event: Event) => void;
+}) {
   const router = useRouter();
   const { user, token, ready } = useAuth();
-  const [eligibility, setEligibility] = useState<Eligibility>('checking');
+  const [eligibility, setEligibility] = useState<Eligibility>(event ? 'eligible' : 'checking');
 
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<EventCategory>('other');
-  const [countyId, setCountyId] = useState(counties[0]?.id ?? '');
-  const [locationText, setLocationText] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [description, setDescription] = useState('');
-  const [ticketInfo, setTicketInfo] = useState('');
+  const [name, setName] = useState(event?.name ?? '');
+  const [category, setCategory] = useState<EventCategory>(event?.category ?? 'other');
+  const [countyId, setCountyId] = useState(event?.county.id ?? counties[0]?.id ?? '');
+  const [locationText, setLocationText] = useState(event?.locationText ?? '');
+  const [startDate, setStartDate] = useState(event ? toDatetimeLocalInput(event.startDate) : '');
+  const [endDate, setEndDate] = useState(event?.endDate ? toDatetimeLocalInput(event.endDate) : '');
+  const [description, setDescription] = useState(event?.description ?? '');
+  const [images, setImages] = useState<string[]>(event?.images ?? []);
+  const [ticketInfo, setTicketInfo] = useState(event?.ticketInfo ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (event) return; // editing — eligibility already established by having posted it
     if (!user || !token) return;
     if (user.isAdmin) {
       setEligibility('eligible');
@@ -54,7 +74,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
     return () => {
       cancelled = true;
     };
-  }, [user, token]);
+  }, [event, user, token]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -62,7 +82,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
     setSubmitting(true);
     setError(null);
     try {
-      const event = await createEvent(token, {
+      const input = {
         name,
         category,
         countyId,
@@ -70,9 +90,15 @@ export function NewEventForm({ counties }: { counties: County[] }) {
         startDate: new Date(startDate).toISOString(),
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
         description: description.trim() || undefined,
+        images,
         ticketInfo: ticketInfo.trim() || undefined,
-      });
-      router.push(`/events/${event.id}`);
+      };
+      const saved = event ? await updateEvent(token, event.id, input) : await createEvent(token, input);
+      if (onSaved) {
+        onSaved(saved);
+      } else {
+        router.push(`/events/${saved.id}`);
+      }
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -117,6 +143,8 @@ export function NewEventForm({ counties }: { counties: County[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {token && <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />}
+
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Event name
         <input
@@ -230,7 +258,7 @@ export function NewEventForm({ counties }: { counties: County[] }) {
         disabled={submitting}
         className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
       >
-        {submitting ? 'Posting…' : 'Post event'}
+        {submitting ? 'Saving…' : event ? 'Save changes' : 'Post event'}
       </button>
     </form>
   );
