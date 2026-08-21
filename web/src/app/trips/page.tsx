@@ -5,9 +5,18 @@ import { useEffect, useState } from 'react';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteItinerary, getMyItineraries, getSharedWithMe, removeCollaborator } from '@/lib/itinerary-api';
-import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand } from '@/lib/format';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { SuccessBanner } from '@/components/SuccessBanner';
 import type { Itinerary } from '@/lib/types';
+
+// A trip with this many saved stops (or more) has real planning work in
+// it — losing it to a stray click deserves an extra safeguard beyond a
+// single confirm click. A brand-new, mostly-empty trip doesn't need the
+// same friction. Kept in sync with the same threshold on the trip detail
+// page.
+const SUBSTANTIAL_STOPS_THRESHOLD = 5;
 
 // "My Trips" — saved itineraries from both Build My Liberia Trip and
 // Weekend Explorer (Tech Spec §4.3, §3.2). Client-only: the API's JWT
@@ -21,7 +30,13 @@ export default function TripsPage() {
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [shared, setShared] = useState<Itinerary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [pendingDelete, setPendingDelete] = useState<Itinerary | null>(null);
+  const [pendingLeave, setPendingLeave] = useState<Itinerary | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready || !token) {
@@ -29,39 +44,88 @@ export default function TripsPage() {
       return;
     }
     let cancelled = false;
-    Promise.all([getMyItineraries(token), getSharedWithMe(token)]).then(([mine, sharedWithMe]) => {
-      if (!cancelled) {
+    Promise.all([getMyItineraries(token), getSharedWithMe(token)])
+      .then(([mine, sharedWithMe]) => {
+        if (cancelled) return;
         setItineraries(mine);
         setShared(sharedWithMe);
-        setLoading(false);
-      }
-    });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(getFriendlyErrorMessage(err, { context: { action: 'load-trips' } }));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
   }, [ready, token]);
 
-  async function handleDelete(itinerary: Itinerary) {
-    if (!token) return;
-    if (!confirm(`Delete "${itinerary.title}"? This cannot be undone.`)) return;
-    setError(null);
+  // Success confirmation is only useful for a moment — clear it so it
+  // doesn't linger indefinitely if the user stays on this page.
+  useEffect(() => {
+    if (!successMessage) return;
+    const id = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(id);
+  }, [successMessage]);
+
+  function closeDialogs() {
+    if (actionLoading) return;
+    setPendingDelete(null);
+    setPendingLeave(null);
+    setDialogError(null);
+  }
+
+  async function confirmDelete() {
+    if (!token || !pendingDelete) return;
+    const target = pendingDelete;
+    setActionLoading(true);
+    setDialogError(null);
     try {
-      await deleteItinerary(token, itinerary.id);
-      setItineraries((prev) => prev.filter((t) => t.id !== itinerary.id));
+      await deleteItinerary(token, target.id);
+      setItineraries((prev) => prev.filter((t) => t.id !== target.id));
+      setPendingDelete(null);
+      setSuccessMessage(`"${target.title}" was deleted.`);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not delete this trip.');
+      if (isNotFoundError(err)) {
+        // It's already gone — exactly the outcome the user wanted, just
+        // not by this click. Treat it as a success rather than an error.
+        setItineraries((prev) => prev.filter((t) => t.id !== target.id));
+        setPendingDelete(null);
+        setSuccessMessage('This trip was already deleted.');
+      } else {
+        setDialogError(
+          getFriendlyErrorMessage(err, { context: { action: 'delete-itinerary', itineraryId: target.id } }),
+        );
+      }
+    } finally {
+      setActionLoading(false);
     }
   }
 
-  async function handleLeave(itinerary: Itinerary) {
-    if (!token || !user) return;
-    if (!confirm(`Leave "${itinerary.title}"? You'll lose access unless you're invited again.`)) return;
-    setError(null);
+  async function confirmLeave() {
+    if (!token || !user || !pendingLeave) return;
+    const target = pendingLeave;
+    setActionLoading(true);
+    setDialogError(null);
     try {
-      await removeCollaborator(token, itinerary.id, user.id);
-      setShared((prev) => prev.filter((t) => t.id !== itinerary.id));
+      await removeCollaborator(token, target.id, user.id);
+      setShared((prev) => prev.filter((t) => t.id !== target.id));
+      setPendingLeave(null);
+      setSuccessMessage(`You left "${target.title}".`);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not leave this trip.');
+      if (isNotFoundError(err)) {
+        setShared((prev) => prev.filter((t) => t.id !== target.id));
+        setPendingLeave(null);
+        setSuccessMessage('This trip is no longer available.');
+      } else {
+        setDialogError(
+          getFriendlyErrorMessage(err, { context: { action: 'leave-itinerary', itineraryId: target.id } }),
+        );
+      }
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -108,9 +172,11 @@ export default function TripsPage() {
         </div>
       </div>
 
-      {error && (
+      {successMessage && <SuccessBanner>{successMessage}</SuccessBanner>}
+
+      {loadError && (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
-          {error}
+          {loadError}
         </p>
       )}
 
@@ -119,15 +185,42 @@ export default function TripsPage() {
           No trips yet — build your first Liberia itinerary.
         </p>
       ) : (
-        <TripList itineraries={itineraries} actionLabel="Delete trip" onAction={handleDelete} />
+        <TripList itineraries={itineraries} actionLabel="Delete trip" onAction={setPendingDelete} />
       )}
 
       {shared.length > 0 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Shared with me</h2>
-          <TripList itineraries={shared} actionLabel="Leave trip" onAction={handleLeave} />
+          <TripList itineraries={shared} actionLabel="Leave trip" onAction={setPendingLeave} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        title={pendingDelete ? `Delete "${pendingDelete.title}"?` : 'Delete this trip?'}
+        description="This will permanently delete this trip, including its itinerary, saved plans, and associated trip information."
+        confirmationPhrase={
+          pendingDelete && pendingDelete.stops.length >= SUBSTANTIAL_STOPS_THRESHOLD ? pendingDelete.title : undefined
+        }
+        confirmLabel="Delete Trip"
+        loadingLabel="Deleting trip…"
+        isLoading={actionLoading}
+        error={dialogError}
+        onConfirm={confirmDelete}
+        onCancel={closeDialogs}
+      />
+
+      <ConfirmDialog
+        open={pendingLeave != null}
+        title={pendingLeave ? `Leave "${pendingLeave.title}"?` : 'Leave this trip?'}
+        description="You'll lose access to this trip's itinerary unless the owner invites you again."
+        confirmLabel="Leave Trip"
+        loadingLabel="Leaving…"
+        isLoading={actionLoading}
+        error={dialogError}
+        onConfirm={confirmLeave}
+        onCancel={closeDialogs}
+      />
     </main>
   );
 }

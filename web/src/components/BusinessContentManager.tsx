@@ -9,8 +9,10 @@ import {
   updateBusinessContent,
 } from '@/lib/business-content-api';
 import { HttpError } from '@/lib/http';
+import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBusinessContentStatus, formatBusinessContentType } from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { BusinessContent, BusinessContentType } from '@/lib/types';
 
 const CONTENT_TYPES: BusinessContentType[] = ['offer', 'announcement', 'article', 'travel_tip', 'experience'];
@@ -44,11 +46,14 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
   const [editingItem, setEditingItem] = useState<BusinessContent | null>(null);
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<BusinessContent | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   function load() {
     getMyBusinessContent(token, businessId)
       .then(setItems)
-      .catch((err) => setError(err instanceof HttpError ? err.message : 'Could not load your content.'));
+      .catch((err) => setError(getFriendlyErrorMessage(err, { context: { action: 'load-business-content', businessId } })));
   }
 
   useEffect(() => {
@@ -63,23 +68,33 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
       const updated = await submitBusinessContent(token, id);
       setItems((prev) => prev?.map((i) => (i.id === id ? updated : i)) ?? prev);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(getFriendlyErrorMessage(err, { notFoundMessage: "We couldn't find that item. It may have already been deleted.", context: { action: 'submit-business-content', contentId: id } }));
     } finally {
       setBusyId(null);
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this item? This cannot be undone.')) return;
-    setBusyId(id);
-    setError(null);
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const target = pendingDelete;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteBusinessContent(token, id);
-      setItems((prev) => prev?.filter((i) => i.id !== id) ?? prev);
+      await deleteBusinessContent(token, target.id);
+      setItems((prev) => prev?.filter((i) => i.id !== target.id) ?? prev);
+      setPendingDelete(null);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      if (isNotFoundError(err)) {
+        // Already gone — same outcome the user was asking for.
+        setItems((prev) => prev?.filter((i) => i.id !== target.id) ?? prev);
+        setPendingDelete(null);
+      } else {
+        setDeleteError(
+          getFriendlyErrorMessage(err, { context: { action: 'delete-business-content', contentId: target.id } }),
+        );
+      }
     } finally {
-      setBusyId(null);
+      setDeleting(false);
     }
   }
 
@@ -167,9 +182,8 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
                 )}
                 <button
                   type="button"
-                  disabled={busyId === item.id}
-                  onClick={() => handleDelete(item.id)}
-                  className="text-xs font-medium text-flag-700 dark:text-flag-300 hover:underline disabled:opacity-60"
+                  onClick={() => setPendingDelete(item)}
+                  className="text-xs font-medium text-flag-700 dark:text-flag-300 hover:underline"
                 >
                   Delete
                 </button>
@@ -178,6 +192,22 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        title={pendingDelete ? `Delete "${pendingDelete.title}"?` : 'Delete this item?'}
+        description="This will permanently remove this item from your business profile."
+        confirmLabel="Delete"
+        loadingLabel="Deleting…"
+        isLoading={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (deleting) return;
+          setPendingDelete(null);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }
