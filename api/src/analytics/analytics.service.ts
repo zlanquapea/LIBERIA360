@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,6 +10,7 @@ import { AnalyticsEvent } from "./entities/analytics-event.entity";
 import { AnalyticsEventType } from "./entities/analytics-event.enums";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { Creator } from "../creators/entities/creator.entity";
 import { CreateAnalyticsEventDto } from "./dto/create-analytics-event.dto";
 
 const BUSINESS_ANALYTICS_WINDOW_DAYS = 30;
@@ -38,15 +40,44 @@ export class AnalyticsService {
     private readonly placeRepo: Repository<Place>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(Creator)
+    private readonly creatorRepo: Repository<Creator>,
   ) {}
 
   async record(dto: CreateAnalyticsEventDto): Promise<void> {
-    const exists = await this.placeRepo.exists({ where: { id: dto.placeId } });
-    if (!exists) {
-      throw new NotFoundException(`Place "${dto.placeId}" not found`);
+    if (!dto.placeId === !dto.creatorId) {
+      throw new BadRequestException(
+        "Provide exactly one of placeId or creatorId",
+      );
+    }
+
+    if (dto.placeId) {
+      const exists = await this.placeRepo.exists({
+        where: { id: dto.placeId },
+      });
+      if (!exists) {
+        throw new NotFoundException(`Place "${dto.placeId}" not found`);
+      }
+      await this.eventRepo.save(
+        this.eventRepo.create({
+          placeId: dto.placeId,
+          eventType: dto.eventType,
+        }),
+      );
+      return;
+    }
+
+    const creatorExists = await this.creatorRepo.exists({
+      where: { id: dto.creatorId },
+    });
+    if (!creatorExists) {
+      throw new NotFoundException(`Creator "${dto.creatorId}" not found`);
     }
     await this.eventRepo.save(
-      this.eventRepo.create({ placeId: dto.placeId, eventType: dto.eventType }),
+      this.eventRepo.create({
+        creatorId: dto.creatorId,
+        eventType: dto.eventType,
+      }),
     );
   }
 
@@ -69,13 +100,40 @@ export class AnalyticsService {
       );
     }
 
-    const placeId = business.linkedPlaceId;
+    return this.aggregate("event.placeId = :id", business.linkedPlaceId);
+  }
 
+  /** Same shape as getBusinessAnalytics, for the creator's own profile
+   * directly (no "linked place" indirection — a Creator is its own
+   * analytics target, see AnalyticsEvent's doc comment). */
+  async getCreatorAnalytics(
+    userId: string,
+    creatorId: string,
+  ): Promise<BusinessAnalytics> {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+    if (creator.userId !== userId) {
+      throw new ForbiddenException(
+        "Only the creator can view their own analytics",
+      );
+    }
+
+    return this.aggregate("event.creatorId = :id", creatorId);
+  }
+
+  private async aggregate(
+    whereClause: string,
+    id: string,
+  ): Promise<BusinessAnalytics> {
     const totalsRaw = await this.eventRepo
       .createQueryBuilder("event")
       .select("event.eventType", "eventType")
       .addSelect("COUNT(*)", "count")
-      .where("event.placeId = :placeId", { placeId })
+      .where(whereClause, { id })
       .groupBy("event.eventType")
       .getRawMany<{ eventType: AnalyticsEventType; count: string }>();
 
@@ -92,7 +150,7 @@ export class AnalyticsService {
       .select("DATE(event.createdAt)", "date")
       .addSelect("event.eventType", "eventType")
       .addSelect("COUNT(*)", "count")
-      .where("event.placeId = :placeId", { placeId })
+      .where(whereClause, { id })
       .andWhere("event.createdAt >= :since", { since })
       .groupBy("DATE(event.createdAt)")
       .addGroupBy("event.eventType")

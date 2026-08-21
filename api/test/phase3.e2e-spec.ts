@@ -457,6 +457,74 @@ describe("Phase 3 (e2e)", () => {
         })
         .expect(404);
     });
+
+    it("rejects an event with neither placeId nor creatorId, and with both", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/analytics/events")
+        .send({ eventType: "view" })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/analytics/events")
+        .send({
+          placeId: hotelPlace.id,
+          creatorId: "00000000-0000-0000-0000-000000000000",
+          eventType: "view",
+        })
+        .expect(400);
+    });
+
+    it("records public events for a creator and aggregates them for that creator only", async () => {
+      const creatorOwner = await registerUser(
+        "analytics-creator-owner@example.com",
+        "Analytics Creator Owner",
+      );
+      const creatorRes = await request(app.getHttpServer())
+        .post("/api/v1/creators")
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .send({ name: "Analytics Creator", username: "analytics_creator" })
+        .expect(201);
+      const creatorId = creatorRes.body.id;
+
+      for (const eventType of ["view", "view", "contact_click"]) {
+        await request(app.getHttpServer())
+          .post("/api/v1/analytics/events")
+          .send({ creatorId, eventType })
+          .expect(204);
+      }
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/analytics/creator/${creatorId}`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+
+      const stats = await request(app.getHttpServer())
+        .get(`/api/v1/analytics/creator/${creatorId}`)
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .expect(200);
+      expect(stats.body.totals).toEqual(
+        expect.objectContaining({ view: 2, contact_click: 1 }),
+      );
+
+      // A creator's events never leak into the place-scoped business
+      // dashboard, and vice versa (hotelPlace already has events recorded
+      // in the sibling test above).
+      const businessStats = await request(app.getHttpServer())
+        .get(`/api/v1/analytics/business/${hotelBusinessId}`)
+        .set("Authorization", `Bearer ${ownerToken}`)
+        .expect(200);
+      expect(businessStats.body.totals.view).toBe(2);
+    });
+
+    it("404s recording an event for an unknown creator", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/analytics/events")
+        .send({
+          creatorId: "00000000-0000-0000-0000-000000000000",
+          eventType: "view",
+        })
+        .expect(404);
+    });
   });
 
   describe("Sponsored placements", () => {
