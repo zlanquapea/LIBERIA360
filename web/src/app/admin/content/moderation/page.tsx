@@ -13,6 +13,7 @@ import { formatBusinessContentType, formatBusinessContentStatus, formatBusinessT
 import { HttpError } from '@/lib/http';
 import type { BusinessContent, BusinessContentStatus, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
 import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
+import { PlaceReviewPanel } from '../PlaceReviewPanel';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -52,6 +53,33 @@ export default function ModerationPage() {
         title="Moderation"
         description="Pending business verification and flagged reviews/events."
       />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Pending places
+          {queue && queue.pendingPlaces.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {queue.pendingPlaces.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Places submitted through the public form — invisible everywhere (Near Me, Explore, search) until approved.
+        </p>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.pendingPlaces.length === 0 ? (
+          <EmptyState title="Nothing pending — the queue is clear." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queue.pendingPlaces.map((place) => (
+              <li key={place.id}>
+                <PlaceReviewPanel token={token} place={place} onUpdated={reload} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">

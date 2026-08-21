@@ -213,6 +213,19 @@ describe("Place self-service submission + review gate (e2e)", () => {
     expect(detail.body.owner.passwordHash).toBeUndefined();
   });
 
+  it("surfaces the pending submission in the admin moderation queue, not just the Content > Places filter", async () => {
+    const queue = await request(app.getHttpServer())
+      .get("/api/v1/admin/moderation-queue")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    const row = queue.body.pendingPlaces.find(
+      (p: { id: string }) => p.id === placeId,
+    );
+    expect(row).toBeDefined();
+    expect(row.owner.id).toBe(submitterId);
+    expect(row.owner.passwordHash).toBeUndefined();
+  });
+
   it("approves the submission, making it public", async () => {
     const approved = await request(app.getHttpServer())
       .patch(`/api/v1/admin/places/${placeId}/review-status`)
@@ -233,6 +246,15 @@ describe("Place self-service submission + review gate (e2e)", () => {
     expect(list.body.data.some((p: { id: string }) => p.id === placeId)).toBe(
       true,
     );
+
+    // No longer clutters the moderation queue once decided.
+    const queue = await request(app.getHttpServer())
+      .get("/api/v1/admin/moderation-queue")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(
+      queue.body.pendingPlaces.some((p: { id: string }) => p.id === placeId),
+    ).toBe(false);
   });
 
   it("suspends an approved self-submitted place, hiding it from the public catalog again", async () => {

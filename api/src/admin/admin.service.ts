@@ -62,6 +62,7 @@ export interface FlaggedContent {
 
 export interface ModerationQueue {
   pendingBusinesses: Business[];
+  pendingPlaces: Place[];
   recentReviews: Review[];
   possiblyClosedPlaces: PossiblyClosedPlace[];
   flaggedContent: FlaggedContent[];
@@ -310,10 +311,21 @@ export class AdminService {
    * "flagged content" for an admin to review. Two independent flagging
    * mechanisms feed this: `PlaceFreshnessReport` (whether a place has
    * closed or moved) and `ContentReport` (user-reported reviews/events —
-   * see that entity's doc comment). */
+   * see that entity's doc comment).
+   *
+   * Also surfaces self-submitted places awaiting a decision
+   * (`pendingPlaces`). Without this, a place submitted through the public
+   * form sits in SUBMITTED_FOR_REVIEW indefinitely and is invisible
+   * everywhere — not just to the public (deliberate, see
+   * PlacesService.findAll), but to admins too, since the only way to find
+   * it was manually filtering Content > Places to the "Pending review"
+   * chip. That silence is exactly what made testers who self-submitted
+   * places think Near Me was broken: their places were never rejected,
+   * just never looked at. */
   async getModerationQueue(): Promise<ModerationQueue> {
     const [
       pendingBusinesses,
+      pendingPlaces,
       recentReviews,
       possiblyClosedPlaces,
       flaggedContent,
@@ -332,6 +344,14 @@ export class AdminService {
         ],
         order: { submittedAt: "DESC" },
       }),
+      this.placeRepo.find({
+        where: [
+          { reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW },
+          { reviewStatus: PlaceReviewStatus.UNDER_REVIEW },
+        ],
+        relations: ["category", "county", "owner"],
+        order: { submittedAt: "DESC" },
+      }),
       this.reviewRepo.find({
         relations: ["user", "place"],
         order: { createdAt: "DESC" },
@@ -344,6 +364,7 @@ export class AdminService {
     return {
       pendingBusinessContent,
       pendingBusinesses,
+      pendingPlaces,
       recentReviews,
       possiblyClosedPlaces,
       flaggedContent,

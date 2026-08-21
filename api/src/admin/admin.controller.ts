@@ -190,6 +190,7 @@ export class AdminController {
     const queue = await this.adminService.getModerationQueue();
     return {
       pendingBusinesses: queue.pendingBusinesses.map(sanitizeBusiness),
+      pendingPlaces: queue.pendingPlaces.map(sanitizePlace),
       recentReviews: queue.recentReviews.map(sanitizeReview),
       possiblyClosedPlaces: queue.possiblyClosedPlaces,
       flaggedContent: queue.flaggedContent.map(sanitizeFlaggedContent),
