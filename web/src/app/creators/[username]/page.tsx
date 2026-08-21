@@ -14,6 +14,9 @@ import { resolveImageUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { CreatorPortfolioGallery } from '@/components/CreatorPortfolioGallery';
 import { ReviewsSection } from '@/components/ReviewsSection';
+import { ContactLink } from '@/components/ContactLink';
+import { CreatorViewTracker } from '@/components/CreatorViewTracker';
+import { BookingRequestSection } from '@/components/BookingRequestSection';
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -74,6 +77,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
+      <CreatorViewTracker creatorId={creator.id} />
       {/* Header */}
       <div className="flex flex-col">
         <div className="relative h-36 overflow-hidden sm:h-48">
@@ -143,16 +147,18 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
           {hasContactMethod && (
             <div className="flex flex-wrap gap-2">
               {creator.contactEmail && (
-                <a
+                <ContactLink
+                  creatorId={creator.id}
                   href={`mailto:${creator.contactEmail}`}
                   className="inline-flex items-center gap-1.5 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
                 >
                   <EnvelopeIcon aria-hidden className="h-4 w-4" />
                   Email {creator.name.split(' ')[0]}
-                </a>
+                </ContactLink>
               )}
               {creator.whatsapp && (
-                <a
+                <ContactLink
+                  creatorId={creator.id}
                   href={whatsappLink(creator.whatsapp)}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -160,10 +166,11 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 >
                   <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
                   WhatsApp
-                </a>
+                </ContactLink>
               )}
               {creator.website && (
-                <a
+                <ContactLink
+                  creatorId={creator.id}
                   href={creator.website}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -171,10 +178,12 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 >
                   <GlobeAltIcon aria-hidden className="h-4 w-4" />
                   Website
-                </a>
+                </ContactLink>
               )}
             </div>
           )}
+
+          <BookingRequestSection creator={creator} />
 
           {(creator.instagram || creator.tiktok || creator.youtube) && (
             <div className="flex flex-wrap gap-2">

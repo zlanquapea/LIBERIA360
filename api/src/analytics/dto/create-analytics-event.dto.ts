@@ -1,9 +1,15 @@
-import { IsEnum, IsUUID } from "class-validator";
+import { IsEnum, IsOptional, IsUUID } from "class-validator";
 import { AnalyticsEventType } from "../entities/analytics-event.enums";
 
+// Exactly one of placeId/creatorId — enforced in AnalyticsService.record.
 export class CreateAnalyticsEventDto {
+  @IsOptional()
   @IsUUID()
-  placeId: string;
+  placeId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  creatorId?: string;
 
   @IsEnum(AnalyticsEventType)
   eventType: AnalyticsEventType;

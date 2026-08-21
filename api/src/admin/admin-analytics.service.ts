@@ -229,14 +229,20 @@ export class AdminAnalyticsService {
         .where("booking.createdAt >= :previousStart", { previousStart })
         .andWhere("booking.createdAt < :currentStart", { currentStart })
         .getCount(),
+      // "Place page views" specifically (label below) — a view event now
+      // also fires from a creator profile (placeId null there, see
+      // AnalyticsEvent's doc comment), which must not silently inflate a
+      // metric documented as place-only.
       this.eventRepo
         .createQueryBuilder("event")
         .where("event.eventType = 'view'")
+        .andWhere("event.placeId IS NOT NULL")
         .andWhere("event.createdAt >= :currentStart", { currentStart })
         .getCount(),
       this.eventRepo
         .createQueryBuilder("event")
         .where("event.eventType = 'view'")
+        .andWhere("event.placeId IS NOT NULL")
         .andWhere("event.createdAt >= :previousStart", { previousStart })
         .andWhere("event.createdAt < :currentStart", { currentStart })
         .getCount(),
@@ -246,7 +252,7 @@ export class AdminAnalyticsService {
         .where(
           `place.id NOT IN (
             SELECT DISTINCT event.place_id FROM analytics_events event
-            WHERE event.created_at >= :currentStart
+            WHERE event.created_at >= :currentStart AND event.place_id IS NOT NULL
           )`,
           { currentStart },
         )

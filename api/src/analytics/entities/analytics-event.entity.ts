@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Place } from "../../places/entities/place.entity";
+import { Creator } from "../../creators/entities/creator.entity";
 import { AnalyticsEventType } from "./analytics-event.enums";
 
 /**
@@ -16,19 +17,35 @@ import { AnalyticsEventType } from "./analytics-event.enums";
  * tied to a user (anonymous by design — same "views/saves" a logged-out
  * visitor generates count too, and the B2B analytics product is explicitly
  * meant to be aggregate/anonymized, not per-visitor).
+ *
+ * Targets either a Place or a Creator, never both — same XOR-at-the-
+ * service-layer convention as Review (see its doc comment), and the same
+ * "NULL is distinct" reasoning for why one nullable FK per target works.
+ * The B2B aggregate tourism analytics queries (admin-analytics.service.ts)
+ * are place-specific and explicitly filter out creator-only rows (a
+ * creator isn't a destination) — see that file's comments at each query
+ * this affects.
  */
 @Entity("analytics_events")
 export class AnalyticsEvent {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(() => Place, { onDelete: "CASCADE" })
+  @ManyToOne(() => Place, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "place_id" })
-  place: Place;
+  place: Place | null;
 
   @Index()
-  @Column({ name: "place_id" })
-  placeId: string;
+  @Column({ name: "place_id", nullable: true })
+  placeId: string | null;
+
+  @ManyToOne(() => Creator, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "creator_id" })
+  creator: Creator | null;
+
+  @Index()
+  @Column({ name: "creator_id", nullable: true })
+  creatorId: string | null;
 
   @Index()
   @Column({ name: "event_type", type: "enum", enum: AnalyticsEventType })

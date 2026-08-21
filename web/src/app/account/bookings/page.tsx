@@ -4,23 +4,26 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import BookingMessageThread from '@/components/BookingMessageThread';
-import { cancelBooking, getBusinessBookings, getMyBookings, respondToBooking } from '@/lib/booking-api';
+import { cancelBooking, getBusinessBookings, getCreatorBookings, getMyBookings, respondToBooking } from '@/lib/booking-api';
 import { getMyBusinesses } from '@/lib/business-api';
+import { getMyCreatorProfile } from '@/lib/creator-api';
 import { formatBookingStatus } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { Booking, Business } from '@/lib/types';
+import type { Booking, Business, Creator } from '@/lib/types';
 
 // "My Bookings" (Tech Spec §3.3) — client-only, same reasoning as
 // /trips: JWT auth lives in localStorage, so a server component can't
-// know who's asking. Two independent sections on one page since a user
-// can be both a guest (requests they sent) and a business owner
-// (requests they've received) at once — the account model doesn't
-// distinguish "roles", so neither does this page.
+// know who's asking. Three independent sections on one page since a user
+// can be a guest (requests they sent), a business owner, and/or a
+// creator (requests either has received) all at once — the account
+// model doesn't distinguish "roles", so neither does this page.
 export default function BookingsPage() {
   const { user, token, ready } = useAuth();
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [creator, setCreator] = useState<Creator | null>(null);
   const [incoming, setIncoming] = useState<Record<string, Booking[]>>({});
+  const [incomingCreator, setIncomingCreator] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reloadMine = useCallback(() => {
@@ -38,24 +41,34 @@ export default function BookingsPage() {
     [token],
   );
 
+  const reloadIncomingCreator = useCallback(() => {
+    if (!token || !creator) return;
+    getCreatorBookings(token, creator.id).then(setIncomingCreator);
+  }, [token, creator]);
+
   useEffect(() => {
     if (!ready || !token) {
       if (ready) setLoading(false);
       return;
     }
     let cancelled = false;
-    Promise.all([getMyBookings(token), getMyBusinesses(token)]).then(async ([bookings, myBusinesses]) => {
-      if (cancelled) return;
-      setMyBookings(bookings);
-      setBusinesses(myBusinesses);
-      const entries = await Promise.all(
-        myBusinesses.map(async (b) => [b.id, await getBusinessBookings(token, b.id)] as const),
-      );
-      if (!cancelled) {
-        setIncoming(Object.fromEntries(entries));
-        setLoading(false);
-      }
-    });
+    Promise.all([getMyBookings(token), getMyBusinesses(token), getMyCreatorProfile(token)]).then(
+      async ([bookings, myBusinesses, myCreator]) => {
+        if (cancelled) return;
+        setMyBookings(bookings);
+        setBusinesses(myBusinesses);
+        setCreator(myCreator);
+        const entries = await Promise.all(
+          myBusinesses.map(async (b) => [b.id, await getBusinessBookings(token, b.id)] as const),
+        );
+        const creatorBookings = myCreator ? await getCreatorBookings(token, myCreator.id) : [];
+        if (!cancelled) {
+          setIncoming(Object.fromEntries(entries));
+          setIncomingCreator(creatorBookings);
+          setLoading(false);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -145,6 +158,27 @@ export default function BookingsPage() {
           ))}
         </section>
       )}
+
+      {creator && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my creator profile</h2>
+          {incomingCreator.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {incomingCreator.map((booking) => (
+                <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+                  <BookingCard booking={booking} showGuest />
+                  {booking.status === 'pending' && (
+                    <OwnerResponseForm bookingId={booking.id} onDone={reloadIncomingCreator} />
+                  )}
+                  <BookingMessageThread bookingId={booking.id} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </main>
   );
 }
@@ -154,7 +188,7 @@ function BookingCard({ booking, showGuest }: { booking: Booking; showGuest?: boo
     <div className="flex flex-col gap-1">
       <div className="flex items-start justify-between gap-2">
         <p className="font-medium text-slate-900 dark:text-slate-50">
-          {showGuest ? booking.guest?.name ?? 'A guest' : booking.business.name}
+          {showGuest ? booking.guest?.name ?? 'A guest' : booking.business?.name ?? booking.creator?.name}
         </p>
         <StatusBadge status={booking.status} />
       </div>

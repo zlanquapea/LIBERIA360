@@ -13,6 +13,21 @@ export function recordAnalyticsEvent(placeId: string, eventType: AnalyticsEventT
   });
 }
 
+// Same fire-and-forget shape, for the creator-profile equivalent of
+// PlaceViewTracker/ContactLink's events.
+export function recordCreatorAnalyticsEvent(creatorId: string, eventType: AnalyticsEventType): void {
+  apiRequest('/analytics/events', {
+    method: 'POST',
+    body: JSON.stringify({ creatorId, eventType }),
+  }).catch(() => {
+    /* best-effort — nothing for the UI to react to */
+  });
+}
+
 export function getBusinessAnalytics(token: string, businessId: string): Promise<BusinessAnalytics> {
   return apiRequest<BusinessAnalytics>(`/analytics/business/${businessId}`, { headers: authHeader(token) });
+}
+
+export function getCreatorAnalytics(token: string, creatorId: string): Promise<BusinessAnalytics> {
+  return apiRequest<BusinessAnalytics>(`/analytics/creator/${creatorId}`, { headers: authHeader(token) });
 }

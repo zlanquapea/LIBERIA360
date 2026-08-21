@@ -7,6 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { BookingMessage } from "./entities/booking-message.entity";
 import { Booking } from "../bookings/entities/booking.entity";
+import { getOwnerUserId } from "../bookings/bookings.service";
 import { CreateBookingMessageDto } from "./dto/create-booking-message.dto";
 
 @Injectable()
@@ -47,7 +48,7 @@ export class BookingMessagesService {
     });
   }
 
-  /** Only the guest who made the booking or the owner of the business it
+  /** Only the guest who made the booking or the business/creator owner it
    * was made against can read or post messages on it — same two parties
    * BookingsService already trusts with the booking itself. */
   private async assertParticipant(
@@ -61,10 +62,10 @@ export class BookingMessagesService {
       throw new NotFoundException(`Booking "${bookingId}" not found`);
     }
     const isGuest = booking.guestUserId === userId;
-    const isOwner = booking.business.ownerUserId === userId;
+    const isOwner = getOwnerUserId(booking) === userId;
     if (!isGuest && !isOwner) {
       throw new ForbiddenException(
-        "Only the guest or the business owner can access these messages",
+        "Only the guest or the listing owner can access these messages",
       );
     }
   }

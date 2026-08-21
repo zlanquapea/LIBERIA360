@@ -14,11 +14,12 @@ import { CountySelect } from '@/components/ProfileFields';
 import { SingleImageUploader } from '@/components/SingleImageUploader';
 import { CreatorPortfolioManager } from '@/components/CreatorPortfolioManager';
 import { CreatorOfferingsManager } from '@/components/CreatorOfferingsManager';
-import { PlaceholderPage } from '@/components/admin-ui';
+import { AnalyticsSummary } from '@/components/AnalyticsSummary';
 import { CREATOR_CATEGORIES } from '@/lib/creator-categories';
 import { formatCreatorCategory } from '@/lib/format';
+import { getCreatorAnalytics } from '@/lib/analytics-api';
 import { HttpError } from '@/lib/http';
-import type { County, Creator, CreatorCategory } from '@/lib/types';
+import type { BusinessAnalytics, County, Creator, CreatorCategory } from '@/lib/types';
 
 function splitList(value: string): string[] {
   return value
@@ -87,9 +88,22 @@ export default function MyCreatorProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const [analytics, setAnalytics] = useState<BusinessAnalytics | null>(null);
+
   useEffect(() => {
     getCounties().then(setCounties);
   }, []);
+
+  useEffect(() => {
+    if (!token || !creator) return;
+    let cancelled = false;
+    getCreatorAnalytics(token, creator.id).then((result) => {
+      if (!cancelled) setAnalytics(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, creator]);
 
   useEffect(() => {
     if (!ready || !token) {
@@ -402,23 +416,37 @@ export default function MyCreatorProfilePage() {
             />
           </div>
 
-          <div className="flex flex-col gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Coming soon</h2>
-            <PlaceholderPage
-              title="Profile & portfolio analytics"
-              description="Views, most-viewed work, and inquiry trends for your profile."
-              reason="Not built yet — tracked as a follow-up to this launch."
-            />
-            <PlaceholderPage
-              title="Reviews"
-              description="Tourist reviews and ratings on your creator profile."
-              reason="Not built yet — tracked as a follow-up to this launch."
-            />
-            <PlaceholderPage
-              title="Inquiries & bookings"
-              description="Manage booking requests and messages from travelers."
-              reason="Not built yet — tracked as a follow-up to this launch."
-            />
+          <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Analytics</h2>
+            {analytics ? (
+              <AnalyticsSummary analytics={analytics} metrics={['view', 'contact_click']} />
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Reviews</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {creator.reviewCount > 0
+                ? `${creator.reviewCount} review${creator.reviewCount === 1 ? '' : 's'} so far.`
+                : 'No reviews yet.'}{' '}
+              <Link href={`/creators/${creator.username}`} className="font-medium text-brand-700 hover:underline">
+                View on your public profile
+              </Link>
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Inquiries &amp; bookings</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Booking requests and messages from travelers show up under{' '}
+              <Link href="/account/bookings" className="font-medium text-brand-700 hover:underline">
+                My Bookings
+              </Link>
+              .
+            </p>
           </div>
         </>
       )}

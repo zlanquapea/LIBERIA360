@@ -4,20 +4,24 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { createBooking } from '@/lib/booking-api';
-import { recordAnalyticsEvent } from '@/lib/analytics-api';
+import { recordAnalyticsEvent, recordCreatorAnalyticsEvent } from '@/lib/analytics-api';
 import { HttpError } from '@/lib/http';
 import { formatBookingStatus } from '@/lib/format';
-import type { Business, BookingStatus } from '@/lib/types';
+import type { Business, Creator, BookingStatus } from '@/lib/types';
 
 // "Request to book" (Tech Spec §3.3). Request-to-book only — no real
 // payment capture yet (see Booking.paymentProvider: MTN MoMo is the
 // intended provider for Liberia, wired into the schema but not called
 // against a live API until credentials exist). Sits under the claimed
-// business's contact card on the Destination Profile; hidden entirely for
-// an unclaimed listing, since there's no one to send the request to.
-export function BookingRequestSection({ business }: { business: Business }) {
+// business's contact card on the Destination Profile, or the creator's
+// contact card on their public profile — exactly one of business/creator
+// (same XOR as CreateBookingInput). Hidden entirely for an unclaimed
+// business listing, since there's no one to send the request to.
+export function BookingRequestSection({ business, creator }: { business?: Business; creator?: Creator }) {
   const { user, token, ready } = useAuth();
-  const isOwner = user?.id === business.owner?.id;
+  const targetId = business?.id ?? creator!.id;
+  const targetName = business?.name ?? creator!.name;
+  const isOwner = business ? user?.id === business.owner?.id : user?.id === creator!.user?.id;
 
   const [showForm, setShowForm] = useState(false);
   const [requestedDate, setRequestedDate] = useState('');
@@ -35,7 +39,8 @@ export function BookingRequestSection({ business }: { business: Business }) {
     setError(null);
     try {
       const booking = await createBooking(token, {
-        businessId: business.id,
+        businessId: business?.id,
+        creatorId: creator?.id,
         requestedDate,
         requestedEndDate: requestedEndDate || undefined,
         partySize: partySize ? Number(partySize) : undefined,
@@ -43,7 +48,11 @@ export function BookingRequestSection({ business }: { business: Business }) {
       });
       setSent({ status: booking.status });
       setShowForm(false);
-      recordAnalyticsEvent(business.linkedPlaceId, 'booking_request');
+      if (business) {
+        recordAnalyticsEvent(business.linkedPlaceId, 'booking_request');
+      } else {
+        recordCreatorAnalyticsEvent(targetId, 'booking_request');
+      }
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -68,7 +77,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
         <p className="font-medium">Request sent — {formatBookingStatus(sent.status).toLowerCase()}.</p>
         <p className="mt-1">
-          {business.name} will confirm or decline your request. Track it under{' '}
+          {targetName} will confirm or decline your request. Track it under{' '}
           <Link href="/account/bookings" className="font-medium underline">
             My Bookings
           </Link>
@@ -86,7 +95,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
           Log in
         </Link>{' '}
-        to request a booking with {business.name}.
+        to request a booking with {targetName}.
       </p>
     );
   }
@@ -140,7 +149,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Notes for {business.name} (optional)
+        Notes for {targetName} (optional)
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -157,7 +166,7 @@ export function BookingRequestSection({ business }: { business: Business }) {
       )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        This sends a request — {business.name} confirms or declines. No payment is taken now.
+        This sends a request — {targetName} confirms or declines. No payment is taken now.
       </p>
 
       <div className="flex gap-2">

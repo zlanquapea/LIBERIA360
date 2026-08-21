@@ -37,4 +37,14 @@ export class AnalyticsController {
   ) {
     return this.analyticsService.getBusinessAnalytics(user.id, businessId);
   }
+
+  @Get("creator/:creatorId")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getCreatorAnalytics(
+    @CurrentUser() user: User,
+    @Param("creatorId") creatorId: string,
+  ) {
+    return this.analyticsService.getCreatorAnalytics(user.id, creatorId);
+  }
 }

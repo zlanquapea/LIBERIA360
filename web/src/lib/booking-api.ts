@@ -1,8 +1,10 @@
 import type { Booking } from './types';
 import { apiRequest, authHeader } from './http';
 
+// Exactly one of businessId/creatorId — see the Booking type's doc comment.
 export interface CreateBookingInput {
-  businessId: string;
+  businessId?: string;
+  creatorId?: string;
   requestedDate: string;
   requestedEndDate?: string;
   partySize?: number;
@@ -23,6 +25,10 @@ export function getMyBookings(token: string): Promise<Booking[]> {
 
 export function getBusinessBookings(token: string, businessId: string): Promise<Booking[]> {
   return apiRequest<Booking[]>(`/bookings/business/${businessId}`, { headers: authHeader(token) });
+}
+
+export function getCreatorBookings(token: string, creatorId: string): Promise<Booking[]> {
+  return apiRequest<Booking[]>(`/bookings/creator/${creatorId}`, { headers: authHeader(token) });
 }
 
 export function respondToBooking(

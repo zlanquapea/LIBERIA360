@@ -9,9 +9,15 @@ import {
   Min,
 } from "class-validator";
 
+// Exactly one of businessId/creatorId — enforced in BookingsService.create.
 export class CreateBookingDto {
+  @IsOptional()
   @IsUUID()
-  businessId: string;
+  businessId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  creatorId?: string;
 
   @IsDateString()
   requestedDate: string;

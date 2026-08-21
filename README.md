@@ -24,9 +24,9 @@ Component-level documentation: [`api/README.md`](./api/README.md), [`web/README.
 |---|---|
 | Catalog | Places, categories, counties, activities; full-text search; filtering and sorting; radius ("Near Me") search |
 | Accounts | JWT auth, email verification, password reset, two-factor authentication (TOTP), session revocation, account deletion |
-| Content | Reviews with rating aggregation, business self-claim and management, business-authored posts (offers, announcements, articles, travel tips, experiences — review-gated before going public), creator profiles, events |
+| Content | Reviews with rating aggregation (places and creators), business self-claim and management, business-authored posts (offers, announcements, articles, travel tips, experiences — review-gated before going public), creator profiles, events |
 | Trip planning | AI-assisted itinerary generation ("Build My Liberia Trip", Weekend Explorer), collaborative multi-user trip editing |
-| Marketplace | Request-to-book bookings, in-booking messaging, business analytics dashboard, sponsored placements, featured creators |
+| Marketplace | Request-to-book bookings for businesses and creators, in-booking messaging, business/creator analytics dashboards, sponsored placements, featured creators |
 | Admin | Content moderation, verification workflows, crowdsourced freshness reporting, B2B aggregate analytics, audit log |
 | Platform | Progressive Web App (offline saved places, push notifications), SEO structured data, crash reporting |
 

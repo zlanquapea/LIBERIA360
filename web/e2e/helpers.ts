@@ -84,24 +84,59 @@ export const getFirstPlace = (request: APIRequestContext) => getPlace(request, 0
 // attempt — falls back to the place's existing business in that case,
 // which serves booking.spec.ts's purpose just as well (any claimed
 // business to book against).
+//
+// A fresh self-claim starts SUBMITTED_FOR_REVIEW (see
+// BusinessesService.claimPlace) and the public /places/[slug] page only
+// ever shows an APPROVED business — so a caller that needs the claimed
+// business to actually be visible/bookable through the UI (not just to
+// exist) must pass `approve: true`, which flips it directly via SQL the
+// same way promoteToAdmin does (no self-service "approve your own claim"
+// API exists, by design — an admin has to do that for real).
 export async function claimBusiness(
   request: APIRequestContext,
   token: string,
   placeId: string,
   name: string,
+  opts: { approve?: boolean } = {},
 ): Promise<{ id: string }> {
   const res = await request.post(`${API_URL}/businesses`, {
     headers: { Authorization: `Bearer ${token}` },
     data: { placeId, name, type: 'hotel' },
   });
-  if (res.ok()) return res.json();
-  if (res.status() === 409) {
-    // GET /businesses?placeId= returns a single object (or null), not a list.
+  let business: { id: string } | null = null;
+  if (res.ok()) {
+    business = await res.json();
+  } else if (res.status() === 409) {
+    // GET /businesses?placeId= returns a single object (or null), not a
+    // list — and an unapproved business (not yet reviewed, e.g. one a
+    // prior/concurrent test run just claimed) comes back as a 200 with an
+    // *empty* body rather than the text "null" (see web/src/lib/api.ts's
+    // apiFetch for the same case), which .json() can't parse.
     const existing = await request.get(`${API_URL}/businesses?placeId=${placeId}`);
-    const business = await existing.json();
-    if (business) return business;
+    const text = await existing.text();
+    business = text ? JSON.parse(text) : null;
   }
-  throw new Error(`business claim failed (${res.status()}): ${await res.text()}`);
+  if (!business) {
+    throw new Error(`business claim failed (${res.status()}): ${await res.text()}`);
+  }
+  if (opts.approve) await approveBusiness(business.id);
+  return business;
+}
+
+async function approveBusiness(businessId: string): Promise<void> {
+  const client = new Client({
+    host: process.env.DB_HOST ?? 'localhost',
+    port: Number(process.env.DB_PORT ?? 5432),
+    user: process.env.DB_USERNAME ?? 'liberia360',
+    password: process.env.DB_PASSWORD ?? 'liberia360',
+    database: process.env.DB_DATABASE ?? 'liberia360',
+  });
+  await client.connect();
+  try {
+    await client.query("UPDATE businesses SET review_status = 'approved' WHERE id = $1", [businessId]);
+  } finally {
+    await client.end();
+  }
 }
 
 export async function createReview(

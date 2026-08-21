@@ -10,6 +10,7 @@ import { BookingsService } from "./bookings.service";
 import { Booking } from "./entities/booking.entity";
 import { BookingStatus } from "./entities/booking.enums";
 import { Business } from "../businesses/entities/business.entity";
+import { Creator } from "../creators/entities/creator.entity";
 
 describe("BookingsService", () => {
   let service: BookingsService;
@@ -20,7 +21,8 @@ describe("BookingsService", () => {
     create: jest.Mock;
     find: jest.Mock;
   };
-  let businessRepo: { findOne: jest.Mock };
+  let businessRepo: { findOne: jest.Mock; exists: jest.Mock };
+  let creatorRepo: { findOne: jest.Mock; exists: jest.Mock };
 
   beforeEach(async () => {
     bookingRepo = {
@@ -30,13 +32,21 @@ describe("BookingsService", () => {
       create: jest.fn((x) => x),
       find: jest.fn(),
     };
-    businessRepo = { findOne: jest.fn() };
+    businessRepo = {
+      findOne: jest.fn(),
+      exists: jest.fn().mockResolvedValue(true),
+    };
+    creatorRepo = {
+      findOne: jest.fn(),
+      exists: jest.fn().mockResolvedValue(true),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingsService,
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
         { provide: getRepositoryToken(Business), useValue: businessRepo },
+        { provide: getRepositoryToken(Creator), useValue: creatorRepo },
       ],
     }).compile();
 
@@ -44,8 +54,26 @@ describe("BookingsService", () => {
   });
 
   describe("create", () => {
+    it("rejects a request with neither businessId nor creatorId", async () => {
+      await expect(
+        service.create("guest-1", { requestedDate: "2099-01-01" } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects a request with both businessId and creatorId", async () => {
+      await expect(
+        service.create("guest-1", {
+          businessId: "biz-1",
+          creatorId: "creator-1",
+          requestedDate: "2099-01-01",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
     it("rejects a request for a business that doesn't exist", async () => {
-      businessRepo.findOne.mockResolvedValue(null);
+      businessRepo.exists.mockResolvedValue(false);
       await expect(
         service.create("guest-1", {
           businessId: "biz-1",
@@ -56,7 +84,6 @@ describe("BookingsService", () => {
     });
 
     it("rejects a requestedDate in the past", async () => {
-      businessRepo.findOne.mockResolvedValue({ id: "biz-1" });
       await expect(
         service.create("guest-1", {
           businessId: "biz-1",
@@ -67,7 +94,6 @@ describe("BookingsService", () => {
     });
 
     it("rejects a requestedEndDate before requestedDate", async () => {
-      businessRepo.findOne.mockResolvedValue({ id: "biz-1" });
       await expect(
         service.create("guest-1", {
           businessId: "biz-1",
@@ -76,6 +102,28 @@ describe("BookingsService", () => {
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects a request for a creator that doesn't exist", async () => {
+      creatorRepo.exists.mockResolvedValue(false);
+      await expect(
+        service.create("guest-1", {
+          creatorId: "creator-1",
+          requestedDate: "2099-01-01",
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("creates a booking against a creator", async () => {
+      bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      await service.create("guest-1", {
+        creatorId: "creator-1",
+        requestedDate: "2099-01-01",
+      });
+      expect(bookingRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ creatorId: "creator-1", businessId: null }),
+      );
     });
   });
 
@@ -126,6 +174,27 @@ describe("BookingsService", () => {
           status: BookingStatus.CONFIRMED,
           businessResponse: "See you then",
         }),
+      );
+    });
+
+    it("confirms a pending booking owned by the caller creator", async () => {
+      const booking = {
+        id: "booking-1",
+        status: BookingStatus.PENDING,
+        creator: { userId: "creator-owner-1" },
+      };
+      bookingRepo.findOne.mockResolvedValue(booking);
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        ...booking,
+        status: BookingStatus.CONFIRMED,
+      });
+
+      await service.respond("creator-owner-1", "booking-1", {
+        action: "confirm",
+      });
+
+      expect(bookingRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: BookingStatus.CONFIRMED }),
       );
     });
   });

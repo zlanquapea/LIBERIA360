@@ -373,10 +373,14 @@ export type PaymentStatus = "unpaid" | "pending" | "paid" | "refunded";
 // api/src/bookings/entities/booking.entity.ts (sanitized — guest and
 // business.owner are the public user shape). Request-to-book only —
 // paymentStatus stays 'unpaid' until a real MTN MoMo integration exists.
+// Targets either a Business or a Creator, never both — see the backend
+// entity's doc comment.
 export interface Booking {
   id: string;
-  business: Business;
-  businessId: string;
+  business: Business | null;
+  businessId: string | null;
+  creator: Creator | null;
+  creatorId: string | null;
   guest: AuthUser | null;
   guestUserId: string;
   requestedDate: string;
