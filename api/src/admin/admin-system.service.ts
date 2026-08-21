@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppConfig } from "../config/configuration";
+import { MailService, MailDiagnostics } from "../mail/mail.service";
 
 export interface SystemStatus {
   environment: string;
@@ -12,6 +13,13 @@ export interface SystemStatus {
     pushNotifications: boolean;
     crashReporting: boolean;
   };
+  // Richer than integrations.email above — whether the credentials are
+  // present AND, once they are, what actually happened the last time this
+  // process tried to send. Exists specifically so "the button said Sent
+  // but nothing arrived" (integrations.email: true doesn't rule out wrong
+  // credentials/host/port) is diagnosable from this page instead of only
+  // from server logs — see MailService's class doc.
+  mail: MailDiagnostics;
 }
 
 const processStartedAt = Date.now();
@@ -26,7 +34,10 @@ const processStartedAt = Date.now();
  * whether each one is configured. */
 @Injectable()
 export class AdminSystemService {
-  constructor(private readonly configService: ConfigService<AppConfig, true>) {}
+  constructor(
+    private readonly configService: ConfigService<AppConfig, true>,
+    private readonly mailService: MailService,
+  ) {}
 
   getStatus(): SystemStatus {
     const storage = this.configService.get("storage", { infer: true });
@@ -47,6 +58,18 @@ export class AdminSystemService {
         pushNotifications: Boolean(webPush.publicKey && webPush.privateKey),
         crashReporting: Boolean(errorTracking.dsn),
       },
+      mail: this.mailService.getDiagnostics(),
     };
+  }
+
+  /** POST /admin/system/test-email — sends to the calling admin's own
+   * address only (never an arbitrary target), the same "confirm it works
+   * for real, not just that credentials are present" check as clicking
+   * "resend verification" yourself, but with the actual success/failure
+   * reported back instead of a blind "Sent" message. */
+  sendTestEmail(
+    to: string,
+  ): Promise<{ success: boolean; error: string | null }> {
+    return this.mailService.sendTest(to);
   }
 }

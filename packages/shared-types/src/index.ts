@@ -825,6 +825,18 @@ export interface PaginatedUsers {
   };
 }
 
+// api/src/mail/mail.service.ts's MailAttempt — the outcome of the most
+// recent email this process tried to send (any of them, not just a test
+// send), so "the button said Sent but nothing arrived" is diagnosable from
+// SystemStatus.mail below instead of only from server logs.
+export interface MailAttempt {
+  at: string;
+  to: string;
+  subject: string;
+  success: boolean;
+  error: string | null;
+}
+
 // api/src/admin/admin-system.service.ts — GET /admin/system/status,
 // super-admin only. Real runtime flags, no secrets: which optional
 // integrations are actually configured, not their credentials.
@@ -837,6 +849,12 @@ export interface SystemStatus {
     email: boolean;
     pushNotifications: boolean;
     crashReporting: boolean;
+  };
+  // Richer than integrations.email — whether SMTP creds are present AND
+  // what happened the last time this process actually tried to send.
+  mail: {
+    configured: boolean;
+    lastAttempt: MailAttempt | null;
   };
 }
 

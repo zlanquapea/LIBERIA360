@@ -32,6 +32,7 @@ import { AdminUsersService } from "./admin-users.service";
 import { AdminUsersController } from "./admin-users.controller";
 import { AdminSystemService } from "./admin-system.service";
 import { AdminSystemController } from "./admin-system.controller";
+import { MailModule } from "../mail/mail.module";
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { AdminSystemController } from "./admin-system.controller";
     ReviewsModule,
     AuthModule,
     SecurityModule,
+    MailModule,
   ],
   controllers: [
     AdminController,

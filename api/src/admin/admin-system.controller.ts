@@ -1,8 +1,10 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { AdminSystemService } from "./admin-system.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { User } from "../users/entities/user.entity";
 
 // Super-admin only — same tier as Team/Audit/Security: this is platform
 // operations oversight, not an ordinary admin capability.
@@ -16,5 +18,12 @@ export class AdminSystemController {
   @Get("status")
   getStatus() {
     return this.adminSystemService.getStatus();
+  }
+
+  // Always sends to the calling super admin's own address — see
+  // AdminSystemService.sendTestEmail's doc comment.
+  @Post("test-email")
+  sendTestEmail(@CurrentUser() admin: User) {
+    return this.adminSystemService.sendTestEmail(admin.email);
   }
 }
