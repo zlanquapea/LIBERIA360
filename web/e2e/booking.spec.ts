@@ -4,7 +4,9 @@ import { claimBusiness, getPlace, loginAs, registerUser, uniqueEmail } from './h
 test('a signed-in guest can request a booking with a claimed business through the UI', async ({ page, request }) => {
   const place = await getPlace(request, 3);
   const owner = await registerUser(request, { name: 'E2E Business Owner', email: uniqueEmail('owner') });
-  const business = await claimBusiness(request, owner.token, place.id, `E2E Test Stay ${Date.now()}`);
+  const business = await claimBusiness(request, owner.token, place.id, `E2E Test Stay ${Date.now()}`, {
+    approve: true,
+  });
   void business; // fixture only — the guest interacts with it through the place page, not its id directly
 
   const guest = await registerUser(request, { name: 'E2E Booking Guest', email: uniqueEmail('guest') });
