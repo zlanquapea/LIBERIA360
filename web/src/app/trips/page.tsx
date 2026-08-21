@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { getMyItineraries, getSharedWithMe } from '@/lib/itinerary-api';
+import { deleteItinerary, getMyItineraries, getSharedWithMe, removeCollaborator } from '@/lib/itinerary-api';
+import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
 import type { Itinerary } from '@/lib/types';
 
@@ -19,6 +21,7 @@ export default function TripsPage() {
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [shared, setShared] = useState<Itinerary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready || !token) {
@@ -37,6 +40,30 @@ export default function TripsPage() {
       cancelled = true;
     };
   }, [ready, token]);
+
+  async function handleDelete(itinerary: Itinerary) {
+    if (!token) return;
+    if (!confirm(`Delete "${itinerary.title}"? This cannot be undone.`)) return;
+    setError(null);
+    try {
+      await deleteItinerary(token, itinerary.id);
+      setItineraries((prev) => prev.filter((t) => t.id !== itinerary.id));
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Could not delete this trip.');
+    }
+  }
+
+  async function handleLeave(itinerary: Itinerary) {
+    if (!token || !user) return;
+    if (!confirm(`Leave "${itinerary.title}"? You'll lose access unless you're invited again.`)) return;
+    setError(null);
+    try {
+      await removeCollaborator(token, itinerary.id, user.id);
+      setShared((prev) => prev.filter((t) => t.id !== itinerary.id));
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Could not leave this trip.');
+    }
+  }
 
   if (!ready || loading) {
     return (
@@ -81,33 +108,47 @@ export default function TripsPage() {
         </div>
       </div>
 
+      {error && (
+        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
+          {error}
+        </p>
+      )}
+
       {itineraries.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           No trips yet — build your first Liberia itinerary.
         </p>
       ) : (
-        <TripList itineraries={itineraries} />
+        <TripList itineraries={itineraries} actionLabel="Delete trip" onAction={handleDelete} />
       )}
 
       {shared.length > 0 && (
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Shared with me</h2>
-          <TripList itineraries={shared} />
+          <TripList itineraries={shared} actionLabel="Leave trip" onAction={handleLeave} />
         </div>
       )}
     </main>
   );
 }
 
-function TripList({ itineraries }: { itineraries: Itinerary[] }) {
+function TripList({
+  itineraries,
+  actionLabel,
+  onAction,
+}: {
+  itineraries: Itinerary[];
+  actionLabel: string;
+  onAction: (itinerary: Itinerary) => void;
+}) {
   return (
     <ul className="flex flex-col gap-3">
       {itineraries.map((itinerary) => (
-        <li key={itinerary.id}>
-          <Link
-            href={`/trips/${itinerary.id}`}
-            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
-          >
+        <li
+          key={itinerary.id}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-brand-500"
+        >
+          <Link href={`/trips/${itinerary.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3 p-3">
             <div className="min-w-0">
               <p className="truncate font-medium text-slate-900 dark:text-slate-50">{itinerary.title}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -119,6 +160,15 @@ function TripList({ itineraries }: { itineraries: Itinerary[] }) {
               {itinerary.kind === 'weekend' ? 'Weekend Explorer' : 'Trip'}
             </span>
           </Link>
+          <button
+            type="button"
+            onClick={() => onAction(itinerary)}
+            aria-label={`${actionLabel}: ${itinerary.title}`}
+            title={actionLabel}
+            className="mr-2 shrink-0 rounded-full p-2 text-slate-400 hover:bg-flag-500/10 hover:text-flag-700 dark:hover:text-flag-300"
+          >
+            <TrashIcon aria-hidden className="h-4 w-4" />
+          </button>
         </li>
       ))}
     </ul>

@@ -74,6 +74,7 @@ describe("ItinerariesService (collaboration)", () => {
     findOne: jest.Mock;
     save: jest.Mock;
     find: jest.Mock;
+    delete: jest.Mock;
   };
   let collaboratorRepo: {
     find: jest.Mock;
@@ -105,6 +106,7 @@ describe("ItinerariesService (collaboration)", () => {
       findOne: jest.fn().mockResolvedValue(makeItinerary()),
       save: jest.fn((data) => data),
       find: jest.fn().mockResolvedValue([]),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     collaboratorRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -177,6 +179,75 @@ describe("ItinerariesService (collaboration)", () => {
       ]);
       const result = await service.findOne(COLLABORATOR_ID, ITINERARY_ID);
       expect(result.collaborators).toHaveLength(1);
+    });
+  });
+
+  describe("renameTrip", () => {
+    it("blocks a non-member from renaming", async () => {
+      await expect(
+        service.renameTrip(STRANGER_ID, ITINERARY_ID, "New title"),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("lets the owner rename the trip", async () => {
+      await service.renameTrip(
+        OWNER_ID,
+        ITINERARY_ID,
+        "Mom's 60th birthday trip",
+      );
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Mom's 60th birthday trip" }),
+      );
+    });
+
+    it("lets a collaborator rename the trip too", async () => {
+      collaboratorRepo.find.mockResolvedValue([
+        {
+          userId: COLLABORATOR_ID,
+          user: { id: COLLABORATOR_ID, name: "Collab" },
+        },
+      ]);
+      await service.renameTrip(
+        COLLABORATOR_ID,
+        ITINERARY_ID,
+        "Renamed by collaborator",
+      );
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Renamed by collaborator" }),
+      );
+    });
+  });
+
+  describe("deleteTrip", () => {
+    it("404s an unknown itinerary", async () => {
+      itineraryRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.deleteTrip(OWNER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("404s a total stranger (no confirming the id exists)", async () => {
+      await expect(
+        service.deleteTrip(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("403s a collaborator — only the owner can delete the trip", async () => {
+      collaboratorRepo.find.mockResolvedValue([
+        {
+          userId: COLLABORATOR_ID,
+          user: { id: COLLABORATOR_ID, name: "Collab" },
+        },
+      ]);
+      await expect(
+        service.deleteTrip(COLLABORATOR_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(itineraryRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("lets the owner delete the trip", async () => {
+      await service.deleteTrip(OWNER_ID, ITINERARY_ID);
+      expect(itineraryRepo.delete).toHaveBeenCalledWith({ id: ITINERARY_ID });
     });
   });
 
