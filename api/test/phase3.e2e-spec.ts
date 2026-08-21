@@ -235,6 +235,91 @@ describe("Phase 3 (e2e)", () => {
         })
         .expect(404);
     });
+
+    it("rejects a booking with neither businessId nor creatorId, and with both", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ requestedDate: "2027-01-10" })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          businessId: hotelBusinessId,
+          creatorId: "00000000-0000-0000-0000-000000000000",
+          requestedDate: "2027-01-10",
+        })
+        .expect(400);
+    });
+
+    it("creates a booking request against a creator, lists it both ways, and enforces ownership on the creator's queue", async () => {
+      const creatorOwner = await registerUser(
+        "booking-creator-owner@example.com",
+        "Booking Creator Owner",
+      );
+      const creatorRes = await request(app.getHttpServer())
+        .post("/api/v1/creators")
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .send({ name: "Booking Creator", username: "booking_creator" })
+        .expect(201);
+      const creatorId = creatorRes.body.id;
+
+      const create = await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({ creatorId, requestedDate: "2027-02-01", partySize: 1 })
+        .expect(201);
+      const creatorBookingId = create.body.id;
+      expect(create.body.status).toBe("pending");
+      expect(create.body.business).toBeNull();
+      expect(create.body.creator.user.passwordHash).toBeUndefined();
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/bookings/creator/${creatorId}`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+
+      const queue = await request(app.getHttpServer())
+        .get(`/api/v1/bookings/creator/${creatorId}`)
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .expect(200);
+      expect(queue.body).toHaveLength(1);
+
+      const confirm = await request(app.getHttpServer())
+        .patch(`/api/v1/bookings/${creatorBookingId}/respond`)
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .send({ action: "confirm" })
+        .expect(200);
+      expect(confirm.body.status).toBe("confirmed");
+
+      // Guest and the business owner from the earlier test can message
+      // each other on a business booking; the guest and this creator can
+      // do the same on this one — the participant check isn't hardcoded
+      // to "business owner".
+      await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${creatorBookingId}/messages`)
+        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .send({ body: "Looking forward to it!" })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/api/v1/bookings/${creatorBookingId}/messages`)
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .send({ body: "Not my booking" })
+        .expect(403);
+    });
+
+    it("404s on an unknown creator", async () => {
+      await request(app.getHttpServer())
+        .post("/api/v1/bookings")
+        .set("Authorization", `Bearer ${guestToken}`)
+        .send({
+          creatorId: "00000000-0000-0000-0000-000000000000",
+          requestedDate: "2027-01-10",
+        })
+        .expect(404);
+    });
   });
 
   describe("Booking messages", () => {

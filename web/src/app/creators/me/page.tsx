@@ -15,7 +15,6 @@ import { SingleImageUploader } from '@/components/SingleImageUploader';
 import { CreatorPortfolioManager } from '@/components/CreatorPortfolioManager';
 import { CreatorOfferingsManager } from '@/components/CreatorOfferingsManager';
 import { AnalyticsSummary } from '@/components/AnalyticsSummary';
-import { PlaceholderPage } from '@/components/admin-ui';
 import { CREATOR_CATEGORIES } from '@/lib/creator-categories';
 import { formatCreatorCategory } from '@/lib/format';
 import { getCreatorAnalytics } from '@/lib/analytics-api';
@@ -439,13 +438,15 @@ export default function MyCreatorProfilePage() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Coming soon</h2>
-            <PlaceholderPage
-              title="Inquiries & bookings"
-              description="Manage booking requests and messages from travelers."
-              reason="Not built yet — tracked as a follow-up to this launch."
-            />
+          <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Inquiries &amp; bookings</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Booking requests and messages from travelers show up under{' '}
+              <Link href="/account/bookings" className="font-medium text-brand-700 hover:underline">
+                My Bookings
+              </Link>
+              .
+            </p>
           </div>
         </>
       )}

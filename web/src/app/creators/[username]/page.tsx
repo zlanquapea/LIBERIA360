@@ -16,6 +16,7 @@ import { CreatorPortfolioGallery } from '@/components/CreatorPortfolioGallery';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ContactLink } from '@/components/ContactLink';
 import { CreatorViewTracker } from '@/components/CreatorViewTracker';
+import { BookingRequestSection } from '@/components/BookingRequestSection';
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -181,6 +182,8 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
               )}
             </div>
           )}
+
+          <BookingRequestSection creator={creator} />
 
           {(creator.instagram || creator.tiktok || creator.youtube) && (
             <div className="flex flex-wrap gap-2">

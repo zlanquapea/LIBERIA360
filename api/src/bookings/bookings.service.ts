@@ -10,6 +10,7 @@ import { Repository } from "typeorm";
 import { Booking } from "./entities/booking.entity";
 import { BookingStatus } from "./entities/booking.enums";
 import { Business } from "../businesses/entities/business.entity";
+import { Creator } from "../creators/entities/creator.entity";
 import { CreateBookingDto } from "./dto/create-booking.dto";
 import { RespondBookingDto } from "./dto/respond-booking.dto";
 
@@ -20,14 +21,31 @@ export class BookingsService {
     private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(Creator)
+    private readonly creatorRepo: Repository<Creator>,
   ) {}
 
   async create(userId: string, dto: CreateBookingDto): Promise<Booking> {
-    const business = await this.businessRepo.findOne({
-      where: { id: dto.businessId },
-    });
-    if (!business) {
-      throw new NotFoundException(`Business "${dto.businessId}" not found`);
+    if (!dto.businessId === !dto.creatorId) {
+      throw new BadRequestException(
+        "Provide exactly one of businessId or creatorId",
+      );
+    }
+
+    if (dto.businessId) {
+      const exists = await this.businessRepo.exists({
+        where: { id: dto.businessId },
+      });
+      if (!exists) {
+        throw new NotFoundException(`Business "${dto.businessId}" not found`);
+      }
+    } else {
+      const exists = await this.creatorRepo.exists({
+        where: { id: dto.creatorId },
+      });
+      if (!exists) {
+        throw new NotFoundException(`Creator "${dto.creatorId}" not found`);
+      }
     }
 
     if (new Date(dto.requestedDate) < startOfToday()) {
@@ -44,7 +62,8 @@ export class BookingsService {
 
     const booking = await this.bookingRepo.save(
       this.bookingRepo.create({
-        businessId: dto.businessId,
+        businessId: dto.businessId ?? null,
+        creatorId: dto.creatorId ?? null,
         guestUserId: userId,
         requestedDate: dto.requestedDate,
         requestedEndDate: dto.requestedEndDate ?? null,
@@ -55,16 +74,16 @@ export class BookingsService {
     return this.bookingRepo.findOneOrFail({ where: { id: booking.id } });
   }
 
-  /** Business owner confirms or declines a pending request. */
+  /** Business/creator owner confirms or declines a pending request. */
   async respond(
     userId: string,
     bookingId: string,
     dto: RespondBookingDto,
   ): Promise<Booking> {
-    const booking = await this.findWithBusiness(bookingId);
-    if (booking.business.ownerUserId !== userId) {
+    const booking = await this.findWithTarget(bookingId);
+    if (getOwnerUserId(booking) !== userId) {
       throw new ForbiddenException(
-        "Only the business owner can respond to this booking",
+        "Only the business/creator owner can respond to this booking",
       );
     }
     if (booking.status !== BookingStatus.PENDING) {
@@ -137,7 +156,27 @@ export class BookingsService {
     });
   }
 
-  private async findWithBusiness(bookingId: string): Promise<Booking> {
+  /** Same as findForBusiness, for a creator's own incoming requests. */
+  async findForCreator(userId: string, creatorId: string): Promise<Booking[]> {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+    if (creator.userId !== userId) {
+      throw new ForbiddenException(
+        "Only the creator can view their own bookings",
+      );
+    }
+
+    return this.bookingRepo.find({
+      where: { creatorId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  private async findWithTarget(bookingId: string): Promise<Booking> {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
     });
@@ -146,6 +185,14 @@ export class BookingsService {
     }
     return booking;
   }
+}
+
+/** The user allowed to respond to/manage a booking — the business owner
+ * or the creator, whichever this booking targets. Exported for
+ * BookingMessagesService, which needs the identical "who's a participant"
+ * check for messaging. */
+export function getOwnerUserId(booking: Booking): string | null {
+  return booking.business?.ownerUserId ?? booking.creator?.userId ?? null;
 }
 
 function startOfToday(): Date {

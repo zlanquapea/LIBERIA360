@@ -17,9 +17,9 @@ import { toPublicUser } from "../users/user.serializer";
 import { Booking } from "./entities/booking.entity";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
-// Nested user objects (guest, business.owner) come through eager relations
-// as raw entities — strip passwordHash before anything leaves the API,
-// same pattern as reviews/businesses/events/creators.
+// Nested user objects (guest, business.owner, creator.user) come through
+// eager relations as raw entities — strip passwordHash before anything
+// leaves the API, same pattern as reviews/businesses/events/creators.
 function sanitize(booking: Booking) {
   return {
     ...booking,
@@ -29,6 +29,14 @@ function sanitize(booking: Booking) {
           ...booking.business,
           owner: booking.business.owner
             ? toPublicUser(booking.business.owner)
+            : null,
+        }
+      : null,
+    creator: booking.creator
+      ? {
+          ...booking.creator,
+          user: booking.creator.user
+            ? toPublicUser(booking.creator.user)
             : null,
         }
       : null,
@@ -61,6 +69,18 @@ export class BookingsController {
     const bookings = await this.bookingsService.findForBusiness(
       user.id,
       businessId,
+    );
+    return bookings.map(sanitize);
+  }
+
+  @Get("creator/:creatorId")
+  async findForCreator(
+    @CurrentUser() user: User,
+    @Param("creatorId") creatorId: string,
+  ) {
+    const bookings = await this.bookingsService.findForCreator(
+      user.id,
+      creatorId,
     );
     return bookings.map(sanitize);
   }
