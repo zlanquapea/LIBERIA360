@@ -20,6 +20,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { Business } from "./businesses/entities/business.entity";
 import { BusinessesModule } from "./businesses/businesses.module";
+import { BusinessContentModule } from "./business-content/business-content.module";
 import { Creator } from "./creators/entities/creator.entity";
 import { CreatorsModule } from "./creators/creators.module";
 import { Event } from "./events/entities/event.entity";
@@ -105,6 +106,7 @@ import { ReportsModule } from "./reports/reports.module";
     ReviewsModule,
     UploadsModule,
     BusinessesModule,
+    BusinessContentModule,
     CreatorsModule,
     EventsModule,
     ItinerariesModule,

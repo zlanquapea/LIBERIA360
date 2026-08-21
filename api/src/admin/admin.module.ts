@@ -5,6 +5,7 @@ import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { Activity } from "../activities/entities/activity.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Event } from "../events/entities/event.entity";
 import { Review } from "../reviews/entities/review.entity";
@@ -40,6 +41,7 @@ import { AdminSystemController } from "./admin-system.controller";
       County,
       Activity,
       Business,
+      BusinessContent,
       Creator,
       Event,
       Review,

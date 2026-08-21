@@ -7,6 +7,7 @@ import type {
   CreatorCategory,
   Event,
   EventCategory,
+  PaginatedBusinessContent,
   PaginatedBusinesses,
   PaginatedCreators,
   PaginatedEvents,
@@ -152,6 +153,18 @@ export function getBusinesses(query: BusinessesQuery = {}): Promise<PaginatedBus
 
 export function getBusinessBySlug(slug: string): Promise<Business> {
   return apiFetch<Business>(`/businesses/slug/${slug}`);
+}
+
+// Approved-only, same gate as every other public business lookup above.
+export function getBusinessContent(
+  businessId: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedBusinessContent> {
+  return apiFetch<PaginatedBusinessContent>(
+    '/business-content',
+    { businessId, ...query },
+    emptyPage(query.limit),
+  );
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
