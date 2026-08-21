@@ -27,6 +27,7 @@ import { Event } from "./events/entities/event.entity";
 import { EventsModule } from "./events/events.module";
 import { Itinerary } from "./itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "./itineraries/entities/itinerary-collaborator.entity";
+import { TripInvitation } from "./itineraries/entities/trip-invitation.entity";
 import { ItinerariesModule } from "./itineraries/itineraries.module";
 import { PushSubscription } from "./push/entities/push-subscription.entity";
 import { PushModule } from "./push/push.module";
@@ -85,6 +86,7 @@ import { ReportsModule } from "./reports/reports.module";
             Event,
             Itinerary,
             ItineraryCollaborator,
+            TripInvitation,
             PushSubscription,
             Booking,
             AnalyticsEvent,

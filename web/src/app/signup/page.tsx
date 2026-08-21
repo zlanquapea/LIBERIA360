@@ -1,19 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { HttpError } from '@/lib/http';
 import { useAuth } from '@/hooks/useAuth';
 import { getCategories, getCounties } from '@/lib/api';
 import { CountySelect, InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
 import type { Category, County, TravelerType } from '@/lib/types';
 
+// useSearchParams opts this page out of static rendering unless it's
+// wrapped in Suspense — same idiom as reset-password/verify-email. The
+// params it reads (`invite`, `email`) come from a trip invitation link
+// (Section 3: "Invitation → Create Account → Confirm Account → Accept
+// Invitation → Join Trip") — signing up this way lands back on the
+// invitation already linked, instead of the generic /account redirect.
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('invite') ?? undefined;
   const { register } = useAuth();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [homeCountyId, setHomeCountyId] = useState('');
   const [travelerType, setTravelerType] = useState<TravelerType | ''>('');
@@ -44,8 +60,9 @@ export default function SignupPage() {
         homeCountyId: homeCountyId || undefined,
         travelerType: travelerType || undefined,
         interests: interests.length > 0 ? interests : undefined,
+        inviteToken,
       });
-      router.push('/account');
+      router.push(inviteToken ? `/invite/${inviteToken}` : '/account');
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -57,7 +74,11 @@ export default function SignupPage() {
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
       <div>
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Create an account</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Save trips, write reviews, and claim your business on LIBERIA360.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {inviteToken
+            ? "You're almost in — create an account to view and accept your trip invitation."
+            : 'Save trips, write reviews, and claim your business on LIBERIA360.'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -155,7 +176,10 @@ export default function SignupPage() {
 
       <p className="text-center text-sm text-slate-500 dark:text-slate-400">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+        <Link
+          href={inviteToken ? `/login?next=${encodeURIComponent(`/invite/${inviteToken}`)}` : '/login'}
+          className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
+        >
           Log in
         </Link>
       </p>

@@ -516,6 +516,69 @@ export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
   collaborators: AuthUser[];
 }
 
+// Trip Collaboration & Invitations. See
+// api/src/itineraries/entities/trip-invitation.entity.ts's doc comment
+// for why only pending/accepted/declined are real persisted states —
+// "viewed" and "expired" below are derived server-side (viewedAt /
+// expiresAt vs now), not separate stored transitions.
+export type InvitationDisplayStatus =
+  | "pending"
+  | "viewed"
+  | "accepted"
+  | "declined"
+  | "expired";
+
+// api/src/users/user.serializer.ts's InvitableUser — the "people you may
+// want to invite" search result. Deliberately thinner than AuthUser: a
+// masked email (see maskEmail) is all a search result should ever leak
+// about someone else's account.
+export interface InvitableUser {
+  id: string;
+  name: string;
+  maskedEmail: string;
+}
+
+// The trip owner's People/Participants panel — one row per invitation
+// (pending, accepted, or declined; cancelled ones are deleted outright).
+export interface InvitationSummary {
+  id: string;
+  email: string;
+  status: InvitationDisplayStatus;
+  invitee: AuthUser | null;
+  emailDelivered: boolean;
+  createdAt: string;
+  respondedAt: string | null;
+  expiresAt: string;
+}
+
+// GET /invitations/mine — the invited person's own inbox of open invites.
+export interface MyInvitationSummary {
+  id: string;
+  tripId: string;
+  tripTitle: string;
+  destinationSummary: string;
+  durationDays: number;
+  organizerName: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+// GET /invitations/token/:token — public, pre-authentication preview.
+// Deliberately thin (see the endpoint's doc comment): no stop list, no
+// other participants' contact info.
+export interface InvitationPreview {
+  tripTitle: string;
+  tripKind: ItineraryKind;
+  durationDays: number;
+  destinationSummary: string;
+  overview: string;
+  organizerName: string;
+  invitedEmail: string;
+  otherParticipantNames: string[];
+  status: InvitationDisplayStatus;
+  requiresAccount: boolean;
+}
+
 export type PlaceSort = "featured" | "rating" | "distance" | "name";
 
 export interface PlacesQuery {

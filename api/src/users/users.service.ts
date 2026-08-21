@@ -49,6 +49,28 @@ export class UsersService {
     return (await this.findById(id))!;
   }
 
+  /** "People on the platform" search for the trip-invitation picker
+   * (never for anything admin — see AdminUsersService for the
+   * super-admin-only equivalent). Excludes the searching user and
+   * deleted/anonymized accounts, and is capped — this is a "find your
+   * friend by name or email" lookup, not a directory browse. */
+  async searchByNameOrEmail(
+    query: string,
+    excludeUserId: string,
+    limit = 8,
+  ): Promise<User[]> {
+    return this.userRepo
+      .createQueryBuilder("user")
+      .where("user.id != :excludeUserId", { excludeUserId })
+      .andWhere("user.deletedAt IS NULL")
+      .andWhere("(user.name ILIKE :q OR user.email ILIKE :q)", {
+        q: `%${query.trim()}%`,
+      })
+      .orderBy("user.name", "ASC")
+      .take(limit)
+      .getMany();
+  }
+
   /** Used to target "events nearby" push notifications (Tech Spec §3.2) at
    * users who've set this as their home county. */
   async findIdsByHomeCounty(countyId: string): Promise<string[]> {

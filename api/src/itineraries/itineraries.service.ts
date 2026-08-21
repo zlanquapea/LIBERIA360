@@ -5,10 +5,16 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Itinerary, ItineraryStop } from "./entities/itinerary.entity";
 import { ItineraryCollaborator } from "./entities/itinerary-collaborator.entity";
+import {
+  TripInvitation,
+  TripInvitationStatus,
+  invitationExpiresAt,
+} from "./entities/trip-invitation.entity";
 import { Place } from "../places/entities/place.entity";
 import { PlaceType } from "../places/entities/place.enums";
 import { BudgetBand, ItineraryKind } from "./entities/itinerary.enums";
@@ -16,8 +22,18 @@ import { GenerateTripDto } from "./dto/generate-trip.dto";
 import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
+import { InviteeDto } from "./dto/create-invitations.dto";
 import { UsersService } from "../users/users.service";
-import { PublicUser, toPublicUser } from "../users/user.serializer";
+import {
+  InvitableUser,
+  PublicUser,
+  toInvitableUser,
+  toPublicUser,
+} from "../users/user.serializer";
+import { User } from "../users/entities/user.entity";
+import { MailService } from "../mail/mail.service";
+import { AppConfig } from "../config/configuration";
+import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 
 // Home screen "Explore the map" default center — used as the implicit
 // starting point for "Build My Liberia Trip" when no location is given
@@ -38,6 +54,51 @@ const STOP_TYPES = [
   PlaceType.NATURE_SITE,
   PlaceType.ACTIVITY_PROVIDER,
 ];
+
+export type InvitationDisplayStatus =
+  "pending" | "viewed" | "accepted" | "declined" | "expired";
+
+export interface InvitationSummary {
+  id: string;
+  email: string;
+  status: InvitationDisplayStatus;
+  invitee: PublicUser | null;
+  emailDelivered: boolean;
+  createdAt: Date;
+  respondedAt: Date | null;
+  expiresAt: Date;
+}
+
+export interface MyInvitationSummary {
+  id: string;
+  tripId: string;
+  tripTitle: string;
+  destinationSummary: string;
+  durationDays: number;
+  organizerName: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+/** GET /invitations/token/:token — the pre-authentication preview
+ * (Section 2/9). Deliberately thin: no stop list, no other participants'
+ * contact info, nothing that would leak real trip content to whoever
+ * happens to have (or guess at) a link before they've proven they're the
+ * invitee. */
+export interface InvitationPreview {
+  tripTitle: string;
+  tripKind: ItineraryKind;
+  durationDays: number;
+  destinationSummary: string;
+  overview: string;
+  organizerName: string;
+  invitedEmail: string;
+  otherParticipantNames: string[];
+  status: InvitationDisplayStatus;
+  // No account is linked to this invite yet — the frontend uses this to
+  // decide whether to show "Create account & join" vs "Log in to accept".
+  requiresAccount: boolean;
+}
 
 export interface ItineraryStopWithPlace extends Omit<ItineraryStop, "placeId"> {
   place: Place;
@@ -86,7 +147,11 @@ export class ItinerariesService {
     private readonly placeRepo: Repository<Place>,
     @InjectRepository(ItineraryCollaborator)
     private readonly collaboratorRepo: Repository<ItineraryCollaborator>,
+    @InjectRepository(TripInvitation)
+    private readonly invitationRepo: Repository<TripInvitation>,
     private readonly usersService: UsersService,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   async generateTrip(
@@ -203,40 +268,6 @@ export class ItinerariesService {
     return this.toResponse(itinerary, places, collaborators);
   }
 
-  /** Invite another user (by email) to co-plan this trip — owner only, so
-   * a collaborator can't unilaterally invite further collaborators onto
-   * someone else's trip. */
-  async inviteCollaborator(
-    ownerId: string,
-    itineraryId: string,
-    email: string,
-  ): Promise<PublicUser[]> {
-    const itinerary = await this.getOwned(ownerId, itineraryId);
-    const invitee = await this.usersService.findByEmail(email);
-    if (!invitee) {
-      throw new NotFoundException(`No account found for "${email}"`);
-    }
-    if (invitee.id === ownerId) {
-      throw new BadRequestException("You already own this trip");
-    }
-    const existing = await this.collaboratorRepo.findOne({
-      where: { itineraryId: itinerary.id, userId: invitee.id },
-    });
-    if (existing) {
-      throw new ConflictException(
-        `${invitee.name} is already a collaborator on this trip`,
-      );
-    }
-    await this.collaboratorRepo.save(
-      this.collaboratorRepo.create({
-        itineraryId: itinerary.id,
-        userId: invitee.id,
-        invitedByUserId: ownerId,
-      }),
-    );
-    return this.listCollaborators(itinerary.id);
-  }
-
   /** Owner can remove anyone; a collaborator can remove themself ("leave
    * this trip") — same self-service-cancel pattern BookingsService uses
    * for a guest cancelling their own booking. */
@@ -269,62 +300,508 @@ export class ItinerariesService {
     return this.listCollaborators(itineraryId);
   }
 
-  /** Add a stop — owner or any collaborator. */
-  async addStop(
-    userId: string,
+  // ---------------------------------------------------------------------
+  // Trip invitations (Section 1-9 of the collaboration spec). Everything
+  // below is owner-only to create/manage — same restriction the old
+  // immediate-add inviteCollaborator() had — but now goes through a real
+  // pending → viewed → accepted/declined/expired lifecycle instead of
+  // adding a collaborator on the spot, and works for people who don't
+  // have an account yet. See TripInvitation's class doc for the data
+  // model reasoning.
+  // ---------------------------------------------------------------------
+
+  /** "People you may want to invite" (Section 7) — platform users
+   * matching the search that aren't already on this trip (as a
+   * confirmed collaborator or a still-pending invite). Owner-only, same
+   * as everything else here: a stranger shouldn't be able to enumerate
+   * platform users through someone else's trip. */
+  async searchInvitablePeople(
+    ownerId: string,
     itineraryId: string,
-    dto: AddStopDto,
-  ): Promise<ItineraryResponse> {
-    const itinerary = await this.getEditable(userId, itineraryId);
-    const place = await this.placeRepo.findOne({ where: { id: dto.placeId } });
-    if (!place) {
-      throw new NotFoundException(`Place "${dto.placeId}" not found`);
-    }
-    if (itinerary.stops.some((s) => s.placeId === dto.placeId)) {
-      throw new ConflictException("This place is already on the trip");
-    }
-    const stopsForDay = itinerary.stops.filter((s) => s.day === dto.day);
-    const order = stopsForDay.length
-      ? Math.max(...stopsForDay.map((s) => s.order)) + 1
-      : 0;
-    itinerary.stops = [
-      ...itinerary.stops,
-      { day: dto.day, order, placeId: dto.placeId, notes: dto.notes ?? null },
-    ];
-    itinerary.durationDays = Math.max(itinerary.durationDays, dto.day);
-    const saved = await this.itineraryRepo.save(itinerary);
-    return this.findOne(userId, saved.id);
+    query: string,
+  ): Promise<InvitableUser[]> {
+    await this.getOwned(ownerId, itineraryId);
+    const [matches, collaborators, pending] = await Promise.all([
+      this.usersService.searchByNameOrEmail(query, ownerId),
+      this.collaboratorRepo.find({
+        where: { itineraryId },
+        select: ["userId"],
+      }),
+      this.invitationRepo.find({
+        where: { itineraryId, status: TripInvitationStatus.PENDING },
+        select: ["inviteeUserId"],
+      }),
+    ]);
+    const alreadyIn = new Set<string>(collaborators.map((c) => c.userId));
+    pending.forEach((p) => p.inviteeUserId && alreadyIn.add(p.inviteeUserId));
+    return matches.filter((u) => !alreadyIn.has(u.id)).map(toInvitableUser);
   }
 
-  /** Remove a stop — owner or any collaborator. */
-  async removeStop(
-    userId: string,
+  /** POST /itineraries/:id/invitations — one or many invitees in a
+   * single call (Section 7's "allow multiple invitations in one flow"),
+   * each either a platform user (userId, from the search picker) or a
+   * bare email address for someone who isn't on the platform yet. */
+  async createInvitations(
+    ownerId: string,
     itineraryId: string,
-    placeId: string,
-  ): Promise<ItineraryResponse> {
-    const itinerary = await this.getEditable(userId, itineraryId);
-    itinerary.stops = itinerary.stops.filter((s) => s.placeId !== placeId);
-    await this.itineraryRepo.save(itinerary);
-    return this.findOne(userId, itineraryId);
+    invitees: InviteeDto[],
+  ): Promise<InvitationSummary[]> {
+    const itinerary = await this.getOwned(ownerId, itineraryId);
+    for (const invitee of invitees) {
+      await this.createOrResendInvitation(ownerId, itinerary, invitee);
+    }
+    return this.listInvitations(ownerId, itineraryId);
   }
 
-  /** Edit a stop's notes — the shared "who's bringing what / meet here at
-   * 9am" annotation collaborators leave for each other. */
-  async updateStop(
-    userId: string,
-    itineraryId: string,
-    placeId: string,
-    dto: UpdateStopDto,
-  ): Promise<ItineraryResponse> {
-    const itinerary = await this.getEditable(userId, itineraryId);
-    const stop = itinerary.stops.find((s) => s.placeId === placeId);
-    if (!stop) {
-      throw new NotFoundException(`Stop for place "${placeId}" not found`);
+  private async createOrResendInvitation(
+    ownerId: string,
+    itinerary: Itinerary,
+    invitee: InviteeDto,
+  ): Promise<void> {
+    if (!invitee.userId && !invitee.email) {
+      throw new BadRequestException(
+        "Each invitee needs either an existing user or an email address",
+      );
     }
-    stop.notes = dto.notes ?? null;
-    itinerary.stops = [...itinerary.stops];
-    await this.itineraryRepo.save(itinerary);
-    return this.findOne(userId, itineraryId);
+
+    let inviteeUser: User | null = null;
+    let email: string;
+    if (invitee.userId) {
+      inviteeUser = await this.usersService.findById(invitee.userId);
+      if (!inviteeUser) {
+        throw new NotFoundException("That person's account could not be found");
+      }
+      email = inviteeUser.email;
+    } else {
+      email = invitee.email!.toLowerCase();
+      inviteeUser = await this.usersService.findByEmail(email);
+    }
+
+    if (inviteeUser?.id === ownerId || email === itinerary.userId) {
+      throw new BadRequestException("You already own this trip");
+    }
+
+    if (inviteeUser) {
+      const existingCollaborator = await this.collaboratorRepo.findOne({
+        where: { itineraryId: itinerary.id, userId: inviteeUser.id },
+      });
+      if (existingCollaborator) {
+        throw new ConflictException(
+          `${inviteeUser.name} is already part of this trip`,
+        );
+      }
+    }
+
+    let invitation = await this.invitationRepo.findOne({
+      where: { itineraryId: itinerary.id, email },
+    });
+    if (invitation?.status === TripInvitationStatus.ACCEPTED) {
+      throw new ConflictException(
+        `${inviteeUser?.name ?? email} is already part of this trip`,
+      );
+    }
+
+    const token = generateToken();
+    if (invitation) {
+      // Resend/re-invite: reuse the same row (declined or expired) rather
+      // than accumulating duplicate history for the same email on this trip.
+      invitation.tokenHash = hashToken(token);
+      invitation.status = TripInvitationStatus.PENDING;
+      invitation.viewedAt = null;
+      invitation.respondedAt = null;
+      invitation.expiresAt = invitationExpiresAt();
+      invitation.inviteeUserId = inviteeUser?.id ?? null;
+      invitation.invitedByUserId = ownerId;
+    } else {
+      invitation = this.invitationRepo.create({
+        itineraryId: itinerary.id,
+        invitedByUserId: ownerId,
+        email,
+        inviteeUserId: inviteeUser?.id ?? null,
+        tokenHash: hashToken(token),
+        expiresAt: invitationExpiresAt(),
+      });
+    }
+    invitation = await this.invitationRepo.save(invitation);
+    await this.sendInvitationEmail(itinerary, invitation, token, inviteeUser);
+  }
+
+  /** The trip's People/Participants panel (Section 4/7) — owner-only. */
+  async listInvitations(
+    ownerId: string,
+    itineraryId: string,
+  ): Promise<InvitationSummary[]> {
+    await this.getOwned(ownerId, itineraryId);
+    const rows = await this.invitationRepo.find({
+      where: { itineraryId },
+      relations: ["invitee"],
+      order: { createdAt: "DESC" },
+    });
+    return rows.map((r) => this.toInvitationSummary(r));
+  }
+
+  /** Owner resends a still-pending invite: fresh token, fresh 14-day
+   * clock, re-sent email — the "Allow the organizer to resend pending
+   * invitations" requirement (Section 4). */
+  async resendInvitation(
+    ownerId: string,
+    itineraryId: string,
+    invitationId: string,
+  ): Promise<InvitationSummary[]> {
+    const itinerary = await this.getOwned(ownerId, itineraryId);
+    const invitation = await this.invitationRepo.findOne({
+      where: { id: invitationId, itineraryId },
+    });
+    if (!invitation) {
+      throw new NotFoundException("Invitation not found");
+    }
+    if (invitation.status !== TripInvitationStatus.PENDING) {
+      throw new ConflictException("Only a pending invitation can be resent");
+    }
+    const token = generateToken();
+    invitation.tokenHash = hashToken(token);
+    invitation.expiresAt = invitationExpiresAt();
+    invitation.viewedAt = null;
+    await this.invitationRepo.save(invitation);
+    const inviteeUser = invitation.inviteeUserId
+      ? await this.usersService.findById(invitation.inviteeUserId)
+      : null;
+    await this.sendInvitationEmail(itinerary, invitation, token, inviteeUser);
+    return this.listInvitations(ownerId, itineraryId);
+  }
+
+  /** Owner revokes an invitation outright (pending or already
+   * declined/expired) — the link stops working immediately either way,
+   * since the row it depends on is gone. */
+  async cancelInvitation(
+    ownerId: string,
+    itineraryId: string,
+    invitationId: string,
+  ): Promise<InvitationSummary[]> {
+    await this.getOwned(ownerId, itineraryId);
+    await this.invitationRepo.delete({ id: invitationId, itineraryId });
+    return this.listInvitations(ownerId, itineraryId);
+  }
+
+  /** GET /invitations/token/:token — public, unauthenticated. Marks the
+   * invite "viewed" the first time it's opened while still pending. */
+  async getInvitationPreview(token: string): Promise<InvitationPreview> {
+    const invitation = await this.findInvitationByToken(token);
+    const itinerary = await this.itineraryRepo.findOne({
+      where: { id: invitation.itineraryId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException("This trip no longer exists");
+    }
+
+    if (
+      invitation.status === TripInvitationStatus.PENDING &&
+      !invitation.viewedAt &&
+      invitation.expiresAt.getTime() >= Date.now()
+    ) {
+      invitation.viewedAt = new Date();
+      await this.invitationRepo.save(invitation);
+    }
+
+    const [inviter, collaborators, destinationSummary] = await Promise.all([
+      this.usersService.findById(invitation.invitedByUserId),
+      this.listCollaborators(itinerary.id),
+      this.destinationSummary(itinerary),
+    ]);
+
+    return {
+      tripTitle: itinerary.title,
+      tripKind: itinerary.kind,
+      durationDays: itinerary.durationDays,
+      destinationSummary,
+      overview: this.tripOverview(itinerary, destinationSummary),
+      organizerName: inviter?.name ?? "A LIBERIA360 traveler",
+      invitedEmail: invitation.email,
+      otherParticipantNames: collaborators.slice(0, 5).map((c) => c.name),
+      status: this.computeStatus(invitation),
+      requiresAccount: !invitation.inviteeUserId,
+    };
+  }
+
+  /** POST /invitations/token/:token/accept — the emailed-link flow. */
+  acceptByToken(userId: string, token: string): Promise<ItineraryResponse> {
+    return this.findInvitationByToken(token).then((row) =>
+      this.acceptInvitationRow(userId, row),
+    );
+  }
+
+  /** POST /itineraries/invitations/:id/accept — the "My Invitations"
+   * in-app flow, for an invite already linked to this account (no token
+   * in hand needed — see TripInvitation's doc comment: the plaintext
+   * token is never persisted, only its hash, so this is the only way to
+   * accept/decline once the email itself is gone). */
+  async acceptById(
+    userId: string,
+    invitationId: string,
+  ): Promise<ItineraryResponse> {
+    const row = await this.invitationRepo.findOne({
+      where: { id: invitationId },
+    });
+    if (!row) {
+      throw new NotFoundException("Invitation not found");
+    }
+    return this.acceptInvitationRow(userId, row);
+  }
+
+  declineByToken(userId: string, token: string): Promise<void> {
+    return this.findInvitationByToken(token).then((row) =>
+      this.declineInvitationRow(userId, row),
+    );
+  }
+
+  async declineById(userId: string, invitationId: string): Promise<void> {
+    const row = await this.invitationRepo.findOne({
+      where: { id: invitationId },
+    });
+    if (!row) {
+      throw new NotFoundException("Invitation not found");
+    }
+    return this.declineInvitationRow(userId, row);
+  }
+
+  /** The invited person's own inbox of open invitations (Section 5) —
+   * only ever invitations explicitly addressed to *this* account
+   * (inviteeUserId set either by the organizer picking them from search,
+   * or by AuthService.register linking an email-only invite at signup —
+   * never inferred from an ambient email match here, which is what keeps
+   * a pending invitation from being hijackable by another account). */
+  async listMyInvitations(userId: string): Promise<MyInvitationSummary[]> {
+    const rows = await this.invitationRepo.find({
+      where: { inviteeUserId: userId, status: TripInvitationStatus.PENDING },
+      relations: ["itinerary", "invitedBy"],
+      order: { createdAt: "DESC" },
+    });
+    const active = rows.filter((r) => r.expiresAt.getTime() >= Date.now());
+    return Promise.all(
+      active.map(async (r) => ({
+        id: r.id,
+        tripId: r.itineraryId,
+        tripTitle: r.itinerary.title,
+        destinationSummary: await this.destinationSummary(r.itinerary),
+        durationDays: r.itinerary.durationDays,
+        organizerName: r.invitedBy?.name ?? "A LIBERIA360 traveler",
+        createdAt: r.createdAt,
+        expiresAt: r.expiresAt,
+      })),
+    );
+  }
+
+  /** Links a still-open, email-only invitation to a brand-new account —
+   * called from AuthService.register right after account creation, so
+   * "click invite → create account → land back on the same invitation,
+   * already recognized" (Section 3) doesn't need the person to search
+   * for the trip again or ask the organizer to resend. Never throws:
+   * registration must succeed whether or not the invite token is valid,
+   * stale, or already claimed — this only ever silently no-ops instead.
+   * The token itself (not the email address someone chooses to register
+   * with) is what proves the link, and once inviteeUserId is set it's
+   * final — a second registration attempt with the same token can't
+   * hijack an invite that's already claimed by a different account. */
+  async linkInvitationToNewAccount(
+    token: string,
+    newUserId: string,
+  ): Promise<void> {
+    let invitation: TripInvitation;
+    try {
+      invitation = await this.findInvitationByToken(token);
+    } catch {
+      return;
+    }
+    if (
+      invitation.status !== TripInvitationStatus.PENDING ||
+      invitation.expiresAt.getTime() < Date.now()
+    ) {
+      return;
+    }
+    if (invitation.inviteeUserId && invitation.inviteeUserId !== newUserId) {
+      return;
+    }
+    invitation.inviteeUserId = newUserId;
+    await this.invitationRepo.save(invitation);
+  }
+
+  private async acceptInvitationRow(
+    userId: string,
+    row: TripInvitation,
+  ): Promise<ItineraryResponse> {
+    this.assertRespondable(row);
+    if (row.inviteeUserId && row.inviteeUserId !== userId) {
+      throw new ForbiddenException(
+        "This invitation belongs to a different account",
+      );
+    }
+    const itinerary = await this.itineraryRepo.findOne({
+      where: { id: row.itineraryId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException("This trip no longer exists");
+    }
+    if (itinerary.userId === userId) {
+      throw new BadRequestException("You already own this trip");
+    }
+
+    row.status = TripInvitationStatus.ACCEPTED;
+    row.respondedAt = new Date();
+    row.inviteeUserId = row.inviteeUserId ?? userId;
+    await this.invitationRepo.save(row);
+
+    const existingCollaborator = await this.collaboratorRepo.findOne({
+      where: { itineraryId: itinerary.id, userId },
+    });
+    if (!existingCollaborator) {
+      await this.collaboratorRepo.save(
+        this.collaboratorRepo.create({
+          itineraryId: itinerary.id,
+          userId,
+          invitedByUserId: row.invitedByUserId,
+        }),
+      );
+    }
+
+    await this.notifyOrganizerOfAcceptance(itinerary, userId);
+    return this.findOne(userId, itinerary.id);
+  }
+
+  private async declineInvitationRow(
+    userId: string,
+    row: TripInvitation,
+  ): Promise<void> {
+    this.assertRespondable(row);
+    if (row.inviteeUserId && row.inviteeUserId !== userId) {
+      throw new ForbiddenException(
+        "This invitation belongs to a different account",
+      );
+    }
+    row.status = TripInvitationStatus.DECLINED;
+    row.respondedAt = new Date();
+    row.inviteeUserId = row.inviteeUserId ?? userId;
+    await this.invitationRepo.save(row);
+  }
+
+  private assertRespondable(row: TripInvitation): void {
+    if (row.status !== TripInvitationStatus.PENDING) {
+      throw new ConflictException(
+        `This invitation has already been ${row.status}`,
+      );
+    }
+    if (row.expiresAt.getTime() < Date.now()) {
+      throw new ConflictException(
+        "This invitation has expired — ask the organizer to resend it",
+      );
+    }
+  }
+
+  private async findInvitationByToken(token: string): Promise<TripInvitation> {
+    const tokenHash = hashToken(token);
+    const row = await this.invitationRepo.findOne({ where: { tokenHash } });
+    if (!row || !hashesMatch(row.tokenHash, tokenHash)) {
+      throw new NotFoundException(
+        "This invitation link is invalid or has expired",
+      );
+    }
+    return row;
+  }
+
+  private async notifyOrganizerOfAcceptance(
+    itinerary: Itinerary,
+    accepterId: string,
+  ): Promise<void> {
+    const [organizer, accepter] = await Promise.all([
+      this.usersService.findById(itinerary.userId),
+      this.usersService.findById(accepterId),
+    ]);
+    if (!organizer) return;
+    const webAppUrl = this.configService.get("webAppUrl", { infer: true });
+    await this.mailService
+      .sendInvitationAccepted(
+        organizer.email,
+        accepter?.name ?? "Someone you invited",
+        itinerary.title,
+        `${webAppUrl}/trips/${itinerary.id}`,
+      )
+      .catch(() => undefined);
+  }
+
+  private async sendInvitationEmail(
+    itinerary: Itinerary,
+    invitation: TripInvitation,
+    token: string,
+    inviteeUser: User | null,
+  ): Promise<void> {
+    const [inviter, destinationSummary] = await Promise.all([
+      this.usersService.findById(invitation.invitedByUserId),
+      this.destinationSummary(itinerary),
+    ]);
+    const webAppUrl = this.configService.get("webAppUrl", { infer: true });
+    const delivered = await this.mailService.sendTripInvitation({
+      to: invitation.email,
+      inviterName: inviter?.name ?? "A LIBERIA360 traveler",
+      tripTitle: itinerary.title,
+      durationDays: itinerary.durationDays,
+      destinationSummary,
+      inviteUrl: `${webAppUrl}/invite/${token}`,
+      hasAccount: Boolean(inviteeUser),
+    });
+    invitation.emailDelivered = delivered;
+    await this.invitationRepo.save(invitation);
+  }
+
+  private toInvitationSummary(row: TripInvitation): InvitationSummary {
+    return {
+      id: row.id,
+      email: row.email,
+      status: this.computeStatus(row),
+      invitee: row.invitee ? toPublicUser(row.invitee) : null,
+      emailDelivered: row.emailDelivered,
+      createdAt: row.createdAt,
+      respondedAt: row.respondedAt,
+      expiresAt: row.expiresAt,
+    };
+  }
+
+  private computeStatus(row: TripInvitation): InvitationDisplayStatus {
+    if (row.status === TripInvitationStatus.ACCEPTED) return "accepted";
+    if (row.status === TripInvitationStatus.DECLINED) return "declined";
+    if (row.expiresAt.getTime() < Date.now()) return "expired";
+    if (row.viewedAt) return "viewed";
+    return "pending";
+  }
+
+  private tripOverview(itinerary: Itinerary, destination: string): string {
+    const kindLabel =
+      itinerary.kind === ItineraryKind.WEEKEND ? "weekend getaway" : "trip";
+    const interestsPart = itinerary.interests.length
+      ? ` focused on ${itinerary.interests.slice(0, 3).join(", ")}`
+      : "";
+    const dayLabel = itinerary.durationDays === 1 ? "day" : "days";
+    return `A ${itinerary.durationDays}-${dayLabel} ${kindLabel} to ${destination}${interestsPart}.`;
+  }
+
+  /** County name(s) covered by this trip's stops — the closest thing to
+   * a "destination" field the itinerary model has (it doesn't store
+   * literal start/end dates or a free-text destination, only durationDays
+   * and a list of stop placeIds), used for both the invitation email and
+   * preview. */
+  private async destinationSummary(itinerary: Itinerary): Promise<string> {
+    const placeIds = itinerary.stops.map((s) => s.placeId);
+    if (placeIds.length === 0) return "Liberia";
+    const places = await this.placeRepo.find({
+      where: placeIds.map((id) => ({ id })),
+      relations: ["county"],
+    });
+    const counties = Array.from(
+      new Set(
+        places.map((p) => p.county?.name).filter((n): n is string => !!n),
+      ),
+    );
+    if (counties.length === 0) return "Liberia";
+    if (counties.length <= 2) return counties.join(" & ");
+    return `${counties.slice(0, 2).join(", ")} & more`;
   }
 
   private async listCollaborators(itineraryId: string): Promise<PublicUser[]> {
@@ -386,6 +863,64 @@ export class ItinerariesService {
     }
     await this.assertCanView(userId, itinerary);
     return itinerary;
+  }
+
+  /** Add a stop — owner or any collaborator. */
+  async addStop(
+    userId: string,
+    itineraryId: string,
+    dto: AddStopDto,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    const place = await this.placeRepo.findOne({ where: { id: dto.placeId } });
+    if (!place) {
+      throw new NotFoundException(`Place "${dto.placeId}" not found`);
+    }
+    if (itinerary.stops.some((s) => s.placeId === dto.placeId)) {
+      throw new ConflictException("This place is already on the trip");
+    }
+    const stopsForDay = itinerary.stops.filter((s) => s.day === dto.day);
+    const order = stopsForDay.length
+      ? Math.max(...stopsForDay.map((s) => s.order)) + 1
+      : 0;
+    itinerary.stops = [
+      ...itinerary.stops,
+      { day: dto.day, order, placeId: dto.placeId, notes: dto.notes ?? null },
+    ];
+    itinerary.durationDays = Math.max(itinerary.durationDays, dto.day);
+    const saved = await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, saved.id);
+  }
+
+  /** Remove a stop — owner or any collaborator. */
+  async removeStop(
+    userId: string,
+    itineraryId: string,
+    placeId: string,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    itinerary.stops = itinerary.stops.filter((s) => s.placeId !== placeId);
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
+  }
+
+  /** Edit a stop's notes — the shared "who's bringing what / meet here at
+   * 9am" annotation collaborators leave for each other. */
+  async updateStop(
+    userId: string,
+    itineraryId: string,
+    placeId: string,
+    dto: UpdateStopDto,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    const stop = itinerary.stops.find((s) => s.placeId === placeId);
+    if (!stop) {
+      throw new NotFoundException(`Stop for place "${placeId}" not found`);
+    }
+    stop.notes = dto.notes ?? null;
+    itinerary.stops = [...itinerary.stops];
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
   }
 
   private async findCandidates(

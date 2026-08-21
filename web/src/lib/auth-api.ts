@@ -20,6 +20,10 @@ export interface RegisterInput {
   homeCountyId?: string;
   travelerType?: TravelerType;
   interests?: string[];
+  // Carried through from an invite link (/signup?invite=…) so the new
+  // account gets linked to the pending trip invitation automatically —
+  // see AuthService.register's inviteToken handling.
+  inviteToken?: string;
 }
 
 export function register(input: RegisterInput): Promise<AuthResult> {

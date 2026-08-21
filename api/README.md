@@ -204,13 +204,30 @@ Requires a VAPID keypair (`npx web-push generate-vapid-keys`); unconfigured, sub
 | `GET /itineraries` | List own itineraries | JWT |
 | `GET /itineraries/:id` | Itinerary detail, stops resolved to full places | Owner or collaborator |
 | `GET /itineraries/shared-with-me` | Itineraries owned by others the user was invited to | JWT |
-| `POST /itineraries/:id/collaborators` | Invite a user by email | Owner |
-| `DELETE /itineraries/:id/collaborators/:userId` | Remove a collaborator, or leave | Owner or self |
+| `DELETE /itineraries/:id/collaborators/:userId` | Remove a confirmed collaborator, or leave | Owner or self |
 | `POST /itineraries/:id/stops` | Add a stop | Owner or collaborator |
 | `PATCH /itineraries/:id/stops/:placeId` | Edit stop notes | Owner or collaborator |
 | `DELETE /itineraries/:id/stops/:placeId` | Remove a stop | Owner or collaborator |
 
 Generation uses greedy nearest-neighbor sequencing. Non-members get 404 (not 403) on member-only routes.
+
+### Trip Collaboration & Invitations
+
+Inviting someone onto a trip goes through a real pending → viewed → accepted/declined/expired lifecycle (`trip_invitations` table) instead of adding a collaborator on the spot — and works for people who don't have an account yet, not just existing users. See `TripInvitation`'s class doc (`api/src/itineraries/entities/trip-invitation.entity.ts`) for the full data-model reasoning (why there's no separate "Sent" state, how an email-only invite gets linked to a brand-new account without letting it be hijacked, etc).
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /itineraries/:id/invitations/search-people` | "People you may want to invite" — platform users matching `?q=`, minus anyone already on the trip | Owner |
+| `POST /itineraries/:id/invitations` | Invite one or many people at once, each either `{userId}` or `{email}` | Owner |
+| `GET /itineraries/:id/invitations` | The trip's invitation list with each one's status, for the People/Participants panel | Owner |
+| `POST /itineraries/:id/invitations/:invitationId/resend` | Resend a still-pending invite (fresh token, fresh 14-day expiry) | Owner |
+| `DELETE /itineraries/:id/invitations/:invitationId` | Revoke an invitation outright | Owner |
+| `GET /invitations/token/:token` | Public preview of an invite link — trip title/destination/duration/organizer, no stop list or contact info | — |
+| `POST /invitations/token/:token/accept` \| `.../decline` | Respond to an invite via its emailed link | JWT |
+| `GET /invitations/mine` | Every open invitation addressed to this account — the in-app "My Invitations" inbox | JWT |
+| `POST /invitations/:id/accept` \| `.../decline` | Respond to an invite already linked to this account, without needing the original link (the plaintext token is never stored, only its hash) | JWT |
+
+Accepting an invitation creates an `ItineraryCollaborator` row (unchanged from before) and emails the organizer that the person joined. `POST /auth/register` accepts an optional `inviteToken` so signing up from an invite link automatically links the pending invitation to the new account.
 
 ### Bookings
 

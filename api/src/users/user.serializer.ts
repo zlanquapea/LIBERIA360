@@ -36,3 +36,26 @@ export function toPublicUser(user: User): PublicUser {
     createdAt: user.createdAt,
   };
 }
+
+export interface InvitableUser {
+  id: string;
+  name: string;
+  maskedEmail: string;
+}
+
+/** "j***@example.com" — enough for someone to recognize their own friend
+ * in a search result (or tell two "John Doe"s apart) without a search box
+ * anywhere in the app becoming a way to harvest full email addresses.
+ * Used only for the trip-invitation people picker (Section 9: "Do not
+ * reveal unnecessary account information when searching for users"). */
+export function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  const hidden = "*".repeat(Math.max(local.length - visible.length, 1));
+  return `${visible}${hidden}@${domain}`;
+}
+
+export function toInvitableUser(user: User): InvitableUser {
+  return { id: user.id, name: user.name, maskedEmail: maskEmail(user.email) };
+}

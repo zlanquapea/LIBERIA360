@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState, type FormEvent } from 'react';
 import { HttpError } from '@/lib/http';
 import { useAuth } from '@/hooks/useAuth';
+import { safeNext, signupHrefFor } from '@/lib/invite-redirect';
 
 function friendlyError(err: unknown): string {
   if (err instanceof HttpError) {
@@ -16,8 +17,23 @@ function friendlyError(err: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
+// useSearchParams opts this page out of static rendering unless it's
+// wrapped in Suspense — same idiom as reset-password/verify-email. The
+// `next` param (e.g. `/invite/:token`, from InvitePage's "Log in to
+// accept") is what lets a trip invitation land the person back on it
+// after logging in instead of the generic /account.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +52,7 @@ export default function LoginPage() {
       if ('twoFactorRequired' in result) {
         setPendingToken(result.pendingToken);
       } else {
-        router.push('/account');
+        router.push(next);
       }
     } catch (err) {
       setError(friendlyError(err));
@@ -49,6 +65,7 @@ export default function LoginPage() {
     return (
       <TwoFactorStep
         pendingToken={pendingToken}
+        next={next}
         onBack={() => {
           setPendingToken(null);
           setError(null);
@@ -110,7 +127,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-slate-500 dark:text-slate-400">
         New here?{' '}
-        <Link href="/signup" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+        <Link href={signupHrefFor(next)} className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Create an account
         </Link>
       </p>
@@ -122,7 +139,7 @@ export default function LoginPage() {
 // Accepts either a 6-digit authenticator code or an XXXXX-XXXXX recovery
 // code; AuthService tries the TOTP check first, then recovery codes, so
 // this input doesn't need to know which kind was typed.
-function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack: () => void }) {
+function TwoFactorStep({ pendingToken, next, onBack }: { pendingToken: string; next: string; onBack: () => void }) {
   const router = useRouter();
   const { verifyTwoFactor } = useAuth();
   const [code, setCode] = useState('');
@@ -136,7 +153,7 @@ function TwoFactorStep({ pendingToken, onBack }: { pendingToken: string; onBack:
     setSubmitting(true);
     try {
       await verifyTwoFactor(pendingToken, code.trim());
-      router.push('/account');
+      router.push(next);
     } catch (err) {
       setError(friendlyError(err));
     } finally {

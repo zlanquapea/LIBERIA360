@@ -8,6 +8,7 @@ import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
 import { MailService } from "../mail/mail.service";
 import { LoginActivityService } from "../security/login-activity.service";
+import { ItinerariesService } from "../itineraries/itineraries.service";
 import { AuthProvider } from "../users/entities/user.enums";
 import { encryptSecret } from "./two-factor-crypto";
 import { hashToken } from "./token-hash";
@@ -37,6 +38,7 @@ describe("AuthService", () => {
     sendPasswordReset: jest.Mock;
   };
   let loginActivityService: { record: jest.Mock };
+  let itinerariesService: { linkInvitationToNewAccount: jest.Mock };
 
   beforeEach(async () => {
     usersService = {
@@ -60,6 +62,9 @@ describe("AuthService", () => {
     loginActivityService = {
       record: jest.fn().mockResolvedValue(undefined),
     };
+    itinerariesService = {
+      linkInvitationToNewAccount: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -69,6 +74,7 @@ describe("AuthService", () => {
         { provide: ConfigService, useValue: configService },
         { provide: MailService, useValue: mailService },
         { provide: LoginActivityService, useValue: loginActivityService },
+        { provide: ItinerariesService, useValue: itinerariesService },
       ],
     }).compile();
 
@@ -114,6 +120,51 @@ describe("AuthService", () => {
 
       expect(result.accessToken).toBe("signed.jwt.token");
       expect(result.user).not.toHaveProperty("passwordHash");
+    });
+
+    it("links an invite token to the new account when registering from an invite link", async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      usersService.create.mockImplementation(async (data) => ({
+        id: "new-user",
+        ...data,
+        homeCounty: null,
+        isAdmin: false,
+        createdAt: new Date(),
+      }));
+
+      await service.register({
+        name: "X",
+        email: "x@example.com",
+        password: "password123",
+        inviteToken: "a".repeat(64),
+      });
+
+      expect(
+        itinerariesService.linkInvitationToNewAccount,
+      ).toHaveBeenCalledWith("a".repeat(64), "new-user");
+    });
+
+    it("never fails registration when linking the invite token throws", async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      usersService.create.mockImplementation(async (data) => ({
+        id: "new-user",
+        ...data,
+        homeCounty: null,
+        isAdmin: false,
+        createdAt: new Date(),
+      }));
+      itinerariesService.linkInvitationToNewAccount.mockRejectedValue(
+        new Error("boom"),
+      );
+
+      await expect(
+        service.register({
+          name: "X",
+          email: "x@example.com",
+          password: "password123",
+          inviteToken: "a".repeat(64),
+        }),
+      ).resolves.toHaveProperty("accessToken");
     });
   });
 

@@ -15,6 +15,7 @@ import { CreatorOffering } from "../creators/entities/creator-offering.entity";
 import { Event } from "../events/entities/event.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
+import { TripInvitation } from "../itineraries/entities/trip-invitation.entity";
 import { PushSubscription } from "../push/entities/push-subscription.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
@@ -56,6 +57,7 @@ export const AppDataSource = new DataSource({
     Event,
     Itinerary,
     ItineraryCollaborator,
+    TripInvitation,
     PushSubscription,
     Booking,
     AnalyticsEvent,

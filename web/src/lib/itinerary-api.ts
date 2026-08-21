@@ -48,14 +48,9 @@ export function getSharedWithMe(token: string): Promise<Itinerary[]> {
   return apiRequest<Itinerary[]>('/itineraries/shared-with-me', { headers: authHeader(token) });
 }
 
-export function inviteCollaborator(token: string, itineraryId: string, email: string): Promise<AuthUser[]> {
-  return apiRequest<AuthUser[]>(`/itineraries/${itineraryId}/collaborators`, {
-    method: 'POST',
-    headers: authHeader(token),
-    body: JSON.stringify({ email }),
-  });
-}
-
+// Inviting is now handled by lib/invitations-api.ts's pending invite
+// flow (search-and-pick or invite-by-email, with accept/decline) instead
+// of adding a collaborator immediately — see TripInvitation's doc comment.
 export function removeCollaborator(token: string, itineraryId: string, userId: string): Promise<AuthUser[]> {
   return apiRequest<AuthUser[]>(`/itineraries/${itineraryId}/collaborators/${userId}`, {
     method: 'DELETE',
