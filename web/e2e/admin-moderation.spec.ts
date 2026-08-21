@@ -68,6 +68,12 @@ test('admin sees a review flagged after 3 independent reports, and can remove it
   await expect(flaggedRow).toBeVisible();
   await expect(flaggedRow.getByText(/3 reports/i)).toBeVisible();
 
+  // "Remove" now opens a confirmation dialog rather than deleting
+  // immediately (see ConfirmDialog) — confirm within it before asserting
+  // the review is actually gone.
   await flaggedRow.getByRole('button', { name: /remove/i }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByText(authorName)).toHaveCount(0);
 });
