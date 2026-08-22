@@ -220,3 +220,13 @@ export function formatEventDateRange(startDate: string, endDate: string | null):
   const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   return `${startLabel} – ${endLabel}`;
 }
+
+// `<input type="datetime-local">` needs "YYYY-MM-DDTHH:mm" in the viewer's
+// local time (no timezone, no seconds) — pre-filling an edit form from an
+// ISO string means formatting via the local getters below, not slicing
+// toISOString() (that's UTC and would shift the displayed time).
+export function toDatetimeLocalInput(isoString: string): string {
+  const d = new Date(isoString);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

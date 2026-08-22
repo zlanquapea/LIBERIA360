@@ -172,8 +172,11 @@ for directory/card rendering), and additionally accepts `search`, `category`,
 | Method & path | Description | Auth |
 |---|---|---|
 | `POST /events` | Create an event | JWT + claimed business, creator profile, or admin |
-| `GET /events?category=&county=&dateFrom=&dateTo=` | List/filter events | — |
+| `GET /events?category=&county=&dateFrom=&dateTo=&includePast=` | List/filter events — hides events whose `startDate` has already passed unless `dateFrom` or `includePast=true` is given | — |
 | `GET /events/:id` | Event detail | — |
+| `GET /events/mine` | Events the caller posted, including past ones | JWT |
+| `PATCH /events/:id` | Edit an event | JWT, organizer or admin |
+| `DELETE /events/:id` | Cancel/remove an event | JWT, organizer or admin |
 
 Creating an event triggers a best-effort push notification to users whose home county matches.
 

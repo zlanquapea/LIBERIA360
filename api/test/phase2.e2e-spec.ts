@@ -621,6 +621,100 @@ describe("Phase 2 (e2e)", () => {
         .expect(200);
       expect(byCategory.body.meta.total).toBe(0);
     });
+
+    it("hides a past event from the default listing, but surfaces it via includePast or an explicit dateFrom", async () => {
+      const past = await request(app.getHttpServer())
+        .post("/api/v1/events")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          name: "Old Festival",
+          category: "festival",
+          locationText: "City Hall",
+          countyId: montserrado.id,
+          startDate: "2020-01-01T10:00:00Z",
+        })
+        .expect(201);
+      const pastId = past.body.id as string;
+
+      const defaultList = await request(app.getHttpServer())
+        .get("/api/v1/events")
+        .expect(200);
+      expect(
+        defaultList.body.data.some((e: { id: string }) => e.id === pastId),
+      ).toBe(false);
+
+      const withIncludePast = await request(app.getHttpServer())
+        .get("/api/v1/events?includePast=true")
+        .expect(200);
+      expect(
+        withIncludePast.body.data.some((e: { id: string }) => e.id === pastId),
+      ).toBe(true);
+
+      const withDateFrom = await request(app.getHttpServer())
+        .get("/api/v1/events?dateFrom=2019-01-01")
+        .expect(200);
+      expect(
+        withDateFrom.body.data.some((e: { id: string }) => e.id === pastId),
+      ).toBe(true);
+    });
+
+    it("GET /events/mine returns only the caller's own events and requires auth", async () => {
+      await request(app.getHttpServer()).get("/api/v1/events/mine").expect(401);
+
+      const mine = await request(app.getHttpServer())
+        .get("/api/v1/events/mine")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+      expect(mine.body.length).toBeGreaterThan(0);
+      expect(
+        mine.body.every(
+          (e: { createdBy: { id: string } | null }) =>
+            e.createdBy?.id === userAId,
+        ),
+      ).toBe(true);
+    });
+
+    it("lets the organizer edit and cancel their own event, blocks other users", async () => {
+      const created = await request(app.getHttpServer())
+        .post("/api/v1/events")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          name: "Editable Event",
+          category: "concert",
+          locationText: "City Hall",
+          countyId: montserrado.id,
+          startDate: "2026-09-05T18:00:00Z",
+        })
+        .expect(201);
+      const eventId = created.body.id as string;
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/events/${eventId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .send({ name: "Hijacked" })
+        .expect(403);
+
+      const updated = await request(app.getHttpServer())
+        .patch(`/api/v1/events/${eventId}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({ name: "Renamed Event" })
+        .expect(200);
+      expect(updated.body.name).toBe("Renamed Event");
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/events/${eventId}`)
+        .set("Authorization", `Bearer ${userBToken}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/events/${eventId}`)
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/events/${eventId}`)
+        .expect(404);
+    });
   });
 
   describe("Near Me radius search", () => {

@@ -60,7 +60,7 @@ function emptyPage(limit = 20) {
 
 async function apiFetch<T>(
   path: string,
-  params?: Record<string, string | number | undefined>,
+  params?: Record<string, string | number | boolean | undefined>,
   buildFallback?: T,
 ): Promise<T> {
   const url = new URL(`${API_URL}${path}`);
@@ -201,6 +201,10 @@ export interface EventsQuery {
   county?: string;
   dateFrom?: string;
   dateTo?: string;
+  // Public browsing never sets this — the API hides past events by
+  // default. Only the admin events table needs it, to still reach
+  // something that already happened.
+  includePast?: boolean;
   page?: number;
   limit?: number;
 }
@@ -208,7 +212,7 @@ export interface EventsQuery {
 export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
   return apiFetch<PaginatedEvents>(
     '/events',
-    query as Record<string, string | number | undefined>,
+    query as Record<string, string | number | boolean | undefined>,
     emptyPage(query.limit),
   );
 }

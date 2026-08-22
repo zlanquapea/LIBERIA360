@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { getCounties, getEvents } from '@/lib/api';
 import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+import { resolveImageUrl } from '@/lib/images';
 import { EventFilters } from '@/components/EventFilters';
+import { SafeImage } from '@/components/SafeImage';
 import type { EventCategory } from '@/lib/types';
 
 export const metadata = { title: 'Events — LIBERIA360' };
@@ -13,22 +15,28 @@ function first(value: string | string[] | undefined): string | undefined {
 }
 
 // Events listing (Tech Spec §3.2 / §5 Event) — upcoming-first (the API
-// sorts by startDate ASC), filterable by category and county.
+// sorts by startDate ASC), filterable by category, county, and a date
+// range (see EventFilters' quick-filter buttons for the dateFrom/dateTo
+// values these come from).
 export default async function EventsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const category = first(params.category) as EventCategory | undefined;
   const county = first(params.county);
+  const dateFrom = first(params.dateFrom);
+  const dateTo = first(params.dateTo);
   const page = Number(first(params.page) ?? '1') || 1;
 
   const [counties, result] = await Promise.all([
     getCounties(),
-    getEvents({ category, county, page, limit: 20 }),
+    getEvents({ category, county, dateFrom, dateTo, page, limit: 20 }),
   ]);
 
   function pageHref(targetPage: number) {
     const p = new URLSearchParams();
     if (category) p.set('category', category);
     if (county) p.set('county', county);
+    if (dateFrom) p.set('dateFrom', dateFrom);
+    if (dateTo) p.set('dateTo', dateTo);
     p.set('page', String(targetPage));
     return `/events?${p.toString()}`;
   }
@@ -60,9 +68,17 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             <li key={event.id}>
               <Link
                 href={`/events/${event.id}`}
-                className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
+                className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
               >
-                <div className="min-w-0">
+                {event.images[0] && (
+                  <SafeImage
+                    src={resolveImageUrl(event.images[0])}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded-lg object-cover"
+                    fallback={<div aria-hidden className="h-16 w-16 shrink-0 rounded-lg bg-slate-200 dark:bg-slate-700" />}
+                  />
+                )}
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-slate-900 dark:text-slate-50">{event.name}</p>
                   <p className="text-sm text-slate-600 dark:text-slate-300">{formatEventDateRange(event.startDate, event.endDate)}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">

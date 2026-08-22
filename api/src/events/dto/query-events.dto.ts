@@ -1,5 +1,6 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -26,6 +27,21 @@ export class QueryEventsDto {
   @IsOptional()
   @IsDateString()
   dateTo?: string;
+
+  // Public browsing (the /events page) always wants "what's upcoming" —
+  // findAll defaults to hiding anything whose startDate has already
+  // passed unless this is set or dateFrom is given explicitly. Admin's
+  // events management table sets this so a past event is still there to
+  // edit or remove, not just newly-created ones.
+  //
+  // A plain `@Type(() => Boolean)` would coerce the *string* "false" to
+  // `true` (any non-empty string is truthy) since query params always
+  // arrive as strings — see QueryLoginActivityDto's onlyFailed for the
+  // same fix.
+  @IsOptional()
+  @Transform(({ value }) => value === "true" || value === true)
+  @IsBoolean()
+  includePast?: boolean;
 
   @IsOptional()
   @Type(() => Number)
