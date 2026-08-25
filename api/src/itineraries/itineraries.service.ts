@@ -142,6 +142,24 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Shared by generateTrip/previewTrip: an explicit starting point (both
+// fields) always wins; a request giving only one of the two is a client
+// bug worth surfacing rather than silently guessing which was meant.
+function resolveStart(dto: { startLat?: number; startLng?: number }): {
+  lat: number;
+  lng: number;
+} {
+  if (dto.startLat !== undefined && dto.startLng !== undefined) {
+    return { lat: dto.startLat, lng: dto.startLng };
+  }
+  if (dto.startLat !== undefined || dto.startLng !== undefined) {
+    throw new BadRequestException(
+      "startLat and startLng must both be provided together",
+    );
+  }
+  return MONROVIA_CENTER;
+}
+
 function budgetThreshold(band: BudgetBand): number | null {
   switch (band) {
     case BudgetBand.BUDGET:
@@ -177,7 +195,7 @@ export class ItinerariesService {
     const candidates = await this.findCandidates(dto.interests, dto.budgetBand);
     const ordered = this.sequenceByProximity(
       candidates,
-      MONROVIA_CENTER,
+      resolveStart(dto),
       dto.durationDays * STOPS_PER_DAY,
     );
     const stops = this.assignDays(ordered, dto.durationDays);
@@ -207,7 +225,7 @@ export class ItinerariesService {
     const candidates = await this.findCandidates(dto.interests, dto.budgetBand);
     const ordered = this.sequenceByProximity(
       candidates,
-      MONROVIA_CENTER,
+      resolveStart(dto),
       dto.durationDays * STOPS_PER_DAY,
     );
     const stops = this.assignDays(ordered, dto.durationDays);

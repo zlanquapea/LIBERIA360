@@ -6,6 +6,11 @@ export interface GenerateTripInput {
   startDate?: string;
   interests: string[];
   budgetBand: BudgetBand;
+  // Optional starting point (must be given together, or not at all) — the
+  // route is built outward from Monrovia's center when omitted, same as
+  // before this existed.
+  startLat?: number;
+  startLng?: number;
   title?: string;
 }
 
