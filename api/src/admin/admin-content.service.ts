@@ -17,6 +17,7 @@ import {
   BusinessType,
 } from "../businesses/entities/business.enums";
 import { buildBusinessSlug } from "../businesses/businesses.service";
+import { slugify } from "../common/slugify";
 import { Event } from "../events/entities/event.entity";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
@@ -32,6 +33,24 @@ import { ReviewsService } from "../reviews/reviews.service";
 import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
 import { clearStaleRelation } from "../common/typeorm-relations";
+
+// Product review readout (Aug 22, 2026), "editorial QA + automated record
+// checks": a live listing was found served from a slug that named a
+// completely different place ("Nimba Ecolodge" at kpatawee-waterfall),
+// with a card image that didn't match either — a data-entry mistake, not
+// a code bug, but one a small catalog can't afford to leave undetected.
+// This audit surfaces that class of defect on demand instead of relying
+// on someone stumbling onto it in the wild.
+export interface PlaceDataQualityIssue {
+  place: Place;
+  issues: string[];
+}
+
+const PLACEHOLDER_DESCRIPTION_RE =
+  /^(tbd|todo|test|lorem ipsum|placeholder|n\/a|coming soon|\.+|-+)$/i;
+// Below this many characters, a description reads as "not really
+// written yet" rather than a genuinely terse one.
+const MIN_DESCRIPTION_LENGTH = 20;
 
 /** Admin content management (Tech Spec §8) — create/edit Place, Category,
  * Business, Activity, and Event records. The first way to write to the
@@ -115,6 +134,63 @@ export class AdminContentService {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
+  }
+
+  /** Everything wrong enough with a Place's own data to be worth an
+   * admin's attention before (or after) it goes live — see
+   * PlaceDataQualityIssue's doc comment for what prompted this. Not
+   * paginated: a catalog this size can hold its whole flagged set in one
+   * response, and pagination would just make "did I fix everything?"
+   * harder to answer at a glance. */
+  async auditPlaceDataQuality(): Promise<PlaceDataQualityIssue[]> {
+    const places = await this.placeRepo.find({
+      relations: ["category", "county"],
+      order: { createdAt: "DESC" },
+    });
+
+    const nameCounts = new Map<string, number>();
+    for (const place of places) {
+      const key = place.name.trim().toLowerCase();
+      nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+    }
+
+    const results: PlaceDataQualityIssue[] = [];
+    for (const place of places) {
+      const issues: string[] = [];
+
+      const expectedSlug = slugify(place.name);
+      if (expectedSlug && place.slug !== expectedSlug) {
+        issues.push(
+          `Slug "${place.slug}" doesn't match the name — expected something like "${expectedSlug}"`,
+        );
+      }
+
+      if (place.images.length === 0) {
+        issues.push("No photos");
+      }
+
+      // Placeholder text checked first — every phrase it matches is short
+      // enough to also trip the length check below, and "looks like
+      // placeholder text" is the more useful, more specific thing to tell
+      // an admin than a generic "too short".
+      const description = place.description.trim();
+      if (PLACEHOLDER_DESCRIPTION_RE.test(description)) {
+        issues.push("Description looks like placeholder text");
+      } else if (description.length < MIN_DESCRIPTION_LENGTH) {
+        issues.push("Description is missing or too short");
+      }
+
+      if ((nameCounts.get(place.name.trim().toLowerCase()) ?? 0) > 1) {
+        issues.push(
+          "Another place shares this exact name — possible duplicate entry",
+        );
+      }
+
+      if (issues.length > 0) {
+        results.push({ place, issues });
+      }
+    }
+    return results;
   }
 
   // Single-place admin fetch by id (not slug) — works regardless of

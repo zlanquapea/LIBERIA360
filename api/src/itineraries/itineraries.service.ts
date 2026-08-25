@@ -109,6 +109,22 @@ export interface ItineraryResponse extends Omit<Itinerary, "stops"> {
   collaborators: PublicUser[];
 }
 
+// Product review readout (Aug 22, 2026), "guest-first trip planning": a
+// generated-but-not-yet-saved route, returned by previewTrip. Deliberately
+// not an ItineraryResponse — there's no id, userId, or createdAt because
+// nothing was persisted. Saving is just calling generateTrip afterward
+// with the same inputs, which is deterministic against unchanged catalog
+// data, rather than a second endpoint that has to trust client-supplied
+// stop data back into the DB.
+export interface TripPreviewResponse {
+  title: string;
+  kind: ItineraryKind;
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  stops: ItineraryStopWithPlace[];
+}
+
 function haversineKm(
   lat1: number,
   lng1: number,
@@ -182,6 +198,28 @@ export class ItinerariesService {
     );
 
     return this.toResponse(itinerary, ordered, []);
+  }
+
+  /** Same route-building logic as generateTrip, minus the save — lets a
+   * visitor with no account see a real generated trip before deciding
+   * whether it's worth logging in to keep. */
+  async previewTrip(dto: GenerateTripDto): Promise<TripPreviewResponse> {
+    const candidates = await this.findCandidates(dto.interests, dto.budgetBand);
+    const ordered = this.sequenceByProximity(
+      candidates,
+      MONROVIA_CENTER,
+      dto.durationDays * STOPS_PER_DAY,
+    );
+    const stops = this.assignDays(ordered, dto.durationDays);
+
+    return {
+      title: dto.title ?? `${dto.durationDays}-Day Liberia Trip`,
+      kind: ItineraryKind.TRIP,
+      durationDays: dto.durationDays,
+      budgetBand: dto.budgetBand,
+      interests: dto.interests,
+      stops,
+    };
   }
 
   async generateWeekend(

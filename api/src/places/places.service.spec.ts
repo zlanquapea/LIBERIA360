@@ -1,13 +1,23 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { PlacesService, buildPlaceSlug } from "./places.service";
+import {
+  PlacesService,
+  buildPlaceSlug,
+  findMatchingCategory,
+} from "./places.service";
 import { Place } from "./entities/place.entity";
 import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
+import { Category } from "../categories/entities/category.entity";
 
 const OWNER_ID = "owner-1";
 const STRANGER_ID = "stranger-1";
 const PLACE_ID = "place-1";
+
+// Every PlacesService test module below needs this even when the test
+// itself never touches search — Nest's DI container resolves the full
+// constructor at compile() time regardless of which method is exercised.
+const emptyCategoryRepo = { find: jest.fn().mockResolvedValue([]) };
 
 describe("buildPlaceSlug", () => {
   it("slugifies the name", async () => {
@@ -56,6 +66,7 @@ describe("PlacesService.submitPlace", () => {
       providers: [
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
       ],
     }).compile();
 
@@ -131,6 +142,7 @@ describe("PlacesService.updateMine", () => {
       providers: [
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
       ],
     }).compile();
 
@@ -207,6 +219,7 @@ describe("PlacesService.findMine", () => {
       providers: [
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
       ],
     }).compile();
     const service = module.get(PlacesService);
@@ -227,6 +240,7 @@ describe("PlacesService.findBySlug", () => {
       providers: [
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
       ],
     }).compile();
     const service = module.get(PlacesService);
@@ -241,5 +255,43 @@ describe("PlacesService.findBySlug", () => {
       },
       relations: ["category", "county", "activities"],
     });
+  });
+});
+
+describe("findMatchingCategory", () => {
+  const beaches = { id: "cat-1", name: "Beaches", slug: "beaches" };
+  const culture = {
+    id: "cat-2",
+    name: "Culture & Heritage",
+    slug: "culture-heritage",
+  };
+  const categories = [beaches, culture];
+
+  it("matches a plural query against a singular category word (and vice versa)", () => {
+    expect(findMatchingCategory(categories, "beach")).toBe(beaches);
+    expect(findMatchingCategory(categories, "Beaches")).toBe(beaches);
+  });
+
+  it("matches a word from a multi-word category name", () => {
+    expect(findMatchingCategory(categories, "culture")).toBe(culture);
+    expect(findMatchingCategory(categories, "heritage")).toBe(culture);
+  });
+
+  it("matches a known alias for a category", () => {
+    expect(findMatchingCategory(categories, "surf")).toBe(beaches);
+    expect(findMatchingCategory(categories, "museum")).toBe(culture);
+  });
+
+  it("returns null for a multi-word query, even one that would otherwise match", () => {
+    expect(findMatchingCategory(categories, "beach vacation")).toBeNull();
+  });
+
+  it("returns null when nothing matches", () => {
+    expect(findMatchingCategory(categories, "nonexistentxyz")).toBeNull();
+  });
+
+  it("returns null for an empty or whitespace-only query", () => {
+    expect(findMatchingCategory(categories, "")).toBeNull();
+    expect(findMatchingCategory(categories, "   ")).toBeNull();
   });
 });

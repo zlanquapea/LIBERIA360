@@ -59,7 +59,7 @@ describe('ReportButton', () => {
     await userEvent.selectOptions(screen.getByRole('combobox'), 'inappropriate');
     await userEvent.click(screen.getByRole('button', { name: /submit report/i }));
 
-    await waitFor(() => expect(screen.getByText(/reported — thanks/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/sent to the team/i)).toBeInTheDocument());
 
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/reports');
@@ -68,6 +68,13 @@ describe('ReportButton', () => {
       targetId: 'e1',
       reason: 'inappropriate',
     });
+  });
+
+  it('renders a custom trigger label without changing submit behavior', async () => {
+    setStoredAuth({ token: 'tok', user: USER });
+    render(<ReportButton targetType="business" targetId="b1" label="Suggest an update" />);
+
+    expect(await screen.findByRole('button', { name: /suggest an update/i })).toBeInTheDocument();
   });
 
   it('shows the API error message and stays open on failure', async () => {

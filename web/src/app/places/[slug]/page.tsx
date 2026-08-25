@@ -1,20 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { PhoneIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import { ApiError, getBusinessByPlace, getCountyPlaces, getPlaceBySlug, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
-import { directionsLink, whatsappLink } from '@/lib/contact';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
 import { galleryImages } from '@/lib/images';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { PlaceGallery } from '@/components/PlaceGallery';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
-import { SaveButton } from '@/components/SaveButton';
+import { PlaceKeyFacts } from '@/components/PlaceKeyFacts';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { BusinessClaimSection } from '@/components/BusinessClaimSection';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { PlaceViewTracker } from '@/components/PlaceViewTracker';
-import { ContactLink } from '@/components/ContactLink';
 import { PlaceFreshnessPrompt } from '@/components/PlaceFreshnessPrompt';
 import { JsonLd } from '@/components/JsonLd';
 import { placeJsonLd } from '@/lib/structured-data';
@@ -111,6 +108,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         )}
       </header>
 
+      <PlaceKeyFacts place={place} business={business} />
+
       <PlaceFreshnessPrompt placeId={place.id} />
 
       <p className="text-slate-700 dark:text-slate-200">{place.description}</p>
@@ -125,15 +124,6 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
             icon={place.category.icon}
           />
         </div>
-        <a
-          href={directionsLink(place.latitude, place.longitude)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex w-fit items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-800"
-        >
-          <PaperAirplaneIcon aria-hidden className="h-4 w-4 -rotate-45" />
-          Get Directions
-        </a>
         <p className="text-xs text-slate-500 dark:text-slate-400">
           Getting there: private car, taxi, tour operator arrangement, or shared/bus transport where available.
         </p>
@@ -170,40 +160,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         </section>
       )}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Contact</h2>
-        {place.contactPhone || place.whatsapp ? (
-          <div className="flex flex-wrap gap-2">
-            {place.contactPhone && (
-              <ContactLink
-                placeId={place.id}
-                href={`tel:${place.contactPhone}`}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50"
-              >
-                <PhoneIcon aria-hidden className="h-4 w-4" />
-                Call
-              </ContactLink>
-            )}
-            {place.whatsapp && (
-              <ContactLink
-                placeId={place.id}
-                href={whatsappLink(place.whatsapp)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
-              >
-                <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
-                WhatsApp
-              </ContactLink>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No verified contact on file yet.</p>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Business listing</h2>
+      <section id="claim" className="flex scroll-mt-4 flex-col gap-2">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Claim this place</h2>
         <BusinessClaimSection
           placeId={place.id}
           suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
@@ -241,15 +199,12 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       )}
 
       <section className="flex gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
-        <SaveButton slug={place.slug} placeId={place.id} className="flex-1 justify-center" />
-        <button
-          type="button"
-          disabled
-          className="flex-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 py-2.5 text-sm font-medium text-slate-400 dark:text-slate-400"
-          title="Trip planning arrives in Phase 2"
+        <Link
+          href={`/trips/new?interest=${place.category.slug}`}
+          className="flex flex-1 items-center justify-center rounded-full bg-brand-700 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800"
         >
-          Plan Trip (Phase 2)
-        </button>
+          Plan a trip with this place
+        </Link>
       </section>
     </main>
   );

@@ -38,6 +38,7 @@ describe("AdminContentService", () => {
   let placeRepo: {
     exists: jest.Mock;
     findOne: jest.Mock;
+    find: jest.Mock;
     merge: jest.Mock;
     save: jest.Mock;
     findOneOrFail: jest.Mock;
@@ -89,6 +90,7 @@ describe("AdminContentService", () => {
       merge: jest.fn((entity, dto) => Object.assign(entity, dto)),
       save: jest.fn((entity) => Promise.resolve(entity)),
       findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+      find: jest.fn().mockResolvedValue([]),
       delete: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
@@ -607,6 +609,85 @@ describe("AdminContentService", () => {
         "place.reviewStatus = :reviewStatus",
         { reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW },
       );
+    });
+  });
+
+  describe("auditPlaceDataQuality", () => {
+    function fakePlace(overrides: Partial<Place> = {}): Place {
+      return {
+        id: "place-1",
+        name: "Kpatawee Waterfall",
+        slug: "kpatawee-waterfall",
+        images: ["photo.jpg"],
+        description: "A scenic waterfall popular for a day trip from Monrovia.",
+        ...overrides,
+      } as Place;
+    }
+
+    it("flags nothing for a well-formed place", async () => {
+      placeRepo.find.mockResolvedValue([fakePlace()]);
+      const result = await service.auditPlaceDataQuality();
+      expect(result).toEqual([]);
+    });
+
+    it("flags a slug that doesn't match the name — the exact live-site defect this audit exists for", async () => {
+      placeRepo.find.mockResolvedValue([
+        fakePlace({ name: "Nimba Ecolodge", slug: "kpatawee-waterfall" }),
+      ]);
+      const result = await service.auditPlaceDataQuality();
+      expect(result).toHaveLength(1);
+      expect(result[0].issues.some((i) => i.includes("Slug"))).toBe(true);
+    });
+
+    it("flags a place with no photos", async () => {
+      placeRepo.find.mockResolvedValue([fakePlace({ images: [] })]);
+      const result = await service.auditPlaceDataQuality();
+      expect(result[0].issues).toContain("No photos");
+    });
+
+    it("flags a missing or too-short description", async () => {
+      placeRepo.find.mockResolvedValue([fakePlace({ description: "Nice." })]);
+      const result = await service.auditPlaceDataQuality();
+      expect(result[0].issues).toContain("Description is missing or too short");
+    });
+
+    it("flags placeholder-looking description text", async () => {
+      placeRepo.find.mockResolvedValue([fakePlace({ description: "TBD" })]);
+      const result = await service.auditPlaceDataQuality();
+      // Shorter than MIN_DESCRIPTION_LENGTH too, so "too short" wins — the
+      // point is it's flagged at all, not which specific message fires.
+      expect(result[0].issues.length).toBeGreaterThan(0);
+    });
+
+    it("flags placeholder text that's long enough to skip the length check", async () => {
+      placeRepo.find.mockResolvedValue([
+        fakePlace({ description: "Coming soon" }),
+      ]);
+      const result = await service.auditPlaceDataQuality();
+      expect(result[0].issues).toContain(
+        "Description looks like placeholder text",
+      );
+    });
+
+    it("flags two places sharing the exact same name as a possible duplicate", async () => {
+      placeRepo.find.mockResolvedValue([
+        fakePlace({ id: "place-1", name: "Sunset Beach" }),
+        fakePlace({
+          id: "place-2",
+          name: "Sunset Beach",
+          slug: "sunset-beach-2",
+        }),
+      ]);
+      const result = await service.auditPlaceDataQuality();
+      expect(result).toHaveLength(2);
+      expect(
+        result.every((r) => r.issues.some((i) => i.includes("duplicate"))),
+      ).toBe(true);
+    });
+
+    it("returns nothing when the catalog is empty", async () => {
+      placeRepo.find.mockResolvedValue([]);
+      await expect(service.auditPlaceDataQuality()).resolves.toEqual([]);
     });
   });
 

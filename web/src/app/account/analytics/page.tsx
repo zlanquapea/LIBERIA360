@@ -8,10 +8,12 @@ import { getMyBusinesses } from '@/lib/business-api';
 import { AnalyticsSummary } from '@/components/AnalyticsSummary';
 import type { Business, BusinessAnalytics } from '@/lib/types';
 
-// Business analytics dashboard (Tech Spec §3.3 — "views, saves, contact
-// clicks, conversion"). Client-only, same reasoning as /trips and
+// Place Dashboard (Tech Spec §3.3 "business analytics" — "views, saves,
+// contact clicks, conversion"; user-facing copy says "place" throughout,
+// matching how claiming works — you claim a place, not a separate
+// "business" entity). Client-only, same reasoning as /trips and
 // /account/bookings: JWT auth lives in localStorage. One section per
-// claimed business, since an owner can hold more than one listing.
+// claimed place, since an owner can hold more than one listing.
 export default function AnalyticsPage() {
   const { user, token, ready } = useAuth();
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -51,7 +53,7 @@ export default function AnalyticsPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Business Analytics</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Place Dashboard</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Log in to see how visitors are finding your listing.</p>
         <Link
           href="/login"
@@ -66,8 +68,8 @@ export default function AnalyticsPage() {
   if (businesses.length === 0) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Business Analytics</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Claim a listing to start tracking views, saves, and contact clicks.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Place Dashboard</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Claim a place to start tracking views, saves, and contact clicks.</p>
       </main>
     );
   }

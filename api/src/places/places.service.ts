@@ -8,6 +8,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Place } from "./entities/place.entity";
 import { PlaceReviewStatus } from "./entities/place.enums";
+import { Category } from "../categories/entities/category.entity";
 import { QueryPlacesDto } from "./dto/query-places.dto";
 import { CreatePlaceSubmissionDto } from "./dto/create-place-submission.dto";
 import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
@@ -74,11 +75,69 @@ const SEARCH_VECTOR_SQL = `
   )
 `;
 
+// Product review readout (Aug 22, 2026), "search recovery": "beach"
+// returning nothing despite Beaches being a supported category — a search
+// term matching a category's own name (or a common alias for it) should
+// surface that category's places even when the free-text match on
+// name/description comes up empty. Keyed by category slug so it stays
+// correct if a category is ever renamed.
+const CATEGORY_ALIASES: Record<string, string[]> = {
+  beaches: [
+    "beach",
+    "coast",
+    "coastal",
+    "seaside",
+    "swimming",
+    "surf",
+    "surfing",
+  ],
+  "waterfalls-nature": ["waterfall", "nature", "outdoors", "scenic"],
+  "hiking-adventure": ["hiking", "hike", "adventure", "trek", "trekking"],
+  "culture-heritage": ["culture", "heritage", "history", "historic", "museum"],
+  "food-dining": ["food", "restaurant", "dining", "eat", "cuisine"],
+  nightlife: ["nightlife", "bar", "club", "party"],
+  "wildlife-eco-tourism": ["wildlife", "eco", "safari", "animal"],
+  "hotels-lodges": ["hotel", "lodge", "stay", "accommodation", "lodging"],
+  "city-shopping": ["shopping", "mall", "market", "city"],
+  "islands-boat-trips": ["island", "boat", "sailing", "ferry"],
+};
+
+function singularize(word: string): string {
+  return word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word;
+}
+
+// Only matches a single-word query — a real multi-word search phrase
+// ("beach near Monrovia") should go through full-text search as normal,
+// not get hijacked into "show me everything in Beaches".
+export function findMatchingCategory<T extends { name: string; slug: string }>(
+  categories: T[],
+  query: string,
+): T | null {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed || /\s/.test(trimmed)) return null;
+  const q = singularize(trimmed);
+
+  for (const category of categories) {
+    const words = `${category.name} ${category.slug}`
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+      .map(singularize);
+    if (words.includes(q)) return category;
+
+    const aliases = CATEGORY_ALIASES[category.slug] ?? [];
+    if (aliases.map(singularize).includes(q)) return category;
+  }
+  return null;
+}
+
 @Injectable()
 export class PlacesService {
   constructor(
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    @InjectRepository(Category)
+    private readonly categoryRepo: Repository<Category>,
   ) {}
 
   /**
@@ -137,12 +196,25 @@ export class PlacesService {
     // caller needing to know tsquery's own operator syntax — the same
     // input shape a free-text search box already produces.
     if (query.q) {
-      qb.andWhere(
-        `${SEARCH_VECTOR_SQL} @@ websearch_to_tsquery('english', :q)`,
-        {
-          q: query.q,
-        },
-      );
+      const categories = await this.categoryRepo.find();
+      const matchedCategory = findMatchingCategory(categories, query.q);
+      if (matchedCategory) {
+        // Union, not replace: a query like "beach" should still favor a
+        // place whose name/description literally says "beach" (via
+        // search_rank below) while also pulling in every other place in
+        // the Beaches category that the free-text match alone would miss.
+        qb.andWhere(
+          `(${SEARCH_VECTOR_SQL} @@ websearch_to_tsquery('english', :q) OR category.id = :matchedCategoryId)`,
+          { q: query.q, matchedCategoryId: matchedCategory.id },
+        );
+      } else {
+        qb.andWhere(
+          `${SEARCH_VECTOR_SQL} @@ websearch_to_tsquery('english', :q)`,
+          {
+            q: query.q,
+          },
+        );
+      }
     }
 
     if (isNearSearch) {

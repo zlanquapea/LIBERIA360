@@ -22,6 +22,7 @@ import type { Activity, ActivityDifficulty, Business, BusinessType, Category, Co
 import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from './content-shared';
 import { PlaceLocationPickerLoader } from './PlaceLocationPickerLoader';
 import { PlaceReviewPanel } from './PlaceReviewPanel';
+import { DataQualityPanel } from './DataQualityPanel';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
 const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'tour_operator', 'transport'];
@@ -130,6 +131,8 @@ export function PlacesTab({
   return (
     <div className="flex flex-col gap-3">
       <TabListHeader title="Places" count={meta.total} createLabel="+ New place" onCreate={() => setView({ mode: 'create' })} />
+
+      <DataQualityPanel token={token} onSelectPlace={(id) => setView({ mode: 'edit', id })} />
 
       <div className="flex flex-wrap gap-1.5">
         {STATUS_FILTERS.map((f) => (

@@ -11,6 +11,7 @@ import { Place } from "../places/entities/place.entity";
 import { BusinessReviewStatus, BusinessType } from "./entities/business.enums";
 import { CreateBusinessDto } from "./dto/create-business.dto";
 import { UpdateBusinessDto } from "./dto/update-business.dto";
+import { slugify } from "../common/slugify";
 
 export interface PaginatedBusinesses {
   data: Business[];
@@ -35,12 +36,7 @@ export async function buildBusinessSlug(
   businessRepo: Repository<Business>,
   name: string,
 ): Promise<string> {
-  const base =
-    name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "business";
+  const base = slugify(name) || "business";
   let slug = base;
   let suffix = 2;
   while (await businessRepo.exists({ where: { slug } })) {

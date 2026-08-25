@@ -127,6 +127,32 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
         verificationStatus: VerificationStatus.UNVERIFIED,
       }),
     );
+
+    // Deliberately no literal "beach" anywhere in the name/description —
+    // this is what a full-text-only search misses (the exact live-site
+    // gap the review readout flagged: "beach" returning zero results
+    // despite Beaches being a supported category), and what the
+    // category-alias matching in findMatchingCategory exists to catch.
+    await placeRepo.save(
+      placeRepo.create({
+        name: "Robertsport",
+        slug: "robertsport",
+        description:
+          "A quiet coastal town in Grand Cape Mount, popular with surfers.",
+        type: PlaceType.NATURE_SITE,
+        category: beaches,
+        tags: [],
+        county: montserrado,
+        city: "Robertsport",
+        latitude: 6.75,
+        longitude: -11.37,
+        distanceFromMonroviaKm: 120,
+        recommendedVisitLength: RecommendedVisitLength.OVERNIGHT,
+        rating: 4.2,
+        featured: false,
+        verificationStatus: VerificationStatus.UNVERIFIED,
+      }),
+    );
   });
 
   afterAll(async () => {
@@ -156,7 +182,7 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
         .expect(200);
       const beachCategory = res.body.find((c: any) => c.slug === "beaches");
       expect(beachCategory).toBeDefined();
-      expect(beachCategory.placeCount).toBe(1);
+      expect(beachCategory.placeCount).toBe(2);
     });
   });
 
@@ -166,7 +192,7 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
         .get("/api/v1/counties")
         .expect(200);
       expect(res.body.map((c: any) => c.slug)).toEqual(["montserrado", "bong"]);
-      expect(res.body[0].placeCount).toBe(2);
+      expect(res.body[0].placeCount).toBe(3);
       expect(res.body[1].placeCount).toBe(0);
     });
   });
@@ -192,15 +218,18 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
       const res = await request(app.getHttpServer())
         .get("/api/v1/places")
         .expect(200);
-      expect(res.body.meta.total).toBe(2);
-      expect(res.body.data).toHaveLength(2);
+      expect(res.body.meta.total).toBe(3);
+      expect(res.body.data).toHaveLength(3);
     });
 
     it("filters by category slug", async () => {
       const res = await request(app.getHttpServer())
         .get("/api/v1/places?category=beaches")
         .expect(200);
-      expect(res.body.data.map((p: any) => p.slug)).toEqual(["test-beach"]);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "test-beach",
+        "robertsport",
+      ]);
     });
 
     it("filters by tag", async () => {
@@ -241,6 +270,38 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
       expect(res.body.meta.total).toBe(0);
     });
 
+    // Product review readout (Aug 22, 2026): "beach" returned zero results
+    // despite Beaches being a supported category. Robertsport is seeded
+    // deliberately without the literal word "beach" anywhere in its
+    // name/description — a full-text-only search would miss it entirely.
+    it("falls back to category matching for a single-word query with no direct full-text hit", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=beach")
+        .expect(200);
+      // test-beach matches on text (and ranks first); robertsport only
+      // through the Beaches category match.
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "test-beach",
+        "robertsport",
+      ]);
+    });
+
+    it("also matches a category via a known alias word", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=surf")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toContain("robertsport");
+    });
+
+    it("does not apply category matching to a multi-word query", async () => {
+      // "beach vacation" as a whole phrase shouldn't pull in every place
+      // in Beaches — only a genuine full-text hit should.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=beach%20vacation")
+        .expect(200);
+      expect(res.body.data).toEqual([]);
+    });
+
     it("still applies an explicit sort alongside a text search", async () => {
       // Both fixtures' descriptions independently match "testing" — this
       // is really just checking sort=rating doesn't get silently
@@ -260,6 +321,7 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
         .expect(200);
       expect(res.body.data.map((p: any) => p.slug)).toEqual([
         "test-beach",
+        "robertsport",
         "test-museum",
       ]);
     });
@@ -270,10 +332,10 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
         .expect(200);
       expect(res.body.data).toHaveLength(1);
       expect(res.body.meta).toEqual({
-        total: 2,
+        total: 3,
         page: 2,
         limit: 1,
-        totalPages: 2,
+        totalPages: 3,
       });
     });
 

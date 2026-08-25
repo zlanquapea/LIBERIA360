@@ -1381,6 +1381,60 @@ describe("Phase 3 (e2e)", () => {
       expect(reloaded.body.category.id).toBe(nature.id);
     });
 
+    it("flags a place whose slug doesn't match its name in the data-quality audit, requires admin, and clears once fixed", async () => {
+      await request(app.getHttpServer())
+        .get("/api/v1/admin/places/data-quality")
+        .set("Authorization", `Bearer ${strangerToken}`)
+        .expect(403);
+
+      const create = await request(app.getHttpServer())
+        .post("/api/v1/admin/places")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({
+          name: "Nimba Ecolodge",
+          slug: "kpatawee-waterfall",
+          description:
+            "A cozy ecolodge near Mount Nimba, with guided hikes and simple rooms.",
+          type: "hotel",
+          categoryId: cultureCategory.id,
+          countyId: montserrado.id,
+          city: "Sanniquellie",
+          latitude: 7.36,
+          longitude: -8.72,
+          images: ["https://example.com/nimba-ecolodge.jpg"],
+        })
+        .expect(201);
+      const placeId = create.body.id;
+
+      const flagged = await request(app.getHttpServer())
+        .get("/api/v1/admin/places/data-quality")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      const flaggedEntry = flagged.body.find(
+        (entry: { place: { id: string } }) => entry.place.id === placeId,
+      );
+      expect(flaggedEntry).toBeDefined();
+      expect(flaggedEntry.issues.some((i: string) => i.includes("Slug"))).toBe(
+        true,
+      );
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/admin/places/${placeId}`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ slug: "nimba-ecolodge" })
+        .expect(200);
+
+      const cleared = await request(app.getHttpServer())
+        .get("/api/v1/admin/places/data-quality")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+      expect(
+        cleared.body.some(
+          (entry: { place: { id: string } }) => entry.place.id === placeId,
+        ),
+      ).toBe(false);
+    });
+
     it("creates an activity under a place and updates it", async () => {
       const create = await request(app.getHttpServer())
         .post("/api/v1/admin/activities")

@@ -797,6 +797,43 @@ describe("Phase 2 (e2e)", () => {
         })
         .expect(404);
     });
+
+    it("previews a trip with no auth at all, saving nothing, and still enforces validation", async () => {
+      const before = await request(app.getHttpServer())
+        .get("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+
+      const preview = await request(app.getHttpServer())
+        .post("/api/v1/itineraries/preview")
+        .send({
+          durationDays: 1,
+          interests: ["culture-heritage", "beaches"],
+          budgetBand: "moderate",
+        })
+        .expect(201);
+      expect(preview.body.id).toBeUndefined(); // nothing was persisted
+      expect(preview.body.stops.length).toBeGreaterThan(0);
+      expect(preview.body.stops[0].place.name).toBeDefined();
+
+      await request(app.getHttpServer())
+        .post("/api/v1/itineraries/preview")
+        .send({
+          durationDays: 1,
+          interests: ["does-not-exist"],
+          budgetBand: "budget",
+        })
+        .expect(400);
+
+      // Not tied to userAToken at all (no Authorization header sent above)
+      // — this confirms the preview call didn't sneak a save in under
+      // anyone's account, not just this one user's.
+      const after = await request(app.getHttpServer())
+        .get("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .expect(200);
+      expect(after.body.length).toBe(before.body.length);
+    });
   });
 
   describe("Collaborative trip planning", () => {

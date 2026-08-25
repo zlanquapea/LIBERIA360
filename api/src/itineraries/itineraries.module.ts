@@ -9,6 +9,7 @@ import { MailModule } from "../mail/mail.module";
 import { ItinerariesService } from "./itineraries.service";
 import { ItinerariesController } from "./itineraries.controller";
 import { TripInvitationsController } from "./trip-invitations.controller";
+import { TripPreviewController } from "./trip-preview.controller";
 
 @Module({
   imports: [
@@ -21,7 +22,11 @@ import { TripInvitationsController } from "./trip-invitations.controller";
     UsersModule,
     MailModule,
   ],
-  controllers: [ItinerariesController, TripInvitationsController],
+  controllers: [
+    ItinerariesController,
+    TripInvitationsController,
+    TripPreviewController,
+  ],
   providers: [ItinerariesService],
   exports: [ItinerariesService],
 })

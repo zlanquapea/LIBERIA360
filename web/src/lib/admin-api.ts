@@ -24,6 +24,7 @@ import type {
   PaginatedPlaces,
   PaginatedUsers,
   Place,
+  PlaceDataQualityIssue,
   PlaceReviewStatus,
   PlatformKpis,
   SecurityOverview,
@@ -146,6 +147,14 @@ export function listPlacesAdmin(
 // endpoints omit.
 export function getPlaceAdmin(token: string, id: string): Promise<Place> {
   return apiRequest<Place>(`/admin/places/${id}`, { headers: authHeader(token) });
+}
+
+// Product review readout (Aug 22, 2026)'s "editorial QA + automated
+// record checks" — flags places with a slug/name mismatch, no photos, or
+// a missing/placeholder description. See
+// AdminContentService.auditPlaceDataQuality for the exact checks.
+export function getPlaceDataQuality(token: string): Promise<PlaceDataQualityIssue[]> {
+  return apiRequest<PlaceDataQualityIssue[]>('/admin/places/data-quality', { headers: authHeader(token) });
 }
 
 // Content management
