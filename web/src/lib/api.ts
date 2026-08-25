@@ -49,10 +49,19 @@ class ApiError extends Error {
 // of crashing the build. ISR (`next: { revalidate: 60 }` below) means the
 // very first real visitor after deploy — by which point the API is
 // actually up — refetches and replaces this placeholder with real data.
-// A genuine HTTP error response (res.ok false) is NOT covered by this —
-// that means the API *is* reachable and said something's actually wrong,
-// which should still fail loudly rather than be silently hidden.
+//
+// A genuine HTTP error response (res.ok false) gets the same build-time
+// fallback, but only for the specific status codes a gateway/proxy
+// returns when the origin it's pointed at isn't actually answering yet
+// (502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout) — on a
+// host like Railway, the API mid-redeploy at the exact moment the web
+// build runs looks like this, not a connection refusal, since there's
+// still a proxy in front of it to answer with an HTTP status. Any other
+// status (404, 422, 500, ...) means the API itself is up and running and
+// said something's actually wrong, which should still fail loudly rather
+// than be silently hidden.
 const IS_BUILD_PHASE = process.env.NEXT_PHASE === 'phase-production-build';
+const GATEWAY_UNAVAILABLE_STATUSES = new Set([502, 503, 504]);
 
 function emptyPage(limit = 20) {
   return { data: [], meta: { total: 0, page: 1, limit, totalPages: 1 } };
@@ -89,6 +98,11 @@ async function apiFetch<T>(
   }
 
   if (!res.ok) {
+    if (IS_BUILD_PHASE && buildFallback !== undefined && GATEWAY_UNAVAILABLE_STATUSES.has(res.status)) {
+      // eslint-disable-next-line no-console
+      console.warn(`[build] ${path} returned ${res.status} at build time (likely mid-redeploy), using an empty placeholder`);
+      return buildFallback;
+    }
     throw new ApiError(res.status, `Request to ${path} failed with ${res.status}`);
   }
 
