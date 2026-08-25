@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getCategories, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { CategoryIcon } from '@/lib/icons';
 
 // Category Browse screen — grid/list of places within a chosen category
 // (Tech Spec §4.1).
@@ -16,9 +17,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div className="flex items-center gap-3">
-        <span aria-hidden className="text-3xl">
-          {category.icon}
-        </span>
+        <CategoryIcon iconKey={category.icon} className="h-8 w-8 text-brand-600 dark:text-brand-300" />
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{category.name}</h1>
           {category.description && <p className="text-sm text-slate-500 dark:text-slate-400">{category.description}</p>}

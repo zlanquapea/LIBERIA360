@@ -10,20 +10,18 @@ import type { Category, Place } from '@/lib/types';
 import { colorForCategory } from '@/lib/category-colors';
 import { formatDistance } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { CategoryIcon, iconSvgMarkup } from '@/lib/icons';
 import { SafeImage } from './SafeImage';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
 
-// Heroicons' MapPinIcon (solid) path, inlined — Leaflet's divIcon renders a
-// raw HTML string, not JSX, so a <MapPinIcon /> component can't be used
-// directly here the way it is everywhere else in the app.
-const MAP_PIN_SVG =
-  '<svg viewBox="0 0 24 24" fill="white" class="h-4 w-4"><path fill-rule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clip-rule="evenodd"/></svg>';
-
 function pinIcon(color: string, icon: string | null, selected: boolean) {
   return L.divIcon({
     className: '',
-    html: `<div style="background:${color}" class="flex ${selected ? 'h-10 w-10' : 'h-8 w-8'} -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-base shadow-md ${selected ? 'ring-2 ring-offset-1 ring-slate-900' : ''}">${icon ?? MAP_PIN_SVG}</div>`,
+    // Leaflet's divIcon renders a raw HTML string, not JSX, so the
+    // category's icon has to be serialized to markup up front — see
+    // iconSvgMarkup's doc comment.
+    html: `<div style="background:${color}" class="flex ${selected ? 'h-10 w-10' : 'h-8 w-8'} -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white shadow-md ${selected ? 'ring-2 ring-offset-1 ring-slate-900' : ''}">${iconSvgMarkup(icon, 'h-4 w-4 text-white')}</div>`,
     iconSize: selected ? [40, 40] : [32, 32],
     iconAnchor: selected ? [20, 20] : [16, 16],
     popupAnchor: [0, -16],
@@ -175,7 +173,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
                 }`}
                 style={active ? { backgroundColor: colorForCategory(category.slug) } : undefined}
               >
-                <span aria-hidden>{category.icon}</span>
+                <CategoryIcon iconKey={category.icon} className="h-3.5 w-3.5" />
                 {category.name}
               </button>
             );
@@ -217,7 +215,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"
                       style={{ backgroundColor: colorForCategory(place.category.slug) }}
                     >
-                      {place.category.icon}
+                      <CategoryIcon iconKey={place.category.icon} className="h-5 w-5 text-white" />
                     </div>
                   }
                 />

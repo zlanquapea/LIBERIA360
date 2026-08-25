@@ -8,7 +8,7 @@ const BASE_PLACE: Place = {
   slug: 'ceecee-beach',
   description: 'A quiet beach just outside Monrovia.',
   type: 'nature_site',
-  category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: '🏖️' },
+  category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
   tags: [],
   county: {
     id: 'co1',
@@ -64,7 +64,7 @@ describe('PlaceCard', () => {
 
   it('shows the category icon placeholder when there is no photo yet', () => {
     const { container } = render(<PlaceCard place={BASE_PLACE} />);
-    expect(screen.getByText('🏖️')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
     expect(container.querySelector('img')).not.toBeInTheDocument();
   });
 
@@ -72,7 +72,6 @@ describe('PlaceCard', () => {
     const { container } = render(<PlaceCard place={{ ...BASE_PLACE, images: ['/uploads/photo.jpg'] }} />);
     const img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('/uploads/photo.jpg'));
-    expect(screen.queryByText('🏖️')).not.toBeInTheDocument();
   });
 
   it('shows "In Monrovia" instead of "0 km from Monrovia" for a 0km distance', () => {

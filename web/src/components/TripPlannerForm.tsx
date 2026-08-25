@@ -7,6 +7,7 @@ import { generateTrip, previewTrip } from '@/lib/itinerary-api';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
+import { CategoryIcon } from '@/lib/icons';
 import { ItineraryStops } from './ItineraryStops';
 import type { BudgetBand, Category, TripPreviewResponse } from '@/lib/types';
 
@@ -204,13 +205,14 @@ export function TripPlannerForm({
                 type="button"
                 onClick={() => toggleInterest(category.slug)}
                 aria-pressed={selected}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
                   selected
                     ? 'border-transparent bg-brand-700 text-white'
                     : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                 }`}
               >
-                {category.icon} {category.name}
+                <CategoryIcon iconKey={category.icon} className="h-4 w-4" />
+                {category.name}
               </button>
             );
           })}

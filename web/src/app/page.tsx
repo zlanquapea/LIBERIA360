@@ -11,6 +11,7 @@ import { StarIcon } from '@heroicons/react/24/solid';
 import { getActiveSponsoredPlacements, getCategories, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { formatEventDateRange } from '@/lib/format';
+import { CategoryIcon } from '@/lib/icons';
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
@@ -72,9 +73,7 @@ export default async function Home() {
               href={`/categories/${category.slug}`}
               className="flex shrink-0 flex-col items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-center transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
             >
-              <span aria-hidden className="text-2xl">
-                {category.icon}
-              </span>
+              <CategoryIcon iconKey={category.icon} className="h-6 w-6 text-brand-600 dark:text-brand-300" />
               <span className="whitespace-nowrap text-xs font-medium text-slate-700 dark:text-slate-200">{category.name}</span>
             </Link>
           ))}

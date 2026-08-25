@@ -19,7 +19,7 @@ function mockFetchOnce(status: number, body: unknown) {
 }
 
 const CATEGORIES: Category[] = [
-  { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: '🏖️' },
+  { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
 ];
 
 const USER: AuthUser = {
@@ -48,7 +48,7 @@ const STOP = {
     name: 'Robertsport',
     type: 'beach',
     city: 'Robertsport',
-    category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: '🏖️' },
+    category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
   },
 };
 
