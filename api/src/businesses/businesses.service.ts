@@ -8,10 +8,35 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Business } from "./entities/business.entity";
 import { Place } from "../places/entities/place.entity";
+import { PlaceType } from "../places/entities/place.enums";
+import { CreatePlaceSubmissionDto } from "../places/dto/create-place-submission.dto";
 import { BusinessReviewStatus, BusinessType } from "./entities/business.enums";
 import { CreateBusinessDto } from "./dto/create-business.dto";
 import { UpdateBusinessDto } from "./dto/update-business.dto";
 import { slugify } from "../common/slugify";
+
+/** Best-effort PlaceType -> BusinessType mapping for auto-claiming a
+ * self-submitted place (see BusinessesService.autoClaimSubmittedPlace) —
+ * there's no 1:1 correspondence between the two enums, so this picks the
+ * closest existing BusinessType rather than inventing a new one just for
+ * this mapping. `type` isn't self-editable after claiming (see
+ * updateMine's doc comment) to keep it an intentional choice, but a wrong
+ * initial guess here is a data-quality nit an admin can fix on review, not
+ * a blocker. */
+export function mapPlaceTypeToBusinessType(type: PlaceType): BusinessType {
+  switch (type) {
+    case PlaceType.HOTEL:
+      return BusinessType.HOTEL;
+    case PlaceType.RESTAURANT:
+      return BusinessType.RESTAURANT;
+    case PlaceType.ACTIVITY_PROVIDER:
+      return BusinessType.TOUR_OPERATOR;
+    case PlaceType.ATTRACTION:
+    case PlaceType.NATURE_SITE:
+    default:
+      return BusinessType.ATTRACTION;
+  }
+}
 
 export interface PaginatedBusinesses {
   data: Business[];
@@ -101,6 +126,45 @@ export class BusinessesService {
     });
     const saved = await this.businessRepo.save(business);
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
+  }
+
+  /** Product decision (Aug 2026): "when a person creates a place, that
+   * account should automatically claim that particular place as the
+   * business" — removes the redundant extra step of self-submitting a
+   * place and then separately filling out the claim form for the exact
+   * same listing. Only applies to self-service submissions
+   * (PlacesController.submit -> PlacesService.submitPlace): an
+   * admin/super-admin creating a place or event still leaves it open for
+   * whoever the real owner turns out to be to claim later, exactly as
+   * before — this only covers the case where the submitter already told
+   * us who that is, because they're the one submitting it.
+   *
+   * Reuses claimPlace's exact logic (conflict check, slug, review-gating)
+   * rather than duplicating it — there's no realistic conflict here since
+   * `place` was just created and can't already have a claim, but the
+   * shared path means any future change to claim behavior only needs to
+   * be made once. Called from PlacesService.submitPlace, which — like
+   * AuthService.register linking a pending trip invitation — never lets
+   * this secondary effect fail the primary action: the place already
+   * exists by the time this runs, and a hiccup auto-claiming it shouldn't
+   * undo that or block the response. */
+  async autoClaimSubmittedPlace(
+    userId: string,
+    place: Place,
+    submission: CreatePlaceSubmissionDto,
+  ): Promise<Business> {
+    return this.claimPlace(userId, {
+      placeId: place.id,
+      name: submission.name,
+      type: mapPlaceTypeToBusinessType(submission.type),
+      phone: submission.contactPhone,
+      whatsapp: submission.whatsapp,
+      website: submission.website,
+      description: submission.description,
+      images: submission.images,
+      videos: submission.videos,
+      openingHours: submission.openingHours,
+    });
   }
 
   /** For an already-existing, unclaimed Business record — claims ownership.
