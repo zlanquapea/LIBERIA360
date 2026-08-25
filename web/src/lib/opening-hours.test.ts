@@ -1,4 +1,4 @@
-import { isOpenAt } from './opening-hours';
+import { DEFAULT_CLOSE_TIME, DEFAULT_OPEN_TIME, formatDailyHours, isOpenAt, parseDailyHours } from './opening-hours';
 import type { OpeningPeriod } from './types';
 
 // Mirrors api/src/places/opening-hours.spec.ts's isOpenAt cases — this is
@@ -58,5 +58,42 @@ describe('isOpenAt', () => {
     }));
     expect(isOpenAt(allDay, at('2026-08-24T03:00:00'))).toBe(true);
     expect(isOpenAt(allDay, at('2026-08-24T23:59:00'))).toBe(true);
+  });
+});
+
+describe('formatDailyHours', () => {
+  it('formats a 24-hour open/close pair into 12-hour "Daily" text with an ASCII hyphen', () => {
+    // A literal ASCII hyphen (not an en dash) is required — see
+    // api/src/places/opening-hours.ts's SEGMENT_RE, which this must stay
+    // parseable by for the "open now" badge to keep working.
+    expect(formatDailyHours('07:00', '21:00')).toBe('Daily 7:00 AM - 9:00 PM');
+  });
+
+  it('handles midnight and noon correctly', () => {
+    expect(formatDailyHours('00:00', '12:00')).toBe('Daily 12:00 AM - 12:00 PM');
+  });
+
+  it('defaults to 7am-9pm', () => {
+    expect(formatDailyHours(DEFAULT_OPEN_TIME, DEFAULT_CLOSE_TIME)).toBe('Daily 7:00 AM - 9:00 PM');
+  });
+});
+
+describe('parseDailyHours', () => {
+  it('round-trips a string produced by formatDailyHours', () => {
+    const text = formatDailyHours('08:30', '17:15');
+    expect(parseDailyHours(text)).toEqual({ open: '08:30', close: '17:15' });
+  });
+
+  it('is case-insensitive', () => {
+    expect(parseDailyHours('daily 7:00 am - 9:00 pm')).toEqual({ open: '07:00', close: '21:00' });
+  });
+
+  it('falls back to the defaults for null/empty/unrecognized text', () => {
+    const fallback = { open: DEFAULT_OPEN_TIME, close: DEFAULT_CLOSE_TIME };
+    expect(parseDailyHours(null)).toEqual(fallback);
+    expect(parseDailyHours(undefined)).toEqual(fallback);
+    expect(parseDailyHours('')).toEqual(fallback);
+    expect(parseDailyHours('Mon-Fri 9am-5pm')).toEqual(fallback);
+    expect(parseDailyHours('e.g. Mon–Sat 8am–9pm')).toEqual(fallback);
   });
 });

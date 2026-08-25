@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
   PhoneIcon,
   ChatBubbleLeftRightIcon,
@@ -8,12 +9,16 @@ import {
   ClockIcon,
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth } from '@/hooks/useAuth';
+import { getMyBusinesses } from '@/lib/business-api';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { formatCost } from '@/lib/format';
 import { isOpenAt } from '@/lib/opening-hours';
+import { iconForAmenity } from '@/lib/amenities';
 import { ContactLink } from './ContactLink';
 import { SaveButton } from './SaveButton';
 import { ReportButton } from './ReportButton';
+import { BookingRequestSection } from './BookingRequestSection';
 import type { Business, Place } from '@/lib/types';
 
 // Product review readout (Aug 22, 2026), "Turn place pages into action
@@ -29,12 +34,39 @@ import type { Business, Place } from '@/lib/types';
 // same fields is often just whatever was true when the place was first
 // cataloged.
 export function PlaceKeyFacts({ place, business }: { place: Place; business: Business | null }) {
-  const phone = business?.phone ?? place.contactPhone;
-  const whatsapp = business?.whatsapp ?? place.whatsapp;
-  const website = business?.website ?? place.website;
-  const hours = business?.openingHours ?? place.openingHours;
-  const priceLabel = formatKeyFactsPrice(place, business);
-  const isClaimed = business != null;
+  const { user, token, ready } = useAuth();
+  const [ownBusiness, setOwnBusiness] = useState<Business | null>(null);
+
+  // The server-side `business` prop only ever reflects an APPROVED listing
+  // (see getBusinessByPlace) — a freshly claimed or self-submitted
+  // (auto-claimed) business is invisible here until an admin approves it,
+  // even to its own owner. Mirrors BusinessClaimSection's exact fallback so
+  // an owner sees their own hours/price/amenities/booking button up here
+  // immediately, not just once approved (product feedback, Aug 2026: "The
+  // price everything should be up there when someone click to see the
+  // place").
+  useEffect(() => {
+    if (business || !ready || !user || !token) return;
+    let cancelled = false;
+    getMyBusinesses(token).then((list) => {
+      if (cancelled) return;
+      const mine = list.find((b) => b.linkedPlaceId === place.id);
+      if (mine) setOwnBusiness(mine);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [business, ready, user, token, place.id]);
+
+  const effectiveBusiness = business ?? ownBusiness;
+
+  const phone = effectiveBusiness?.phone ?? place.contactPhone;
+  const whatsapp = effectiveBusiness?.whatsapp ?? place.whatsapp;
+  const website = effectiveBusiness?.website ?? place.website;
+  const hours = effectiveBusiness?.openingHours ?? place.openingHours;
+  const priceLabel = formatKeyFactsPrice(place, effectiveBusiness);
+  const amenities = effectiveBusiness?.servicesOffered ?? [];
+  const isClaimed = effectiveBusiness != null;
 
   // structuredHours is only ever derived from Place.openingHours (see
   // api/src/places/opening-hours.ts) — never from a claimed Business's own
@@ -45,7 +77,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
   // structured data for *those* hours and stay silent rather than compute
   // a badge against text nobody is seeing.
   const openNow =
-    business?.openingHours == null && place.structuredHours && place.structuredHours.length > 0
+    effectiveBusiness?.openingHours == null && place.structuredHours && place.structuredHours.length > 0
       ? isOpenAt(place.structuredHours, new Date())
       : null;
 
@@ -108,7 +140,32 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           Directions
         </a>
         <SaveButton slug={place.slug} placeId={place.id} />
+        {/* "the booking button should be to where the save buttons are
+            because it is an important cta" (product feedback, Aug 2026) —
+            relocated here from the bottom-of-page claim section.
+            BookingRequestSection is a no-op render for its own owner
+            (shows a "manage" message instead) and for a logged-out visitor
+            (shows a login prompt), so this is safe to render unconditionally
+            whenever there's a business to book with. */}
+        {effectiveBusiness && <BookingRequestSection business={effectiveBusiness} />}
       </div>
+
+      {amenities.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {amenities.map((amenity) => {
+            const Icon = iconForAmenity(amenity);
+            return (
+              <span
+                key={amenity}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300"
+              >
+                <Icon aria-hidden className="h-3.5 w-3.5" />
+                {amenity}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
         <div className="flex items-start gap-1.5">
@@ -129,7 +186,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
               <span>{hours}</span>
             </dd>
           ) : (
-            <MissingFact label="Hours not listed" isClaimed={isClaimed} business={business} />
+            <MissingFact label="Hours not listed" isClaimed={isClaimed} business={effectiveBusiness} />
           )}
         </div>
         <div className="flex items-start gap-1.5">
@@ -137,14 +194,14 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           {priceLabel ? (
             <dd className="text-slate-700 dark:text-slate-200">{priceLabel}</dd>
           ) : (
-            <MissingFact label="Price not listed" isClaimed={isClaimed} business={business} />
+            <MissingFact label="Price not listed" isClaimed={isClaimed} business={effectiveBusiness} />
           )}
         </div>
       </dl>
 
       {!phone && !whatsapp && !website && (
         <div className="border-t border-slate-100 pt-2 text-sm dark:border-slate-800">
-          <MissingFact label="No verified contact on file yet" isClaimed={isClaimed} business={business} />
+          <MissingFact label="No verified contact on file yet" isClaimed={isClaimed} business={effectiveBusiness} />
         </div>
       )}
     </div>
