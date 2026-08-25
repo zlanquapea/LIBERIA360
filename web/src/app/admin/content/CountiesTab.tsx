@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { deleteCountyAdmin, updateCountyAdmin } from '@/lib/admin-api';
 import { HttpError } from '@/lib/http';
-import { CategoryIcon } from '@/lib/icons';
+import { CountyIcon } from '@/lib/icons';
 import type { County } from '@/lib/types';
 import { BackToListLink, DeleteButton, inputClass } from './content-shared';
 
@@ -68,7 +68,7 @@ export function CountiesTab({
               <tr key={county.id} onClick={() => setView({ mode: 'edit', county })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
                 <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">
                   <span className="flex items-center gap-1.5">
-                    <CategoryIcon iconKey={county.icon} className="h-4 w-4 shrink-0" />
+                    <CountyIcon county={county} className="h-4 w-4 shrink-0" />
                     {county.name}
                   </span>
                 </td>
@@ -143,7 +143,7 @@ function CountyEditForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">
-          <CategoryIcon iconKey={county.icon} className="h-4 w-4 shrink-0" />
+          <CountyIcon county={county} className="h-4 w-4 shrink-0" />
           {county.name}
         </h3>
         {isSuperAdmin && (

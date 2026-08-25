@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CategoryIcon } from '@/lib/icons';
+import { CountyIcon } from '@/lib/icons';
 import { getCounties } from '@/lib/api';
 
 export const metadata = { title: 'Counties — LIBERIA360' };
@@ -31,7 +31,7 @@ export default async function CountiesPage() {
               }`}
             >
               <span aria-hidden className={`text-xl ${live ? '' : 'opacity-40 grayscale'}`}>
-                <CategoryIcon iconKey={county.icon} className="h-5 w-5 text-brand-500" />
+                <CountyIcon county={county} className="h-5 w-5 text-brand-500" />
               </span>
               <span className={`font-medium ${live ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400'}`}>{county.name}</span>
               <span className={`text-xs ${live ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400'}`}>
