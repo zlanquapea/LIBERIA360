@@ -20,6 +20,7 @@ import {
   RecommendedVisitLength,
   VerificationStatus,
 } from "./place.enums";
+import { OpeningPeriod } from "../opening-hours";
 
 /**
  * Core catalog entity. Every place renders through one standardized profile
@@ -137,6 +138,14 @@ export class Place {
 
   @Column({ name: "opening_hours", type: "text", nullable: true })
   openingHours: string | null;
+
+  // Computed from openingHours by parseOpeningHoursText (opening-hours.ts)
+  // whenever it's set/changed — see that file's doc comment for why this
+  // exists alongside the free text rather than replacing it. Never set
+  // directly from a DTO field; null means "couldn't parse it" just as much
+  // as "never set."
+  @Column({ name: "structured_hours", type: "jsonb", nullable: true })
+  structuredHours: OpeningPeriod[] | null;
 
   @Column({
     name: "contact_phone",

@@ -56,7 +56,7 @@ export const COUNTY_SEEDS: CountySeed[] = [
     name: "Montserrado",
     slug: "montserrado",
     rolloutStage: 1,
-    icon: "🏛️", // the capital county — Monrovia
+    icon: "BuildingOfficeIcon", // the capital county — Monrovia
     safetyTips: [
       "Agree on the fare before getting into a shared taxi — meters aren't standard.",
       "Carry small-denomination cash (USD and Liberian dollars are both widely used); many small vendors can't take cards.",
@@ -70,7 +70,7 @@ export const COUNTY_SEEDS: CountySeed[] = [
     name: "Margibi",
     slug: "margibi",
     rolloutStage: 1,
-    icon: "✈️", // Roberts International Airport
+    icon: "PaperAirplaneIcon", // Roberts International Airport
     safetyTips: [
       "Roberts International Airport is well outside central Monrovia — budget real transfer time, especially at night.",
       "Agree on the fare before getting into a shared taxi — meters aren't standard.",
@@ -79,24 +79,54 @@ export const COUNTY_SEEDS: CountySeed[] = [
     localCustoms:
       "Same general etiquette as Montserrado — a warm greeting first, modest dress at religious/cultural sites, cash widely preferred over cards outside larger hotels.",
   },
-  { name: "Bong", slug: "bong", rolloutStage: 2, icon: "🎓" }, // Cuttington University, Gbarnga
-  { name: "Grand Bassa", slug: "grand-bassa", rolloutStage: 2, icon: "⚓" }, // Buchanan — Liberia's 2nd-largest port
+  { name: "Bong", slug: "bong", rolloutStage: 2, icon: "AcademicCapIcon" }, // Cuttington University, Gbarnga
+  {
+    name: "Grand Bassa",
+    slug: "grand-bassa",
+    rolloutStage: 2,
+    icon: "BuildingOffice2Icon",
+  }, // Buchanan — Liberia's 2nd-largest port
   {
     name: "Grand Cape Mount",
     slug: "grand-cape-mount",
     rolloutStage: 2,
-    icon: "🏄",
+    icon: "SunIcon",
   }, // Robertsport — internationally known surf spot
-  { name: "Nimba", slug: "nimba", rolloutStage: 3, icon: "⛰️" }, // Mount Nimba, Liberia's highest peak; iron ore
-  { name: "Sinoe", slug: "sinoe", rolloutStage: 3, icon: "🌳" }, // Sapo National Park — largest rainforest reserve
-  { name: "Maryland", slug: "maryland", rolloutStage: 3, icon: "🗼" }, // Cape Palmas Lighthouse, historic Harper
-  { name: "Grand Kru", slug: "grand-kru", rolloutStage: 3, icon: "⛵" }, // Kru people — historically famed West African seafarers
-  { name: "Bomi", slug: "bomi", rolloutStage: 4, icon: "⛏️" }, // Tubmanburg / Bomi Hills — early iron-ore mining
-  { name: "Gbarpolu", slug: "gbarpolu", rolloutStage: 4, icon: "💎" }, // artisanal gold/diamond mining
-  { name: "Grand Gedeh", slug: "grand-gedeh", rolloutStage: 4, icon: "🌲" }, // dense forest, Zwedru
-  { name: "Lofa", slug: "lofa", rolloutStage: 4, icon: "☕" }, // coffee/cocoa, Liberia's agricultural heartland
-  { name: "River Cess", slug: "river-cess", rolloutStage: 4, icon: "🌴" }, // palm oil, rural rainforest
-  { name: "River Gee", slug: "river-gee", rolloutStage: 4, icon: "🌊" }, // newest county, coastal/forest border area
+  { name: "Nimba", slug: "nimba", rolloutStage: 3, icon: "FlagIcon" }, // Mount Nimba, Liberia's highest peak; iron ore
+  {
+    name: "Sinoe",
+    slug: "sinoe",
+    rolloutStage: 3,
+    icon: "GlobeEuropeAfricaIcon",
+  }, // Sapo National Park — largest rainforest reserve
+  {
+    name: "Maryland",
+    slug: "maryland",
+    rolloutStage: 3,
+    icon: "BuildingLibraryIcon",
+  }, // Cape Palmas Lighthouse, historic Harper
+  {
+    name: "Grand Kru",
+    slug: "grand-kru",
+    rolloutStage: 3,
+    icon: "LifebuoyIcon",
+  }, // Kru people — historically famed West African seafarers
+  { name: "Bomi", slug: "bomi", rolloutStage: 4, icon: "BeakerIcon" }, // Tubmanburg / Bomi Hills — early iron-ore mining
+  { name: "Gbarpolu", slug: "gbarpolu", rolloutStage: 4, icon: "SparklesIcon" }, // artisanal gold/diamond mining
+  {
+    name: "Grand Gedeh",
+    slug: "grand-gedeh",
+    rolloutStage: 4,
+    icon: "GlobeAltIcon",
+  }, // dense forest, Zwedru
+  { name: "Lofa", slug: "lofa", rolloutStage: 4, icon: "CakeIcon" }, // coffee/cocoa, Liberia's agricultural heartland
+  {
+    name: "River Cess",
+    slug: "river-cess",
+    rolloutStage: 4,
+    icon: "GlobeAmericasIcon",
+  }, // palm oil, rural rainforest
+  { name: "River Gee", slug: "river-gee", rolloutStage: 4, icon: "MapIcon" }, // newest county, coastal/forest border area
 ];
 
 export interface CategorySeed {
@@ -110,62 +140,89 @@ export const CATEGORY_SEEDS: CategorySeed[] = [
   {
     name: "Beaches",
     slug: "beaches",
-    icon: "🏖️",
+    icon: "SunIcon",
     description: "Coastal spots for swimming, surfing, and sunsets.",
   },
   {
     name: "Waterfalls & Nature",
     slug: "waterfalls-nature",
-    icon: "💧",
+    icon: "GlobeAmericasIcon",
     description: "Waterfalls, rivers, and rainforest.",
   },
   {
     name: "Hiking & Adventure",
     slug: "hiking-adventure",
-    icon: "🥾",
+    icon: "MapIcon",
     description: "Trails, hikes, and outdoor activity.",
   },
   {
     name: "Culture & Heritage",
     slug: "culture-heritage",
-    icon: "🏛️",
+    icon: "BuildingLibraryIcon",
     description: "Historic sites, museums, and cultural landmarks.",
   },
   {
     name: "Food & Dining",
     slug: "food-dining",
-    icon: "🍽️",
+    icon: "CakeIcon",
     description: "Restaurants, street food, cafés, and bars.",
   },
   {
     name: "Nightlife",
     slug: "nightlife",
-    icon: "🌙",
+    icon: "MoonIcon",
     description: "Bars, live music, and after-dark spots.",
   },
   {
     name: "Wildlife & Eco-Tourism",
     slug: "wildlife-eco-tourism",
-    icon: "🦎",
+    icon: "GlobeAsiaAustraliaIcon",
     description: "Wetlands, wildlife, and eco-tourism sites.",
   },
   {
     name: "Hotels & Lodges",
     slug: "hotels-lodges",
-    icon: "🏨",
+    icon: "HomeModernIcon",
     description: "Places to stay, from guesthouses to resorts.",
   },
   {
     name: "City & Shopping",
     slug: "city-shopping",
-    icon: "🛍️",
+    icon: "ShoppingBagIcon",
     description: "Markets, city life, and shopping districts.",
   },
   {
     name: "Islands & Boat Trips",
     slug: "islands-boat-trips",
-    icon: "🛶",
+    icon: "LifebuoyIcon",
     description: "Island visits and river/boat excursions.",
+  },
+  // Added per external consultant review (Aug 2026): "Near Me" is only as
+  // useful as the practical, everyday categories it can search — the
+  // original ten are all tourism/leisure destinations, with nothing for
+  // the "find a nearby pharmacy/hospital/ATM/fuel station" use case a
+  // resident or traveler actually needs day to day. Scaffolding only —
+  // real listings still have to be added (by admins or self-service
+  // submission) before these show anything; no placeholder businesses are
+  // seeded here, since a wrong address for a hospital or pharmacy is
+  // actively harmful, not just an empty state.
+  {
+    name: "Health & Pharmacies",
+    slug: "health-pharmacies",
+    icon: "HeartIcon",
+    description: "Hospitals, clinics, and pharmacies.",
+  },
+  {
+    name: "Banks & ATMs",
+    slug: "banks-atms",
+    icon: "BanknotesIcon",
+    description: "Banks, ATMs, and money transfer services.",
+  },
+  {
+    name: "Fuel Stations",
+    slug: "fuel-stations",
+    icon: "TruckIcon",
+    description: "Gas/fuel stations.",
   },
 ];
 

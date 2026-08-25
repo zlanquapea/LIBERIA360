@@ -3,8 +3,24 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createCategory, deleteCategory, updateCategory } from '@/lib/admin-api';
 import { HttpError } from '@/lib/http';
+import { CategoryIcon, ICON_OPTIONS, normalizeIconKey } from '@/lib/icons';
 import type { Category } from '@/lib/types';
 import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from './content-shared';
+
+// A closed list, not a free-text field — a text input here is exactly how
+// this table ended up full of inconsistent emoji in the first place (see
+// lib/icons.tsx's doc comment). Shared by the create and edit forms below.
+function IconSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={inputClass}>
+      {ICON_OPTIONS.map((opt) => (
+        <option key={opt.key} value={opt.key}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 type View = { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; category: Category };
 
@@ -88,8 +104,10 @@ export function CategoriesTab({
                   className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">
-                    {category.icon ? `${category.icon} ` : ''}
-                    {category.name}
+                    <span className="flex items-center gap-1.5">
+                      <CategoryIcon iconKey={category.icon} className="h-4 w-4 shrink-0" />
+                      {category.name}
+                    </span>
                   </td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{category.slug}</td>
                   <td className="max-w-xs truncate px-4 py-2.5 text-slate-500 dark:text-slate-400">{category.description ?? '—'}</td>
@@ -108,7 +126,7 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
-  const [icon, setIcon] = useState('');
+  const [icon, setIcon] = useState(ICON_OPTIONS[0].key);
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +144,7 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
       const category = await createCategory(token, {
         name,
         slug,
-        icon: icon.trim() || undefined,
+        icon,
         description: description.trim() || undefined,
       });
       onCreated(category);
@@ -161,7 +179,7 @@ function CreateCategoryForm({ token, onCreated }: { token: string; onCreated: (c
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Icon
-          <input maxLength={50} placeholder="e.g. 🏖️ (an emoji)" value={icon} onChange={(e) => setIcon(e.target.value)} className={inputClass} />
+          <IconSelect value={icon} onChange={setIcon} />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -198,7 +216,7 @@ function CategoryEditForm({
   onDeleted: () => void;
 }) {
   const [name, setName] = useState(category.name);
-  const [icon, setIcon] = useState(category.icon ?? '');
+  const [icon, setIcon] = useState(normalizeIconKey(category.icon));
   const [description, setDescription] = useState(category.description ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -206,7 +224,7 @@ function CategoryEditForm({
 
   useEffect(() => {
     setName(category.name);
-    setIcon(category.icon ?? '');
+    setIcon(normalizeIconKey(category.icon));
     setDescription(category.description ?? '');
     setSuccess(false);
     // Keyed on category.id — a save replaces this category with a new
@@ -222,7 +240,7 @@ function CategoryEditForm({
     try {
       const updated = await updateCategory(token, category.id, {
         name,
-        icon: icon.trim() || undefined,
+        icon,
         description: description.trim() || undefined,
       });
       setSuccess(true);
@@ -253,7 +271,7 @@ function CategoryEditForm({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Icon
-          <input maxLength={50} value={icon} onChange={(e) => setIcon(e.target.value)} className={inputClass} />
+          <IconSelect value={icon} onChange={setIcon} />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">

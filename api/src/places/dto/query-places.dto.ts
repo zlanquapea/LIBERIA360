@@ -1,5 +1,6 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
+  IsBoolean,
   IsEnum,
   IsIn,
   IsInt,
@@ -83,4 +84,31 @@ export class QueryPlacesDto {
   @Min(0.1)
   @Max(200)
   radiusKm?: number;
+
+  // Filters to places whose structuredHours (opening-hours.ts) say they're
+  // open right now. A place with no parseable hours is never included —
+  // "we don't know" is not "open" — so this is necessarily conservative,
+  // not exhaustive: it can under-include places whose hours just weren't
+  // in a format the parser recognizes.
+  @IsOptional()
+  @Transform(({ value }) => value === "true" || value === true)
+  @IsBoolean()
+  openNow?: boolean;
+
+  // Filters by place.estimatedCostEntry (the entry/admission cost shown
+  // on the destination profile and used for the search result's price
+  // display) — USD. Same "we don't know" conservativism as openNow: a
+  // place with no cost on file is excluded once either bound is set,
+  // rather than assumed to be in range.
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  priceMin?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  priceMax?: number;
 }

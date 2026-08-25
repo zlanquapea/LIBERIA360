@@ -1,12 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { generateTrip, previewTrip } from '@/lib/itinerary-api';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
+import { CategoryIcon } from '@/lib/icons';
+import { requestGeolocation, type Coords } from '@/lib/geolocation';
 import { ItineraryStops } from './ItineraryStops';
 import type { BudgetBand, Category, TripPreviewResponse } from '@/lib/types';
 
@@ -42,6 +45,23 @@ export function TripPlannerForm({
   const [resuming, setResuming] = useState(false);
   const resumedRef = useRef(false);
 
+  // Product review readout (Aug 25, 2026): "Allow users to enter their
+  // budget, number of days, interests and starting location." Optional —
+  // leaving it unset keeps the previous behavior (routes built outward
+  // from Monrovia), so this is purely additive.
+  const [startCoords, setStartCoords] = useState<Coords | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  const useMyLocation = useCallback(() => {
+    setLocating(true);
+    setLocationError(null);
+    requestGeolocation()
+      .then((coords) => setStartCoords(coords))
+      .catch((err: Error) => setLocationError(err.message))
+      .finally(() => setLocating(false));
+  }, []);
+
   // Picks back up a guest-built trip the moment login finishes: if this
   // visitor clicked "Log in to save" a minute ago, the draft they were
   // looking at is sitting in sessionStorage, waiting to be handed to the
@@ -55,6 +75,9 @@ export function TripPlannerForm({
     setBudgetBand(draft.budgetBand);
     setInterests(draft.interests);
     setTitle(draft.title ?? '');
+    if (draft.startLat !== undefined && draft.startLng !== undefined) {
+      setStartCoords({ lat: draft.startLat, lng: draft.startLng });
+    }
     setPreview(null);
     setResuming(true);
     generateTrip(token, draft)
@@ -77,6 +100,8 @@ export function TripPlannerForm({
       durationDays,
       budgetBand,
       interests,
+      startLat: startCoords?.lat,
+      startLng: startCoords?.lng,
       title: title.trim() || undefined,
     };
     try {
@@ -99,6 +124,8 @@ export function TripPlannerForm({
       durationDays,
       budgetBand,
       interests,
+      startLat: startCoords?.lat,
+      startLng: startCoords?.lng,
       title: title.trim() || undefined,
     });
     router.push('/login?next=/trips/new');
@@ -193,6 +220,45 @@ export function TripPlannerForm({
         </select>
       </label>
 
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Starting location (optional)</span>
+        {startCoords ? (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
+            <span className="flex items-center gap-1.5">
+              <MapPinIcon aria-hidden className="h-4 w-4 text-brand-600 dark:text-brand-300" />
+              Using your current location
+            </span>
+            <button
+              type="button"
+              onClick={() => setStartCoords(null)}
+              className="text-xs font-medium text-slate-500 hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300"
+            >
+              Clear
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={useMyLocation}
+            disabled={locating}
+            className="flex w-fit items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
+          >
+            <MapPinIcon aria-hidden className="h-4 w-4" />
+            {locating ? 'Finding you…' : 'Use my current location'}
+          </button>
+        )}
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {startCoords
+            ? 'Stops are sequenced starting from here instead of Monrovia.'
+            : "Leave this blank to plan a route starting from Monrovia — this only changes the order stops are visited in."}
+        </p>
+        {locationError && (
+          <p role="alert" className="text-xs text-flag-700 dark:text-flag-300">
+            {locationError}
+          </p>
+        )}
+      </div>
+
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">Interests (optional — leave blank for all)</legend>
         <div className="flex flex-wrap gap-2">
@@ -204,13 +270,14 @@ export function TripPlannerForm({
                 type="button"
                 onClick={() => toggleInterest(category.slug)}
                 aria-pressed={selected}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
                   selected
                     ? 'border-transparent bg-brand-700 text-white'
                     : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                 }`}
               >
-                {category.icon} {category.name}
+                <CategoryIcon iconKey={category.icon} className="h-4 w-4" />
+                {category.name}
               </button>
             );
           })}

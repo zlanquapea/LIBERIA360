@@ -8,7 +8,7 @@ const BASE_PLACE: Place = {
   slug: 'ceecee-beach',
   description: 'A quiet beach just outside Monrovia.',
   type: 'nature_site',
-  category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: '🏖️' },
+  category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
   tags: [],
   county: {
     id: 'co1',
@@ -31,6 +31,7 @@ const BASE_PLACE: Place = {
   images: [],
   videos: [],
   openingHours: null,
+  structuredHours: null,
   contactPhone: null,
   whatsapp: null,
   website: null,
@@ -64,7 +65,7 @@ describe('PlaceCard', () => {
 
   it('shows the category icon placeholder when there is no photo yet', () => {
     const { container } = render(<PlaceCard place={BASE_PLACE} />);
-    expect(screen.getByText('🏖️')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
     expect(container.querySelector('img')).not.toBeInTheDocument();
   });
 
@@ -72,7 +73,6 @@ describe('PlaceCard', () => {
     const { container } = render(<PlaceCard place={{ ...BASE_PLACE, images: ['/uploads/photo.jpg'] }} />);
     const img = container.querySelector('img');
     expect(img).toHaveAttribute('src', expect.stringContaining('/uploads/photo.jpg'));
-    expect(screen.queryByText('🏖️')).not.toBeInTheDocument();
   });
 
   it('shows "In Monrovia" instead of "0 km from Monrovia" for a 0km distance', () => {
@@ -89,5 +89,20 @@ describe('PlaceCard', () => {
   it('shows "Not yet rated" for a place with no reviews, not "0.0"', () => {
     render(<PlaceCard place={{ ...BASE_PLACE, rating: 0, reviewCount: 0 }} />);
     expect(screen.getByText('Not yet rated')).toBeInTheDocument();
+  });
+
+  it('shows the entry cost when the place has one on file', () => {
+    render(<PlaceCard place={{ ...BASE_PLACE, estimatedCostEntry: 5 }} />);
+    expect(screen.getByText('$5.00')).toBeInTheDocument();
+  });
+
+  it('shows "Free" rather than "$0.00" for a zero entry cost', () => {
+    render(<PlaceCard place={{ ...BASE_PLACE, estimatedCostEntry: 0 }} />);
+    expect(screen.getByText('Free')).toBeInTheDocument();
+  });
+
+  it('omits the price line entirely when no cost is on file', () => {
+    render(<PlaceCard place={BASE_PLACE} />);
+    expect(screen.queryByText('Not listed')).not.toBeInTheDocument();
   });
 });

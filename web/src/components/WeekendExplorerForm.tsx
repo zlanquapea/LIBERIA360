@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { generateWeekend } from '@/lib/itinerary-api';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
+import { CategoryIcon } from '@/lib/icons';
+import { requestGeolocation, type Coords } from '@/lib/geolocation';
 import type { BudgetBand, Category } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
@@ -17,21 +19,6 @@ const TRAVEL_TIME_PRESETS = [
   { minutes: 120, label: '2 hours' },
   { minutes: 240, label: '4 hours' },
 ] as const;
-
-type Coords = { lat: number; lng: number };
-
-function geolocationErrorMessage(err: GeolocationPositionError): string {
-  switch (err.code) {
-    case err.PERMISSION_DENIED:
-      return 'Location access was denied. Enable it in your browser settings to use Weekend Explorer.';
-    case err.POSITION_UNAVAILABLE:
-      return "Couldn't determine your location. Please try again.";
-    case err.TIMEOUT:
-      return 'Finding your location took too long. Please try again.';
-    default:
-      return 'Something went wrong getting your location.';
-  }
-}
 
 // Weekend Explorer (Tech Spec §3.2) — same generation engine as Build My
 // Liberia Trip, but starts from the user's current location (not
@@ -52,23 +39,12 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
   const [error, setError] = useState<string | null>(null);
 
   const requestLocation = useCallback(() => {
-    if (!('geolocation' in navigator)) {
-      setLocationError('Geolocation is not supported by this browser.');
-      return;
-    }
     setLocating(true);
     setLocationError(null);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setLocating(false);
-      },
-      (err) => {
-        setLocationError(geolocationErrorMessage(err));
-        setLocating(false);
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
+    requestGeolocation()
+      .then((coords) => setCoords(coords))
+      .catch((err: Error) => setLocationError(err.message))
+      .finally(() => setLocating(false));
   }, []);
 
   function toggleInterest(slug: string) {
@@ -196,13 +172,14 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
                 type="button"
                 onClick={() => toggleInterest(category.slug)}
                 aria-pressed={selected}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
                   selected
                     ? 'border-transparent bg-brand-700 text-white'
                     : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                 }`}
               >
-                {category.icon} {category.name}
+                <CategoryIcon iconKey={category.icon} className="h-4 w-4" />
+                {category.name}
               </button>
             );
           })}

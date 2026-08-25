@@ -770,6 +770,32 @@ describe("Phase 2 (e2e)", () => {
         .expect(404); // owner-only
     });
 
+    it("generates a trip from an explicit starting location, and rejects a lat with no matching lng", async () => {
+      const withStart = await request(app.getHttpServer())
+        .post("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          durationDays: 1,
+          interests: ["culture-heritage", "beaches"],
+          budgetBand: "moderate",
+          startLat: 6.3,
+          startLng: -10.8,
+        })
+        .expect(201);
+      expect(withStart.body.stops.length).toBeGreaterThan(0);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/itineraries")
+        .set("Authorization", `Bearer ${userAToken}`)
+        .send({
+          durationDays: 1,
+          interests: ["culture-heritage", "beaches"],
+          budgetBand: "moderate",
+          startLat: 6.3, // startLng omitted — must be rejected, not silently ignored
+        })
+        .expect(400);
+    });
+
     it("Weekend Explorer generates from an explicit starting point, and 404s when nothing is reachable", async () => {
       await request(app.getHttpServer())
         .post("/api/v1/itineraries/weekend")
@@ -810,6 +836,8 @@ describe("Phase 2 (e2e)", () => {
           durationDays: 1,
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
+          startLat: 6.3,
+          startLng: -10.8,
         })
         .expect(201);
       expect(preview.body.id).toBeUndefined(); // nothing was persisted
@@ -822,6 +850,16 @@ describe("Phase 2 (e2e)", () => {
           durationDays: 1,
           interests: ["does-not-exist"],
           budgetBand: "budget",
+        })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post("/api/v1/itineraries/preview")
+        .send({
+          durationDays: 1,
+          interests: ["culture-heritage", "beaches"],
+          budgetBand: "moderate",
+          startLng: -10.8, // startLat omitted — must be rejected
         })
         .expect(400);
 

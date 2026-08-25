@@ -78,6 +78,15 @@ export interface Activity {
   guideRequired: boolean;
 }
 
+// api/src/places/opening-hours.ts — computed from Place.openingHours on a
+// best-effort basis (see that file's doc comment); null/absent means the
+// free text couldn't be parsed, not "closed."
+export interface OpeningPeriod {
+  dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  opens: string; // "HH:MM", 24-hour
+  closes: string; // "HH:MM", 24-hour; "24:00" for midnight/end-of-day
+}
+
 // api/src/places/entities/place.entity.ts
 export interface Place {
   id: string;
@@ -99,6 +108,7 @@ export interface Place {
   images: string[];
   videos: string[];
   openingHours: string | null;
+  structuredHours: OpeningPeriod[] | null;
   contactPhone: string | null;
   whatsapp: string | null;
   website: string | null;
@@ -617,6 +627,15 @@ export interface PlacesQuery {
   lat?: number;
   lng?: number;
   radiusKm?: number;
+  // Filters to places whose structuredHours (api/src/places/opening-hours.ts)
+  // say they're open right now. A place whose hours weren't recognized by
+  // the parser is never included — "we don't know" isn't "open."
+  openNow?: boolean;
+  // Filters by place.estimatedCostEntry (USD). A place with no cost on
+  // file is excluded once either bound is set — same conservative stance
+  // as openNow.
+  priceMin?: number;
+  priceMax?: number;
 }
 
 // --- Admin dashboard (Tech Spec §7/§8) — mirrors api/src/admin/dto/*. ---

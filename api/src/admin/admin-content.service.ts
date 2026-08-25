@@ -33,6 +33,7 @@ import { ReviewsService } from "../reviews/reviews.service";
 import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
 import { clearStaleRelation } from "../common/typeorm-relations";
+import { parseOpeningHoursText } from "../places/opening-hours";
 
 // Product review readout (Aug 22, 2026), "editorial QA + automated record
 // checks": a live listing was found served from a slug that named a
@@ -219,7 +220,12 @@ export class AdminContentService {
       throw new ConflictException(`Slug "${dto.slug}" is already in use`);
     }
 
-    const place = await this.placeRepo.save(this.placeRepo.create(dto));
+    const place = await this.placeRepo.save(
+      this.placeRepo.create({
+        ...dto,
+        structuredHours: parseOpeningHoursText(dto.openingHours),
+      }),
+    );
     return this.placeRepo.findOneOrFail({ where: { id: place.id } });
   }
 
@@ -250,6 +256,9 @@ export class AdminContentService {
     }
 
     this.placeRepo.merge(place, dto);
+    if (dto.openingHours !== undefined) {
+      place.structuredHours = parseOpeningHoursText(dto.openingHours);
+    }
     await this.placeRepo.save(place);
     return this.placeRepo.findOneOrFail({ where: { id } });
   }

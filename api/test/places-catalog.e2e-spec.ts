@@ -12,6 +12,11 @@ import {
   RecommendedVisitLength,
   VerificationStatus,
 } from "../src/places/entities/place.enums";
+import { OpeningPeriod } from "../src/places/opening-hours";
+
+const ALL_DAYS_ALWAYS_OPEN: OpeningPeriod[] = (
+  [0, 1, 2, 3, 4, 5, 6] as const
+).map((dayOfWeek) => ({ dayOfWeek, opens: "00:00", closes: "24:00" }));
 
 describe("Places/Counties/Categories catalog (e2e)", () => {
   let app: INestApplication;
@@ -343,6 +348,351 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
       await request(app.getHttpServer())
         .get("/api/v1/places?limit=999")
         .expect(400);
+    });
+  });
+
+  // Isolated from the shared fixture set above (its own places, inserted
+  // and removed around just this block) rather than added to the main
+  // beforeAll — a "24/7, always open" and a "never open" place would
+  // otherwise ripple into practically every count/order assertion above,
+  // same lesson as the Robertsport fixture from the search-recovery work.
+  // Real time (not a fixed clock) is used deliberately: 24/7-open and
+  // never-open are both true at any possible "now", so this needs no
+  // mocking to be deterministic.
+  describe("GET /api/v1/places?openNow=", () => {
+    let alwaysOpenId: string;
+    let neverOpenId: string;
+    let unknownHoursId: string;
+
+    beforeAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      const alwaysOpen = await placeRepo.save(
+        placeRepo.create({
+          name: "Always Open Shop",
+          slug: "always-open-shop",
+          description: "Open around the clock, every day of the week.",
+          type: PlaceType.ATTRACTION,
+          category: culture,
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.3,
+          longitude: -10.8,
+          openingHours: "24/7",
+          structuredHours: ALL_DAYS_ALWAYS_OPEN,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      alwaysOpenId = alwaysOpen.id;
+
+      const neverOpen = await placeRepo.save(
+        placeRepo.create({
+          name: "Never Open Shop",
+          slug: "never-open-shop",
+          description: "Structured hours parsed but the list is empty.",
+          type: PlaceType.ATTRACTION,
+          category: culture,
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.3,
+          longitude: -10.8,
+          structuredHours: [],
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      neverOpenId = neverOpen.id;
+
+      const unknownHours = await placeRepo.save(
+        placeRepo.create({
+          name: "Unknown Hours Shop",
+          slug: "unknown-hours-shop",
+          description: "No opening hours on file at all.",
+          type: PlaceType.ATTRACTION,
+          category: culture,
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.3,
+          longitude: -10.8,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      unknownHoursId = unknownHours.id;
+    });
+
+    afterAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      await placeRepo.delete([alwaysOpenId, neverOpenId, unknownHoursId]);
+    });
+
+    it("includes a place with 24/7 structured hours no matter the actual time", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?openNow=true&q=shop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "always-open-shop",
+      ]);
+    });
+
+    it("excludes a place with empty structured hours and one with no hours at all", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?openNow=true&q=shop")
+        .expect(200);
+      const slugs = res.body.data.map((p: any) => p.slug);
+      expect(slugs).not.toContain("never-open-shop");
+      expect(slugs).not.toContain("unknown-hours-shop");
+    });
+
+    it("returns every 'shop' place when openNow isn't set", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=shop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "always-open-shop",
+        "never-open-shop",
+        "unknown-hours-shop",
+      ]);
+    });
+
+    it("returns an empty page rather than an error when nothing matches openNow", async () => {
+      // Multi-word, so this doesn't trigger the single-word category-alias
+      // match (see "does not apply category matching to a multi-word
+      // query" above) — a plain AND full-text match on all three words,
+      // which only "Never Open Shop" itself satisfies.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?openNow=true&q=never%20open%20shop")
+        .expect(200);
+      expect(res.body.data).toEqual([]);
+      expect(res.body.meta).toEqual({
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
+    });
+  });
+
+  describe("GET /api/v1/places?priceMin=&priceMax=", () => {
+    let freeId: string;
+    let cheapId: string;
+    let pricyId: string;
+    let unknownPriceId: string;
+
+    beforeAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      freeId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Free Priceshop",
+            slug: "free-priceshop",
+            description: "No cost to enter.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            estimatedCostEntry: 0,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+      cheapId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Cheap Priceshop",
+            slug: "cheap-priceshop",
+            description: "A modest entry fee.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            estimatedCostEntry: 5,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+      pricyId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Pricy Priceshop",
+            slug: "pricy-priceshop",
+            description: "An expensive entry fee.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            estimatedCostEntry: 100,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+      unknownPriceId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Unknown Price Priceshop",
+            slug: "unknown-price-priceshop",
+            description: "No cost on file at all.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+    });
+
+    afterAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      await placeRepo.delete([freeId, cheapId, pricyId, unknownPriceId]);
+    });
+
+    it("filters to places within [priceMin, priceMax], excluding places with no cost on file", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?priceMin=1&priceMax=10&q=priceshop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "cheap-priceshop",
+      ]);
+    });
+
+    it("priceMin=0 includes a free place but still excludes unknown cost", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?priceMin=0&priceMax=0&q=priceshop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual(["free-priceshop"]);
+    });
+
+    it("an unbounded priceMin alone still excludes places with no cost on file", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?priceMin=0&q=priceshop")
+        .expect(200);
+      const slugs = res.body.data.map((p: any) => p.slug).sort();
+      expect(slugs).toEqual([
+        "cheap-priceshop",
+        "free-priceshop",
+        "pricy-priceshop",
+      ]);
+    });
+
+    it("returns every 'priceshop' place when no price filter is set", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=priceshop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "cheap-priceshop",
+        "free-priceshop",
+        "pricy-priceshop",
+        "unknown-price-priceshop",
+      ]);
+    });
+  });
+
+  describe("GET /api/v1/places?q=<natural language>", () => {
+    let cultureMontserradoId: string;
+    let beachMontserradoId: string;
+    let cultureBongId: string;
+
+    beforeAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      const countyRepo = dataSource.getRepository(County);
+      const bong = await countyRepo.findOneByOrFail({ slug: "bong" });
+
+      cultureMontserradoId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "NL Culture Spot",
+            slug: "nl-culture-spot",
+            description: "A quiet historic building.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+
+      beachMontserradoId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "NL Beach Spot",
+            slug: "nl-beach-spot",
+            description: "A quiet beach.",
+            type: PlaceType.NATURE_SITE,
+            category: beaches,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+
+      cultureBongId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "NL Culture Spot Bong",
+            slug: "nl-culture-spot-bong",
+            description: "A quiet historic building in Bong.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: bong,
+            city: "Gbarnga",
+            latitude: 6.9,
+            longitude: -9.4,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+    });
+
+    afterAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      await placeRepo.delete([
+        cultureMontserradoId,
+        beachMontserradoId,
+        cultureBongId,
+      ]);
+    });
+
+    it("extracts category+county from '<category noun> in <county>' and applies both as filters", async () => {
+      // "museum" is a culture-heritage alias; "montserrado" names a real
+      // seeded county. Neither word literally appears in nl-culture-spot's
+      // own description, so it can only surface via the NL-derived
+      // category/county filters — same as the pre-existing "Test Museum"
+      // fixture (also culture-heritage + Montserrado), which appears here
+      // for the same reason. nl-beach-spot (wrong category) and
+      // nl-culture-spot-bong (wrong county) must not appear.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=museum%20in%20montserrado")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "nl-culture-spot",
+        "test-museum",
+      ]);
+    });
+
+    it("never lets an NL-detected county override an explicit ?county=", async () => {
+      // The query text names Bong, but the caller also explicitly passed
+      // county=montserrado — the explicit filter must win, so
+      // nl-culture-spot-bong (actually in Bong) must not appear despite
+      // the query text naming it.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=museum%20in%20bong&county=montserrado")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "nl-culture-spot",
+        "test-museum",
+      ]);
     });
   });
 

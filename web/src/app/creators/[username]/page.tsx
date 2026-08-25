@@ -17,10 +17,28 @@ import { ReviewsSection } from '@/components/ReviewsSection';
 import { ContactLink } from '@/components/ContactLink';
 import { CreatorViewTracker } from '@/components/CreatorViewTracker';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
+import { JsonLd } from '@/components/JsonLd';
+import { creatorJsonLd } from '@/lib/structured-data';
 
+// SEO (product review readout, Aug 25, 2026): "each ... creator[] should
+// eventually have its own properly structured page." The previous
+// metadata never fetched the creator, so every profile shared the same
+// generic title — this uses the real name/bio instead.
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  return { title: `@${username} — LIBERIA360 Creators` };
+  const creator = await getCreatorByUsername(username).catch(() => null);
+  if (!creator) {
+    return { title: 'Creator — LIBERIA360' };
+  }
+  const description = creator.bio
+    ? creator.bio.length > 160
+      ? `${creator.bio.slice(0, 157)}…`
+      : creator.bio
+    : undefined;
+  return {
+    title: `${creator.name} (@${creator.username}) — LIBERIA360`,
+    description,
+  };
 }
 
 const SOCIAL_LINKS = [
@@ -77,6 +95,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
+      <JsonLd data={creatorJsonLd(creator)} />
       <CreatorViewTracker creatorId={creator.id} />
       {/* Header */}
       <div className="flex flex-col">

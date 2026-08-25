@@ -19,7 +19,7 @@ function mockFetchOnce(status: number, body: unknown) {
 }
 
 const CATEGORIES: Category[] = [
-  { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: '🏖️' },
+  { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
 ];
 
 const USER: AuthUser = {
@@ -48,7 +48,7 @@ const STOP = {
     name: 'Robertsport',
     type: 'beach',
     city: 'Robertsport',
-    category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: '🏖️' },
+    category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
   },
 };
 
@@ -131,6 +131,47 @@ describe('TripPlannerForm', () => {
     });
     // Consumed, not left behind for a later unrelated visit.
     expect(window.sessionStorage.getItem('liberia360:pending-trip-draft')).toBeNull();
+  });
+
+  it('sends startLat/startLng once "Use my current location" resolves', async () => {
+    const getCurrentPosition = jest.fn((success: PositionCallback) => {
+      success({ coords: { latitude: 6.3, longitude: -10.8 } } as GeolocationPosition);
+    });
+    Object.defineProperty(global.navigator, 'geolocation', {
+      value: { getCurrentPosition },
+      configurable: true,
+    });
+    setStoredAuth({ token: 'tok', user: USER });
+    mockFetchOnce(201, { id: 'itin-3', title: '3-Day Liberia Trip' });
+
+    render(<TripPlannerForm categories={CATEGORIES} />);
+    await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
+    expect(await screen.findByText(/using your current location/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /^build my trip$/i }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/trips/itin-3'));
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual(
+      expect.objectContaining({ startLat: 6.3, startLng: -10.8 }),
+    );
+  });
+
+  it('shows a friendly error and never blocks trip building when location access is denied', async () => {
+    const getCurrentPosition = jest.fn((_success: PositionCallback, error: PositionErrorCallback) => {
+      error({ code: 1, PERMISSION_DENIED: 1 } as GeolocationPositionError);
+    });
+    Object.defineProperty(global.navigator, 'geolocation', {
+      value: { getCurrentPosition },
+      configurable: true,
+    });
+
+    render(<TripPlannerForm categories={CATEGORIES} />);
+    await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/location access was denied/i);
+    // Still fully usable without a location — the field is optional.
+    expect(screen.getByRole('button', { name: /preview my trip/i })).toBeEnabled();
   });
 
   it('signed-in visitors with no pending draft still build and save a trip directly', async () => {

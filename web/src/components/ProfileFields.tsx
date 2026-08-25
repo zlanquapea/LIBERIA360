@@ -1,6 +1,7 @@
 'use client';
 
 import { formatTravelerType } from '@/lib/format';
+import { CategoryIcon } from '@/lib/icons';
 import type { Category, County, TravelerType } from '@/lib/types';
 
 const TRAVELER_TYPES: TravelerType[] = ['diaspora', 'tourist', 'expat', 'business_traveler', 'local_resident'];
@@ -54,8 +55,10 @@ export function CountySelect({
     >
       <option value="">Prefer not to say</option>
       {counties.map((county) => (
+        // A native <option> can only render text, not an icon component —
+        // unlike every other county.icon site in the app, this one stays
+        // plain text.
         <option key={county.id} value={county.id}>
-          {county.icon ? `${county.icon} ` : ''}
           {county.name}
         </option>
       ))}
@@ -82,13 +85,14 @@ export function InterestChips({
             type="button"
             onClick={() => onToggle(category.slug)}
             aria-pressed={isSelected}
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               isSelected
                 ? 'border-transparent bg-brand-700 text-white'
                 : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
             }`}
           >
-            {category.icon} {category.name}
+            <CategoryIcon iconKey={category.icon} className="h-3.5 w-3.5" />
+            {category.name}
           </button>
         );
       })}
