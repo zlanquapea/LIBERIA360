@@ -17,11 +17,29 @@ import { VerificationBadge } from '@/components/VerificationBadge';
 import { SafeImage } from '@/components/SafeImage';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ReportButton } from '@/components/ReportButton';
+import { JsonLd } from '@/components/JsonLd';
+import { businessJsonLd } from '@/lib/structured-data';
 import type { BusinessContent } from '@/lib/types';
 
+// SEO (product review readout, Aug 25, 2026): "each business ... should
+// eventually have its own properly structured page." The previous
+// metadata never actually fetched the business, so every listing shared
+// the same generic title — this uses the real name/description instead.
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  return { title: `${slug} — LIBERIA360 Businesses` };
+  const business = await getBusinessBySlug(slug).catch(() => null);
+  if (!business) {
+    return { title: 'Business — LIBERIA360' };
+  }
+  const description = business.description
+    ? business.description.length > 160
+      ? `${business.description.slice(0, 157)}…`
+      : business.description
+    : undefined;
+  return {
+    title: `${business.name} — LIBERIA360`,
+    description,
+  };
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -109,6 +127,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
+      <JsonLd data={businessJsonLd(business)} />
       {/* Header */}
       <div className="flex flex-col">
         <div className="relative h-36 overflow-hidden sm:h-48">
