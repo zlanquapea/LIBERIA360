@@ -243,17 +243,29 @@ export const ICON_OPTIONS: { key: string; label: string }[] = [
 ];
 
 // The 13 founding categories (see CATEGORY_SEEDS in
-// api/src/database/seed-data.ts) — pinned by slug for the same reason as
+// api/src/database/seed-data.ts), plus categories the admin has created and
+// asked to have pinned the same way — pinned by slug for the same reason as
 // COUNTY_ICON_KEYS above: a code change to one of these has no way to reach
 // a row that already exists in a live database without a manual reseed,
 // which isn't something to trigger casually (see COUNTY_ICON_KEYS's
-// comment). Unlike counties, admins genuinely can create *more* categories
-// through the admin panel, each with its own icon chosen from ICON_OPTIONS
-// above — this map only overrides these 13 founding slugs, so that ability
-// is untouched for anything else. One consequence worth knowing: changing
-// one of these 13 categories' icon via the admin picker now has no visible
-// effect, the same trade CountyIcon already made — if one of these needs a
-// different icon, change it here instead of in the admin UI.
+// comment), and using the admin picker for the same result asks a non-
+// engineer to find, click, and correctly match a dropdown label to a real
+// icon across a dozen categories by hand. Unlike counties, admins genuinely
+// can create categories through the admin panel — this map only overrides
+// the slugs listed below, so a *new* category not in this list still goes
+// through ICON_OPTIONS/the admin picker as normal. One consequence worth
+// knowing: changing one of these categories' icon via the admin picker now
+// has no visible effect, the same trade CountyIcon already made — if one of
+// these needs a different icon later, change it here.
+//
+// The admin-created entries below (everything after the founding 13) are
+// keyed on the slug the create-category form would have auto-generated
+// from the name (lowercase, non-alphanumeric runs collapsed to a single
+// hyphen — see slugify() in admin/content/content-shared.tsx) — this only
+// takes effect if that auto-generated slug wasn't hand-edited at creation
+// time. If a category here still isn't picking up its icon, its real slug
+// (visible in the admin Categories list's Slug column) differs from the
+// guess below and needs correcting.
 const CATEGORY_ICON_KEYS: Record<string, string> = {
   beaches: 'MdBeachAccess',
   'waterfalls-nature': 'MdWaterDrop',
@@ -268,6 +280,20 @@ const CATEGORY_ICON_KEYS: Record<string, string> = {
   'health-pharmacies': 'MdLocalPharmacy',
   'banks-atms': 'MdAccountBalance',
   'fuel-stations': 'MdLocalGasStation',
+  // Admin-created (Aug 25, 2026) — see this const's doc comment above for
+  // the slug-guessing caveat.
+  churches: 'MdChurch',
+  mosques: 'MdMosque',
+  'bus-taxi-stations': 'MdDirectionsBus',
+  'hospital-clinics': 'MdLocalHospital',
+  pharmacies: 'MdMedication',
+  'police-stations': 'MdLocalPolice',
+  'recreation-centers': 'MdFitnessCenter',
+  stadiums: 'MdStadium',
+  'music-arts-venues': 'MdTheaterComedy',
+  'parks-gardens': 'MdPark',
+  markets: 'BuildingStorefrontIcon',
+  'embassies-and-consulates': 'FlagIcon',
 };
 
 export function getIcon(key: string | null | undefined): IconComponent {
