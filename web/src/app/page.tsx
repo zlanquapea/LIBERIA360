@@ -8,6 +8,20 @@ import {
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon } from '@heroicons/react/24/solid';
+// Product review readout (Aug 25, 2026), "homepage hierarchy": "the
+// homepage currently has too many things competing for attention... I
+// would make search and discovery the primary focus," plus specifically
+// "the Near Me feature is potentially one of the strongest parts of the
+// platform — I would make it much more prominent" and "the map should
+// also become a core feature rather than just another section." This
+// page keeps every existing section (nothing was cut) but re-orders and
+// re-weights them: search stays first, Near Me and the map move directly
+// beneath it as co-equal primary discovery tools (previously Near Me was
+// a single plain link at the very bottom of the page), and the Trip
+// Planner/Creators promos — genuinely useful, but not "discovery" in the
+// same sense — are demoted to a visually quieter, more compact pairing
+// further down instead of two full-bleed gradient banners competing with
+// everything above them.
 import { getActiveSponsoredPlacements, getCategories, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { formatEventDateRange } from '@/lib/format';
@@ -62,6 +76,39 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Co-primary discovery tools, right under search — see the review
+          readout comment above for why these moved here from the bottom
+          of the page. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/near-me"
+          className="group flex items-center justify-between rounded-2xl border-2 border-gold-400 bg-white dark:bg-slate-900 px-5 py-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-gold-600 hover:shadow-card-hover"
+        >
+          <div>
+            <p className="font-display text-lg font-semibold text-slate-800 dark:text-slate-100">Near Me</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Restaurants, hotels, and more close to you right now</p>
+          </div>
+          <ViewfinderCircleIcon
+            aria-hidden
+            className="h-9 w-9 shrink-0 text-gold-600 transition-transform duration-300 group-hover:scale-110"
+          />
+        </Link>
+
+        <Link
+          href="/explore"
+          className="group flex items-center justify-between rounded-2xl border-2 border-brand-400 bg-white dark:bg-slate-900 px-5 py-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-600 hover:shadow-card-hover dark:border-brand-700"
+        >
+          <div>
+            <p className="font-display text-lg font-semibold text-slate-800 dark:text-slate-100">Explore the map</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">Every place, color-coded by category</p>
+          </div>
+          <MapIcon
+            aria-hidden
+            className="h-9 w-9 shrink-0 text-brand-600 transition-transform duration-300 group-hover:scale-110 dark:text-brand-400"
+          />
+        </Link>
+      </div>
+
       <section aria-labelledby="categories-heading" className="flex flex-col gap-3">
         <h2 id="categories-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
           Browse by category
@@ -99,53 +146,6 @@ export default async function Home() {
         </section>
       )}
 
-      <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-accent-600 to-accent-800 px-5 py-4 text-white shadow-card transition-shadow hover:shadow-card-hover">
-        <Link href="/trips/new" className="relative flex items-center justify-between">
-          <div>
-            <p className="font-display font-semibold">Build My Liberia Trip</p>
-            <p className="text-sm text-accent-100">Days, interests, budget — we&apos;ll plan the route</p>
-          </div>
-          <BriefcaseIcon
-            aria-hidden
-            className="h-8 w-8 shrink-0 text-accent-100 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
-          />
-        </Link>
-        <Link
-          href="/trips/weekend/new"
-          className="relative mt-1 inline-block text-sm font-medium text-accent-50 underline underline-offset-2"
-        >
-          Or plan a Weekend Explorer trip from where you are →
-        </Link>
-      </div>
-
-      <Link
-        href="/explore"
-        className="group flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-card dark:border-brand-800 dark:bg-brand-900/40 dark:hover:border-brand-600"
-      >
-        <div>
-          <p className="font-display font-semibold text-brand-800 dark:text-brand-100">Explore the map</p>
-          <p className="text-sm text-brand-700 dark:text-brand-300">See every place, color-coded by category</p>
-        </div>
-        <MapIcon
-          aria-hidden
-          className="h-8 w-8 shrink-0 text-brand-600 transition-transform duration-300 group-hover:scale-110 dark:text-brand-400"
-        />
-      </Link>
-
-      <Link
-        href="/creators"
-        className="group flex items-center justify-between rounded-xl border border-accent-200 bg-accent-50 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card dark:border-accent-800 dark:bg-accent-900/40 dark:hover:border-accent-600"
-      >
-        <div>
-          <p className="font-display font-semibold text-accent-800 dark:text-accent-100">Meet Liberia&apos;s creators</p>
-          <p className="text-sm text-accent-700 dark:text-accent-300">Videos, photos, and guides from local storytellers</p>
-        </div>
-        <VideoCameraIcon
-          aria-hidden
-          className="h-8 w-8 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
-        />
-      </Link>
-
       <section aria-labelledby="trending-heading" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 id="trending-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
@@ -165,6 +165,47 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      {/* Demoted from full-bleed gradient banners (still useful, but not
+          "discovery" the way search/Near Me/the map are — see the review
+          readout comment at the top of this file) to a compact, quieter
+          pairing further down the page. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/trips/new"
+          className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Build My Liberia Trip</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">Days, interests, budget — we&apos;ll plan the route</p>
+          </div>
+          <BriefcaseIcon
+            aria-hidden
+            className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
+          />
+        </Link>
+
+        <Link
+          href="/creators"
+          className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Meet Liberia&apos;s creators</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">Videos, photos, and guides from local storytellers</p>
+          </div>
+          <VideoCameraIcon
+            aria-hidden
+            className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
+          />
+        </Link>
+      </div>
+
+      <Link
+        href="/trips/weekend/new"
+        className="-mt-1 text-sm font-medium text-accent-700 hover:underline dark:text-accent-300"
+      >
+        Or plan a Weekend Explorer trip from where you are →
+      </Link>
 
       {upcomingEvents.data.length > 0 && (
         <section aria-labelledby="events-heading" className="flex flex-col gap-3">
@@ -197,20 +238,6 @@ export default async function Home() {
           </ul>
         </section>
       )}
-
-      <Link
-        href="/near-me"
-        className="group flex items-center justify-between rounded-xl border-2 border-gold-400 bg-white dark:bg-slate-900 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-gold-600 hover:shadow-card"
-      >
-        <div>
-          <p className="font-display font-semibold text-slate-800 dark:text-slate-100">Near Me</p>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Find places close to where you are right now</p>
-        </div>
-        <ViewfinderCircleIcon
-          aria-hidden
-          className="h-8 w-8 shrink-0 text-gold-600 transition-transform duration-300 group-hover:scale-110"
-        />
-      </Link>
     </main>
   );
 }
