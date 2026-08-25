@@ -37,4 +37,25 @@ describe("QueryPlacesDto", () => {
     const errors = await validate(dto);
     expect(errors.some((e) => e.property === "type")).toBe(true);
   });
+
+  it("coerces priceMin/priceMax query strings to numbers", async () => {
+    const dto = plainToInstance(QueryPlacesDto, {
+      priceMin: "5",
+      priceMax: "20",
+    });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+    expect(dto.priceMin).toBe(5);
+    expect(dto.priceMax).toBe(20);
+  });
+
+  it("rejects a negative priceMin/priceMax", async () => {
+    const dto = plainToInstance(QueryPlacesDto, { priceMin: "-1" });
+    const errors = await validate(dto);
+    expect(errors.some((e) => e.property === "priceMin")).toBe(true);
+
+    const dto2 = plainToInstance(QueryPlacesDto, { priceMax: "-1" });
+    const errors2 = await validate(dto2);
+    expect(errors2.some((e) => e.property === "priceMax")).toBe(true);
+  });
 });

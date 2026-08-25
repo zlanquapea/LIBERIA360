@@ -470,6 +470,129 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
     });
   });
 
+  describe("GET /api/v1/places?priceMin=&priceMax=", () => {
+    let freeId: string;
+    let cheapId: string;
+    let pricyId: string;
+    let unknownPriceId: string;
+
+    beforeAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      freeId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Free Priceshop",
+            slug: "free-priceshop",
+            description: "No cost to enter.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            estimatedCostEntry: 0,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+      cheapId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Cheap Priceshop",
+            slug: "cheap-priceshop",
+            description: "A modest entry fee.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            estimatedCostEntry: 5,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+      pricyId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Pricy Priceshop",
+            slug: "pricy-priceshop",
+            description: "An expensive entry fee.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            estimatedCostEntry: 100,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+      unknownPriceId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "Unknown Price Priceshop",
+            slug: "unknown-price-priceshop",
+            description: "No cost on file at all.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+    });
+
+    afterAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      await placeRepo.delete([freeId, cheapId, pricyId, unknownPriceId]);
+    });
+
+    it("filters to places within [priceMin, priceMax], excluding places with no cost on file", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?priceMin=1&priceMax=10&q=priceshop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "cheap-priceshop",
+      ]);
+    });
+
+    it("priceMin=0 includes a free place but still excludes unknown cost", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?priceMin=0&priceMax=0&q=priceshop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual(["free-priceshop"]);
+    });
+
+    it("an unbounded priceMin alone still excludes places with no cost on file", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?priceMin=0&q=priceshop")
+        .expect(200);
+      const slugs = res.body.data.map((p: any) => p.slug).sort();
+      expect(slugs).toEqual([
+        "cheap-priceshop",
+        "free-priceshop",
+        "pricy-priceshop",
+      ]);
+    });
+
+    it("returns every 'priceshop' place when no price filter is set", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=priceshop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "cheap-priceshop",
+        "free-priceshop",
+        "pricy-priceshop",
+        "unknown-price-priceshop",
+      ]);
+    });
+  });
+
   describe("GET /api/v1/places/:slug", () => {
     it("returns the full destination profile including activities", async () => {
       const res = await request(app.getHttpServer())

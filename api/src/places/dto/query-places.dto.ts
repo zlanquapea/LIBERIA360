@@ -94,4 +94,21 @@ export class QueryPlacesDto {
   @Transform(({ value }) => value === "true" || value === true)
   @IsBoolean()
   openNow?: boolean;
+
+  // Filters by place.estimatedCostEntry (the entry/admission cost shown
+  // on the destination profile and used for the search result's price
+  // display) — USD. Same "we don't know" conservativism as openNow: a
+  // place with no cost on file is excluded once either bound is set,
+  // rather than assumed to be in range.
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  priceMin?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  priceMax?: number;
 }

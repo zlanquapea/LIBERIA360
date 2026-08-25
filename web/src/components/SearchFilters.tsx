@@ -8,15 +8,29 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
   const searchParams = useSearchParams();
 
   function updateParam(key: string, value: string) {
+    updateParams({ [key]: value });
+  }
+
+  // Price is set as a single "bucket" selection but maps to two separate
+  // query params (priceMin/priceMax, matching PlacesQuery) — updating both
+  // atomically avoids a round trip that briefly has only one of them set.
+  function updateParams(updates: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
     }
     params.delete('page'); // filters changing means results changed — back to page 1
     router.push(`/search?${params.toString()}`);
   }
+
+  const priceBucket =
+    searchParams.get('priceMin') != null || searchParams.get('priceMax') != null
+      ? `${searchParams.get('priceMin') ?? ''}-${searchParams.get('priceMax') ?? ''}`
+      : '';
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -58,6 +72,22 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
         <option value="rating">Highest rated</option>
         <option value="distance">Closest to Monrovia</option>
         <option value="name">Name (A–Z)</option>
+      </select>
+
+      <select
+        aria-label="Price"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
+        value={priceBucket}
+        onChange={(e) => {
+          const [priceMin, priceMax] = e.target.value.split('-');
+          updateParams({ priceMin: priceMin ?? '', priceMax: priceMax ?? '' });
+        }}
+      >
+        <option value="">Any price</option>
+        <option value="0-0">Free</option>
+        <option value="0-10">Under $10</option>
+        <option value="10-50">$10 – $50</option>
+        <option value="50-">$50+</option>
       </select>
 
       <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200">

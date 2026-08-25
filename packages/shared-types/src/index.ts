@@ -631,6 +631,11 @@ export interface PlacesQuery {
   // say they're open right now. A place whose hours weren't recognized by
   // the parser is never included — "we don't know" isn't "open."
   openNow?: boolean;
+  // Filters by place.estimatedCostEntry (USD). A place with no cost on
+  // file is excluded once either bound is set — same conservative stance
+  // as openNow.
+  priceMin?: number;
+  priceMax?: number;
 }
 
 // --- Admin dashboard (Tech Spec §7/§8) — mirrors api/src/admin/dto/*. ---

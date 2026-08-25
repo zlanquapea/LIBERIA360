@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { StarIcon, MapPinIcon } from '@heroicons/react/20/solid';
 import type { Place } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
-import { formatDistance, formatPlaceType, formatRating } from '@/lib/format';
+import { formatCost, formatDistance, formatPlaceType, formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon } from '@/lib/icons';
 import { VerificationBadge } from './VerificationBadge';
@@ -59,12 +59,15 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
             {place.reviewCount > 0 && <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />}
             {formatRating(place.rating, place.reviewCount)}
           </span>
-          {distance && (
-            <span className="flex items-center gap-0.5">
-              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-400" />
-              {distance}
-            </span>
-          )}
+          <span className="flex items-center gap-2">
+            {place.estimatedCostEntry != null && <span>{formatCost(place.estimatedCostEntry)}</span>}
+            {distance && (
+              <span className="flex items-center gap-0.5">
+                <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-400" />
+                {distance}
+              </span>
+            )}
+          </span>
         </div>
       </div>
     </Link>

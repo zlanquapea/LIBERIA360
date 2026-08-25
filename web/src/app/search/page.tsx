@@ -23,8 +23,22 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const sort = (first(params.sort) as PlaceSort | undefined) ?? 'featured';
   const page = Number(first(params.page) ?? '1') || 1;
   const openNow = first(params.openNow) === 'true';
+  const priceMinRaw = first(params.priceMin);
+  const priceMaxRaw = first(params.priceMax);
+  const priceMin = priceMinRaw !== undefined ? Number(priceMinRaw) : undefined;
+  const priceMax = priceMaxRaw !== undefined ? Number(priceMaxRaw) : undefined;
 
-  const query: PlacesQuery = { q, category, county, sort, page, limit: 12, openNow: openNow || undefined };
+  const query: PlacesQuery = {
+    q,
+    category,
+    county,
+    sort,
+    page,
+    limit: 12,
+    openNow: openNow || undefined,
+    priceMin,
+    priceMax,
+  };
 
   const [categories, counties, result] = await Promise.all([getCategories(), getCounties(), getPlaces(query)]);
 
@@ -35,6 +49,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (county) p.set('county', county);
     if (sort) p.set('sort', sort);
     if (openNow) p.set('openNow', 'true');
+    if (priceMinRaw !== undefined) p.set('priceMin', priceMinRaw);
+    if (priceMaxRaw !== undefined) p.set('priceMax', priceMaxRaw);
     p.set('page', String(targetPage));
     return `/search?${p.toString()}`;
   }
@@ -70,7 +86,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       </p>
 
       {result.data.length === 0 ? (
-        <ZeroResultsRecovery q={q} categories={categories} hasFilters={Boolean(category || county || openNow)} />
+        <ZeroResultsRecovery
+          q={q}
+          categories={categories}
+          hasFilters={Boolean(category || county || openNow || priceMinRaw !== undefined || priceMaxRaw !== undefined)}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {result.data.map((place) => (

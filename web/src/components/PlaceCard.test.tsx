@@ -90,4 +90,19 @@ describe('PlaceCard', () => {
     render(<PlaceCard place={{ ...BASE_PLACE, rating: 0, reviewCount: 0 }} />);
     expect(screen.getByText('Not yet rated')).toBeInTheDocument();
   });
+
+  it('shows the entry cost when the place has one on file', () => {
+    render(<PlaceCard place={{ ...BASE_PLACE, estimatedCostEntry: 5 }} />);
+    expect(screen.getByText('$5.00')).toBeInTheDocument();
+  });
+
+  it('shows "Free" rather than "$0.00" for a zero entry cost', () => {
+    render(<PlaceCard place={{ ...BASE_PLACE, estimatedCostEntry: 0 }} />);
+    expect(screen.getByText('Free')).toBeInTheDocument();
+  });
+
+  it('omits the price line entirely when no cost is on file', () => {
+    render(<PlaceCard place={BASE_PLACE} />);
+    expect(screen.queryByText('Not listed')).not.toBeInTheDocument();
+  });
 });

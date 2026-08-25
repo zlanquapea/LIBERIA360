@@ -226,6 +226,22 @@ export class PlacesService {
       });
     }
 
+    if (query.priceMin !== undefined || query.priceMax !== undefined) {
+      // A place with no cost on file is excluded rather than assumed to
+      // match — same conservative "we don't know" stance as openNow above.
+      qb.andWhere("place.estimatedCostEntry IS NOT NULL");
+      if (query.priceMin !== undefined) {
+        qb.andWhere("place.estimatedCostEntry >= :priceMin", {
+          priceMin: query.priceMin,
+        });
+      }
+      if (query.priceMax !== undefined) {
+        qb.andWhere("place.estimatedCostEntry <= :priceMax", {
+          priceMax: query.priceMax,
+        });
+      }
+    }
+
     if (query.openNow) {
       // Whether a place is open right now depends on evaluating an array
       // of {dayOfWeek, opens, closes} periods against the current day/time
