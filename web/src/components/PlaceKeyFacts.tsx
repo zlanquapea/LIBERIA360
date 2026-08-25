@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { formatCost } from '@/lib/format';
+import { isOpenAt } from '@/lib/opening-hours';
 import { ContactLink } from './ContactLink';
 import { SaveButton } from './SaveButton';
 import { ReportButton } from './ReportButton';
@@ -34,6 +35,19 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
   const hours = business?.openingHours ?? place.openingHours;
   const priceLabel = formatKeyFactsPrice(place, business);
   const isClaimed = business != null;
+
+  // structuredHours is only ever derived from Place.openingHours (see
+  // api/src/places/opening-hours.ts) — never from a claimed Business's own
+  // hours, which the business owner enters as free text with no structured
+  // counterpart. So an Open now / Closed badge is only trustworthy when the
+  // text actually being displayed above is genuinely place.openingHours;
+  // if a claimed business overrode it with its own hours, we have no
+  // structured data for *those* hours and stay silent rather than compute
+  // a badge against text nobody is seeing.
+  const openNow =
+    business?.openingHours == null && place.structuredHours && place.structuredHours.length > 0
+      ? isOpenAt(place.structuredHours, new Date())
+      : null;
 
   // Priority order for the one action that gets the prominent treatment —
   // WhatsApp and phone convert best for a real human on the other end;
@@ -100,7 +114,20 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         <div className="flex items-start gap-1.5">
           <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
           {hours ? (
-            <dd className="text-slate-700 dark:text-slate-200">{hours}</dd>
+            <dd className="flex flex-wrap items-center gap-1.5 text-slate-700 dark:text-slate-200">
+              {openNow != null && (
+                <span
+                  className={
+                    openNow
+                      ? 'inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                      : 'inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                  }
+                >
+                  {openNow ? 'Open now' : 'Closed now'}
+                </span>
+              )}
+              <span>{hours}</span>
+            </dd>
           ) : (
             <MissingFact label="Hours not listed" isClaimed={isClaimed} business={business} />
           )}

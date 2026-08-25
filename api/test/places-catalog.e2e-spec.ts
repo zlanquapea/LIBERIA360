@@ -12,6 +12,11 @@ import {
   RecommendedVisitLength,
   VerificationStatus,
 } from "../src/places/entities/place.enums";
+import { OpeningPeriod } from "../src/places/opening-hours";
+
+const ALL_DAYS_ALWAYS_OPEN: OpeningPeriod[] = (
+  [0, 1, 2, 3, 4, 5, 6] as const
+).map((dayOfWeek) => ({ dayOfWeek, opens: "00:00", closes: "24:00" }));
 
 describe("Places/Counties/Categories catalog (e2e)", () => {
   let app: INestApplication;
@@ -343,6 +348,125 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
       await request(app.getHttpServer())
         .get("/api/v1/places?limit=999")
         .expect(400);
+    });
+  });
+
+  // Isolated from the shared fixture set above (its own places, inserted
+  // and removed around just this block) rather than added to the main
+  // beforeAll — a "24/7, always open" and a "never open" place would
+  // otherwise ripple into practically every count/order assertion above,
+  // same lesson as the Robertsport fixture from the search-recovery work.
+  // Real time (not a fixed clock) is used deliberately: 24/7-open and
+  // never-open are both true at any possible "now", so this needs no
+  // mocking to be deterministic.
+  describe("GET /api/v1/places?openNow=", () => {
+    let alwaysOpenId: string;
+    let neverOpenId: string;
+    let unknownHoursId: string;
+
+    beforeAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      const alwaysOpen = await placeRepo.save(
+        placeRepo.create({
+          name: "Always Open Shop",
+          slug: "always-open-shop",
+          description: "Open around the clock, every day of the week.",
+          type: PlaceType.ATTRACTION,
+          category: culture,
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.3,
+          longitude: -10.8,
+          openingHours: "24/7",
+          structuredHours: ALL_DAYS_ALWAYS_OPEN,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      alwaysOpenId = alwaysOpen.id;
+
+      const neverOpen = await placeRepo.save(
+        placeRepo.create({
+          name: "Never Open Shop",
+          slug: "never-open-shop",
+          description: "Structured hours parsed but the list is empty.",
+          type: PlaceType.ATTRACTION,
+          category: culture,
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.3,
+          longitude: -10.8,
+          structuredHours: [],
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      neverOpenId = neverOpen.id;
+
+      const unknownHours = await placeRepo.save(
+        placeRepo.create({
+          name: "Unknown Hours Shop",
+          slug: "unknown-hours-shop",
+          description: "No opening hours on file at all.",
+          type: PlaceType.ATTRACTION,
+          category: culture,
+          county: montserrado,
+          city: "Monrovia",
+          latitude: 6.3,
+          longitude: -10.8,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+        }),
+      );
+      unknownHoursId = unknownHours.id;
+    });
+
+    afterAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      await placeRepo.delete([alwaysOpenId, neverOpenId, unknownHoursId]);
+    });
+
+    it("includes a place with 24/7 structured hours no matter the actual time", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?openNow=true&q=shop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug)).toEqual([
+        "always-open-shop",
+      ]);
+    });
+
+    it("excludes a place with empty structured hours and one with no hours at all", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?openNow=true&q=shop")
+        .expect(200);
+      const slugs = res.body.data.map((p: any) => p.slug);
+      expect(slugs).not.toContain("never-open-shop");
+      expect(slugs).not.toContain("unknown-hours-shop");
+    });
+
+    it("returns every 'shop' place when openNow isn't set", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=shop")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "always-open-shop",
+        "never-open-shop",
+        "unknown-hours-shop",
+      ]);
+    });
+
+    it("returns an empty page rather than an error when nothing matches openNow", async () => {
+      // Multi-word, so this doesn't trigger the single-word category-alias
+      // match (see "does not apply category matching to a multi-word
+      // query" above) — a plain AND full-text match on all three words,
+      // which only "Never Open Shop" itself satisfies.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?openNow=true&q=never%20open%20shop")
+        .expect(200);
+      expect(res.body.data).toEqual([]);
+      expect(res.body.meta).toEqual({
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
     });
   });
 

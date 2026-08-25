@@ -322,6 +322,43 @@ describe("AdminContentService", () => {
       );
     });
 
+    it("recomputes structuredHours when openingHours is part of the update", async () => {
+      await service.updatePlace("place-1", {
+        openingHours: "Mon-Fri 9:00-18:00",
+      });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          structuredHours: expect.arrayContaining([
+            expect.objectContaining({
+              dayOfWeek: 1,
+              opens: "09:00",
+              closes: "18:00",
+            }),
+          ]),
+        }),
+      );
+    });
+
+    it("leaves structuredHours untouched when openingHours isn't part of the update", async () => {
+      placeRepo.findOne.mockResolvedValue({
+        id: "place-1",
+        name: "CeeCee Beach",
+        slug: "ceecee-beach",
+        categoryId: "category-1",
+        category: { id: "category-1", name: "Beaches" },
+        countyId: "county-1",
+        county: { id: "county-1", name: "Montserrado" },
+        openingHours: "Daily 8:00-20:00",
+        structuredHours: [{ dayOfWeek: 0, opens: "08:00", closes: "20:00" }],
+      });
+      await service.updatePlace("place-1", { name: "New name" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          structuredHours: [{ dayOfWeek: 0, opens: "08:00", closes: "20:00" }],
+        }),
+      );
+    });
+
     it("leaves the category/county relation objects alone when their ids aren't part of the update", async () => {
       await service.updatePlace("place-1", { name: "New name" });
       expect(placeRepo.save).toHaveBeenCalledWith(

@@ -22,8 +22,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const county = first(params.county);
   const sort = (first(params.sort) as PlaceSort | undefined) ?? 'featured';
   const page = Number(first(params.page) ?? '1') || 1;
+  const openNow = first(params.openNow) === 'true';
 
-  const query: PlacesQuery = { q, category, county, sort, page, limit: 12 };
+  const query: PlacesQuery = { q, category, county, sort, page, limit: 12, openNow: openNow || undefined };
 
   const [categories, counties, result] = await Promise.all([getCategories(), getCounties(), getPlaces(query)]);
 
@@ -33,6 +34,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (category) p.set('category', category);
     if (county) p.set('county', county);
     if (sort) p.set('sort', sort);
+    if (openNow) p.set('openNow', 'true');
     p.set('page', String(targetPage));
     return `/search?${p.toString()}`;
   }
@@ -68,7 +70,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       </p>
 
       {result.data.length === 0 ? (
-        <ZeroResultsRecovery q={q} categories={categories} hasFilters={Boolean(category || county)} />
+        <ZeroResultsRecovery q={q} categories={categories} hasFilters={Boolean(category || county || openNow)} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {result.data.map((place) => (

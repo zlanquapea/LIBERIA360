@@ -59,6 +59,16 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
         <option value="distance">Closest to Monrovia</option>
         <option value="name">Name (A–Z)</option>
       </select>
+
+      <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200">
+        <input
+          type="checkbox"
+          checked={searchParams.get('openNow') === 'true'}
+          onChange={(e) => updateParam('openNow', e.target.checked ? 'true' : '')}
+          className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-600"
+        />
+        Open now
+      </label>
     </div>
   );
 }

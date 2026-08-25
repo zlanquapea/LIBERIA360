@@ -12,6 +12,7 @@ import { Category } from "../categories/entities/category.entity";
 import { QueryPlacesDto } from "./dto/query-places.dto";
 import { CreatePlaceSubmissionDto } from "./dto/create-place-submission.dto";
 import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
+import { isOpenAt, parseOpeningHoursText } from "./opening-hours";
 
 export type PlaceWithDistance = Place & { distanceKm: number | null };
 
@@ -225,6 +226,29 @@ export class PlacesService {
       });
     }
 
+    if (query.openNow) {
+      // Whether a place is open right now depends on evaluating an array
+      // of {dayOfWeek, opens, closes} periods against the current day/time
+      // — awkward to express as a single SQL predicate (and this catalog
+      // is small enough that it doesn't need to be, same tradeoff as the
+      // Haversine distance calc above). Fetch the id + structuredHours for
+      // every row the *other* filters already narrowed down to, decide
+      // open-now in plain JS, then constrain the real query to just those
+      // ids before it computes its (still correctly paginated) count/page.
+      const candidates = await qb
+        .clone()
+        .select(["place.id", "place.structuredHours"])
+        .getMany();
+      const now = new Date();
+      const openNowIds = candidates
+        .filter((p) => isOpenAt(p.structuredHours, now))
+        .map((p) => p.id);
+      if (openNowIds.length === 0) {
+        return { data: [], meta: { total: 0, page, limit, totalPages: 1 } };
+      }
+      qb.andWhere("place.id IN (:...openNowIds)", { openNowIds });
+    }
+
     // Count against the filtered-but-unpaginated query before adding
     // select/order-by, which getCount() ignores anyway.
     const total = await qb.getCount();
@@ -342,6 +366,7 @@ export class PlacesService {
       images: dto.images ?? [],
       videos: dto.videos ?? [],
       openingHours: dto.openingHours ?? null,
+      structuredHours: parseOpeningHoursText(dto.openingHours),
       contactPhone: dto.contactPhone ?? null,
       whatsapp: dto.whatsapp ?? null,
       website: dto.website ?? null,
@@ -381,6 +406,9 @@ export class PlacesService {
     }
 
     Object.assign(place, dto);
+    if (dto.openingHours !== undefined) {
+      place.structuredHours = parseOpeningHoursText(dto.openingHours);
+    }
     if (place.reviewStatus === PlaceReviewStatus.REJECTED) {
       place.reviewStatus = PlaceReviewStatus.SUBMITTED_FOR_REVIEW;
       place.submittedAt = new Date();

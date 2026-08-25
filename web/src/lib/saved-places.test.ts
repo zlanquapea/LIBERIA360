@@ -37,6 +37,7 @@ const PLACE: Place = {
   images: [],
   videos: [],
   openingHours: null,
+  structuredHours: null,
   contactPhone: null,
   whatsapp: null,
   website: null,

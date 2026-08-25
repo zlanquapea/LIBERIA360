@@ -111,9 +111,39 @@ describe("PlacesService.submitPlace", () => {
         images: [],
         videos: [],
         openingHours: null,
+        structuredHours: null,
         contactPhone: null,
         website: null,
       }),
+    );
+  });
+
+  it("computes structuredHours from parseable opening-hours text", async () => {
+    await service.submitPlace(OWNER_ID, {
+      ...dto,
+      openingHours: "Mon-Fri 9:00-18:00",
+    });
+    expect(placeRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openingHours: "Mon-Fri 9:00-18:00",
+        structuredHours: expect.arrayContaining([
+          expect.objectContaining({
+            dayOfWeek: 1,
+            opens: "09:00",
+            closes: "18:00",
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("leaves structuredHours null for unparseable opening-hours text", async () => {
+    await service.submitPlace(OWNER_ID, {
+      ...dto,
+      openingHours: "Closed Sundays, call ahead for holidays",
+    });
+    expect(placeRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ structuredHours: null }),
     );
   });
 });
@@ -208,6 +238,40 @@ describe("PlacesService.updateMine", () => {
     await service.updateMine(OWNER_ID, PLACE_ID, { description: "Updated." });
     expect(placeRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ reviewStatus: PlaceReviewStatus.SUSPENDED }),
+    );
+  });
+
+  it("recomputes structuredHours when openingHours is part of the update", async () => {
+    await service.updateMine(OWNER_ID, PLACE_ID, {
+      openingHours: "Daily 8:00-20:00",
+    });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        structuredHours: expect.arrayContaining([
+          expect.objectContaining({
+            dayOfWeek: 0,
+            opens: "08:00",
+            closes: "20:00",
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("leaves structuredHours untouched when openingHours isn't part of the update", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      openingHours: "Daily 8:00-20:00",
+      structuredHours: [{ dayOfWeek: 0, opens: "08:00", closes: "20:00" }],
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        structuredHours: [{ dayOfWeek: 0, opens: "08:00", closes: "20:00" }],
+      }),
     );
   });
 });
