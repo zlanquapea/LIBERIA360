@@ -15,6 +15,7 @@ import { CreatePlaceSubmissionDto } from "./dto/create-place-submission.dto";
 import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
 import { isOpenAt, parseOpeningHoursText } from "./opening-hours";
 import { parseNaturalLanguageQuery } from "./nl-query";
+import { BusinessesService } from "../businesses/businesses.service";
 
 export type PlaceWithDistance = Place & { distanceKm: number | null };
 
@@ -143,6 +144,7 @@ export class PlacesService {
     private readonly categoryRepo: Repository<Category>,
     @InjectRepository(County)
     private readonly countyRepo: Repository<County>,
+    private readonly businessesService: BusinessesService,
   ) {}
 
   /**
@@ -398,7 +400,14 @@ export class PlacesService {
   /** Self-service submission (POST /places) — a business owner listing a
    * destination that isn't in the catalog yet. Starts in
    * SUBMITTED_FOR_REVIEW, not live until an admin approves it — see
-   * PlaceReviewStatus's doc comment. */
+   * PlaceReviewStatus's doc comment. Also auto-claims the new place as a
+   * Business owned by this same user (see
+   * BusinessesService.autoClaimSubmittedPlace) — a submitter listing their
+   * own place shouldn't have to separately click "claim this listing" on
+   * the exact thing they just created. Admin/super-admin-created places
+   * (AdminContentService.createPlace) are unaffected and stay open for
+   * whoever the real owner is to claim later, same as always — this only
+   * fires for self-service submissions, where the owner is already known. */
   async submitPlace(
     userId: string,
     dto: CreatePlaceSubmissionDto,
@@ -432,6 +441,15 @@ export class PlacesService {
       submittedAt: new Date(),
     });
     const saved = await this.placeRepo.save(place);
+
+    // Never lets this secondary effect fail the primary action — the place
+    // already exists by the time this runs, and a hiccup auto-claiming it
+    // shouldn't undo that or block the response, same pattern as
+    // AuthService.register linking a pending trip invitation.
+    await this.businessesService
+      .autoClaimSubmittedPlace(userId, saved, dto)
+      .catch(() => undefined);
+
     return this.placeRepo.findOneOrFail({
       where: { id: saved.id },
       relations: ["category", "county"],

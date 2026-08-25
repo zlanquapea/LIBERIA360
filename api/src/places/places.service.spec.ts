@@ -10,6 +10,7 @@ import { Place } from "./entities/place.entity";
 import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
+import { BusinessesService } from "../businesses/businesses.service";
 
 const OWNER_ID = "owner-1";
 const STRANGER_ID = "stranger-1";
@@ -20,6 +21,11 @@ const PLACE_ID = "place-1";
 // constructor at compile() time regardless of which method is exercised.
 const emptyCategoryRepo = { find: jest.fn().mockResolvedValue([]) };
 const emptyCountyRepo = { find: jest.fn().mockResolvedValue([]) };
+// Only submitPlace ever calls this — the other describe blocks below just
+// need something here so Nest can resolve PlacesService's constructor.
+const inertBusinessesService = {
+  autoClaimSubmittedPlace: jest.fn().mockResolvedValue({}),
+};
 
 describe("buildPlaceSlug", () => {
   it("slugifies the name", async () => {
@@ -55,6 +61,7 @@ describe("PlacesService.submitPlace", () => {
     save: jest.Mock;
     findOneOrFail: jest.Mock;
   };
+  let businessesService: { autoClaimSubmittedPlace: jest.Mock };
 
   beforeEach(async () => {
     placeRepo = {
@@ -63,6 +70,11 @@ describe("PlacesService.submitPlace", () => {
       save: jest.fn((data) => Promise.resolve({ id: PLACE_ID, ...data })),
       findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
     };
+    businessesService = {
+      autoClaimSubmittedPlace: jest
+        .fn()
+        .mockResolvedValue({ id: "business-1" }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -70,6 +82,7 @@ describe("PlacesService.submitPlace", () => {
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
+        { provide: BusinessesService, useValue: businessesService },
       ],
     }).compile();
 
@@ -149,6 +162,28 @@ describe("PlacesService.submitPlace", () => {
       expect.objectContaining({ structuredHours: null }),
     );
   });
+
+  // Product decision (Aug 2026): "when a person creates a place, that
+  // account should automatically claim that particular place as the
+  // business" — no separate manual claim step for something a submitter
+  // just told us they own.
+  it("auto-claims the new place as a business owned by the submitter", async () => {
+    await service.submitPlace(OWNER_ID, dto);
+    expect(businessesService.autoClaimSubmittedPlace).toHaveBeenCalledWith(
+      OWNER_ID,
+      expect.objectContaining({ id: PLACE_ID }),
+      dto,
+    );
+  });
+
+  it("still returns the place even if auto-claiming it fails", async () => {
+    businessesService.autoClaimSubmittedPlace.mockRejectedValue(
+      new Error("boom"),
+    );
+    await expect(service.submitPlace(OWNER_ID, dto)).resolves.toEqual(
+      expect.objectContaining({ id: PLACE_ID }),
+    );
+  });
 });
 
 describe("PlacesService.updateMine", () => {
@@ -177,6 +212,7 @@ describe("PlacesService.updateMine", () => {
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
+        { provide: BusinessesService, useValue: inertBusinessesService },
       ],
     }).compile();
 
@@ -289,6 +325,7 @@ describe("PlacesService.findMine", () => {
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
+        { provide: BusinessesService, useValue: inertBusinessesService },
       ],
     }).compile();
     const service = module.get(PlacesService);
@@ -311,6 +348,7 @@ describe("PlacesService.findBySlug", () => {
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
+        { provide: BusinessesService, useValue: inertBusinessesService },
       ],
     }).compile();
     const service = module.get(PlacesService);
