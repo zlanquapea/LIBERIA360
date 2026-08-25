@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { CategoryIcon } from '@/lib/icons';
+import { CountyIcon } from '@/lib/icons';
 import { getCountyPlaces, getCounties } from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
@@ -47,7 +47,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-50">
           <span aria-hidden className="text-2xl">
-            <CategoryIcon iconKey={county.icon} className="h-6 w-6 text-brand-600 dark:text-brand-300" />
+            <CountyIcon county={county} className="h-6 w-6 text-brand-600 dark:text-brand-300" />
           </span>
           {county.name} County
         </h1>

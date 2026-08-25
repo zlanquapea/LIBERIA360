@@ -167,6 +167,53 @@ export function getIcon(key: string | null | undefined): IconComponent {
   return (key && ICON_REGISTRY[key]) || MapPinIcon;
 }
 
+// There are, and will only ever be, these 15 counties (Business Plan §9.1) —
+// pinned here by slug rather than trusted from `County.icon` in the
+// database. `County.icon` is seed-owned (see CountySeed/UpdateCountyDto's
+// comments), and a deploy only ever runs migrations, never the seed script
+// (render.yaml) — so a code change to a county's icon has no way to reach
+// a row that already exists in a live database without someone manually
+// re-running the seed, which also re-upserts the placeholder demo places
+// and isn't something to do casually against production. Keying off the
+// slug instead means the icon shown is whatever this file says, on every
+// deploy, with zero database dependency — the fix ships the moment this
+// code does. Keep this in sync with COUNTY_SEEDS in
+// api/src/database/seed-data.ts (which remains the source of truth for a
+// fresh/dev database and for any non-web consumer of the API).
+const COUNTY_ICON_KEYS: Record<string, string> = {
+  montserrado: 'MdLocationCity', // the capital — Monrovia's skyline
+  margibi: 'MdFlight', // Roberts International Airport
+  bong: 'MdSchool', // Cuttington University
+  'grand-bassa': 'MdAnchor', // Buchanan — Liberia's 2nd-largest port
+  'grand-cape-mount': 'MdSurfing', // Robertsport — internationally known surf spot
+  nimba: 'MdTerrain', // Mount Nimba, Liberia's highest peak; iron ore
+  sinoe: 'MdForest', // Sapo National Park — largest rainforest reserve
+  maryland: 'MdFort', // Cape Palmas Lighthouse, historic Harper
+  'grand-kru': 'MdSailing', // Kru people — historically famed West African seafarers
+  bomi: 'MdFactory', // Tubmanburg / Bomi Hills — early iron-ore mining
+  gbarpolu: 'MdDiamond', // artisanal gold/diamond mining
+  'grand-gedeh': 'MdPark', // dense forest, Zwedru
+  lofa: 'MdCoffee', // coffee/cocoa, Liberia's agricultural heartland
+  'river-cess': 'MdWaves', // palm oil, rural rainforest
+  'river-gee': 'MdNature', // newest county, coastal/forest border area
+};
+
+// Drop-in replacement for every `{county.icon}` render site — resolves by
+// slug first (see COUNTY_ICON_KEYS above), falling back to whatever the
+// database has for `icon` for any county not in that fixed list (there
+// shouldn't be one, but a stray/future row shouldn't render blank), and
+// from there to the same MapPinIcon default as everything else.
+export function CountyIcon({
+  county,
+  className,
+}: {
+  county: { slug: string; icon?: string | null };
+  className?: string;
+}) {
+  const Icon = getIcon(COUNTY_ICON_KEYS[county.slug] ?? county.icon);
+  return <Icon aria-hidden className={className} />;
+}
+
 // For an admin edit form's <select> — the stored value has to be one of
 // ICON_OPTIONS' keys or the browser just leaves the control on whatever
 // its first <option> happens to be, silently out of sync with the actual
