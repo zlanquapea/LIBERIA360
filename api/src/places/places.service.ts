@@ -9,10 +9,12 @@ import { Repository } from "typeorm";
 import { Place } from "./entities/place.entity";
 import { PlaceReviewStatus } from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
+import { County } from "../counties/entities/county.entity";
 import { QueryPlacesDto } from "./dto/query-places.dto";
 import { CreatePlaceSubmissionDto } from "./dto/create-place-submission.dto";
 import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
 import { isOpenAt, parseOpeningHoursText } from "./opening-hours";
+import { parseNaturalLanguageQuery } from "./nl-query";
 
 export type PlaceWithDistance = Place & { distanceKm: number | null };
 
@@ -82,7 +84,7 @@ const SEARCH_VECTOR_SQL = `
 // surface that category's places even when the free-text match on
 // name/description comes up empty. Keyed by category slug so it stays
 // correct if a category is ever renamed.
-const CATEGORY_ALIASES: Record<string, string[]> = {
+export const CATEGORY_ALIASES: Record<string, string[]> = {
   beaches: [
     "beach",
     "coast",
@@ -103,7 +105,7 @@ const CATEGORY_ALIASES: Record<string, string[]> = {
   "islands-boat-trips": ["island", "boat", "sailing", "ferry"],
 };
 
-function singularize(word: string): string {
+export function singularize(word: string): string {
   return word.length > 3 && word.endsWith("s") ? word.slice(0, -1) : word;
 }
 
@@ -139,6 +141,8 @@ export class PlacesService {
     private readonly placeRepo: Repository<Place>,
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
+    @InjectRepository(County)
+    private readonly countyRepo: Repository<County>,
   ) {}
 
   /**
@@ -163,6 +167,35 @@ export class PlacesService {
     }
     const isNearSearch = nearParamsGiven === 3;
 
+    // Natural-language intent extraction (nl-query.ts): "Find me a
+    // restaurant in Sinkor" implies category=food-dining; "things to do in
+    // Monrovia tonight" implies openNow=true. Only fills in filters the
+    // caller didn't already explicitly set, and only bothers loading
+    // categories/counties when there's a free-text query to parse at all.
+    let categories: Category[] | undefined;
+    let nlCategoryId: string | undefined;
+    let nlCountySlug: string | undefined;
+    let nlOpenNow: boolean | undefined;
+    let nlPriceMin: number | undefined;
+    let nlPriceMax: number | undefined;
+    if (query.q) {
+      categories = await this.categoryRepo.find();
+      const counties = await this.countyRepo.find();
+      const nlParsed = parseNaturalLanguageQuery(query.q, categories, counties);
+      if (nlParsed.category) {
+        nlCategoryId = categories.find((c) => c.slug === nlParsed.category)?.id;
+      }
+      nlCountySlug = nlParsed.county;
+      nlOpenNow = nlParsed.openNow;
+      nlPriceMin = nlParsed.priceMin;
+      nlPriceMax = nlParsed.priceMax;
+    }
+
+    const effectiveCounty = countySlug ?? query.county ?? nlCountySlug;
+    const effectiveOpenNow = query.openNow ?? nlOpenNow;
+    const effectivePriceMin = query.priceMin ?? nlPriceMin;
+    const effectivePriceMax = query.priceMax ?? nlPriceMax;
+
     const qb = this.placeRepo
       .createQueryBuilder("place")
       .leftJoinAndSelect("place.category", "category")
@@ -177,7 +210,6 @@ export class PlacesService {
         reviewStatus: PlaceReviewStatus.APPROVED,
       });
 
-    const effectiveCounty = countySlug ?? query.county;
     if (effectiveCounty) {
       qb.andWhere("county.slug = :countySlug", { countySlug: effectiveCounty });
     }
@@ -197,13 +229,20 @@ export class PlacesService {
     // caller needing to know tsquery's own operator syntax — the same
     // input shape a free-text search box already produces.
     if (query.q) {
-      const categories = await this.categoryRepo.find();
-      const matchedCategory = findMatchingCategory(categories, query.q);
+      const matchedCategory =
+        findMatchingCategory(categories!, query.q) ??
+        (!query.category && nlCategoryId
+          ? (categories!.find((c) => c.id === nlCategoryId) ?? null)
+          : null);
       if (matchedCategory) {
         // Union, not replace: a query like "beach" should still favor a
         // place whose name/description literally says "beach" (via
         // search_rank below) while also pulling in every other place in
         // the Beaches category that the free-text match alone would miss.
+        // This is also how an NL-detected category (e.g. "restaurant in
+        // Sinkor" → food-dining) is applied — as a union, not a strict AND
+        // — so it surfaces every restaurant rather than requiring the
+        // literal sentence to appear in a place's name/description.
         qb.andWhere(
           `(${SEARCH_VECTOR_SQL} @@ websearch_to_tsquery('english', :q) OR category.id = :matchedCategoryId)`,
           { q: query.q, matchedCategoryId: matchedCategory.id },
@@ -226,23 +265,23 @@ export class PlacesService {
       });
     }
 
-    if (query.priceMin !== undefined || query.priceMax !== undefined) {
+    if (effectivePriceMin !== undefined || effectivePriceMax !== undefined) {
       // A place with no cost on file is excluded rather than assumed to
       // match — same conservative "we don't know" stance as openNow above.
       qb.andWhere("place.estimatedCostEntry IS NOT NULL");
-      if (query.priceMin !== undefined) {
+      if (effectivePriceMin !== undefined) {
         qb.andWhere("place.estimatedCostEntry >= :priceMin", {
-          priceMin: query.priceMin,
+          priceMin: effectivePriceMin,
         });
       }
-      if (query.priceMax !== undefined) {
+      if (effectivePriceMax !== undefined) {
         qb.andWhere("place.estimatedCostEntry <= :priceMax", {
-          priceMax: query.priceMax,
+          priceMax: effectivePriceMax,
         });
       }
     }
 
-    if (query.openNow) {
+    if (effectiveOpenNow) {
       // Whether a place is open right now depends on evaluating an array
       // of {dayOfWeek, opens, closes} periods against the current day/time
       // — awkward to express as a single SQL predicate (and this catalog

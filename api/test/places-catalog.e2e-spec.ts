@@ -593,6 +593,109 @@ describe("Places/Counties/Categories catalog (e2e)", () => {
     });
   });
 
+  describe("GET /api/v1/places?q=<natural language>", () => {
+    let cultureMontserradoId: string;
+    let beachMontserradoId: string;
+    let cultureBongId: string;
+
+    beforeAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      const countyRepo = dataSource.getRepository(County);
+      const bong = await countyRepo.findOneByOrFail({ slug: "bong" });
+
+      cultureMontserradoId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "NL Culture Spot",
+            slug: "nl-culture-spot",
+            description: "A quiet historic building.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+
+      beachMontserradoId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "NL Beach Spot",
+            slug: "nl-beach-spot",
+            description: "A quiet beach.",
+            type: PlaceType.NATURE_SITE,
+            category: beaches,
+            county: montserrado,
+            city: "Monrovia",
+            latitude: 6.3,
+            longitude: -10.8,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+
+      cultureBongId = (
+        await placeRepo.save(
+          placeRepo.create({
+            name: "NL Culture Spot Bong",
+            slug: "nl-culture-spot-bong",
+            description: "A quiet historic building in Bong.",
+            type: PlaceType.ATTRACTION,
+            category: culture,
+            county: bong,
+            city: "Gbarnga",
+            latitude: 6.9,
+            longitude: -9.4,
+            verificationStatus: VerificationStatus.UNVERIFIED,
+          }),
+        )
+      ).id;
+    });
+
+    afterAll(async () => {
+      const placeRepo = dataSource.getRepository(Place);
+      await placeRepo.delete([
+        cultureMontserradoId,
+        beachMontserradoId,
+        cultureBongId,
+      ]);
+    });
+
+    it("extracts category+county from '<category noun> in <county>' and applies both as filters", async () => {
+      // "museum" is a culture-heritage alias; "montserrado" names a real
+      // seeded county. Neither word literally appears in nl-culture-spot's
+      // own description, so it can only surface via the NL-derived
+      // category/county filters — same as the pre-existing "Test Museum"
+      // fixture (also culture-heritage + Montserrado), which appears here
+      // for the same reason. nl-beach-spot (wrong category) and
+      // nl-culture-spot-bong (wrong county) must not appear.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=museum%20in%20montserrado")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "nl-culture-spot",
+        "test-museum",
+      ]);
+    });
+
+    it("never lets an NL-detected county override an explicit ?county=", async () => {
+      // The query text names Bong, but the caller also explicitly passed
+      // county=montserrado — the explicit filter must win, so
+      // nl-culture-spot-bong (actually in Bong) must not appear despite
+      // the query text naming it.
+      const res = await request(app.getHttpServer())
+        .get("/api/v1/places?q=museum%20in%20bong&county=montserrado")
+        .expect(200);
+      expect(res.body.data.map((p: any) => p.slug).sort()).toEqual([
+        "nl-culture-spot",
+        "test-museum",
+      ]);
+    });
+  });
+
   describe("GET /api/v1/places/:slug", () => {
     it("returns the full destination profile including activities", async () => {
       const res = await request(app.getHttpServer())

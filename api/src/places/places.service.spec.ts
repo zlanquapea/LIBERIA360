@@ -9,15 +9,17 @@ import {
 import { Place } from "./entities/place.entity";
 import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
+import { County } from "../counties/entities/county.entity";
 
 const OWNER_ID = "owner-1";
 const STRANGER_ID = "stranger-1";
 const PLACE_ID = "place-1";
 
-// Every PlacesService test module below needs this even when the test
+// Every PlacesService test module below needs these even when the test
 // itself never touches search — Nest's DI container resolves the full
 // constructor at compile() time regardless of which method is exercised.
 const emptyCategoryRepo = { find: jest.fn().mockResolvedValue([]) };
+const emptyCountyRepo = { find: jest.fn().mockResolvedValue([]) };
 
 describe("buildPlaceSlug", () => {
   it("slugifies the name", async () => {
@@ -67,6 +69,7 @@ describe("PlacesService.submitPlace", () => {
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
+        { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
       ],
     }).compile();
 
@@ -173,6 +176,7 @@ describe("PlacesService.updateMine", () => {
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
+        { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
       ],
     }).compile();
 
@@ -284,6 +288,7 @@ describe("PlacesService.findMine", () => {
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
+        { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
       ],
     }).compile();
     const service = module.get(PlacesService);
@@ -305,6 +310,7 @@ describe("PlacesService.findBySlug", () => {
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
+        { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
       ],
     }).compile();
     const service = module.get(PlacesService);

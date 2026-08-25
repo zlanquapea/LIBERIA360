@@ -66,7 +66,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           type="search"
           name="q"
           defaultValue={q}
-          placeholder="Search places, food, activities..."
+          placeholder="Try 'restaurant in Bong' or 'things to do tonight'..."
           className="w-full px-4 py-2.5 text-sm outline-none"
         />
         <button
