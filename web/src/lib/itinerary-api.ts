@@ -1,4 +1,4 @@
-import type { AuthUser, BudgetBand, Itinerary, ItineraryDetail } from './types';
+import type { AuthUser, BudgetBand, Itinerary, ItineraryDetail, TripPreviewResponse } from './types';
 import { apiRequest, authHeader } from './http';
 
 export interface GenerateTripInput {
@@ -7,6 +7,17 @@ export interface GenerateTripInput {
   interests: string[];
   budgetBand: BudgetBand;
   title?: string;
+}
+
+// No token param, deliberately — guest-first trip planning (product review
+// readout, Aug 22, 2026) lets a visitor see a real generated route with no
+// account at all. `generateTrip` below is what "save this" turns into once
+// they do log in, called again with the same inputs.
+export function previewTrip(input: GenerateTripInput): Promise<TripPreviewResponse> {
+  return apiRequest<TripPreviewResponse>('/itineraries/preview', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export interface GenerateWeekendInput {

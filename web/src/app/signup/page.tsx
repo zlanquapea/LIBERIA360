@@ -77,7 +77,7 @@ function SignupForm() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {inviteToken
             ? "You're almost in — create an account to view and accept your trip invitation."
-            : 'Save trips, write reviews, and claim your business on LIBERIA360.'}
+            : 'Save trips, write reviews, and claim your place on LIBERIA360.'}
         </p>
       </div>
 

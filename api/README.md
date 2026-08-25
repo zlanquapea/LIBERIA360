@@ -116,7 +116,7 @@ Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any
 | `GET /counties/:id/places` | Places scoped to a county | — |
 | `GET /categories` | List categories | — |
 
-`q` runs Postgres full-text search (`websearch_to_tsquery`, weighted `name`/`description`, GIN-indexed) rather than substring matching — supports stemming, multi-word queries, and search-engine syntax (quoted phrases, `or`, leading `-` to exclude). A `q` search with no explicit `sort` ranks by relevance; `sort` otherwise defaults to `featured`.
+`q` runs Postgres full-text search (`websearch_to_tsquery`, weighted `name`/`description`, GIN-indexed) rather than substring matching — supports stemming, multi-word queries, and search-engine syntax (quoted phrases, `or`, leading `-` to exclude). A `q` search with no explicit `sort` ranks by relevance; `sort` otherwise defaults to `featured`. `q` also matches against category membership, not just `name`/`description` text: singular/plural (`beach`/`beaches`) and a small alias table (`hike` → Hiking, `food` → Food & Dining, etc.) resolve to a category and are unioned into the match, so a category name that never appears in any place's own text still returns its places instead of zero results.
 
 `GET /places`/`GET /places/:slug` only ever return an `approved` place — the same `reviewStatus` gate as `Business` (see the Businesses section below), reusing its exact enum shape (`draft`/`submitted_for_review`/`under_review`/`approved`/`rejected`/`suspended`). Every place created directly through the admin catalog (`POST /admin/places`, and every pre-existing row) defaults to `approved` — only self-service submissions start out unlisted.
 
@@ -203,6 +203,7 @@ Requires a VAPID keypair (`npx web-push generate-vapid-keys`); unconfigured, sub
 | Method & path | Description | Auth |
 |---|---|---|
 | `POST /itineraries` | Generate a multi-day trip ("Build My Liberia Trip") | JWT |
+| `POST /itineraries/preview` | Generate the same route as above, but return it unsaved — the guest-first trip planner, so a visitor with no account can see a real itinerary before deciding to log in and save it | — |
 | `POST /itineraries/weekend` | Generate a trip from a location, filtered by travel time | JWT |
 | `GET /itineraries` | List own itineraries | JWT |
 | `GET /itineraries/:id` | Itinerary detail, stops resolved to full places | Owner or collaborator |
@@ -214,7 +215,7 @@ Requires a VAPID keypair (`npx web-push generate-vapid-keys`); unconfigured, sub
 | `PATCH /itineraries/:id/stops/:placeId` | Edit stop notes | Owner or collaborator |
 | `DELETE /itineraries/:id/stops/:placeId` | Remove a stop | Owner or collaborator |
 
-Generation uses greedy nearest-neighbor sequencing. Non-members get 404 (not 403) on member-only routes.
+Generation uses greedy nearest-neighbor sequencing. Non-members get 404 (not 403) on member-only routes. `/itineraries/preview` runs the exact same candidate-selection/sequencing as `/itineraries` without persisting anything — "save this trip" after logging in is just calling `/itineraries` again with the same inputs, deterministic against unchanged catalog data, rather than a second endpoint that has to trust a client-supplied draft back into the DB.
 
 ### Trip Collaboration & Invitations
 
@@ -305,6 +306,7 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
 | `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
+| `GET /admin/places/data-quality` | Flags places with an editorial problem a review-status pass wouldn't catch: slug that no longer matches the current name (a rename left a stale, mismatched URL — e.g. a card image resolving to the wrong place), missing/too-short/placeholder description, and no photos. Registered ahead of `GET /admin/places/:id` below since Nest matches routes in declaration order |
 | `GET /admin/places/:id` | Single place by id, any review status, with `owner`, `category`, `county`, `activities` — what the review panel loads |
 | `POST` / `PATCH /admin/places` | Create/update places |
 | `DELETE /admin/places/:id` | Delete a place — blocked (409) if it still has a linked business or events | Super Admin |

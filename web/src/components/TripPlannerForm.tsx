@@ -1,29 +1,69 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { generateTrip } from '@/lib/itinerary-api';
+import { generateTrip, previewTrip } from '@/lib/itinerary-api';
+import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
-import type { BudgetBand, Category } from '@/lib/types';
+import { ItineraryStops } from './ItineraryStops';
+import type { BudgetBand, Category, TripPreviewResponse } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
 
 // "Build My Liberia Trip" (Tech Spec §4.3) — duration + interests + budget
 // generates a day-by-day route server-side (nearest-neighbor sequencing
-// from Monrovia); this form just collects the intake.
-export function TripPlannerForm({ categories }: { categories: Category[] }) {
+// from Monrovia).
+//
+// Guest-first (product review readout, Aug 22, 2026): a visitor with no
+// account still gets a real generated route from this same form, via the
+// unauthenticated /itineraries/preview endpoint — nothing is saved. Only
+// "Log in to save this trip" asks for an account, and it hands the exact
+// same inputs to the normal save endpoint afterward (see
+// pending-trip-draft.ts), so what they see here is what they get.
+export function TripPlannerForm({
+  categories,
+  initialInterests,
+}: {
+  categories: Category[];
+  initialInterests?: string[];
+}) {
   const router = useRouter();
   const { user, token, ready } = useAuth();
 
   const [durationDays, setDurationDays] = useState(3);
   const [budgetBand, setBudgetBand] = useState<BudgetBand>('moderate');
-  const [interests, setInterests] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>(initialInterests ?? []);
   const [title, setTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<TripPreviewResponse | null>(null);
+  const [resuming, setResuming] = useState(false);
+  const resumedRef = useRef(false);
+
+  // Picks back up a guest-built trip the moment login finishes: if this
+  // visitor clicked "Log in to save" a minute ago, the draft they were
+  // looking at is sitting in sessionStorage, waiting to be handed to the
+  // real save endpoint now that there's a token to save it under.
+  useEffect(() => {
+    if (!ready || !user || !token || resumedRef.current) return;
+    const draft = takePendingTripDraft();
+    if (!draft) return;
+    resumedRef.current = true;
+    setDurationDays(draft.durationDays);
+    setBudgetBand(draft.budgetBand);
+    setInterests(draft.interests);
+    setTitle(draft.title ?? '');
+    setPreview(null);
+    setResuming(true);
+    generateTrip(token, draft)
+      .then((itinerary) => router.push(`/trips/${itinerary.id}`))
+      .catch((err) => {
+        setResuming(false);
+        setError(err instanceof HttpError ? err.message : 'Something went wrong saving your trip. Please try again.');
+      });
+  }, [ready, user, token, router]);
 
   function toggleInterest(slug: string) {
     setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
@@ -31,17 +71,22 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!token) return;
     setSubmitting(true);
     setError(null);
+    const input = {
+      durationDays,
+      budgetBand,
+      interests,
+      title: title.trim() || undefined,
+    };
     try {
-      const itinerary = await generateTrip(token, {
-        durationDays,
-        budgetBand,
-        interests,
-        title: title.trim() || undefined,
-      });
-      router.push(`/trips/${itinerary.id}`);
+      if (user && token) {
+        const itinerary = await generateTrip(token, input);
+        router.push(`/trips/${itinerary.id}`);
+        return;
+      }
+      const result = await previewTrip(input);
+      setPreview(result);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -49,18 +94,60 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
     }
   }
 
-  if (!ready) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
+  function handleLoginToSave() {
+    savePendingTripDraft({
+      durationDays,
+      budgetBand,
+      interests,
+      title: title.trim() || undefined,
+    });
+    router.push('/login?next=/trips/new');
   }
 
-  if (!user) {
+  if (!ready || resuming) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">{resuming ? 'Saving your trip…' : 'Loading…'}</p>;
+  }
+
+  if (preview) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          Log in
-        </Link>{' '}
-        to build a trip.
-      </p>
+      <div className="flex flex-col gap-5">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{preview.title}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {preview.durationDays} day{preview.durationDays === 1 ? '' : 's'} · {formatBudgetBand(preview.budgetBand)}
+            {preview.interests.length > 0 && ` · ${preview.interests.join(', ')}`}
+          </p>
+        </div>
+
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+          This is a preview — nothing&apos;s saved yet.
+        </p>
+
+        <ItineraryStops stops={preview.stops} />
+
+        {error && (
+          <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
+            {error}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleLoginToSave}
+            className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+          >
+            Log in to save this trip
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreview(null)}
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
+          >
+            Build a different trip
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -130,6 +217,12 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
         </div>
       </fieldset>
 
+      {!user && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          No account needed to see your route — you&apos;ll only be asked to log in if you want to save it.
+        </p>
+      )}
+
       {error && (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {error}
@@ -141,7 +234,7 @@ export function TripPlannerForm({ categories }: { categories: Category[] }) {
         disabled={submitting}
         className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
       >
-        {submitting ? 'Building your trip…' : 'Build my trip'}
+        {submitting ? 'Building your trip…' : user ? 'Build my trip' : 'Preview my trip'}
       </button>
     </form>
   );

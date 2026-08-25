@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { getCategories, getCounties, getPlaces } from '@/lib/api';
+import { findMatchingCategory } from '@/lib/category-match';
 import { PlaceCard } from '@/components/PlaceCard';
 import { SearchFilters } from '@/components/SearchFilters';
-import type { PlaceSort, PlacesQuery } from '@/lib/types';
+import type { Category, PlaceSort, PlacesQuery } from '@/lib/types';
 
 export const metadata = { title: 'Search — LIBERIA360' };
 
@@ -67,9 +68,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       </p>
 
       {result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-          No places match your search yet.
-        </p>
+        <ZeroResultsRecovery q={q} categories={categories} hasFilters={Boolean(category || county)} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {result.data.map((place) => (
@@ -109,5 +108,48 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </div>
       )}
     </main>
+  );
+}
+
+// Product review readout (Aug 22, 2026): a zero-result search used to be a
+// dead end — a bare "no places match" with no way forward besides
+// re-typing. This routes a visitor toward whatever's actually likely to
+// help: the matching category if the query is close to one (or already
+// filtered), a link to browse everything, and a way to clear an
+// over-narrow filter combination.
+function ZeroResultsRecovery({ q, categories, hasFilters }: { q?: string; categories: Category[]; hasFilters: boolean }) {
+  const suggestedCategory = q ? findMatchingCategory(categories, q) : null;
+
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
+      <p className="text-slate-500 dark:text-slate-400">
+        {q ? (
+          <>
+            No places match &ldquo;{q}&rdquo;
+            {hasFilters ? ' with these filters' : ''}.
+          </>
+        ) : (
+          'No places match these filters.'
+        )}
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {suggestedCategory && (
+          <Link
+            href={`/search?category=${suggestedCategory.slug}`}
+            className="rounded-full bg-brand-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
+          >
+            Browse {suggestedCategory.name}
+          </Link>
+        )}
+        {(q || hasFilters) && (
+          <Link
+            href="/search"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
+          >
+            Clear search
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

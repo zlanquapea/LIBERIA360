@@ -98,6 +98,15 @@ export class AdminContentController {
     return { ...result, data: result.data.map(sanitizePlace) };
   }
 
+  // Must come before GET places/:id — otherwise Nest matches
+  // "data-quality" as an :id. See AdminContentService.auditPlaceDataQuality
+  // for what this flags and why.
+  @Get("places/data-quality")
+  async getPlaceDataQuality() {
+    const issues = await this.adminContentService.auditPlaceDataQuality();
+    return issues.map((i) => ({ ...i, place: sanitizePlace(i.place) }));
+  }
+
   // Single-place admin fetch by id, works regardless of review status —
   // what the admin Places detail/review view loads (it navigates by id,
   // not the public findBySlug's approved-only slug lookup).

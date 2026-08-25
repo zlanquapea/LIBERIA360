@@ -266,7 +266,7 @@ export function BusinessClaimSection({
               onClick={() => setEditing(true)}
               className="self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
             >
-              Manage this listing (contact info, photos &amp; more)
+              Manage this place (contact info, photos &amp; more)
             </button>
           )}
         </div>
@@ -279,11 +279,11 @@ export function BusinessClaimSection({
   if (!user) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        Own this business?{' '}
+        Own this place?{' '}
         <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Log in
         </Link>{' '}
-        to claim this listing.
+        to claim this place.
       </p>
     );
   }
@@ -291,13 +291,13 @@ export function BusinessClaimSection({
   if (!showForm) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Own this business? Claim this listing to manage its contact info.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Own this place? Claim it to manage its contact info.</p>
         <button
           type="button"
           onClick={() => setShowForm(true)}
           className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
         >
-          Claim this listing
+          Claim this place
         </button>
       </div>
     );
@@ -306,7 +306,7 @@ export function BusinessClaimSection({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Business name
+        Place name
         <input
           type="text"
           required
@@ -318,7 +318,7 @@ export function BusinessClaimSection({
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Business type
+        Place type
         <select
           value={type}
           onChange={(e) => setType(e.target.value as BusinessType)}
@@ -525,7 +525,7 @@ function BusinessEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Manage listing</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Manage this place</p>
       {business.reviewStatus === 'rejected' && (
         <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-xs text-flag-700 dark:text-flag-300">
           Saving resubmits this listing for admin review.
@@ -537,7 +537,7 @@ function BusinessEditForm({
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos (rooms, pool, storefront, menu…)" />
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Business name
+        Place name
         <input
           type="text"
           required

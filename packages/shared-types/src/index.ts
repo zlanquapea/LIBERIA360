@@ -163,6 +163,13 @@ export interface PaginatedPlaces {
   };
 }
 
+// api/src/admin/admin-content.service.ts's auditPlaceDataQuality —
+// GET /admin/places/data-quality.
+export interface PlaceDataQualityIssue {
+  place: Place;
+  issues: string[];
+}
+
 // api/src/reviews/entities/review.entity.ts (sanitized — user is the
 // public shape, never a passwordHash). Targets either a Place or a
 // Creator — exactly one of placeId/creatorId is non-null, never both.
@@ -506,6 +513,22 @@ export interface ItineraryStopWithPlace {
   order: number;
   notes: string | null;
   place: Place;
+}
+
+// POST /itineraries/preview — the one itinerary endpoint that needs no
+// account (product review readout, Aug 22, 2026: "guest-first trip
+// planning" — let a visitor see a real generated route before asking them
+// to log in). Deliberately not an Itinerary/ItineraryDetail: there's no
+// id, userId, or createdAt because nothing was persisted. "Save this trip"
+// after logging in is just calling the normal generate-trip endpoint with
+// the same inputs, which is deterministic against unchanged catalog data.
+export interface TripPreviewResponse {
+  title: string;
+  kind: ItineraryKind;
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  stops: ItineraryStopWithPlace[];
 }
 
 // Collaborative trip planning (Wanderlog/TripIt-style): the owner invites

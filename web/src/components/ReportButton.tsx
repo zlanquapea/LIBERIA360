@@ -25,7 +25,19 @@ const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
 // target. Reports feed the admin moderation queue's "Flagged content"
 // section once enough independent users flag the same thing (see
 // api/README.md).
-export function ReportButton({ targetType, targetId }: { targetType: ReportTargetType; targetId: string }) {
+export function ReportButton({
+  targetType,
+  targetId,
+  label = 'Report',
+}: {
+  targetType: ReportTargetType;
+  targetId: string;
+  /** Overrides the trigger button's text — e.g. "Suggest an update" when
+   * this is embedded as the recovery action for a missing fact rather than
+   * a flag-for-moderation control. Submission behavior is unchanged either
+   * way (still lands in the same admin flagged-content queue). */
+  label?: string;
+}) {
   const { user, token } = useAuth();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>('spam');
@@ -37,7 +49,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   if (!user) return null;
 
   if (reported) {
-    return <span className="text-xs text-slate-400 dark:text-slate-400">Reported — thanks for flagging this.</span>;
+    return <span className="text-xs text-slate-400 dark:text-slate-400">Thanks — sent to the team.</span>;
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -64,7 +76,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
         className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-400 underline-offset-2 hover:text-flag-700 dark:hover:text-flag-300 hover:underline"
       >
         <FlagIcon aria-hidden className="h-3 w-3" />
-        Report
+        {label}
       </button>
     );
   }
