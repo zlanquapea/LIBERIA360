@@ -136,6 +136,16 @@ export const COUNTY_SEEDS: CountySeed[] = [
 export interface CategorySeed {
   name: string;
   slug: string;
+  // Literal Material Design pictogram where one exists (fork-and-plate for
+  // dining, a bed for hotels, a gas pump for fuel stations), matching the
+  // county icons' approach — see the CountySeed.icon comment. As with
+  // counties, this field is no longer what the live site actually renders
+  // for these 13 founding categories: CATEGORY_ICON_KEYS in
+  // web/src/lib/icons.tsx pins the same values by slug, in code, so the
+  // icon shows correctly on every deploy without a database reseed. This
+  // stays the source of truth for a fresh/dev database and any non-web API
+  // consumer, and for any *new* category an admin creates (those aren't in
+  // CATEGORY_ICON_KEYS, so they resolve from this field as normal).
   icon: string;
   description: string;
 }
@@ -144,19 +154,19 @@ export const CATEGORY_SEEDS: CategorySeed[] = [
   {
     name: "Beaches",
     slug: "beaches",
-    icon: "SunIcon",
+    icon: "MdBeachAccess",
     description: "Coastal spots for swimming, surfing, and sunsets.",
   },
   {
     name: "Waterfalls & Nature",
     slug: "waterfalls-nature",
-    icon: "GlobeAmericasIcon",
+    icon: "MdWaterDrop",
     description: "Waterfalls, rivers, and rainforest.",
   },
   {
     name: "Hiking & Adventure",
     slug: "hiking-adventure",
-    icon: "MapIcon",
+    icon: "MdHiking",
     description: "Trails, hikes, and outdoor activity.",
   },
   {
@@ -168,25 +178,25 @@ export const CATEGORY_SEEDS: CategorySeed[] = [
   {
     name: "Food & Dining",
     slug: "food-dining",
-    icon: "CakeIcon",
+    icon: "MdRestaurant",
     description: "Restaurants, street food, cafés, and bars.",
   },
   {
     name: "Nightlife",
     slug: "nightlife",
-    icon: "MoonIcon",
+    icon: "MdNightlife",
     description: "Bars, live music, and after-dark spots.",
   },
   {
     name: "Wildlife & Eco-Tourism",
     slug: "wildlife-eco-tourism",
-    icon: "GlobeAsiaAustraliaIcon",
+    icon: "MdPets",
     description: "Wetlands, wildlife, and eco-tourism sites.",
   },
   {
     name: "Hotels & Lodges",
     slug: "hotels-lodges",
-    icon: "HomeModernIcon",
+    icon: "MdHotel",
     description: "Places to stay, from guesthouses to resorts.",
   },
   {
@@ -198,7 +208,7 @@ export const CATEGORY_SEEDS: CategorySeed[] = [
   {
     name: "Islands & Boat Trips",
     slug: "islands-boat-trips",
-    icon: "LifebuoyIcon",
+    icon: "MdDirectionsBoat",
     description: "Island visits and river/boat excursions.",
   },
   // Added per external consultant review (Aug 2026): "Near Me" is only as
@@ -213,19 +223,19 @@ export const CATEGORY_SEEDS: CategorySeed[] = [
   {
     name: "Health & Pharmacies",
     slug: "health-pharmacies",
-    icon: "HeartIcon",
+    icon: "MdLocalPharmacy",
     description: "Hospitals, clinics, and pharmacies.",
   },
   {
     name: "Banks & ATMs",
     slug: "banks-atms",
-    icon: "BanknotesIcon",
+    icon: "MdAccountBalance",
     description: "Banks, ATMs, and money transfer services.",
   },
   {
     name: "Fuel Stations",
     slug: "fuel-stations",
-    icon: "TruckIcon",
+    icon: "MdLocalGasStation",
     description: "Gas/fuel stations.",
   },
 ];

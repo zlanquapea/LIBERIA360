@@ -37,7 +37,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <JsonLd data={categoryJsonLd(category, placesResult.data)} />
       <div className="flex items-center gap-3">
-        <CategoryIcon iconKey={category.icon} className="h-8 w-8 text-brand-600 dark:text-brand-300" />
+        <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-8 w-8 text-brand-600 dark:text-brand-300" />
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{category.name}</h1>
           {category.description && <p className="text-sm text-slate-500 dark:text-slate-400">{category.description}</p>}

@@ -15,13 +15,13 @@ import { SafeImage } from './SafeImage';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
 
-function pinIcon(color: string, icon: string | null, selected: boolean) {
+function pinIcon(color: string, icon: string | null, categorySlug: string, selected: boolean) {
   return L.divIcon({
     className: '',
     // Leaflet's divIcon renders a raw HTML string, not JSX, so the
     // category's icon has to be serialized to markup up front — see
     // iconSvgMarkup's doc comment.
-    html: `<div style="background:${color}" class="flex ${selected ? 'h-10 w-10' : 'h-8 w-8'} -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white shadow-md ${selected ? 'ring-2 ring-offset-1 ring-slate-900' : ''}">${iconSvgMarkup(icon, 'h-4 w-4 text-white')}</div>`,
+    html: `<div style="background:${color}" class="flex ${selected ? 'h-10 w-10' : 'h-8 w-8'} -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white shadow-md ${selected ? 'ring-2 ring-offset-1 ring-slate-900' : ''}">${iconSvgMarkup(icon, 'h-4 w-4 text-white', categorySlug)}</div>`,
     iconSize: selected ? [40, 40] : [32, 32],
     iconAnchor: selected ? [20, 20] : [16, 16],
     popupAnchor: [0, -16],
@@ -124,7 +124,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
           <Marker
             key={place.id}
             position={[place.latitude, place.longitude]}
-            icon={pinIcon(colorForCategory(place.category.slug), place.category.icon, place.id === selectedId)}
+            icon={pinIcon(colorForCategory(place.category.slug), place.category.icon, place.category.slug, place.id === selectedId)}
             eventHandlers={{ click: () => setSelectedId(place.id) }}
           >
             <Popup>
@@ -173,7 +173,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
                 }`}
                 style={active ? { backgroundColor: colorForCategory(category.slug) } : undefined}
               >
-                <CategoryIcon iconKey={category.icon} className="h-3.5 w-3.5" />
+                <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-3.5 w-3.5" />
                 {category.name}
               </button>
             );
@@ -215,7 +215,7 @@ export function ExploreMapClient({ places, categories }: { places: Place[]; cate
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"
                       style={{ backgroundColor: colorForCategory(place.category.slug) }}
                     >
-                      <CategoryIcon iconKey={place.category.icon} className="h-5 w-5 text-white" />
+                      <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-5 w-5 text-white" />
                     </div>
                   }
                 />

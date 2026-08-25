@@ -31,7 +31,7 @@ export function PlaceGallery({
         className="flex h-40 items-center justify-center rounded-2xl text-6xl"
         style={{ backgroundImage: gradientForCategory(categorySlug) }}
       >
-        <CategoryIcon iconKey={categoryIcon} className="h-14 w-14 text-white/90" />
+        <CategoryIcon iconKey={categoryIcon} categorySlug={categorySlug} className="h-14 w-14 text-white/90" />
       </div>
     );
   }
@@ -50,7 +50,7 @@ export function PlaceGallery({
               className="flex h-64 items-center justify-center text-6xl sm:h-80"
               style={{ backgroundImage: gradientForCategory(categorySlug) }}
             >
-              <CategoryIcon iconKey={categoryIcon} className="h-14 w-14 text-white/90" />
+              <CategoryIcon iconKey={categoryIcon} categorySlug={categorySlug} className="h-14 w-14 text-white/90" />
             </div>
           }
         />

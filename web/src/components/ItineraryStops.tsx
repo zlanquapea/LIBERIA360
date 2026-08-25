@@ -49,7 +49,7 @@ export function ItineraryStops({
                       className="flex min-w-0 flex-1 items-center gap-3"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg text-white">
-                        <CategoryIcon iconKey={stop.place.category.icon} className="h-4 w-4" />
+                        <CategoryIcon iconKey={stop.place.category.icon} categorySlug={stop.place.category.slug} className="h-4 w-4" />
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-900 dark:text-slate-50">{stop.place.name}</p>
