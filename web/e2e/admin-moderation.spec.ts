@@ -46,7 +46,7 @@ test('admin sees a review flagged after 3 independent reports, and can remove it
   await reviewItem.getByRole('button', { name: /report/i }).click();
   await page.getByRole('combobox').selectOption('fake');
   await page.getByRole('button', { name: 'Submit report' }).click();
-  await expect(page.getByText(/reported — thanks/i)).toBeVisible();
+  await expect(page.getByText(/thanks — sent to the team/i)).toBeVisible();
 
   // Now switch to an admin and act on the moderation queue.
   const admin = await registerUser(request, { name: 'E2E Moderation Admin', email: uniqueEmail('mod-admin') });
