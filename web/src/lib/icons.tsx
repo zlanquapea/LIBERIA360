@@ -285,7 +285,6 @@ const CATEGORY_ICON_KEYS: Record<string, string> = {
   churches: 'MdChurch',
   mosques: 'MdMosque',
   'bus-taxi-stations': 'MdDirectionsBus',
-  'hospital-clinics': 'MdLocalHospital',
   pharmacies: 'MdMedication',
   'police-stations': 'MdLocalPolice',
   'recreation-centers': 'MdFitnessCenter',
@@ -293,7 +292,17 @@ const CATEGORY_ICON_KEYS: Record<string, string> = {
   'music-arts-venues': 'MdTheaterComedy',
   'parks-gardens': 'MdPark',
   markets: 'BuildingStorefrontIcon',
+  // Hospital & Clinics — both plural and singular ("Hospital & Clinic"),
+  // in case the actual category name used the singular.
+  'hospital-clinics': 'MdLocalHospital',
+  'hospital-clinic': 'MdLocalHospital',
+  // Embassies and Consulates — every other multi-word category here
+  // ("Bus & Taxi Stations", "Health & Pharmacies", "City & Shopping") uses
+  // "&", not the spelled-out word "and", so slugify() most likely produced
+  // "embassies-consulates" (the "&" disappears into the surrounding
+  // hyphen, unlike a literal "and") rather than the guess below.
   'embassies-and-consulates': 'FlagIcon',
+  'embassies-consulates': 'FlagIcon',
 };
 
 export function getIcon(key: string | null | undefined): IconComponent {
