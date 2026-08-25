@@ -38,7 +38,7 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
               className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110"
               style={{ backgroundImage: gradientForCategory(place.category.slug) }}
             >
-              <CategoryIcon iconKey={place.category.icon} className="h-9 w-9 text-white/90" />
+              <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-9 w-9 text-white/90" />
             </div>
           }
         />

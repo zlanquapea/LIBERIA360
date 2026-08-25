@@ -122,6 +122,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
             longitude={place.longitude}
             color={colorForCategory(place.category.slug)}
             icon={place.category.icon}
+            categorySlug={place.category.slug}
           />
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">

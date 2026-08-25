@@ -31,20 +31,31 @@ import {
   TruckIcon,
 } from '@heroicons/react/24/solid';
 import {
+  MdAccountBalance,
   MdAnchor,
+  MdBeachAccess,
   MdCoffee,
   MdDiamond,
+  MdDirectionsBoat,
   MdFactory,
   MdFlight,
   MdForest,
   MdFort,
+  MdHiking,
+  MdHotel,
+  MdLocalGasStation,
+  MdLocalPharmacy,
   MdLocationCity,
   MdNature,
+  MdNightlife,
   MdPark,
+  MdPets,
+  MdRestaurant,
   MdSailing,
   MdSchool,
   MdSurfing,
   MdTerrain,
+  MdWaterDrop,
   MdWaves,
 } from 'react-icons/md';
 
@@ -123,6 +134,23 @@ export const ICON_REGISTRY: Record<string, IconComponent> = {
   MdSurfing,
   MdTerrain,
   MdWaves,
+  // Category symbols (product feedback, Aug 25, 2026 — "do the same icon
+  // thing for the categories"): swap in more literal Material icons
+  // wherever one exists — a fork-and-plate for dining, a bed for hotels,
+  // a gas pump for fuel stations — rather than settling for the nearest
+  // generic Heroicon. See CATEGORY_SEEDS in api/src/database/seed-data.ts
+  // and CATEGORY_ICON_KEYS below for which category uses which and why.
+  MdAccountBalance,
+  MdBeachAccess,
+  MdDirectionsBoat,
+  MdHiking,
+  MdHotel,
+  MdLocalGasStation,
+  MdLocalPharmacy,
+  MdNightlife,
+  MdPets,
+  MdRestaurant,
+  MdWaterDrop,
 };
 
 // The admin Category icon picker (see admin/content/CategoriesTab.tsx)
@@ -161,7 +189,50 @@ export const ICON_OPTIONS: { key: string; label: string }[] = [
   { key: 'BanknotesIcon', label: 'Cash / ATM' },
   { key: 'CreditCardIcon', label: 'Finance / payments' },
   { key: 'ShieldCheckIcon', label: 'Safety / verified' },
+  // Material additions (Aug 25, 2026) — offered alongside the Heroicons
+  // above for any category an admin creates that isn't one of the 12
+  // founding ones CATEGORY_ICON_KEYS already pins in code (see its comment
+  // below).
+  { key: 'MdBeachAccess', label: 'Beach umbrella' },
+  { key: 'MdWaterDrop', label: 'Water drop — waterfall' },
+  { key: 'MdHiking', label: 'Hiking' },
+  { key: 'MdRestaurant', label: 'Restaurant — dining' },
+  { key: 'MdNightlife', label: 'Cocktail — nightlife' },
+  { key: 'MdPets', label: 'Paw print — wildlife' },
+  { key: 'MdHotel', label: 'Bed — hotel' },
+  { key: 'MdDirectionsBoat', label: 'Boat' },
+  { key: 'MdLocalPharmacy', label: 'Pharmacy' },
+  { key: 'MdAccountBalance', label: 'Bank' },
+  { key: 'MdLocalGasStation', label: 'Gas pump — fuel' },
 ];
+
+// The 13 founding categories (see CATEGORY_SEEDS in
+// api/src/database/seed-data.ts) — pinned by slug for the same reason as
+// COUNTY_ICON_KEYS above: a code change to one of these has no way to reach
+// a row that already exists in a live database without a manual reseed,
+// which isn't something to trigger casually (see COUNTY_ICON_KEYS's
+// comment). Unlike counties, admins genuinely can create *more* categories
+// through the admin panel, each with its own icon chosen from ICON_OPTIONS
+// above — this map only overrides these 13 founding slugs, so that ability
+// is untouched for anything else. One consequence worth knowing: changing
+// one of these 13 categories' icon via the admin picker now has no visible
+// effect, the same trade CountyIcon already made — if one of these needs a
+// different icon, change it here instead of in the admin UI.
+const CATEGORY_ICON_KEYS: Record<string, string> = {
+  beaches: 'MdBeachAccess',
+  'waterfalls-nature': 'MdWaterDrop',
+  'hiking-adventure': 'MdHiking',
+  'culture-heritage': 'BuildingLibraryIcon',
+  'food-dining': 'MdRestaurant',
+  nightlife: 'MdNightlife',
+  'wildlife-eco-tourism': 'MdPets',
+  'hotels-lodges': 'MdHotel',
+  'city-shopping': 'ShoppingBagIcon',
+  'islands-boat-trips': 'MdDirectionsBoat',
+  'health-pharmacies': 'MdLocalPharmacy',
+  'banks-atms': 'MdAccountBalance',
+  'fuel-stations': 'MdLocalGasStation',
+};
 
 export function getIcon(key: string | null | undefined): IconComponent {
   return (key && ICON_REGISTRY[key]) || MapPinIcon;
@@ -223,10 +294,23 @@ export function normalizeIconKey(key: string | null | undefined): string {
   return key && ICON_REGISTRY[key] ? key : 'MapPinIcon';
 }
 
-// Drop-in replacement for every `{category.icon}` / `{county.icon}` text
-// render across the app.
-export function CategoryIcon({ iconKey, className }: { iconKey?: string | null; className?: string }) {
-  const Icon = getIcon(iconKey);
+// Drop-in replacement for every `{category.icon}` text render across the
+// app. Pass `categorySlug` (the category's slug, when the caller has the
+// full Category on hand) alongside `iconKey` so a founding category
+// resolves through CATEGORY_ICON_KEYS first — see its comment for why that
+// takes priority over whatever's in the database. `categorySlug` is
+// optional and safe to omit: a category slug not in that fixed list, or no
+// slug at all, just falls through to `iconKey` exactly as before.
+export function CategoryIcon({
+  iconKey,
+  categorySlug,
+  className,
+}: {
+  iconKey?: string | null;
+  categorySlug?: string | null;
+  className?: string;
+}) {
+  const Icon = getIcon((categorySlug && CATEGORY_ICON_KEYS[categorySlug]) || iconKey);
   return <Icon aria-hidden className={className} />;
 }
 
@@ -240,8 +324,12 @@ export function CategoryIcon({ iconKey, className }: { iconKey?: string | null; 
 // environment doesn't, and every other export from this file (CategoryIcon
 // itself, used throughout the app) has to stay usable in a unit test
 // without pulling that in.
-export function iconSvgMarkup(key: string | null | undefined, className = 'h-4 w-4'): string {
-  const Icon = getIcon(key);
+export function iconSvgMarkup(
+  key: string | null | undefined,
+  className = 'h-4 w-4',
+  categorySlug?: string | null,
+): string {
+  const Icon = getIcon((categorySlug && CATEGORY_ICON_KEYS[categorySlug]) || key);
   const { renderToStaticMarkup } = require('react-dom/server.browser');
   return renderToStaticMarkup(<Icon className={className} />);
 }

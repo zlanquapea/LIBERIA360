@@ -105,7 +105,7 @@ export function CategoriesTab({
                 >
                   <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-50">
                     <span className="flex items-center gap-1.5">
-                      <CategoryIcon iconKey={category.icon} className="h-4 w-4 shrink-0" />
+                      <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-4 w-4 shrink-0" />
                       {category.name}
                     </span>
                   </td>

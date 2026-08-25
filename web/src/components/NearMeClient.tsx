@@ -226,7 +226,7 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
                       : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
                   }`}
                 >
-                  <CategoryIcon iconKey={category.icon} className="h-4 w-4" />
+                  <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-4 w-4" />
                   {category.name}
                 </button>
               ))}
