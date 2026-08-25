@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from 'react';
+import type { ComponentType } from 'react';
 import {
   AcademicCapIcon,
   BanknotesIcon,
@@ -30,8 +30,31 @@ import {
   TicketIcon,
   TruckIcon,
 } from '@heroicons/react/24/solid';
+import {
+  MdAnchor,
+  MdCoffee,
+  MdDiamond,
+  MdFactory,
+  MdFlight,
+  MdForest,
+  MdFort,
+  MdLocationCity,
+  MdNature,
+  MdPark,
+  MdSailing,
+  MdSchool,
+  MdSurfing,
+  MdTerrain,
+  MdWaves,
+} from 'react-icons/md';
 
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+// The minimal prop contract every consumer below actually relies on — not
+// the full SVGProps<SVGSVGElement> Heroicons happen to expose. Narrowing to
+// this lets the registry hold components from more than one icon library:
+// every Heroicon's props (all optional) structurally satisfy this narrower
+// shape, and so does react-icons' IconType (also all-optional props off
+// SVGAttributes), so both slot into the same Record without a cast.
+type IconComponent = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
 // Real icon system (external consultant review, Aug 2026): `Category.icon`
 // and `County.icon` used to store a literal emoji character, rendered
@@ -79,12 +102,35 @@ export const ICON_REGISTRY: Record<string, IconComponent> = {
   SunIcon,
   TicketIcon,
   TruckIcon,
+  // County symbols (product feedback, Aug 25, 2026): "I want you to use an
+  // icon that represents the symbol of each county" — Nimba is its
+  // mountains, Montserrado is the capital, etc. Heroicons has no thematic
+  // pictograms for this (see the comment above), so these 15 come from
+  // Material Design instead, via react-icons/md. See COUNTY_SEEDS in
+  // api/src/database/seed-data.ts for which county uses which and why.
+  MdAnchor,
+  MdCoffee,
+  MdDiamond,
+  MdFactory,
+  MdFlight,
+  MdForest,
+  MdFort,
+  MdLocationCity,
+  MdNature,
+  MdPark,
+  MdSailing,
+  MdSchool,
+  MdSurfing,
+  MdTerrain,
+  MdWaves,
 };
 
-// The admin Category/County icon picker (see admin/content/CategoriesTab.tsx
-// and CountiesTab.tsx) offers exactly this set — a free-text field inviting
-// an admin to type another emoji is exactly the bug this migration fixes,
-// so the picker is a closed list, not a text input.
+// The admin Category icon picker (see admin/content/CategoriesTab.tsx)
+// offers exactly this set — a free-text field inviting an admin to type
+// another emoji is exactly the bug this migration fixes, so the picker is a
+// closed list, not a text input. County icons aren't admin-editable at all
+// (see UpdateCountyDto/CountySeed's comments) — they're seed-owned, the same
+// as a county's name and slug, so they don't need an entry here.
 export const ICON_OPTIONS: { key: string; label: string }[] = [
   { key: 'MapPinIcon', label: 'Pin (general/default)' },
   { key: 'SunIcon', label: 'Sun — beach/coast' },

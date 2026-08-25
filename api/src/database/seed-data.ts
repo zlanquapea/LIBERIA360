@@ -37,7 +37,11 @@ export interface CountySeed {
   // derived from anything else in the schema. Confidence varies: solid for
   // Montserrado/Margibi/Grand Cape Mount/Nimba; a reasonable best guess for
   // the rest, expected to get corrected over time rather than researched
-  // to certainty up front.
+  // to certainty up front. Literal Material Design pictograms (see
+  // web/src/lib/icons.tsx's ICON_REGISTRY) rather than Heroicons' generic UI
+  // set — product feedback (Aug 25, 2026) specifically asked for a symbol
+  // per county (e.g. Nimba's mountains, Montserrado's capital skyline)
+  // instead of the one-size-fits-all pin every county rendered with before.
   icon: string;
   // Safety & practical-info panel — only populated for counties actually
   // live in the catalog (rolloutStage 1). Deliberately no emergencyNumber
@@ -56,7 +60,7 @@ export const COUNTY_SEEDS: CountySeed[] = [
     name: "Montserrado",
     slug: "montserrado",
     rolloutStage: 1,
-    icon: "BuildingOfficeIcon", // the capital county — Monrovia
+    icon: "MdLocationCity", // the capital county — Monrovia's skyline
     safetyTips: [
       "Agree on the fare before getting into a shared taxi — meters aren't standard.",
       "Carry small-denomination cash (USD and Liberian dollars are both widely used); many small vendors can't take cards.",
@@ -70,7 +74,7 @@ export const COUNTY_SEEDS: CountySeed[] = [
     name: "Margibi",
     slug: "margibi",
     rolloutStage: 1,
-    icon: "PaperAirplaneIcon", // Roberts International Airport
+    icon: "MdFlight", // Roberts International Airport
     safetyTips: [
       "Roberts International Airport is well outside central Monrovia — budget real transfer time, especially at night.",
       "Agree on the fare before getting into a shared taxi — meters aren't standard.",
@@ -79,54 +83,54 @@ export const COUNTY_SEEDS: CountySeed[] = [
     localCustoms:
       "Same general etiquette as Montserrado — a warm greeting first, modest dress at religious/cultural sites, cash widely preferred over cards outside larger hotels.",
   },
-  { name: "Bong", slug: "bong", rolloutStage: 2, icon: "AcademicCapIcon" }, // Cuttington University, Gbarnga
+  { name: "Bong", slug: "bong", rolloutStage: 2, icon: "MdSchool" }, // Cuttington University, Gbarnga
   {
     name: "Grand Bassa",
     slug: "grand-bassa",
     rolloutStage: 2,
-    icon: "BuildingOffice2Icon",
+    icon: "MdAnchor",
   }, // Buchanan — Liberia's 2nd-largest port
   {
     name: "Grand Cape Mount",
     slug: "grand-cape-mount",
     rolloutStage: 2,
-    icon: "SunIcon",
+    icon: "MdSurfing",
   }, // Robertsport — internationally known surf spot
-  { name: "Nimba", slug: "nimba", rolloutStage: 3, icon: "FlagIcon" }, // Mount Nimba, Liberia's highest peak; iron ore
+  { name: "Nimba", slug: "nimba", rolloutStage: 3, icon: "MdTerrain" }, // Mount Nimba, Liberia's highest peak; iron ore
   {
     name: "Sinoe",
     slug: "sinoe",
     rolloutStage: 3,
-    icon: "GlobeEuropeAfricaIcon",
+    icon: "MdForest",
   }, // Sapo National Park — largest rainforest reserve
   {
     name: "Maryland",
     slug: "maryland",
     rolloutStage: 3,
-    icon: "BuildingLibraryIcon",
+    icon: "MdFort",
   }, // Cape Palmas Lighthouse, historic Harper
   {
     name: "Grand Kru",
     slug: "grand-kru",
     rolloutStage: 3,
-    icon: "LifebuoyIcon",
+    icon: "MdSailing",
   }, // Kru people — historically famed West African seafarers
-  { name: "Bomi", slug: "bomi", rolloutStage: 4, icon: "BeakerIcon" }, // Tubmanburg / Bomi Hills — early iron-ore mining
-  { name: "Gbarpolu", slug: "gbarpolu", rolloutStage: 4, icon: "SparklesIcon" }, // artisanal gold/diamond mining
+  { name: "Bomi", slug: "bomi", rolloutStage: 4, icon: "MdFactory" }, // Tubmanburg / Bomi Hills — early iron-ore mining
+  { name: "Gbarpolu", slug: "gbarpolu", rolloutStage: 4, icon: "MdDiamond" }, // artisanal gold/diamond mining
   {
     name: "Grand Gedeh",
     slug: "grand-gedeh",
     rolloutStage: 4,
-    icon: "GlobeAltIcon",
+    icon: "MdPark",
   }, // dense forest, Zwedru
-  { name: "Lofa", slug: "lofa", rolloutStage: 4, icon: "CakeIcon" }, // coffee/cocoa, Liberia's agricultural heartland
+  { name: "Lofa", slug: "lofa", rolloutStage: 4, icon: "MdCoffee" }, // coffee/cocoa, Liberia's agricultural heartland
   {
     name: "River Cess",
     slug: "river-cess",
     rolloutStage: 4,
-    icon: "GlobeAmericasIcon",
+    icon: "MdWaves",
   }, // palm oil, rural rainforest
-  { name: "River Gee", slug: "river-gee", rolloutStage: 4, icon: "MapIcon" }, // newest county, coastal/forest border area
+  { name: "River Gee", slug: "river-gee", rolloutStage: 4, icon: "MdNature" }, // newest county, coastal/forest border area
 ];
 
 export interface CategorySeed {
