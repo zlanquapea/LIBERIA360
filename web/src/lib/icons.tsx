@@ -34,18 +34,25 @@ import {
   MdAccountBalance,
   MdAnchor,
   MdBeachAccess,
+  MdChurch,
   MdCoffee,
   MdDiamond,
   MdDirectionsBoat,
+  MdDirectionsBus,
   MdFactory,
+  MdFitnessCenter,
   MdFlight,
   MdForest,
   MdFort,
   MdHiking,
   MdHotel,
   MdLocalGasStation,
+  MdLocalHospital,
   MdLocalPharmacy,
+  MdLocalPolice,
   MdLocationCity,
+  MdMedication,
+  MdMosque,
   MdNature,
   MdNightlife,
   MdPark,
@@ -53,8 +60,10 @@ import {
   MdRestaurant,
   MdSailing,
   MdSchool,
+  MdStadium,
   MdSurfing,
   MdTerrain,
+  MdTheaterComedy,
   MdWaterDrop,
   MdWaves,
 } from 'react-icons/md';
@@ -151,6 +160,20 @@ export const ICON_REGISTRY: Record<string, IconComponent> = {
   MdPets,
   MdRestaurant,
   MdWaterDrop,
+  // Icons for admin-created categories (Aug 25, 2026) — these aren't
+  // founding categories (see CATEGORY_ICON_KEYS below), so they only exist
+  // as ICON_OPTIONS entries for the admin picker rather than a code-level
+  // override; each one still needs picking once in Admin > Content >
+  // Categories for its icon to actually take effect.
+  MdChurch,
+  MdDirectionsBus,
+  MdFitnessCenter,
+  MdLocalHospital,
+  MdLocalPolice,
+  MdMedication,
+  MdMosque,
+  MdStadium,
+  MdTheaterComedy,
 };
 
 // The admin Category icon picker (see admin/content/CategoriesTab.tsx)
@@ -190,7 +213,7 @@ export const ICON_OPTIONS: { key: string; label: string }[] = [
   { key: 'CreditCardIcon', label: 'Finance / payments' },
   { key: 'ShieldCheckIcon', label: 'Safety / verified' },
   // Material additions (Aug 25, 2026) — offered alongside the Heroicons
-  // above for any category an admin creates that isn't one of the 12
+  // above for any category an admin creates that isn't one of the 13
   // founding ones CATEGORY_ICON_KEYS already pins in code (see its comment
   // below).
   { key: 'MdBeachAccess', label: 'Beach umbrella' },
@@ -204,6 +227,19 @@ export const ICON_OPTIONS: { key: string; label: string }[] = [
   { key: 'MdLocalPharmacy', label: 'Pharmacy' },
   { key: 'MdAccountBalance', label: 'Bank' },
   { key: 'MdLocalGasStation', label: 'Gas pump — fuel' },
+  // Admin-created categories (Aug 25, 2026) — see the ICON_REGISTRY comment
+  // above these same imports for why these are options here rather than a
+  // CATEGORY_ICON_KEYS entry.
+  { key: 'MdChurch', label: 'Church' },
+  { key: 'MdMosque', label: 'Mosque' },
+  { key: 'MdDirectionsBus', label: 'Bus — bus/taxi station' },
+  { key: 'MdLocalHospital', label: 'Hospital / clinic' },
+  { key: 'MdMedication', label: 'Pill bottle — pharmacy' },
+  { key: 'MdLocalPolice', label: 'Police' },
+  { key: 'MdFitnessCenter', label: 'Dumbbell — recreation center' },
+  { key: 'MdStadium', label: 'Stadium' },
+  { key: 'MdTheaterComedy', label: 'Theater masks — music/arts venue' },
+  { key: 'MdPark', label: 'Park / garden' },
 ];
 
 // The 13 founding categories (see CATEGORY_SEEDS in
