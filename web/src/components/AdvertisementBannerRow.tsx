@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ChatBubbleLeftRightIcon, EnvelopeIcon, GlobeAltIcon, MegaphoneIcon, PhoneIcon } from '@heroicons/react/24/outline';
+import {
+  ChatBubbleLeftRightIcon,
+  EnvelopeIcon,
+  GlobeAltIcon,
+  MegaphoneIcon,
+  PhoneIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { recordAdvertisementAnalyticsEvent } from '@/lib/analytics-api';
 import { whatsappLink } from '@/lib/contact';
 import { resolveImageUrl } from '@/lib/images';
@@ -9,13 +16,18 @@ import { ContactLink } from './ContactLink';
 import { SafeImage } from './SafeImage';
 import type { Advertisement } from '@/lib/types';
 
-// A compact "Sponsored" card — clearly labeled as an ad per platform best
-// practice (Instagram/Facebook Marketplace-style transparency: a viewer
-// should never mistake a paid placement for organic catalog content).
-// Fires a "view" impression once per mount; the primary CTA (WhatsApp is
-// preferred — the dominant contact channel in this market, same priority
-// order as PlaceKeyFacts) fires "contact_click" via ContactLink.
-export function AdvertisementCard({ ad }: { ad: Advertisement }) {
+// A single full-width "banner" row for one sponsored ad — image on the
+// left, details filling the rest, running edge to edge like the mock-up's
+// banners rather than a narrow card in a horizontal-scroll shelf. Still
+// clearly labeled "Sponsored" per platform ad-transparency norms (Instagram/
+// Facebook Marketplace-style), and dismissible via the X in the corner — a
+// viewer not interested in this particular ad can hide it without it
+// reappearing on their next visit (persistence lives in the parent
+// AdvertisementBanner, which is what actually writes to localStorage).
+// Fires a "view" impression once per mount; the primary CTA (WhatsApp,
+// preferred — same priority order as PlaceKeyFacts) fires "contact_click"
+// via ContactLink.
+export function AdvertisementBannerRow({ ad, onDismiss }: { ad: Advertisement; onDismiss: () => void }) {
   useEffect(() => {
     recordAdvertisementAnalyticsEvent(ad.id, 'view');
   }, [ad.id]);
@@ -27,27 +39,37 @@ export function AdvertisementCard({ ad }: { ad: Advertisement }) {
     'inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30';
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card">
-      <div className="h-28 overflow-hidden">
+    <div className="relative flex gap-3 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-card">
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss this ad"
+        className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+      >
+        <XMarkIcon aria-hidden className="h-4 w-4" />
+      </button>
+      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg">
         <SafeImage
           src={cover}
           alt=""
-          className="h-28 w-full object-cover"
+          className="h-20 w-20 object-cover"
           fallback={
-            <div aria-hidden className="flex h-28 items-center justify-center bg-slate-100 dark:bg-slate-800">
-              <MegaphoneIcon className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+            <div aria-hidden className="flex h-20 w-20 items-center justify-center bg-slate-100 dark:bg-slate-800">
+              <MegaphoneIcon className="h-7 w-7 text-slate-400 dark:text-slate-500" />
             </div>
           }
         />
       </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 pr-6">
         <span className="w-fit rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white dark:bg-slate-100/90 dark:text-slate-900">
           Sponsored
         </span>
-        <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50">{ad.title}</h3>
-        <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{ad.description}</p>
+        <h3 className="truncate font-display font-semibold leading-snug text-slate-900 dark:text-slate-50">
+          {ad.title}
+        </h3>
+        <p className="line-clamp-1 text-sm text-slate-600 dark:text-slate-300">{ad.description}</p>
         {ad.priceLabel && <p className="text-sm font-medium text-brand-700 dark:text-brand-300">{ad.priceLabel}</p>}
-        <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+        <div className="flex flex-wrap gap-1.5 pt-1">
           {ad.contactWhatsapp && (
             <ContactLink
               advertisementId={ad.id}
