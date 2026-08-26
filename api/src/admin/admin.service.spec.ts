@@ -31,7 +31,9 @@ const DEFAULT_APPLICATION_SETTINGS = {
   failedLoginAlertThreshold24h: 20,
 };
 
-function fakeSettingsService(overrides: Partial<typeof DEFAULT_APPLICATION_SETTINGS> = {}) {
+function fakeSettingsService(
+  overrides: Partial<typeof DEFAULT_APPLICATION_SETTINGS> = {},
+) {
   return {
     getApplicationSettings: jest
       .fn()

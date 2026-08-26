@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddApplicationSettings1787040000000
-  implements MigrationInterface
-{
+export class AddApplicationSettings1787040000000 implements MigrationInterface {
   name = "AddApplicationSettings1787040000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
