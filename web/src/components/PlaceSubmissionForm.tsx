@@ -76,12 +76,10 @@ export function PlaceSubmissionForm({
     setSubmitting(true);
     setError(null);
     try {
-      const input: SubmitPlaceInput = {
+      const shared = {
         name,
         description,
         type,
-        categoryId,
-        countyId,
         city,
         latitude,
         longitude,
@@ -92,7 +90,17 @@ export function PlaceSubmissionForm({
         whatsapp: whatsapp.trim() || undefined,
         website: website.trim() || undefined,
       };
-      const saved = place ? await updateMyPlace(token, place.id, input) : await submitPlace(token, input);
+      // categoryId/countyId are only ever sent on the initial submission —
+      // UpdateMyPlaceDto deliberately doesn't accept them (see
+      // PlacesService.updateMine's doc comment: what a place fundamentally
+      // *is* and where it lives isn't self-service-editable after the
+      // fact), and the backend's whitelist validation rejects any request
+      // body carrying a property it doesn't declare. Sending them on an
+      // edit used to 400 every "Save changes" with "property categoryId
+      // should not exist, property countyId should not exist".
+      const saved = place
+        ? await updateMyPlace(token, place.id, shared)
+        : await submitPlace(token, { ...shared, categoryId, countyId });
       onSaved(saved);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
@@ -142,7 +150,13 @@ export function PlaceSubmissionForm({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Category
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            disabled={!!place}
+            title={place ? "Category can't be changed after submission — contact an admin if this needs to change." : undefined}
+            className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+          >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -152,7 +166,13 @@ export function PlaceSubmissionForm({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           County
-          <select value={countyId} onChange={(e) => setCountyId(e.target.value)} className={inputClass}>
+          <select
+            value={countyId}
+            onChange={(e) => setCountyId(e.target.value)}
+            disabled={!!place}
+            title={place ? "County can't be changed after submission — contact an admin if this needs to change." : undefined}
+            className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+          >
             {counties.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
