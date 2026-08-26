@@ -1105,3 +1105,31 @@ export interface PlatformKpis {
   totalBookings: number;
   bookingsByStatus: Record<BookingStatus, number>;
 }
+
+// api/src/notifications/entities/notification.entity.ts — the in-app
+// notification center, shared by regular users and admins alike (see that
+// file's doc comment for why there's no separate "admin notification"
+// shape). `type` stays a string here rather than a literal union so the
+// frontend doesn't need a build-time change every time a backend trigger
+// adds a new one — the UI only ever needs `title`/`body`/`link`/`read` to
+// render a row.
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedNotifications {
+  data: Notification[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

@@ -27,10 +27,27 @@ import {
 import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
 import { SettingsService } from "../settings/settings.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const NEW_USER_WINDOW_DAYS = 7;
 
 const MODERATION_QUEUE_REVIEW_LIMIT = 20;
+
+/** The three review-status transitions that represent an actual decision on
+ * a submission, worth notifying the submitter about — UNDER_REVIEW/DRAFT/
+ * SUBMITTED_FOR_REVIEW are "still pending", not a decision, so they're
+ * deliberately excluded here. */
+const DECISION_STATUSES = new Set([
+  PlaceReviewStatus.APPROVED,
+  PlaceReviewStatus.REJECTED,
+  PlaceReviewStatus.SUSPENDED,
+]);
+
+function isReviewDecision(
+  status: PlaceReviewStatus | BusinessReviewStatus,
+): boolean {
+  return (DECISION_STATUSES as Set<string>).has(status);
+}
 
 // The freshness/report flag thresholds and windows used to be hardcoded
 // constants here — "how many independent 'no longer here'/content
@@ -107,6 +124,7 @@ export class AdminService {
     private readonly businessContentRepo: Repository<BusinessContent>,
     private readonly adminAuditService: AdminAuditService,
     private readonly settingsService: SettingsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async setPlaceVerification(
@@ -194,6 +212,22 @@ export class AdminService {
       { from: previousStatus, to: status, reason: reason ?? null },
       requestInfo,
     );
+    if (saved.ownerUserId && isReviewDecision(status)) {
+      await this.notificationsService.create(saved.ownerUserId, {
+        type: "business.review_decided",
+        title: `Your listing was ${status}`,
+        body: reason
+          ? `"${saved.name}" was ${status}: ${reason}`
+          : `"${saved.name}" was ${status}.`,
+        // linkedPlace is `eager: true` on Business, so it's already
+        // populated on `saved` — the owner manages their listing from its
+        // place page (BusinessClaimSection), there's no separate business
+        // management route.
+        link: saved.linkedPlace
+          ? `/places/${saved.linkedPlace.slug}`
+          : undefined,
+      });
+    }
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
@@ -226,6 +260,16 @@ export class AdminService {
       { from: previousStatus, to: status, reason: reason ?? null },
       requestInfo,
     );
+    if (saved.ownerUserId && isReviewDecision(status)) {
+      await this.notificationsService.create(saved.ownerUserId, {
+        type: "place.review_decided",
+        title: `Your submission was ${status}`,
+        body: reason
+          ? `"${saved.name}" was ${status}: ${reason}`
+          : `"${saved.name}" was ${status}.`,
+        link: "/account/my-places",
+      });
+    }
     return this.placeRepo.findOneOrFail({
       where: { id: saved.id },
       relations: ["category", "county", "owner"],

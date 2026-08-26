@@ -13,6 +13,13 @@ import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { CreateBookingDto } from "./dto/create-booking.dto";
 import { RespondBookingDto } from "./dto/respond-booking.dto";
+import { NotificationsService } from "../notifications/notifications.service";
+
+// Both parties manage every booking — requests they sent, and requests
+// made against a listing they own — from the same page, so every booking
+// notification links here rather than trying to guess a more specific
+// destination.
+const BOOKINGS_LINK = "/account/bookings";
 
 @Injectable()
 export class BookingsService {
@@ -23,6 +30,7 @@ export class BookingsService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Creator)
     private readonly creatorRepo: Repository<Creator>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(userId: string, dto: CreateBookingDto): Promise<Booking> {
@@ -71,7 +79,20 @@ export class BookingsService {
         notes: dto.notes ?? null,
       }),
     );
-    return this.bookingRepo.findOneOrFail({ where: { id: booking.id } });
+    const saved = await this.bookingRepo.findOneOrFail({
+      where: { id: booking.id },
+    });
+
+    const ownerUserId = getOwnerUserId(saved);
+    if (ownerUserId) {
+      await this.notificationsService.create(ownerUserId, {
+        type: "booking.requested",
+        title: "New booking request",
+        body: `${saved.guest.name} requested a booking for ${saved.requestedDate}.`,
+        link: BOOKINGS_LINK,
+      });
+    }
+    return saved;
   }
 
   /** Business/creator owner confirms or declines a pending request. */
@@ -99,6 +120,20 @@ export class BookingsService {
     booking.businessResponse = dto.message ?? null;
     booking.respondedAt = new Date();
     await this.bookingRepo.save(booking);
+
+    const listingName =
+      booking.business?.name ?? booking.creator?.name ?? "the listing";
+    await this.notificationsService.create(booking.guestUserId, {
+      type: dto.action === "confirm" ? "booking.confirmed" : "booking.declined",
+      title:
+        dto.action === "confirm" ? "Booking confirmed" : "Booking declined",
+      body:
+        dto.action === "confirm"
+          ? `${listingName} confirmed your booking for ${booking.requestedDate}.`
+          : `${listingName} declined your booking for ${booking.requestedDate}.`,
+      link: BOOKINGS_LINK,
+    });
+
     return this.bookingRepo.findOneOrFail({ where: { id: bookingId } });
   }
 

@@ -80,4 +80,17 @@ export class UsersService {
     });
     return users.map((u) => u.id);
   }
+
+  /** Every admin, including super admins — `isSuperAdmin` always implies
+   * `isAdmin: true` (see User.isSuperAdmin's doc comment), so this one
+   * query covers both tiers. Used to broadcast an in-app notification to
+   * "whoever moderates" (a new place/business pending review) rather than
+   * targeting a single admin who happens to be looking. */
+  async findAdminIds(): Promise<string[]> {
+    const admins = await this.userRepo.find({
+      where: { isAdmin: true },
+      select: ["id"],
+    });
+    return admins.map((u) => u.id);
+  }
 }

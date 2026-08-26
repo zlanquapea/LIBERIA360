@@ -11,6 +11,7 @@ import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { AppConfig } from "../config/configuration";
 import { SettingsService } from "../settings/settings.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 export interface PaginatedLoginActivity {
   data: LoginActivity[];
@@ -52,6 +53,7 @@ export class LoginActivityService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService<AppConfig, true>,
     private readonly settingsService: SettingsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async record(input: {
@@ -151,6 +153,20 @@ export class LoginActivityService {
           )
           .catch(() => undefined),
       ),
+    );
+
+    // Same alert as an in-app notification, so it's still visible to a
+    // super admin who was signed in but missed/ignores the email (or has
+    // email delivery misconfigured — see MailService's own doc comment on
+    // why that's never allowed to block anything else).
+    await this.notificationsService.createMany(
+      superAdmins.map((admin) => admin.id),
+      {
+        type: "admin.failed_login_alert",
+        title: "Failed login threshold crossed",
+        body: `${count} failed logins in the last ${windowLabel}.`,
+        link: "/admin/security/alerts",
+      },
     );
   }
 

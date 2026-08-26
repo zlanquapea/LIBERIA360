@@ -14,11 +14,18 @@ import { BusinessReviewStatus, BusinessType } from "./entities/business.enums";
 import { Place } from "../places/entities/place.entity";
 import { PlaceType } from "../places/entities/place.enums";
 import { CreatePlaceSubmissionDto } from "../places/dto/create-place-submission.dto";
+import { NotificationsService } from "../notifications/notifications.service";
+import { UsersService } from "../users/users.service";
 
 const OWNER_ID = "owner-1";
 const STRANGER_ID = "stranger-1";
 const BUSINESS_ID = "business-1";
 const PLACE_ID = "place-1";
+
+// DI-satisfying stand-ins for describe blocks that don't exercise the
+// admin-notification path — same pattern as places.service.spec.ts.
+const inertNotificationsService = { create: jest.fn(), createMany: jest.fn() };
+const inertUsersService = { findAdminIds: jest.fn().mockResolvedValue([]) };
 
 describe("BusinessesService.updateMine", () => {
   let service: BusinessesService;
@@ -27,6 +34,8 @@ describe("BusinessesService.updateMine", () => {
     findOneOrFail: jest.Mock;
     save: jest.Mock;
   };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let usersService: { findAdminIds: jest.Mock };
 
   beforeEach(async () => {
     businessRepo = {
@@ -42,12 +51,19 @@ describe("BusinessesService.updateMine", () => {
       ),
       save: jest.fn((data) => data),
     };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+    usersService = { findAdminIds: jest.fn().mockResolvedValue(["admin-1"]) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BusinessesService,
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(Place), useValue: {} },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: UsersService, useValue: usersService },
       ],
     }).compile();
 
@@ -110,6 +126,30 @@ describe("BusinessesService.updateMine", () => {
     );
   });
 
+  it("notifies admins when a rejected business is resubmitted", async () => {
+    businessRepo.findOne.mockResolvedValue({
+      id: BUSINESS_ID,
+      ownerUserId: OWNER_ID,
+      name: "Comfort Lodge",
+      images: [],
+      reviewStatus: BusinessReviewStatus.REJECTED,
+      rejectionReason: "Missing a real phone number",
+    });
+    await service.updateMine(OWNER_ID, BUSINESS_ID, { phone: "+231770000000" });
+    expect(notificationsService.createMany).toHaveBeenCalledWith(
+      ["admin-1"],
+      expect.objectContaining({
+        type: "admin.business_pending_review",
+        body: expect.stringContaining("Comfort Lodge"),
+      }),
+    );
+  });
+
+  it("does NOT notify admins for a plain edit that isn't a resubmission", async () => {
+    await service.updateMine(OWNER_ID, BUSINESS_ID, { name: "New name" });
+    expect(notificationsService.createMany).not.toHaveBeenCalled();
+  });
+
   it("does NOT auto-resubmit a SUSPENDED listing on edit", async () => {
     businessRepo.findOne.mockResolvedValue({
       id: BUSINESS_ID,
@@ -123,6 +163,7 @@ describe("BusinessesService.updateMine", () => {
     expect(businessRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ reviewStatus: BusinessReviewStatus.SUSPENDED }),
     );
+    expect(notificationsService.createMany).not.toHaveBeenCalled();
   });
 });
 
@@ -136,6 +177,8 @@ describe("BusinessesService.claimPlace", () => {
     save: jest.Mock;
   };
   let placeRepo: { findOne: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let usersService: { findAdminIds: jest.Mock };
 
   beforeEach(async () => {
     businessRepo = {
@@ -150,12 +193,21 @@ describe("BusinessesService.claimPlace", () => {
         .fn()
         .mockResolvedValue({ id: PLACE_ID, name: "CeeCee Beach" }),
     };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+    usersService = {
+      findAdminIds: jest.fn().mockResolvedValue(["admin-1", "admin-2"]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BusinessesService,
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: UsersService, useValue: usersService },
       ],
     }).compile();
 
@@ -214,6 +266,21 @@ describe("BusinessesService.claimPlace", () => {
       expect.objectContaining({ slug: "ceecee-tours-2" }),
     );
   });
+
+  it("notifies every admin that a business is pending review", async () => {
+    await service.claimPlace(OWNER_ID, {
+      placeId: PLACE_ID,
+      name: "CeeCee Tours",
+      type: BusinessType.TOUR_OPERATOR,
+    });
+    expect(notificationsService.createMany).toHaveBeenCalledWith(
+      ["admin-1", "admin-2"],
+      expect.objectContaining({
+        type: "admin.business_pending_review",
+        body: expect.stringContaining("CeeCee Tours"),
+      }),
+    );
+  });
 });
 
 describe("mapPlaceTypeToBusinessType", () => {
@@ -269,6 +336,8 @@ describe("BusinessesService.autoClaimSubmittedPlace", () => {
         BusinessesService,
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: NotificationsService, useValue: inertNotificationsService },
+        { provide: UsersService, useValue: inertUsersService },
       ],
     }).compile();
 
@@ -323,6 +392,8 @@ describe("BusinessesService public lookups", () => {
         BusinessesService,
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(Place), useValue: {} },
+        { provide: NotificationsService, useValue: inertNotificationsService },
+        { provide: UsersService, useValue: inertUsersService },
       ],
     }).compile();
     service = module.get(BusinessesService);

@@ -15,9 +15,14 @@ import { Booking } from "../bookings/entities/booking.entity";
 import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { AdminAuditService } from "./admin-audit.service";
 import { SettingsService } from "../settings/settings.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const ADMIN_ID = "admin-1";
 const PLACE_ID = "place-1";
+
+// DI-satisfying stand-in for describe blocks that don't exercise the
+// submitter-notification path.
+const inertNotificationsService = { create: jest.fn(), createMany: jest.fn() };
 
 // The defaults ApplicationSettings' columns used to be — matches what
 // the hardcoded constants this replaced used to be, so these tests
@@ -49,18 +54,24 @@ describe("AdminService.setPlaceReviewStatus", () => {
     findOneOrFail: jest.Mock;
   };
   let adminAuditService: { log: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
 
   beforeEach(async () => {
     placeRepo = {
       findOne: jest.fn().mockResolvedValue({
         id: PLACE_ID,
         name: "Kpatawee Waterfall",
+        ownerUserId: "owner-1",
         reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
       }),
       save: jest.fn((data) => Promise.resolve(data)),
       findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
     };
     adminAuditService = { log: jest.fn() };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -77,6 +88,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 
@@ -156,6 +168,61 @@ describe("AdminService.setPlaceReviewStatus", () => {
       relations: ["category", "county", "owner"],
     });
   });
+
+  it("notifies the submitter when their place is approved", async () => {
+    await service.setPlaceReviewStatus(
+      ADMIN_ID,
+      PLACE_ID,
+      PlaceReviewStatus.APPROVED,
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({
+        type: "place.review_decided",
+        body: expect.stringContaining("Kpatawee Waterfall"),
+      }),
+    );
+  });
+
+  it("notifies the submitter with the reason when their place is rejected", async () => {
+    await service.setPlaceReviewStatus(
+      ADMIN_ID,
+      PLACE_ID,
+      PlaceReviewStatus.REJECTED,
+      "Photos are too blurry",
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({
+        type: "place.review_decided",
+        body: expect.stringContaining("Photos are too blurry"),
+      }),
+    );
+  });
+
+  it("does NOT notify anyone for a still-pending transition like UNDER_REVIEW", async () => {
+    await service.setPlaceReviewStatus(
+      ADMIN_ID,
+      PLACE_ID,
+      PlaceReviewStatus.UNDER_REVIEW,
+    );
+    expect(notificationsService.create).not.toHaveBeenCalled();
+  });
+
+  it("skips notifying when the place has no owner on file", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      name: "Kpatawee Waterfall",
+      ownerUserId: null,
+      reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+    });
+    await service.setPlaceReviewStatus(
+      ADMIN_ID,
+      PLACE_ID,
+      PlaceReviewStatus.APPROVED,
+    );
+    expect(notificationsService.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("AdminService.bulkSetPlaceReviewStatus", () => {
@@ -195,6 +262,7 @@ describe("AdminService.bulkSetPlaceReviewStatus", () => {
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
         { provide: SettingsService, useValue: fakeSettingsService() },
+        { provide: NotificationsService, useValue: inertNotificationsService },
       ],
     }).compile();
 
@@ -280,6 +348,7 @@ describe("AdminService bulk review-status: business and business-content", () =>
         },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
+        { provide: NotificationsService, useValue: inertNotificationsService },
       ],
     }).compile();
 
@@ -388,6 +457,7 @@ describe("AdminService.getModerationQueue", () => {
         },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
         { provide: SettingsService, useValue: settingsService },
+        { provide: NotificationsService, useValue: inertNotificationsService },
       ],
     }).compile();
 

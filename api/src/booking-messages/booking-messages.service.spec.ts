@@ -8,6 +8,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { BookingMessagesService } from "./booking-messages.service";
 import { BookingMessage } from "./entities/booking-message.entity";
 import { Booking } from "../bookings/entities/booking.entity";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const GUEST_ID = "guest-1";
 const OWNER_ID = "owner-1";
@@ -31,6 +32,7 @@ describe("BookingMessagesService", () => {
     update: jest.Mock;
   };
   let bookingRepo: { findOne: jest.Mock };
+  let notificationsService: { create: jest.Mock };
 
   beforeEach(async () => {
     let saved: Record<string, unknown> = {};
@@ -48,12 +50,14 @@ describe("BookingMessagesService", () => {
     bookingRepo = {
       findOne: jest.fn().mockResolvedValue(BOOKING),
     };
+    notificationsService = { create: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingMessagesService,
         { provide: getRepositoryToken(BookingMessage), useValue: messageRepo },
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 
@@ -85,6 +89,19 @@ describe("BookingMessagesService", () => {
     });
   });
 
+  it("notifies the owner when the guest posts a message", async () => {
+    await service.create(GUEST_ID, BOOKING_ID, {
+      body: "What time is check-in?",
+    });
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      OWNER_ID,
+      expect.objectContaining({
+        type: "booking_message.received",
+        body: "What time is check-in?",
+      }),
+    );
+  });
+
   it("lets the business owner post a message", async () => {
     const result = await service.create(OWNER_ID, BOOKING_ID, {
       body: "Check-in is at 2pm.",
@@ -93,6 +110,19 @@ describe("BookingMessagesService", () => {
       bookingId: BOOKING_ID,
       senderUserId: OWNER_ID,
     });
+  });
+
+  it("notifies the guest when the owner posts a message", async () => {
+    await service.create(OWNER_ID, BOOKING_ID, {
+      body: "Check-in is at 2pm.",
+    });
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      GUEST_ID,
+      expect.objectContaining({
+        type: "booking_message.received",
+        body: "Check-in is at 2pm.",
+      }),
+    );
   });
 
   it("rejects a stranger reading the thread", async () => {

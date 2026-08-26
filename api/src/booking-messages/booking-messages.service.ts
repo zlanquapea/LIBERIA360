@@ -11,6 +11,7 @@ import { Booking } from "../bookings/entities/booking.entity";
 import { getOwnerUserId } from "../bookings/bookings.service";
 import { CreateBookingMessageDto } from "./dto/create-booking-message.dto";
 import { UpdateBookingMessageDto } from "./dto/update-booking-message.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class BookingMessagesService {
@@ -19,6 +20,7 @@ export class BookingMessagesService {
     private readonly messageRepo: Repository<BookingMessage>,
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(
@@ -26,7 +28,7 @@ export class BookingMessagesService {
     bookingId: string,
     dto: CreateBookingMessageDto,
   ): Promise<BookingMessage> {
-    await this.assertParticipant(userId, bookingId);
+    const booking = await this.assertParticipant(userId, bookingId);
 
     const message = await this.messageRepo.save(
       this.messageRepo.create({
@@ -35,6 +37,22 @@ export class BookingMessagesService {
         body: dto.body,
       }),
     );
+
+    // The "other side" of the conversation — a guest sending gets the
+    // owner notified, and vice versa. Never both: assertParticipant above
+    // already guarantees the sender is exactly one of the two.
+    const ownerUserId = getOwnerUserId(booking);
+    const recipientUserId =
+      userId === booking.guestUserId ? ownerUserId : booking.guestUserId;
+    if (recipientUserId) {
+      await this.notificationsService.create(recipientUserId, {
+        type: "booking_message.received",
+        title: "New message about your booking",
+        body: dto.body,
+        link: "/account/bookings",
+      });
+    }
+
     return this.messageRepo.findOneOrFail({ where: { id: message.id } });
   }
 
@@ -131,11 +149,14 @@ export class BookingMessagesService {
 
   /** Only the guest who made the booking or the business/creator owner it
    * was made against can read or post messages on it — same two parties
-   * BookingsService already trusts with the booking itself. */
+   * BookingsService already trusts with the booking itself. Returns the
+   * booking (business/creator/guest eager-loaded) so `create` can reuse
+   * it to figure out who the "other side" of the thread is, instead of
+   * fetching it a second time. */
   private async assertParticipant(
     userId: string,
     bookingId: string,
-  ): Promise<void> {
+  ): Promise<Booking> {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
     });
@@ -149,5 +170,6 @@ export class BookingMessagesService {
         "Only the guest or the listing owner can access these messages",
       );
     }
+    return booking;
   }
 }

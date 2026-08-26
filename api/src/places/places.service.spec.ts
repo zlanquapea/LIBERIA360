@@ -11,6 +11,8 @@ import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { BusinessesService } from "../businesses/businesses.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { UsersService } from "../users/users.service";
 
 const OWNER_ID = "owner-1";
 const STRANGER_ID = "stranger-1";
@@ -26,6 +28,10 @@ const emptyCountyRepo = { find: jest.fn().mockResolvedValue([]) };
 const inertBusinessesService = {
   autoClaimSubmittedPlace: jest.fn().mockResolvedValue({}),
 };
+// Same reasoning as inertBusinessesService — findMine/findBySlug never
+// notify anyone, they just need PlacesService's constructor to resolve.
+const inertNotificationsService = { create: jest.fn(), createMany: jest.fn() };
+const inertUsersService = { findAdminIds: jest.fn().mockResolvedValue([]) };
 
 describe("buildPlaceSlug", () => {
   it("slugifies the name", async () => {
@@ -62,6 +68,8 @@ describe("PlacesService.submitPlace", () => {
     findOneOrFail: jest.Mock;
   };
   let businessesService: { autoClaimSubmittedPlace: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let usersService: { findAdminIds: jest.Mock };
 
   beforeEach(async () => {
     placeRepo = {
@@ -75,6 +83,13 @@ describe("PlacesService.submitPlace", () => {
         .fn()
         .mockResolvedValue({ id: "business-1" }),
     };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+    usersService = {
+      findAdminIds: jest.fn().mockResolvedValue(["admin-1", "admin-2"]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -83,6 +98,8 @@ describe("PlacesService.submitPlace", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: businessesService },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: UsersService, useValue: usersService },
       ],
     }).compile();
 
@@ -184,6 +201,18 @@ describe("PlacesService.submitPlace", () => {
       expect.objectContaining({ id: PLACE_ID }),
     );
   });
+
+  it("notifies every admin that a place is pending review", async () => {
+    await service.submitPlace(OWNER_ID, dto);
+    expect(usersService.findAdminIds).toHaveBeenCalled();
+    expect(notificationsService.createMany).toHaveBeenCalledWith(
+      ["admin-1", "admin-2"],
+      expect.objectContaining({
+        type: "admin.place_pending_review",
+        body: expect.stringContaining(dto.name),
+      }),
+    );
+  });
 });
 
 describe("PlacesService.updateMine", () => {
@@ -193,6 +222,8 @@ describe("PlacesService.updateMine", () => {
     save: jest.Mock;
     findOneOrFail: jest.Mock;
   };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let usersService: { findAdminIds: jest.Mock };
 
   beforeEach(async () => {
     placeRepo = {
@@ -205,6 +236,13 @@ describe("PlacesService.updateMine", () => {
       save: jest.fn((data) => Promise.resolve(data)),
       findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
     };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+    usersService = {
+      findAdminIds: jest.fn().mockResolvedValue(["admin-1"]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -213,6 +251,8 @@ describe("PlacesService.updateMine", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: inertBusinessesService },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: UsersService, useValue: usersService },
       ],
     }).compile();
 
@@ -267,6 +307,26 @@ describe("PlacesService.updateMine", () => {
     );
   });
 
+  it("notifies admins when a rejected place is resubmitted", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.REJECTED,
+      rejectionReason: "Photos are too blurry",
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, { description: "Updated." });
+    expect(notificationsService.createMany).toHaveBeenCalledWith(
+      ["admin-1"],
+      expect.objectContaining({ type: "admin.place_pending_review" }),
+    );
+  });
+
+  it("does NOT notify admins for a plain edit that isn't a resubmission", async () => {
+    await service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" });
+    expect(notificationsService.createMany).not.toHaveBeenCalled();
+  });
+
   it("does NOT auto-resubmit a SUSPENDED place on edit", async () => {
     placeRepo.findOne.mockResolvedValue({
       id: PLACE_ID,
@@ -279,6 +339,7 @@ describe("PlacesService.updateMine", () => {
     expect(placeRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ reviewStatus: PlaceReviewStatus.SUSPENDED }),
     );
+    expect(notificationsService.createMany).not.toHaveBeenCalled();
   });
 
   it("recomputes structuredHours when openingHours is part of the update", async () => {
@@ -326,6 +387,8 @@ describe("PlacesService.findMine", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: inertBusinessesService },
+        { provide: NotificationsService, useValue: inertNotificationsService },
+        { provide: UsersService, useValue: inertUsersService },
       ],
     }).compile();
     const service = module.get(PlacesService);
@@ -349,6 +412,8 @@ describe("PlacesService.findBySlug", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: inertBusinessesService },
+        { provide: NotificationsService, useValue: inertNotificationsService },
+        { provide: UsersService, useValue: inertUsersService },
       ],
     }).compile();
     const service = module.get(PlacesService);

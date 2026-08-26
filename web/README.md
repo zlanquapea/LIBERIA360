@@ -77,6 +77,7 @@ npm run lint
 | Content | Reviews, business self-claim and management, self-service place submission + status tracking, creator profiles (portfolio, services, discovery directory), events, photo uploads |
 | Trip planning | Trip Planner (guest-first — no login until you save), Weekend Explorer, collaborative multi-user trip editing |
 | Marketplace | Booking requests, in-booking messaging, business analytics dashboard, featured placements/creators |
+| Notifications | Header bell (unread badge, dropdown feed, mark read/mark all read, polled every 30s) shared by regular users and admins alike, full `/notifications` history page |
 | Admin | Dashboard (KPIs w/ deltas, insights, needs-attention, recent activity), Analytics (overview/user/content/engagement/growth/reports), Content (catalog, creators, moderation, content reports, featured content), Users & Roles (all users, administrators, roles reference, activity), Security (overview, login & auth, sessions & devices, alerts, audit log), Settings (placeholders), System/Operations (live runtime status) |
 | Platform | Push notification opt-in, offline saved places, freshness reporting |
 
@@ -85,4 +86,5 @@ Admin pages (`/admin/*`) are gated client-side by `AdminGate`/`SuperAdminGate` f
 ## Known limitations
 
 - `public/logo.png` is a full circular lockup rather than an icon-only mark; it reads busy at favicon size.
+- Not every "you might want to know about this" event writes a notification yet — trip invitations still surface via the bell (folded in from `/invitations/mine`, not the notifications feed itself), while business-content approval and creator verification remain email/UI-only for now.
 - Unit test coverage (Jest) is a baseline — utilities and core components, not exhaustive. The Playwright suite covers the critical end-to-end flows (auth, search, reviews, bookings, admin moderation — see `e2e/README.md`), not every screen.

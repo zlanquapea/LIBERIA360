@@ -11,6 +11,7 @@ import { Booking } from "./entities/booking.entity";
 import { BookingStatus } from "./entities/booking.enums";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
+import { NotificationsService } from "../notifications/notifications.service";
 
 describe("BookingsService", () => {
   let service: BookingsService;
@@ -23,6 +24,7 @@ describe("BookingsService", () => {
   };
   let businessRepo: { findOne: jest.Mock; exists: jest.Mock };
   let creatorRepo: { findOne: jest.Mock; exists: jest.Mock };
+  let notificationsService: { create: jest.Mock };
 
   beforeEach(async () => {
     bookingRepo = {
@@ -40,6 +42,7 @@ describe("BookingsService", () => {
       findOne: jest.fn(),
       exists: jest.fn().mockResolvedValue(true),
     };
+    notificationsService = { create: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,6 +50,7 @@ describe("BookingsService", () => {
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(Creator), useValue: creatorRepo },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 
@@ -117,6 +121,14 @@ describe("BookingsService", () => {
 
     it("creates a booking against a creator", async () => {
       bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        id: "booking-1",
+        creatorId: "creator-1",
+        businessId: null,
+        guest: { name: "Ada" },
+        requestedDate: "2099-01-01",
+        creator: { userId: "creator-owner-1" },
+      });
       await service.create("guest-1", {
         creatorId: "creator-1",
         requestedDate: "2099-01-01",
@@ -124,6 +136,43 @@ describe("BookingsService", () => {
       expect(bookingRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ creatorId: "creator-1", businessId: null }),
       );
+    });
+
+    it("notifies the business/creator owner of a new request", async () => {
+      bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        id: "booking-1",
+        guest: { name: "Ada" },
+        requestedDate: "2099-01-01",
+        business: { ownerUserId: "owner-1" },
+      });
+      await service.create("guest-1", {
+        businessId: "biz-1",
+        requestedDate: "2099-01-01",
+      });
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        "owner-1",
+        expect.objectContaining({
+          type: "booking.requested",
+          body: expect.stringContaining("Ada"),
+        }),
+      );
+    });
+
+    it("doesn't notify anyone when the listing has no resolvable owner", async () => {
+      bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        id: "booking-1",
+        guest: { name: "Ada" },
+        requestedDate: "2099-01-01",
+        business: null,
+        creator: null,
+      });
+      await service.create("guest-1", {
+        businessId: "biz-1",
+        requestedDate: "2099-01-01",
+      });
+      expect(notificationsService.create).not.toHaveBeenCalled();
     });
   });
 
@@ -156,7 +205,9 @@ describe("BookingsService", () => {
       const booking = {
         id: "booking-1",
         status: BookingStatus.PENDING,
-        business: { ownerUserId: "owner-1" },
+        guestUserId: "guest-1",
+        requestedDate: "2099-01-01",
+        business: { ownerUserId: "owner-1", name: "CeeCee Tours" },
       };
       bookingRepo.findOne.mockResolvedValue(booking);
       bookingRepo.findOneOrFail.mockResolvedValue({
@@ -175,12 +226,21 @@ describe("BookingsService", () => {
           businessResponse: "See you then",
         }),
       );
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        "guest-1",
+        expect.objectContaining({
+          type: "booking.confirmed",
+          body: expect.stringContaining("CeeCee Tours"),
+        }),
+      );
     });
 
     it("confirms a pending booking owned by the caller creator", async () => {
       const booking = {
         id: "booking-1",
         status: BookingStatus.PENDING,
+        guestUserId: "guest-1",
+        requestedDate: "2099-01-01",
         creator: { userId: "creator-owner-1" },
       };
       bookingRepo.findOne.mockResolvedValue(booking);
@@ -195,6 +255,28 @@ describe("BookingsService", () => {
 
       expect(bookingRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ status: BookingStatus.CONFIRMED }),
+      );
+    });
+
+    it("notifies the guest when their request is declined", async () => {
+      const booking = {
+        id: "booking-1",
+        status: BookingStatus.PENDING,
+        guestUserId: "guest-1",
+        requestedDate: "2099-01-01",
+        business: { ownerUserId: "owner-1", name: "CeeCee Tours" },
+      };
+      bookingRepo.findOne.mockResolvedValue(booking);
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        ...booking,
+        status: BookingStatus.DECLINED,
+      });
+
+      await service.respond("owner-1", "booking-1", { action: "decline" });
+
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        "guest-1",
+        expect.objectContaining({ type: "booking.declined" }),
       );
     });
   });

@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { AccountLink } from './AccountLink';
+import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 
 export function Header() {
@@ -27,6 +28,7 @@ export function Header() {
           Search
         </Link>
         <ThemeToggle />
+        <NotificationBell />
         <AccountLink />
       </div>
     </header>

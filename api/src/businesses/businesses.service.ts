@@ -14,6 +14,12 @@ import { BusinessReviewStatus, BusinessType } from "./entities/business.enums";
 import { CreateBusinessDto } from "./dto/create-business.dto";
 import { UpdateBusinessDto } from "./dto/update-business.dto";
 import { slugify } from "../common/slugify";
+import { NotificationsService } from "../notifications/notifications.service";
+import { UsersService } from "../users/users.service";
+
+/** Where an admin goes to act on a pending place/business — same queue for
+ * both, so this is shared with PlacesService rather than duplicated. */
+const MODERATION_QUEUE_LINK = "/admin/content/moderation";
 
 /** Best-effort PlaceType -> BusinessType mapping for auto-claiming a
  * self-submitted place (see BusinessesService.autoClaimSubmittedPlace) —
@@ -78,7 +84,26 @@ export class BusinessesService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
   ) {}
+
+  /** Broadcasts an in-app notification to every admin (see
+   * UsersService.findAdminIds) when a business enters SUBMITTED_FOR_REVIEW —
+   * mirrors PlacesService.notifyAdminsOfPendingPlace exactly, so the two
+   * moderation queues surface the same way regardless of which listing type
+   * triggered them. */
+  private async notifyAdminsOfPendingBusiness(
+    business: Business,
+  ): Promise<void> {
+    const adminIds = await this.usersService.findAdminIds();
+    await this.notificationsService.createMany(adminIds, {
+      type: "admin.business_pending_review",
+      title: "Business pending review",
+      body: `"${business.name}" is waiting for a review decision.`,
+      link: MODERATION_QUEUE_LINK,
+    });
+  }
 
   /** Self-service claim: creates the Business record for a Place, owned by
    * the claiming user, if one doesn't already exist for it. Starts in
@@ -125,6 +150,7 @@ export class BusinessesService {
       submittedAt: new Date(),
     });
     const saved = await this.businessRepo.save(business);
+    await this.notifyAdminsOfPendingBusiness(saved);
     return this.businessRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
@@ -216,13 +242,18 @@ export class BusinessesService {
       throw new ForbiddenException("You don't manage this listing");
     }
 
+    const isResubmission =
+      business.reviewStatus === BusinessReviewStatus.REJECTED;
     Object.assign(business, dto);
-    if (business.reviewStatus === BusinessReviewStatus.REJECTED) {
+    if (isResubmission) {
       business.reviewStatus = BusinessReviewStatus.SUBMITTED_FOR_REVIEW;
       business.submittedAt = new Date();
       business.rejectionReason = null;
     }
     await this.businessRepo.save(business);
+    if (isResubmission) {
+      await this.notifyAdminsOfPendingBusiness(business);
+    }
     return this.businessRepo.findOneOrFail({ where: { id: businessId } });
   }
 
