@@ -77,12 +77,32 @@ export class AdminTeamService {
     const email = dto.email.toLowerCase();
     const existing = await this.userRepo.findOne({ where: { email } });
     if (existing) {
-      throw new ConflictException(
-        `An account already exists for "${dto.email}" — promote it from the team roster instead of creating a new one.`,
+      if (existing.passwordHash) {
+        // A real, activated account already owns this email — nothing to
+        // do here but point at the roster's promote flow instead.
+        throw new ConflictException(
+          `An account already exists for "${dto.email}" — promote it from the team roster instead of creating a new one.`,
+        );
+      }
+      // existing.passwordHash === null means this email belongs to a
+      // never-activated invite — possibly one a super admin already
+      // "revoked" via setRoles before the person ever set a password.
+      // Since that row can never log in and forgotPassword() silently
+      // no-ops on a null passwordHash, treating this as a fresh conflict
+      // would permanently squat the email with no way back in. Instead,
+      // re-invite in place: update the pending row and resend, so
+      // re-typing the same email into "New person" is exactly as good as
+      // a dedicated "resend invite" button.
+      return this.sendInvite(
+        actingUserId,
+        actingUserName,
+        existing,
+        "admin_team.created",
+        { name: dto.name, isSuperAdmin: dto.isSuperAdmin },
+        requestInfo,
       );
     }
 
-    const resetToken = generateToken();
     const user = this.userRepo.create({
       name: dto.name,
       email,
@@ -90,9 +110,71 @@ export class AdminTeamService {
       authProvider: AuthProvider.EMAIL,
       isAdmin: true,
       isSuperAdmin: dto.isSuperAdmin,
-      passwordResetTokenHash: hashToken(resetToken),
-      passwordResetTokenExpiresAt: new Date(Date.now() + SET_PASSWORD_TTL_MS),
     });
+    return this.sendInvite(
+      actingUserId,
+      actingUserName,
+      user,
+      "admin_team.created",
+      null,
+      requestInfo,
+    );
+  }
+
+  /** Re-sends a pending invite with a fresh token — for someone who
+   * hasn't set a password yet, whether that's a brand-new invite they
+   * haven't acted on, or one a super admin previously revoked. Refuses
+   * once the account is activated: at that point setRoles is the right
+   * tool, not this. */
+  async resendInvite(
+    actingUserId: string,
+    actingUserName: string,
+    targetUserId: string,
+    requestInfo?: RequestInfo,
+  ): Promise<User> {
+    const user = await this.userRepo.findOne({ where: { id: targetUserId } });
+    if (!user) {
+      throw new NotFoundException(`User "${targetUserId}" not found`);
+    }
+    if (user.passwordHash) {
+      throw new BadRequestException(
+        `${user.name} has already set a password — there's no pending invite to resend.`,
+      );
+    }
+    return this.sendInvite(
+      actingUserId,
+      actingUserName,
+      user,
+      "admin_team.invite_resent",
+      null,
+      requestInfo,
+    );
+  }
+
+  /** Shared by createAdmin (brand-new or re-invite-on-conflict) and
+   * resendInvite: stamps a fresh set-password token on `user`, saves it,
+   * fires the invite email, and audit-logs the outcome under `action`.
+   * `roleUpdate` lets createAdmin apply the name/role the form was just
+   * submitted with when re-inviting an existing pending row; resendInvite
+   * passes null to leave the existing invite's role untouched. */
+  private async sendInvite(
+    actingUserId: string,
+    actingUserName: string,
+    user: User,
+    action: "admin_team.created" | "admin_team.invite_resent",
+    roleUpdate: { name: string; isSuperAdmin: boolean } | null,
+    requestInfo?: RequestInfo,
+  ): Promise<User> {
+    if (roleUpdate) {
+      user.name = roleUpdate.name;
+      user.isAdmin = true;
+      user.isSuperAdmin = roleUpdate.isSuperAdmin;
+    }
+    const resetToken = generateToken();
+    user.passwordResetTokenHash = hashToken(resetToken);
+    user.passwordResetTokenExpiresAt = new Date(
+      Date.now() + SET_PASSWORD_TTL_MS,
+    );
     const saved = await this.userRepo.save(user);
 
     const webAppUrl = this.configService.get("webAppUrl", { infer: true });
@@ -109,7 +191,7 @@ export class AdminTeamService {
 
     await this.adminAuditService.log(
       actingUserId,
-      "admin_team.created",
+      action,
       "user",
       saved.id,
       {

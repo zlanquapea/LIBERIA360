@@ -161,6 +161,11 @@ export interface AuthUser {
   twoFactorEnabled: boolean;
   emailVerified: boolean;
   createdAt: string;
+  /** True for an admin/super-admin account created via the "New person"
+   * invite flow (AdminTeamService.createAdmin) that hasn't set a password
+   * yet. See PublicUser's doc comment — not sensitive, just an activation
+   * state. */
+  pendingActivation: boolean;
 }
 
 export interface PaginatedPlaces {

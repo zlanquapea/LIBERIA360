@@ -161,10 +161,11 @@ describe("AdminTeamService", () => {
   });
 
   describe("createAdmin", () => {
-    it("rejects an email that already has an account", async () => {
+    it("rejects an email that already has an activated account", async () => {
       userRepo.findOne.mockResolvedValue({
         id: "existing",
         email: "taken@example.com",
+        passwordHash: "some-bcrypt-hash",
       });
       await expect(
         service.createAdmin("admin-1", "Ada", {
@@ -175,6 +176,36 @@ describe("AdminTeamService", () => {
       ).rejects.toBeInstanceOf(ConflictException);
       expect(userRepo.save).not.toHaveBeenCalled();
       expect(mailService.sendAdminInvite).not.toHaveBeenCalled();
+    });
+
+    it("re-invites in place instead of conflicting when the email belongs to a pending, never-activated invite", async () => {
+      const pending = {
+        id: "pending-1",
+        name: "Old Name",
+        email: "invitee@example.com",
+        passwordHash: null,
+        isAdmin: false,
+        isSuperAdmin: false,
+      };
+      userRepo.findOne.mockResolvedValue(pending);
+      const result = await service.createAdmin("admin-1", "Ada", {
+        name: "New Name",
+        email: "invitee@example.com",
+        isSuperAdmin: true,
+      });
+
+      expect(result.name).toBe("New Name");
+      expect(result.isAdmin).toBe(true);
+      expect(result.isSuperAdmin).toBe(true);
+      expect(mailService.sendAdminInvite).toHaveBeenCalledTimes(1);
+      expect(adminAuditService.log).toHaveBeenCalledWith(
+        "admin-1",
+        "admin_team.created",
+        "user",
+        "pending-1",
+        expect.objectContaining({ name: "New Name", isSuperAdmin: true }),
+        undefined,
+      );
     });
 
     it("creates a plain admin with no password and a fresh reset token", async () => {
@@ -253,6 +284,58 @@ describe("AdminTeamService", () => {
           email: "newadmin@example.com",
           isSuperAdmin: true,
         },
+        undefined,
+      );
+    });
+  });
+
+  describe("resendInvite", () => {
+    it("rejects an unknown user", async () => {
+      userRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.resendInvite("admin-1", "Ada", "nobody"),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects once the account has already set a password", async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: "u1",
+        name: "Ada",
+        passwordHash: "some-bcrypt-hash",
+      });
+      await expect(
+        service.resendInvite("admin-1", "Ada", "u1"),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mailService.sendAdminInvite).not.toHaveBeenCalled();
+    });
+
+    it("resends with a fresh token, leaving name and role untouched", async () => {
+      const pending = {
+        id: "u1",
+        name: "Nyema",
+        email: "nyema@example.com",
+        passwordHash: null,
+        isAdmin: true,
+        isSuperAdmin: false,
+      };
+      userRepo.findOne.mockResolvedValue(pending);
+      const result = await service.resendInvite("admin-1", "Ada", "u1");
+
+      expect(result.name).toBe("Nyema");
+      expect(result.isSuperAdmin).toBe(false);
+      expect(mailService.sendAdminInvite).toHaveBeenCalledWith(
+        "nyema@example.com",
+        "Nyema",
+        "Ada",
+        false,
+        expect.stringContaining("reset-password?token="),
+      );
+      expect(adminAuditService.log).toHaveBeenCalledWith(
+        "admin-1",
+        "admin_team.invite_resent",
+        "user",
+        "u1",
+        expect.any(Object),
         undefined,
       );
     });

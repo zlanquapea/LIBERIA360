@@ -54,6 +54,21 @@ export class AdminTeamController {
     return toPublicUser(created);
   }
 
+  @Post(":userId/resend-invite")
+  async resendInvite(
+    @CurrentUser() actingUser: User,
+    @Param("userId") userId: string,
+    @Req() req: Request,
+  ) {
+    const updated = await this.adminTeamService.resendInvite(
+      actingUser.id,
+      actingUser.name,
+      userId,
+      getRequestInfo(req),
+    );
+    return toPublicUser(updated);
+  }
+
   @Patch(":userId")
   async setRoles(
     @CurrentUser() actingUser: User,

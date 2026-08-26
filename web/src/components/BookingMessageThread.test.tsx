@@ -17,6 +17,7 @@ const ME: AuthUser = {
   interests: [],
   twoFactorEnabled: false,
   emailVerified: true,
+  pendingActivation: false,
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 

@@ -14,6 +14,12 @@ export interface PublicUser {
   twoFactorEnabled: boolean;
   emailVerified: boolean;
   createdAt: Date;
+  /** True for an account created via AdminTeamService.createAdmin that
+   * hasn't set a password yet — the only path that creates a User with
+   * passwordHash: null today (registration and OAuth both require one).
+   * Not sensitive: just "can this account log in yet", used to show a
+   * pending-invite state on the Team & Access roster. */
+  pendingActivation: boolean;
 }
 
 /** Strips passwordHash, twoFactorSecret, twoFactorRecoveryCodes,
@@ -34,6 +40,7 @@ export function toPublicUser(user: User): PublicUser {
     twoFactorEnabled: user.twoFactorEnabled,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt,
+    pendingActivation: user.passwordHash === null,
   };
 }
 

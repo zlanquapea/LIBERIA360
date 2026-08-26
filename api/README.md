@@ -329,7 +329,8 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `POST /admin/system/test-email` | Send a real test email to the calling admin's own address and report the actual outcome — the fastest way to tell "SMTP isn't configured" apart from "SMTP is configured but wrong" without reading server logs | Super Admin |
 | `GET /admin/team` | List admins and super admins | Super Admin |
 | `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
-| `POST /admin/team` | Create a brand-new admin/super-admin account (no prior registration needed) and email them a set-password link | Super Admin |
+| `POST /admin/team` | Create a brand-new admin/super-admin account (no prior registration needed) and email them a set-password link — re-invites in place instead of conflicting if the email belongs to a still-pending (never-activated) invite | Super Admin |
+| `POST /admin/team/:userId/resend-invite` | Re-send a still-pending invite with a fresh set-password link | Super Admin |
 | `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |
 | `GET /admin/audit-log` | Paginated log of verification changes, role changes, sponsored-placement create/revoke, and content removal — now including the acting admin's IP and user-agent | Super Admin |
 | `GET /admin/kpis` | Platform-health numbers: users, signups (7d), places, business claim rate, reviews, bookings by status | Super Admin |

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { StarIcon } from '@heroicons/react/24/solid';
-import { UserPlusIcon, MagnifyingGlassIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, MagnifyingGlassIcon, EnvelopeIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuperAdminGate } from '@/components/SuperAdminGate';
 import { useAuth } from '@/hooks/useAuth';
-import { createAdmin, getTeamRoster, searchTeamMember, setTeamRoles } from '@/lib/admin-api';
+import { createAdmin, getTeamRoster, resendTeamInvite, searchTeamMember, setTeamRoles } from '@/lib/admin-api';
 import { HttpError } from '@/lib/http';
 import type { AuthUser } from '@/lib/types';
 
@@ -83,6 +83,21 @@ function RoleBadge({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     >
       {isSuperAdmin && <StarIcon aria-hidden className="h-3 w-3" />}
       {isSuperAdmin ? 'Super Admin' : 'Admin'}
+    </span>
+  );
+}
+
+// createAdmin's invites start with no password (see PublicUser.pendingActivation)
+// — this badge is the only thing that tells "granted access, already
+// signed in" apart from "invited, hasn't set a password yet" on the roster.
+function PendingBadge() {
+  return (
+    <span
+      title="Hasn't set a password yet — the invite email is still their only way in."
+      className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-300"
+    >
+      <ClockIcon aria-hidden className="h-3 w-3" />
+      Pending
     </span>
   );
 }
@@ -364,9 +379,10 @@ function TeamMemberRow({
   isSelf: boolean;
   onChanged: () => void;
 }) {
-  const [submitting, setSubmitting] = useState<'admin' | 'superAdmin' | 'revoke' | null>(null);
+  const [submitting, setSubmitting] = useState<'admin' | 'superAdmin' | 'revoke' | 'resend' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
+  const [resent, setResent] = useState(false);
 
   async function apply(isAdmin: boolean, isSuperAdmin: boolean, which: 'admin' | 'superAdmin' | 'revoke') {
     setSubmitting(which);
@@ -381,6 +397,19 @@ function TeamMemberRow({
     }
   }
 
+  async function resend() {
+    setSubmitting('resend');
+    setError(null);
+    try {
+      await resendTeamInvite(token, member.id);
+      setResent(true);
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
   return (
     <li className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -390,9 +419,12 @@ function TeamMemberRow({
           </p>
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">{member.email}</p>
         </div>
-        <RoleBadge isSuperAdmin={member.isSuperAdmin} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          {member.pendingActivation && <PendingBadge />}
+          <RoleBadge isSuperAdmin={member.isSuperAdmin} />
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {!member.isAdmin && (
           <button
             type="button"
@@ -413,6 +445,16 @@ function TeamMemberRow({
             {submitting === 'superAdmin' ? 'Granting…' : 'Grant Super Admin'}
           </button>
         )}
+        {member.pendingActivation && (
+          <button
+            type="button"
+            disabled={submitting !== null}
+            onClick={resend}
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
+          >
+            {submitting === 'resend' ? 'Sending…' : resent ? 'Invite resent ✓' : 'Resend invite'}
+          </button>
+        )}
         {(member.isAdmin || member.isSuperAdmin) && (
           <button
             type="button"
@@ -421,7 +463,7 @@ function TeamMemberRow({
             title={isSelf && member.isSuperAdmin ? "You can't remove your own super admin access here" : undefined}
             className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300 disabled:opacity-60"
           >
-            {submitting === 'revoke' ? 'Revoking…' : 'Revoke all access'}
+            {submitting === 'revoke' ? 'Revoking…' : member.pendingActivation ? 'Cancel invite' : 'Revoke all access'}
           </button>
         )}
       </div>
@@ -429,10 +471,14 @@ function TeamMemberRow({
 
       <ConfirmDialog
         open={confirmingRevoke}
-        title={`Revoke ${member.name}'s access?`}
-        description="This removes their Admin and Super Admin permissions — their account and everything else on it (trips, bookings, saved places) stays exactly as it is."
-        confirmLabel="Revoke access"
-        loadingLabel="Revoking…"
+        title={member.pendingActivation ? `Cancel ${member.name}'s invite?` : `Revoke ${member.name}'s access?`}
+        description={
+          member.pendingActivation
+            ? "They haven't set a password yet, so this fully withdraws the invite. You can invite this email again later — nothing about this is permanent for them."
+            : 'This removes their Admin and Super Admin permissions — their account and everything else on it (trips, bookings, saved places) stays exactly as it is.'
+        }
+        confirmLabel={member.pendingActivation ? 'Cancel invite' : 'Revoke access'}
+        loadingLabel={member.pendingActivation ? 'Cancelling…' : 'Revoking…'}
         isLoading={submitting === 'revoke'}
         error={error}
         onConfirm={() => apply(false, false, 'revoke')}

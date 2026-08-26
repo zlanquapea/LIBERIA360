@@ -382,6 +382,16 @@ export function createAdmin(
   });
 }
 
+// Re-sends a still-pending invite (someone who hasn't set a password yet)
+// with a fresh set-password link. See admin-team.service.ts's
+// resendInvite() — refuses once the account is activated.
+export function resendTeamInvite(token: string, userId: string): Promise<AuthUser> {
+  return apiRequest<AuthUser>(`/admin/team/${userId}/resend-invite`, {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
+
 // Audit log — super admin only. See api/src/admin/admin-audit.service.ts.
 export function getAuditLog(token: string, page = 1, limit = 20): Promise<PaginatedAdminActions> {
   return apiRequest<PaginatedAdminActions>(`/admin/audit-log?page=${page}&limit=${limit}`, {
