@@ -2,20 +2,18 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import { PhoneIcon, ChatBubbleLeftRightIcon, GlobeAltIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import { claimBusiness, getMyBusinesses, updateBusiness } from '@/lib/business-api';
 import { HttpError } from '@/lib/http';
-import { formatBusinessReviewStatus, formatBusinessType, formatCost } from '@/lib/format';
+import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { BUSINESS_TYPES } from '@/lib/business-categories';
-import { whatsappLink } from '@/lib/contact';
-import { resolveImageUrl } from '@/lib/images';
+import { DEFAULT_CLOSE_TIME, DEFAULT_OPEN_TIME, formatDailyHours, parseDailyHours } from '@/lib/opening-hours';
 import { VerificationBadge } from './VerificationBadge';
-import { ContactLink } from './ContactLink';
+import { DailyHoursPicker } from './DailyHoursPicker';
+import { AmenitiesPicker } from './AmenitiesPicker';
 import { PhotoManager } from './PhotoManager';
 import { SingleImageUploader } from './SingleImageUploader';
-import { SafeImage } from './SafeImage';
 import { BusinessContentManager } from './BusinessContentManager';
 import type { Business, BusinessType } from '@/lib/types';
 
@@ -91,10 +89,11 @@ export function BusinessClaimSection({
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [description, setDescription] = useState('');
-  const [openingHours, setOpeningHours] = useState('');
+  const [openTime, setOpenTime] = useState(DEFAULT_OPEN_TIME);
+  const [closeTime, setCloseTime] = useState(DEFAULT_CLOSE_TIME);
   const [priceRangeMin, setPriceRangeMin] = useState('');
   const [priceRangeMax, setPriceRangeMax] = useState('');
-  const [servicesOffered, setServicesOffered] = useState('');
+  const [servicesOffered, setServicesOffered] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,10 +132,10 @@ export function BusinessClaimSection({
         email: email.trim() || undefined,
         website: website.trim() || undefined,
         description: description.trim() || undefined,
-        openingHours: openingHours.trim() || undefined,
+        openingHours: formatDailyHours(openTime, closeTime),
         priceRangeMin: priceRangeMin ? Number(priceRangeMin) : undefined,
         priceRangeMax: priceRangeMax ? Number(priceRangeMax) : undefined,
-        servicesOffered: servicesOffered ? splitList(servicesOffered) : undefined,
+        servicesOffered: servicesOffered.length > 0 ? servicesOffered : undefined,
       });
       setBusiness(claimed);
       setShowForm(false);
@@ -167,108 +166,35 @@ export function BusinessClaimSection({
       );
     }
 
-    // Loose comparison: a field the backend omitted from the JSON response
-    // (rather than sending an explicit null) comes through as `undefined`
-    // at runtime, not `null` — `!= null` treats both as "no value" (see
-    // formatCost's doc comment for the same reasoning).
-    const hasPriceRange = business.priceRangeMin != null || business.priceRangeMax != null;
-
+    // The name/description/hours/price/amenities/contact card that used to
+    // live here duplicated what PlaceKeyFacts already shows right at the
+    // top of the page the moment anyone opens it (product feedback, Aug
+    // 2026: "this claim place with the business name and description shown
+    // to users is not important again ... show what is important"). All
+    // that's left here is the review-status banner (owner only) and a slim
+    // entry point into managing/viewing the full profile.
     return (
       <div className="flex flex-col gap-2">
         {isOwner && <ReviewStatusBanner business={business} />}
-        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="font-medium text-slate-900 dark:text-slate-50">{business.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{formatBusinessType(business.type)}</p>
-            </div>
-            <VerificationBadge status={business.verificationStatus} />
-          </div>
-          {business.images.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {business.images.map((img) => (
-                <SafeImage
-                  key={img}
-                  src={resolveImageUrl(img)}
-                  alt={`${business.name} photo`}
-                  className="h-20 w-28 shrink-0 rounded-lg object-cover"
-                  fallback={<div aria-hidden className="h-20 w-28 shrink-0 rounded-lg bg-slate-200 dark:bg-slate-700" />}
-                />
-              ))}
-            </div>
-          )}
-          {business.description && <p className="text-sm text-slate-600 dark:text-slate-300">{business.description}</p>}
-          {business.openingHours && (
-            <p className="flex items-start gap-1.5 text-sm text-slate-600 dark:text-slate-300">
-              <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-400" />
-              {business.openingHours}
-            </p>
-          )}
-          {hasPriceRange && (
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-              Price range: {formatCost(business.priceRangeMin)}
-              {business.priceRangeMax != null && ` – ${formatCost(business.priceRangeMax)}`}
-            </p>
-          )}
-          {business.servicesOffered.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {business.servicesOffered.map((service) => (
-                <span key={service} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
-                  {service}
-                </span>
-              ))}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {business.phone && (
-              <ContactLink
-                placeId={placeId}
-                href={`tel:${business.phone}`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50"
-              >
-                <PhoneIcon aria-hidden className="h-3.5 w-3.5" />
-                Call
-              </ContactLink>
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2">
+          <VerificationBadge status={business.verificationStatus} />
+          <p className="text-xs text-slate-500 dark:text-slate-400">{isOwner ? 'You manage this listing.' : 'This place has been claimed.'}</p>
+          <div className="ml-auto flex flex-wrap gap-3">
+            {business.reviewStatus === 'approved' && (
+              <Link href={`/businesses/${business.slug}`} className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline">
+                View full business profile
+              </Link>
             )}
-            {business.whatsapp && (
-              <ContactLink
-                placeId={placeId}
-                href={whatsappLink(business.whatsapp)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
               >
-                <ChatBubbleLeftRightIcon aria-hidden className="h-3.5 w-3.5" />
-                WhatsApp
-              </ContactLink>
-            )}
-            {business.website && (
-              <ContactLink
-                placeId={placeId}
-                href={business.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50"
-              >
-                <GlobeAltIcon aria-hidden className="h-3.5 w-3.5" />
-                Website
-              </ContactLink>
+                Manage this place (hours, amenities, contact info &amp; more)
+              </button>
             )}
           </div>
-          {business.reviewStatus === 'approved' && (
-            <Link href={`/businesses/${business.slug}`} className="self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline">
-              View full listing
-            </Link>
-          )}
-          {isOwner && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
-            >
-              Manage this place (contact info, photos &amp; more)
-            </button>
-          )}
         </div>
       </div>
     );
@@ -278,33 +204,40 @@ export function BusinessClaimSection({
 
   if (!user) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        Own this place?{' '}
-        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          Log in
-        </Link>{' '}
-        to claim this place.
-      </p>
+      <div className="flex flex-col gap-2">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Claim this place</h2>
+        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+          Own this place?{' '}
+          <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+            Log in
+          </Link>{' '}
+          to claim this place.
+        </p>
+      </div>
     );
   }
 
   if (!showForm) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Own this place? Claim it to manage its contact info.</p>
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-        >
-          Claim this place
-        </button>
+      <div className="flex flex-col gap-2">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Claim this place</h2>
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Own this place? Claim it to manage its contact info.</p>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
+          >
+            Claim this place
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+      <h2 className="font-semibold text-slate-900 dark:text-slate-50">Claim this place</h2>
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Place name
         <input
@@ -388,17 +321,7 @@ export function BusinessClaimSection({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Opening hours
-        <input
-          type="text"
-          placeholder="e.g. Mon–Sat 8am–9pm"
-          maxLength={1000}
-          value={openingHours}
-          onChange={(e) => setOpeningHours(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
+      <DailyHoursPicker open={openTime} close={closeTime} onChange={(o, c) => { setOpenTime(o); setCloseTime(c); }} />
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -423,16 +346,7 @@ export function BusinessClaimSection({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Services offered
-        <input
-          type="text"
-          placeholder="Airport pickup, Guided tours, Room service (comma-separated)"
-          value={servicesOffered}
-          onChange={(e) => setServicesOffered(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
+      <AmenitiesPicker value={servicesOffered} onChange={setServicesOffered} />
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Submitting a claim sends it for admin review — it won&apos;t appear publicly until approved.
@@ -488,10 +402,12 @@ function BusinessEditForm({
   const [images, setImages] = useState(business.images);
   const [logoImage, setLogoImage] = useState<string | null>(business.logoImage);
   const [videos, setVideos] = useState(business.videos.join(', '));
-  const [openingHours, setOpeningHours] = useState(business.openingHours ?? '');
+  const initialHours = parseDailyHours(business.openingHours);
+  const [openTime, setOpenTime] = useState(initialHours.open);
+  const [closeTime, setCloseTime] = useState(initialHours.close);
   const [priceRangeMin, setPriceRangeMin] = useState(business.priceRangeMin?.toString() ?? '');
   const [priceRangeMax, setPriceRangeMax] = useState(business.priceRangeMax?.toString() ?? '');
-  const [servicesOffered, setServicesOffered] = useState(business.servicesOffered.join(', '));
+  const [servicesOffered, setServicesOffered] = useState(business.servicesOffered);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -510,10 +426,10 @@ function BusinessEditForm({
         images,
         logoImage: logoImage ?? undefined,
         videos: splitList(videos),
-        openingHours: openingHours.trim() || undefined,
+        openingHours: formatDailyHours(openTime, closeTime),
         priceRangeMin: priceRangeMin ? Number(priceRangeMin) : undefined,
         priceRangeMax: priceRangeMax ? Number(priceRangeMax) : undefined,
-        servicesOffered: splitList(servicesOffered),
+        servicesOffered,
       });
       onSaved(updated);
     } catch (err) {
@@ -604,17 +520,7 @@ function BusinessEditForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Opening hours
-        <input
-          type="text"
-          placeholder="e.g. Mon–Sat 8am–9pm"
-          maxLength={1000}
-          value={openingHours}
-          onChange={(e) => setOpeningHours(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
+      <DailyHoursPicker open={openTime} close={closeTime} onChange={(o, c) => { setOpenTime(o); setCloseTime(c); }} />
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -639,16 +545,7 @@ function BusinessEditForm({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Services offered
-        <input
-          type="text"
-          placeholder="Airport pickup, Guided tours, Room service (comma-separated)"
-          value={servicesOffered}
-          onChange={(e) => setServicesOffered(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
+      <AmenitiesPicker value={servicesOffered} onChange={setServicesOffered} />
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Video links

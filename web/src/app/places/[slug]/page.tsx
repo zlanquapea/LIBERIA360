@@ -10,7 +10,6 @@ import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { PlaceKeyFacts } from '@/components/PlaceKeyFacts';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { BusinessClaimSection } from '@/components/BusinessClaimSection';
-import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { PlaceViewTracker } from '@/components/PlaceViewTracker';
 import { PlaceFreshnessPrompt } from '@/components/PlaceFreshnessPrompt';
 import { JsonLd } from '@/components/JsonLd';
@@ -162,13 +161,11 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       )}
 
       <section id="claim" className="flex scroll-mt-4 flex-col gap-2">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Claim this place</h2>
         <BusinessClaimSection
           placeId={place.id}
           suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
           initialBusiness={business}
         />
-        {business && <BookingRequestSection business={business} />}
       </section>
 
       <section className="flex flex-col gap-2">

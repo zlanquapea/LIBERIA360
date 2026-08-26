@@ -5,7 +5,9 @@ import { submitPlace, updateMyPlace, type SubmitPlaceInput } from '@/lib/place-a
 import { getCategories, getCounties } from '@/lib/api';
 import { formatPlaceType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
+import { formatDailyHours, parseDailyHours } from '@/lib/opening-hours';
 import { PhotoManager } from './PhotoManager';
+import { DailyHoursPicker } from './DailyHoursPicker';
 import { PlaceLocationPickerLoader } from '@/app/admin/content/PlaceLocationPickerLoader';
 import type { Category, County, Place, PlaceType } from '@/lib/types';
 
@@ -49,7 +51,9 @@ export function PlaceSubmissionForm({
   const [longitude, setLongitude] = useState<number | null>(place?.longitude ?? null);
   const [tags, setTags] = useState(place?.tags.join(', ') ?? '');
   const [images, setImages] = useState<string[]>(place?.images ?? []);
-  const [openingHours, setOpeningHours] = useState(place?.openingHours ?? '');
+  const initialHours = parseDailyHours(place?.openingHours);
+  const [openTime, setOpenTime] = useState(initialHours.open);
+  const [closeTime, setCloseTime] = useState(initialHours.close);
   const [contactPhone, setContactPhone] = useState(place?.contactPhone ?? '');
   const [whatsapp, setWhatsapp] = useState(place?.whatsapp ?? '');
   const [website, setWebsite] = useState(place?.website ?? '');
@@ -83,7 +87,7 @@ export function PlaceSubmissionForm({
         longitude,
         tags: tags ? splitList(tags) : undefined,
         images,
-        openingHours: openingHours.trim() || undefined,
+        openingHours: formatDailyHours(openTime, closeTime),
         contactPhone: contactPhone.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         website: website.trim() || undefined,
@@ -185,16 +189,7 @@ export function PlaceSubmissionForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Opening hours
-        <input
-          placeholder="e.g. Daily 7am–6pm"
-          maxLength={1000}
-          value={openingHours}
-          onChange={(e) => setOpeningHours(e.target.value)}
-          className={inputClass}
-        />
-      </label>
+      <DailyHoursPicker open={openTime} close={closeTime} onChange={(o, c) => { setOpenTime(o); setCloseTime(c); }} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
