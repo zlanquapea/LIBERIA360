@@ -862,6 +862,14 @@ export interface SetBusinessContentReviewStatusInput {
   reason?: string;
 }
 
+// api/src/admin/admin.service.ts's runBulk() — the shape every bulk
+// moderation endpoint (places/businesses/business-content review-status)
+// returns, so one bad id in a multi-select batch doesn't abort the rest.
+export interface BulkReviewResult {
+  succeeded: string[];
+  failed: { id: string; error: string }[];
+}
+
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];

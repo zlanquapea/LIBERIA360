@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -14,7 +15,10 @@ import { SetVerificationDto } from "./dto/set-verification.dto";
 import { SetCreatorVerificationDto } from "./dto/set-creator-verification.dto";
 import { SetBusinessReviewStatusDto } from "./dto/set-business-review-status.dto";
 import { SetPlaceReviewStatusDto } from "./dto/set-place-review-status.dto";
+import { BulkSetPlaceReviewStatusDto } from "./dto/bulk-set-place-review-status.dto";
+import { BulkSetBusinessReviewStatusDto } from "./dto/bulk-set-business-review-status.dto";
 import { SetBusinessContentReviewStatusDto } from "../business-content/dto/set-business-content-review-status.dto";
+import { BulkSetBusinessContentReviewStatusDto } from "../business-content/dto/bulk-set-business-content-review-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -115,6 +119,21 @@ export class AdminController {
     );
   }
 
+  @Post("places/bulk-review-status")
+  async bulkSetPlaceReviewStatus(
+    @CurrentUser() admin: User,
+    @Body() dto: BulkSetPlaceReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.bulkSetPlaceReviewStatus(
+      admin.id,
+      dto.ids,
+      dto.status,
+      dto.reason,
+      getRequestInfo(req),
+    );
+  }
+
   @Patch("businesses/:id/verification")
   async setBusinessVerification(
     @CurrentUser() admin: User,
@@ -150,6 +169,21 @@ export class AdminController {
     );
   }
 
+  @Post("businesses/bulk-review-status")
+  async bulkSetBusinessReviewStatus(
+    @CurrentUser() admin: User,
+    @Body() dto: BulkSetBusinessReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.bulkSetBusinessReviewStatus(
+      admin.id,
+      dto.ids,
+      dto.status,
+      dto.reason,
+      getRequestInfo(req),
+    );
+  }
+
   @Patch("business-content/:id/review-status")
   async setBusinessContentReviewStatus(
     @CurrentUser() admin: User,
@@ -165,6 +199,21 @@ export class AdminController {
         dto.reason,
         getRequestInfo(req),
       ),
+    );
+  }
+
+  @Post("business-content/bulk-review-status")
+  async bulkSetBusinessContentReviewStatus(
+    @CurrentUser() admin: User,
+    @Body() dto: BulkSetBusinessContentReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.bulkSetBusinessContentReviewStatus(
+      admin.id,
+      dto.ids,
+      dto.status,
+      dto.reason,
+      getRequestInfo(req),
     );
   }
 

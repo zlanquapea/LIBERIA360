@@ -4,6 +4,7 @@ import type {
   AnalyticsOverview,
   AuthUser,
   Business,
+  BulkReviewResult,
   BusinessContent,
   BusinessContentStatus,
   BusinessReviewStatus,
@@ -81,6 +82,21 @@ export function setBusinessContentReviewStatus(
   });
 }
 
+// Bulk sibling of setBusinessContentReviewStatus — see
+// bulkSetBusinessReviewStatus.
+export function bulkSetBusinessContentReviewStatus(
+  token: string,
+  ids: string[],
+  status: BusinessContentStatus,
+  reason?: string,
+): Promise<BulkReviewResult> {
+  return apiRequest<BulkReviewResult>('/admin/business-content/bulk-review-status', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ ids, status, reason }),
+  });
+}
+
 // The publish/moderation lifecycle — approve/reject/request changes
 // (under_review)/suspend — distinct from setBusinessVerification's trust
 // badge above. `reason` is the rejection reason, reviewer guidance, or
@@ -96,6 +112,22 @@ export function setBusinessReviewStatus(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status, reason }),
+  });
+}
+
+// Bulk sibling of setBusinessReviewStatus — up to 50 ids at once. See
+// BulkReviewResult's doc comment for why the response is a
+// succeeded/failed split rather than all-or-nothing.
+export function bulkSetBusinessReviewStatus(
+  token: string,
+  ids: string[],
+  status: BusinessReviewStatus,
+  reason?: string,
+): Promise<BulkReviewResult> {
+  return apiRequest<BulkReviewResult>('/admin/businesses/bulk-review-status', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ ids, status, reason }),
   });
 }
 
@@ -115,6 +147,20 @@ export function setPlaceReviewStatus(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status, reason }),
+  });
+}
+
+// Bulk sibling of setPlaceReviewStatus — see bulkSetBusinessReviewStatus.
+export function bulkSetPlaceReviewStatus(
+  token: string,
+  ids: string[],
+  status: PlaceReviewStatus,
+  reason?: string,
+): Promise<BulkReviewResult> {
+  return apiRequest<BulkReviewResult>('/admin/places/bulk-review-status', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ ids, status, reason }),
   });
 }
 

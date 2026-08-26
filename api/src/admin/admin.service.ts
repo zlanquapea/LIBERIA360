@@ -269,6 +269,84 @@ export class AdminService {
     return this.businessContentRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
+  /** Runs `action` once per id, sequentially (not Promise.all — a
+   * moderation queue is exactly the kind of place a runaway concurrent
+   * write storm against the DB would be bad, and sequential keeps each
+   * item's audit-log entry in a sane order). One bad id in the batch
+   * doesn't abort the rest: it's collected in `failed` so the caller can
+   * report a partial result instead of an all-or-nothing failure. */
+  private async runBulk<T>(
+    ids: string[],
+    action: (id: string) => Promise<T>,
+  ): Promise<{ succeeded: string[]; failed: { id: string; error: string }[] }> {
+    const succeeded: string[] = [];
+    const failed: { id: string; error: string }[] = [];
+    for (const id of ids) {
+      try {
+        await action(id);
+        succeeded.push(id);
+      } catch (err) {
+        failed.push({
+          id,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+    return { succeeded, failed };
+  }
+
+  /** Multi-select approve/reject from the moderation queue — same
+   * transition as setPlaceReviewStatus, just for a batch. */
+  bulkSetPlaceReviewStatus(
+    adminUserId: string,
+    ids: string[],
+    status: PlaceReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ) {
+    return this.runBulk(ids, (id) =>
+      this.setPlaceReviewStatus(adminUserId, id, status, reason, requestInfo),
+    );
+  }
+
+  /** Bulk sibling of setBusinessReviewStatus — see bulkSetPlaceReviewStatus. */
+  bulkSetBusinessReviewStatus(
+    adminUserId: string,
+    ids: string[],
+    status: BusinessReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ) {
+    return this.runBulk(ids, (id) =>
+      this.setBusinessReviewStatus(
+        adminUserId,
+        id,
+        status,
+        reason,
+        requestInfo,
+      ),
+    );
+  }
+
+  /** Bulk sibling of setBusinessContentReviewStatus — see bulkSetPlaceReviewStatus. */
+  bulkSetBusinessContentReviewStatus(
+    adminUserId: string,
+    ids: string[],
+    status: BusinessContentStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ) {
+    return this.runBulk(ids, (id) =>
+      this.setBusinessContentReviewStatus(
+        adminUserId,
+        id,
+        status,
+        reason,
+        requestInfo,
+      ),
+    );
+  }
+
   /** Every business-authored content item awaiting a review decision,
    * across every business — the admin content-moderation list. */
   findPendingBusinessContent(): Promise<BusinessContent[]> {

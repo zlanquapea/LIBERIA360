@@ -301,8 +301,11 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 |---|---|
 | `PATCH /admin/places/:id/verification` | Set place verification status |
 | `PATCH /admin/places/:id/review-status` | Approve/reject/request changes (`under_review`)/suspend a place's publish status (`{status, reason?}`) — distinct from verification above: this is "is it visible at all," not "how much do we vouch for it" |
+| `POST /admin/places/bulk-review-status` | Same transition as above, applied to up to 50 places at once (`{ids, status, reason?}`) — returns `{succeeded, failed}` so one bad id doesn't abort the rest of the batch |
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
 | `PATCH /admin/businesses/:id/review-status` | Approve/reject/request changes/suspend a business's publish status (`{status, reason?}`) |
+| `POST /admin/businesses/bulk-review-status` | Bulk sibling of the above (`{ids, status, reason?}`, same `{succeeded, failed}` shape) |
+| `POST /admin/business-content/bulk-review-status` | Bulk approve/reject for business-authored content (`{ids, status, reason?}`) |
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
 | `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
