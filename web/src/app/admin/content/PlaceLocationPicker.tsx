@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L, { type LeafletMouseEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import { inputClass } from './content-shared';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
@@ -66,6 +67,16 @@ interface MapboxFeature {
  * no API key. The address-search box above the map is a pure enhancement
  * on top of that (jump-to-a-landmark instead of hunting on the map by eye)
  * and only appears once NEXT_PUBLIC_MAPBOX_TOKEN is configured.
+ *
+ * Two more ways to set the same lat/lng, for the cases the map itself
+ * doesn't cover well: "Use my current location" (`navigator.geolocation`)
+ * for a submitter standing at the place right now — the easiest path when
+ * that's true, and one that needs no map-reading skill at all — and a
+ * manual latitude/longitude entry for anyone who already has the exact
+ * coordinates from somewhere else (a GPS device, a shared map pin) and
+ * would rather type them than hunt visually. Both just call the same
+ * `onChange` the map's click/drag does, so from the caller's side nothing
+ * about the value they receive differs by which method produced it.
  */
 export function PlaceLocationPicker({
   latitude,
@@ -81,6 +92,62 @@ export function PlaceLocationPicker({
   const [results, setResults] = useState<GeocodeResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [latInput, setLatInput] = useState(latitude !== null ? String(latitude) : '');
+  const [lngInput, setLngInput] = useState(longitude !== null ? String(longitude) : '');
+  const [coordError, setCoordError] = useState<string | null>(null);
+
+  // Keep the manual-entry boxes in sync with whatever last set the
+  // position — a map click, a drag, a search result, or "use my current
+  // location" — so they never show a stale value the caller didn't
+  // actually confirm.
+  useEffect(() => {
+    setLatInput(latitude !== null ? latitude.toFixed(6) : '');
+    setLngInput(longitude !== null ? longitude.toFixed(6) : '');
+  }, [latitude, longitude]);
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setLocateError("This browser doesn't support location — enter coordinates manually or use the map instead.");
+      return;
+    }
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        onChange(lat, lng);
+        setFlyTarget([lat, lng]);
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        setLocateError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Location access was denied — enter coordinates manually or use the map instead.'
+            : "Couldn't get your location — enter coordinates manually or use the map instead.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
+  }
+
+  function commitManualCoords() {
+    const lat = parseFloat(latInput);
+    const lng = parseFloat(lngInput);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setCoordError('Enter both a latitude and a longitude.');
+      return;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setCoordError('Latitude must be between -90 and 90, longitude between -180 and 180.');
+      return;
+    }
+    setCoordError(null);
+    onChange(lat, lng);
+    setFlyTarget([lat, lng]);
+  }
 
   async function search() {
     if (!MAPBOX_TOKEN || !query.trim()) return;
@@ -128,50 +195,63 @@ export function PlaceLocationPicker({
 
   return (
     <div className="flex flex-col gap-2">
-      {MAPBOX_TOKEN && (
-        <div className="relative">
-          <div className="flex gap-2">
-            <input
-              placeholder="Search for an address or landmark…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  search();
-                }
-              }}
-              className={`flex-1 ${inputClass}`}
-            />
-            <button
-              type="button"
-              onClick={search}
-              disabled={searching || !query.trim()}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200"
-            >
-              {searching ? 'Searching…' : 'Search'}
-            </button>
+      <div className="flex flex-wrap gap-2">
+        {MAPBOX_TOKEN && (
+          <div className="relative flex-1">
+            <div className="flex gap-2">
+              <input
+                placeholder="Search for an address or landmark…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    search();
+                  }
+                }}
+                className={`flex-1 ${inputClass}`}
+              />
+              <button
+                type="button"
+                onClick={search}
+                disabled={searching || !query.trim()}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200"
+              >
+                {searching ? 'Searching…' : 'Search'}
+              </button>
+            </div>
+            {results && results.length > 0 && (
+              <ul className="absolute z-[1000] mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {results.map((result) => (
+                  <li key={result.id}>
+                    <button
+                      type="button"
+                      onClick={() => pickResult(result)}
+                      className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      {result.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {results && results.length === 0 && (
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No matches found.</p>
+            )}
           </div>
-          {results && results.length > 0 && (
-            <ul className="absolute z-[1000] mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-              {results.map((result) => (
-                <li key={result.id}>
-                  <button
-                    type="button"
-                    onClick={() => pickResult(result)}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    {result.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {results && results.length === 0 && (
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No matches found.</p>
-          )}
-        </div>
-      )}
+        )}
+
+        <button
+          type="button"
+          onClick={useCurrentLocation}
+          disabled={locating}
+          className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200"
+        >
+          <MapPinIcon aria-hidden className="h-4 w-4" />
+          {locating ? 'Locating…' : 'Use my current location'}
+        </button>
+      </div>
+      {locateError && <p className="text-xs text-flag-700 dark:text-flag-300">{locateError}</p>}
 
       <div className="h-64 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
         <MapContainer center={position ?? MONROVIA_CENTER} zoom={position ? 14 : 8} className="h-full w-full">
@@ -211,6 +291,57 @@ export function PlaceLocationPicker({
           'Click the map to set this place’s exact location.'
         )}
       </p>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+          Latitude
+          <input
+            type="number"
+            step="any"
+            min={-90}
+            max={90}
+            placeholder="6.310600"
+            value={latInput}
+            onChange={(e) => setLatInput(e.target.value)}
+            onBlur={commitManualCoords}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitManualCoords();
+              }
+            }}
+            className={`w-36 ${inputClass}`}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
+          Longitude
+          <input
+            type="number"
+            step="any"
+            min={-180}
+            max={180}
+            placeholder="-10.804700"
+            value={lngInput}
+            onChange={(e) => setLngInput(e.target.value)}
+            onBlur={commitManualCoords}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commitManualCoords();
+              }
+            }}
+            className={`w-36 ${inputClass}`}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={commitManualCoords}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-brand-500 dark:border-slate-700 dark:text-slate-200"
+        >
+          Set
+        </button>
+      </div>
+      {coordError && <p className="text-xs text-flag-700 dark:text-flag-300">{coordError}</p>}
     </div>
   );
 }
