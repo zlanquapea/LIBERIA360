@@ -977,6 +977,7 @@ export interface SystemStatus {
     email: boolean;
     pushNotifications: boolean;
     crashReporting: boolean;
+    adminLoginIpAllowlist: boolean;
   };
   // Richer than integrations.email — whether SMTP creds are present AND
   // what happened the last time this process actually tried to send.

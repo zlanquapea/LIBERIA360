@@ -62,6 +62,14 @@ export interface AppConfig {
   errorTracking: {
     dsn: string;
   };
+  adminSecurity: {
+    // Optional CIDR/exact-IP allowlist restricting which addresses an
+    // isAdmin/isSuperAdmin account can log in from (see
+    // auth/ip-allowlist.ts) — empty by default, meaning no restriction
+    // at all, same "no-op unless configured" shape as mail/push/error
+    // tracking above.
+    loginIpAllowlist: string[];
+  };
 }
 
 export default (): AppConfig => ({
@@ -122,5 +130,11 @@ export default (): AppConfig => ({
   },
   errorTracking: {
     dsn: process.env.SENTRY_DSN ?? "",
+  },
+  adminSecurity: {
+    loginIpAllowlist: (process.env.ADMIN_LOGIN_IP_ALLOWLIST ?? "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0),
   },
 });

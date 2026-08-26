@@ -13,7 +13,7 @@ import { User } from "../../users/entities/user.entity";
 // so this stays filterable as the list of outcomes grows, rather than a
 // free-text message.
 export type LoginActivityReason =
-  "success" | "invalid_credentials" | "invalid_2fa_code";
+  "success" | "invalid_credentials" | "invalid_2fa_code" | "ip_not_allowlisted";
 
 /**
  * Every completed login attempt — password-only, or the final 2FA step for

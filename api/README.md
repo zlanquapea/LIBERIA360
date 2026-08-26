@@ -72,8 +72,9 @@ Environment variables (`.env.example` has the full annotated list):
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `MAIL_FROM` | Email delivery |
 | `STORAGE_DRIVER`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `S3_PUBLIC_URL_BASE` | Upload storage backend |
 | `SENTRY_DSN` | Crash reporting |
+| `ADMIN_LOGIN_IP_ALLOWLIST` | Optional comma-separated IP/IPv4-CIDR allowlist restricting where isAdmin/isSuperAdmin accounts can log in from |
 
-`JWT_SECRET` and `TWO_FACTOR_ENCRYPTION_KEY` ship with placeholder dev values; the app refuses to start in production with either unset. Every other integration (SMTP, VAPID, S3, Sentry) degrades gracefully when unconfigured — the app runs, the corresponding feature is a no-op.
+`JWT_SECRET` and `TWO_FACTOR_ENCRYPTION_KEY` ship with placeholder dev values; the app refuses to start in production with either unset. Every other integration (SMTP, VAPID, S3, Sentry, the admin login IP allowlist) degrades gracefully when unconfigured — the app runs, the corresponding feature is a no-op.
 
 Without `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` set, verification and password-reset emails are only logged to the server console (`[DEV] Email to ...`), never actually delivered — the API still reports success, since a broken mail provider must never block registration or a password-reset request. If a real deployment is missing these, "Sent — check your inbox" will show with no email ever arriving. The System & Operations admin page (`GET /admin/system/status`'s `mail` field, `POST /admin/system/test-email`) surfaces whether SMTP is configured and the outcome of the last real send attempt, and lets a super admin send themselves a one-click test email — the fastest way to confirm delivery actually works end to end without digging through logs.
 
@@ -363,6 +364,7 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 - **Audit trail**: `admin_actions` table records verification changes, admin role changes, sponsored-placement create/revoke, content removal, and forced session revocations — each row includes the acting admin's IP address and user-agent (see `src/common/request-info.ts`), exposed via `GET /admin/audit-log` (super-admin-only).
 - **Content moderation**: any signed-in user can report a review or event (`POST /reports`); 3+ independent reports surface it in the admin moderation queue for removal (`DELETE /admin/reviews/:id`, `DELETE /admin/events/:id`).
 - **Login activity & session revocation**: every completed login attempt (password-only, or the final 2FA step for accounts that have it) is recorded — success or failure, with IP/device (`login_activity` table, `src/security/`) — the raw material for basic brute-force detection (a burst of failures against one email or IP) and for a super admin to see who's signing in to admin accounts and from where. A super admin can force-end any account's sessions immediately, without that account's password, via `POST /admin/security/users/:id/revoke-sessions` — reuses the same `tokenVersion` bump as the existing self-service "sign out everywhere," just triggered by someone other than the account holder.
+- **Admin login IP allowlist**: optional (`ADMIN_LOGIN_IP_ALLOWLIST`, see `.env.example`) CIDR/exact-IP restriction on which addresses an `isAdmin`/`isSuperAdmin` account can log in from (`src/auth/ip-allowlist.ts`) — a blocked attempt fails the exact same way a wrong password would, so a prober can't distinguish "wrong password" from "right password, wrong network." No-op when unset, same as every other optional integration.
 - **Dependencies**: `npm audit` clean (0 vulnerabilities) as of the current dependency set.
 
 ## Observability

@@ -28,6 +28,7 @@ import { AppConfig } from "../config/configuration";
 import { MailService } from "../mail/mail.service";
 import { LoginActivityService } from "../security/login-activity.service";
 import { RequestInfo } from "../common/request-info";
+import { isIpAllowed } from "./ip-allowlist";
 import { ItinerariesService } from "../itineraries/itineraries.service";
 
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -301,6 +302,28 @@ export class AuthService {
         requestInfo,
       });
       throw new UnauthorizedException("Invalid email or password");
+    }
+
+    if (user.isAdmin || user.isSuperAdmin) {
+      const { loginIpAllowlist } = this.configService.get("adminSecurity", {
+        infer: true,
+      });
+      if (!isIpAllowed(requestInfo?.ipAddress ?? null, loginIpAllowlist)) {
+        // Fails the exact same way a wrong password would — a blocked IP
+        // shouldn't tell a prober "this email is a valid admin account,
+        // just from the wrong place," which a distinct error message or
+        // status code would. The real reason still lands in the audit
+        // trail via LoginActivityService so a super admin can tell the
+        // difference.
+        await this.loginActivityService.record({
+          userId: user.id,
+          emailAttempted: dto.email,
+          success: false,
+          reason: "ip_not_allowlisted",
+          requestInfo,
+        });
+        throw new UnauthorizedException("Invalid email or password");
+      }
     }
 
     if (user.twoFactorEnabled) {

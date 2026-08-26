@@ -12,6 +12,7 @@ export interface SystemStatus {
     email: boolean;
     pushNotifications: boolean;
     crashReporting: boolean;
+    adminLoginIpAllowlist: boolean;
   };
   // Richer than integrations.email above — whether the credentials are
   // present AND, once they are, what actually happened the last time this
@@ -47,6 +48,9 @@ export class AdminSystemService {
     const errorTracking = this.configService.get("errorTracking", {
       infer: true,
     });
+    const adminSecurity = this.configService.get("adminSecurity", {
+      infer: true,
+    });
 
     return {
       environment: this.configService.get("nodeEnv", { infer: true }),
@@ -57,6 +61,7 @@ export class AdminSystemService {
         email: Boolean(mail.smtpHost),
         pushNotifications: Boolean(webPush.publicKey && webPush.privateKey),
         crashReporting: Boolean(errorTracking.dsn),
+        adminLoginIpAllowlist: adminSecurity.loginIpAllowlist.length > 0,
       },
       mail: this.mailService.getDiagnostics(),
     };

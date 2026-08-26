@@ -20,6 +20,7 @@ const TEST_TWO_FACTOR_KEY = "dead".repeat(16);
 const CONFIG_BY_KEY: Record<string, unknown> = {
   twoFactor: { encryptionKey: TEST_TWO_FACTOR_KEY },
   webAppUrl: "http://localhost:3000",
+  adminSecurity: { loginIpAllowlist: [] },
 };
 
 describe("AuthService", () => {
@@ -229,6 +230,88 @@ describe("AuthService", () => {
         twoFactorRequired: true,
         pendingToken: "signed.jwt.token",
       });
+    });
+
+    it("rejects an admin login from an IP outside the allowlist, the same generic way a wrong password would", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "admin@example.com",
+        passwordHash,
+        isAdmin: true,
+        isSuperAdmin: false,
+      });
+      configService.get.mockImplementation((key: string) =>
+        key === "adminSecurity"
+          ? { loginIpAllowlist: ["203.0.113.0/24"] }
+          : CONFIG_BY_KEY[key],
+      );
+
+      await expect(
+        service.login(
+          { email: "admin@example.com", password: "correct-password" },
+          { ipAddress: "198.51.100.9", userAgent: null },
+        ),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(loginActivityService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "1",
+          success: false,
+          reason: "ip_not_allowlisted",
+        }),
+      );
+    });
+
+    it("allows an admin login from an IP inside the allowlist", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "admin@example.com",
+        passwordHash,
+        isAdmin: true,
+        isSuperAdmin: false,
+        homeCounty: null,
+        createdAt: new Date(),
+      });
+      configService.get.mockImplementation((key: string) =>
+        key === "adminSecurity"
+          ? { loginIpAllowlist: ["203.0.113.0/24"] }
+          : CONFIG_BY_KEY[key],
+      );
+
+      const result = await service.login(
+        { email: "admin@example.com", password: "correct-password" },
+        { ipAddress: "203.0.113.42", userAgent: null },
+      );
+      expect("accessToken" in result && result.accessToken).toBe(
+        "signed.jwt.token",
+      );
+    });
+
+    it("never restricts a plain (non-admin) account, even with an allowlist configured", async () => {
+      const passwordHash = await bcrypt.hash("correct-password", 12);
+      usersService.findByEmail.mockResolvedValue({
+        id: "1",
+        email: "x@example.com",
+        passwordHash,
+        isAdmin: false,
+        isSuperAdmin: false,
+        homeCounty: null,
+        createdAt: new Date(),
+      });
+      configService.get.mockImplementation((key: string) =>
+        key === "adminSecurity"
+          ? { loginIpAllowlist: ["203.0.113.0/24"] }
+          : CONFIG_BY_KEY[key],
+      );
+
+      const result = await service.login(
+        { email: "x@example.com", password: "correct-password" },
+        { ipAddress: "198.51.100.9", userAgent: null },
+      );
+      expect("accessToken" in result && result.accessToken).toBe(
+        "signed.jwt.token",
+      );
     });
 
     it("records a failed login-activity row for an unknown email", async () => {
