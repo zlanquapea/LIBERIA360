@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
+  bulkSetBusinessContentReviewStatus,
+  bulkSetPlaceReviewStatus,
   deleteEventAdmin,
   deleteReviewAdmin,
   getModerationQueue,
@@ -11,7 +13,7 @@ import {
 } from '@/lib/admin-api';
 import { formatBusinessContentType, formatBusinessContentStatus, formatBusinessType } from '@/lib/format';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
-import type { BusinessContent, BusinessContentStatus, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
+import type { BulkReviewResult, BusinessContent, BusinessContentStatus, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
 import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
 import { PlaceReviewPanel } from '../PlaceReviewPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -38,6 +40,8 @@ const REASON_LABELS: Record<string, string> = {
 export default function ModerationPage() {
   const { token } = useAuth();
   const [queue, setQueue] = useState<ModerationQueue | null>(null);
+  const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<string>>(new Set());
+  const [selectedContentIds, setSelectedContentIds] = useState<Set<string>>(new Set());
 
   function reload() {
     if (!token) return;
@@ -45,6 +49,24 @@ export default function ModerationPage() {
   }
 
   useEffect(reload, [token]);
+
+  function togglePlace(id: string) {
+    setSelectedPlaceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleContent(id: string) {
+    setSelectedContentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   if (!token) return null;
 
@@ -72,13 +94,32 @@ export default function ModerationPage() {
         ) : queue.pendingPlaces.length === 0 ? (
           <EmptyState title="Nothing pending — the queue is clear." />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {queue.pendingPlaces.map((place) => (
-              <li key={place.id}>
-                <PlaceReviewPanel token={token} place={place} onUpdated={reload} />
-              </li>
-            ))}
-          </ul>
+          <>
+            <BulkReviewBar
+              token={token}
+              selectedIds={selectedPlaceIds}
+              onCleared={() => setSelectedPlaceIds(new Set())}
+              onSettled={(failedIds) => setSelectedPlaceIds(new Set(failedIds))}
+              bulkApply={bulkSetPlaceReviewStatus}
+              onReloaded={reload}
+            />
+            <ul className="flex flex-col gap-3">
+              {queue.pendingPlaces.map((place) => (
+                <li key={place.id} className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedPlaceIds.has(place.id)}
+                    onChange={() => togglePlace(place.id)}
+                    aria-label={`Select ${place.name} for bulk action`}
+                    className="mt-4 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-600"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <PlaceReviewPanel token={token} place={place} onUpdated={reload} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
@@ -130,21 +171,40 @@ export default function ModerationPage() {
         ) : queue.pendingBusinessContent.length === 0 ? (
           <EmptyState title="Nothing pending — the queue is clear." />
         ) : (
-          <ul className="flex flex-col gap-3">
-            {queue.pendingBusinessContent.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
-              >
-                <p className="font-medium text-slate-900 dark:text-slate-50">{item.title}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {formatBusinessContentType(item.type)} · {item.business?.name ?? 'Unknown business'}
-                </p>
-                <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{item.body}</p>
-                <ContentReviewStatusControl content={item} onDone={reload} />
-              </li>
-            ))}
-          </ul>
+          <>
+            <BulkReviewBar
+              token={token}
+              selectedIds={selectedContentIds}
+              onCleared={() => setSelectedContentIds(new Set())}
+              onSettled={(failedIds) => setSelectedContentIds(new Set(failedIds))}
+              bulkApply={bulkSetBusinessContentReviewStatus}
+              onReloaded={reload}
+            />
+            <ul className="flex flex-col gap-3">
+              {queue.pendingBusinessContent.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedContentIds.has(item.id)}
+                    onChange={() => toggleContent(item.id)}
+                    aria-label={`Select ${item.title} for bulk action`}
+                    className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-600"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-900 dark:text-slate-50">{item.title}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {formatBusinessContentType(item.type)} · {item.business?.name ?? 'Unknown business'}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{item.body}</p>
+                    <ContentReviewStatusControl content={item} onDone={reload} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
@@ -194,6 +254,84 @@ export default function ModerationPage() {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+// Shared multi-select approve/reject bar for the two queues whose
+// single-item action is already a plain approved/rejected review-status
+// transition (pending places, pending business content) — the two ids
+// AdminService's bulk endpoints operate on. Generic over which endpoint
+// it calls so the same bar/UI serves both without duplicating it.
+function BulkReviewBar<TStatus extends 'approved' | 'rejected'>({
+  token,
+  selectedIds,
+  bulkApply,
+  onReloaded,
+  onCleared,
+  onSettled,
+}: {
+  token: string;
+  selectedIds: Set<string>;
+  bulkApply: (token: string, ids: string[], status: TStatus, reason?: string) => Promise<BulkReviewResult>;
+  onReloaded: () => void;
+  onCleared: () => void;
+  onSettled: (failedIds: string[]) => void;
+}) {
+  const [action, setAction] = useState<'approve' | 'reject' | null>(null);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  if (selectedIds.size === 0) return null;
+
+  async function apply(status: TStatus, which: 'approve' | 'reject') {
+    setAction(which);
+    setError(null);
+    try {
+      const ids = Array.from(selectedIds);
+      const result = await bulkApply(token, ids, status, reason.trim() || undefined);
+      onSettled(result.failed.map((f) => f.id));
+      if (result.failed.length > 0) {
+        setError(`${result.failed.length} of ${ids.length} couldn't be updated — still selected so you can retry.`);
+      } else {
+        setReason('');
+        onCleared();
+      }
+      onReloaded();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'bulk-review-status' } }));
+    } finally {
+      setAction(null);
+    }
+  }
+
+  return (
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-brand-700/30 bg-white p-3 shadow-sm dark:border-brand-700/40 dark:bg-slate-900">
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{selectedIds.size} selected</span>
+      <button
+        type="button"
+        disabled={action !== null}
+        onClick={() => apply('approved' as TStatus, 'approve')}
+        className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+      >
+        {action === 'approve' ? 'Approving…' : 'Approve selected'}
+      </button>
+      <input
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Reason for rejection (optional)"
+        maxLength={1000}
+        className="min-w-[10rem] flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800"
+      />
+      <button
+        type="button"
+        disabled={action !== null}
+        onClick={() => apply('rejected' as TStatus, 'reject')}
+        className="rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white disabled:opacity-60"
+      >
+        {action === 'reject' ? 'Rejecting…' : 'Reject selected'}
+      </button>
+      {error && <p className="w-full text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }

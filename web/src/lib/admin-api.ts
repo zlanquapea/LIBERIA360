@@ -2,8 +2,10 @@ import type {
   Activity,
   AggregateAnalytics,
   AnalyticsOverview,
+  ApplicationSettings,
   AuthUser,
   Business,
+  BulkReviewResult,
   BusinessContent,
   BusinessContentStatus,
   BusinessReviewStatus,
@@ -31,6 +33,7 @@ import type {
   SponsoredPlacement,
   SystemStatus,
   UpdateActivityInput,
+  UpdateApplicationSettingsInput,
   UpdateBusinessAdminInput,
   UpdateCategoryInput,
   UpdateCountyInput,
@@ -81,6 +84,21 @@ export function setBusinessContentReviewStatus(
   });
 }
 
+// Bulk sibling of setBusinessContentReviewStatus — see
+// bulkSetBusinessReviewStatus.
+export function bulkSetBusinessContentReviewStatus(
+  token: string,
+  ids: string[],
+  status: BusinessContentStatus,
+  reason?: string,
+): Promise<BulkReviewResult> {
+  return apiRequest<BulkReviewResult>('/admin/business-content/bulk-review-status', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ ids, status, reason }),
+  });
+}
+
 // The publish/moderation lifecycle — approve/reject/request changes
 // (under_review)/suspend — distinct from setBusinessVerification's trust
 // badge above. `reason` is the rejection reason, reviewer guidance, or
@@ -96,6 +114,22 @@ export function setBusinessReviewStatus(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status, reason }),
+  });
+}
+
+// Bulk sibling of setBusinessReviewStatus — up to 50 ids at once. See
+// BulkReviewResult's doc comment for why the response is a
+// succeeded/failed split rather than all-or-nothing.
+export function bulkSetBusinessReviewStatus(
+  token: string,
+  ids: string[],
+  status: BusinessReviewStatus,
+  reason?: string,
+): Promise<BulkReviewResult> {
+  return apiRequest<BulkReviewResult>('/admin/businesses/bulk-review-status', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ ids, status, reason }),
   });
 }
 
@@ -115,6 +149,20 @@ export function setPlaceReviewStatus(
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status, reason }),
+  });
+}
+
+// Bulk sibling of setPlaceReviewStatus — see bulkSetBusinessReviewStatus.
+export function bulkSetPlaceReviewStatus(
+  token: string,
+  ids: string[],
+  status: PlaceReviewStatus,
+  reason?: string,
+): Promise<BulkReviewResult> {
+  return apiRequest<BulkReviewResult>('/admin/places/bulk-review-status', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ ids, status, reason }),
   });
 }
 
@@ -368,6 +416,30 @@ export function setTeamRoles(
   });
 }
 
+// Creates a brand-new admin/super-admin account (no existing registration
+// required) and emails them a set-password link. See
+// api/src/admin/admin-team.service.ts's createAdmin().
+export function createAdmin(
+  token: string,
+  input: { name: string; email: string; isSuperAdmin: boolean },
+): Promise<AuthUser> {
+  return apiRequest<AuthUser>('/admin/team', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+// Re-sends a still-pending invite (someone who hasn't set a password yet)
+// with a fresh set-password link. See admin-team.service.ts's
+// resendInvite() — refuses once the account is activated.
+export function resendTeamInvite(token: string, userId: string): Promise<AuthUser> {
+  return apiRequest<AuthUser>(`/admin/team/${userId}/resend-invite`, {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
+
 // Audit log — super admin only. See api/src/admin/admin-audit.service.ts.
 export function getAuditLog(token: string, page = 1, limit = 20): Promise<PaginatedAdminActions> {
   return apiRequest<PaginatedAdminActions>(`/admin/audit-log?page=${page}&limit=${limit}`, {
@@ -445,5 +517,23 @@ export function sendTestEmail(token: string): Promise<{ success: boolean; error:
   return apiRequest<{ success: boolean; error: string | null }>('/admin/system/test-email', {
     method: 'POST',
     headers: authHeader(token),
+  });
+}
+
+// Settings > Application — super admin only. The moderation/alerting
+// thresholds AdminService and LoginActivityService now read from a real
+// store instead of a hardcoded constant. See admin-settings.controller.ts.
+export function getApplicationSettings(token: string): Promise<ApplicationSettings> {
+  return apiRequest<ApplicationSettings>('/admin/settings/application', { headers: authHeader(token) });
+}
+
+export function updateApplicationSettings(
+  token: string,
+  input: UpdateApplicationSettingsInput,
+): Promise<ApplicationSettings> {
+  return apiRequest<ApplicationSettings>('/admin/settings/application', {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
   });
 }

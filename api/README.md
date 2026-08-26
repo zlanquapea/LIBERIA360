@@ -72,8 +72,9 @@ Environment variables (`.env.example` has the full annotated list):
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE`, `MAIL_FROM` | Email delivery |
 | `STORAGE_DRIVER`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_ENDPOINT`, `S3_PUBLIC_URL_BASE` | Upload storage backend |
 | `SENTRY_DSN` | Crash reporting |
+| `ADMIN_LOGIN_IP_ALLOWLIST` | Optional comma-separated IP/IPv4-CIDR allowlist restricting where isAdmin/isSuperAdmin accounts can log in from |
 
-`JWT_SECRET` and `TWO_FACTOR_ENCRYPTION_KEY` ship with placeholder dev values; the app refuses to start in production with either unset. Every other integration (SMTP, VAPID, S3, Sentry) degrades gracefully when unconfigured — the app runs, the corresponding feature is a no-op.
+`JWT_SECRET` and `TWO_FACTOR_ENCRYPTION_KEY` ship with placeholder dev values; the app refuses to start in production with either unset. Every other integration (SMTP, VAPID, S3, Sentry, the admin login IP allowlist) degrades gracefully when unconfigured — the app runs, the corresponding feature is a no-op.
 
 Without `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` set, verification and password-reset emails are only logged to the server console (`[DEV] Email to ...`), never actually delivered — the API still reports success, since a broken mail provider must never block registration or a password-reset request. If a real deployment is missing these, "Sent — check your inbox" will show with no email ever arriving. The System & Operations admin page (`GET /admin/system/status`'s `mail` field, `POST /admin/system/test-email`) surfaces whether SMTP is configured and the outcome of the last real send attempt, and lets a super admin send themselves a one-click test email — the fastest way to confirm delivery actually works end to end without digging through logs.
 
@@ -301,8 +302,11 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 |---|---|
 | `PATCH /admin/places/:id/verification` | Set place verification status |
 | `PATCH /admin/places/:id/review-status` | Approve/reject/request changes (`under_review`)/suspend a place's publish status (`{status, reason?}`) — distinct from verification above: this is "is it visible at all," not "how much do we vouch for it" |
+| `POST /admin/places/bulk-review-status` | Same transition as above, applied to up to 50 places at once (`{ids, status, reason?}`) — returns `{succeeded, failed}` so one bad id doesn't abort the rest of the batch |
 | `PATCH /admin/businesses/:id/verification` | Set business verification status |
 | `PATCH /admin/businesses/:id/review-status` | Approve/reject/request changes/suspend a business's publish status (`{status, reason?}`) |
+| `POST /admin/businesses/bulk-review-status` | Bulk sibling of the above (`{ids, status, reason?}`, same `{succeeded, failed}` shape) |
+| `POST /admin/business-content/bulk-review-status` | Bulk approve/reject for business-authored content (`{ids, status, reason?}`) |
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
 | `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
@@ -329,12 +333,20 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `POST /admin/system/test-email` | Send a real test email to the calling admin's own address and report the actual outcome — the fastest way to tell "SMTP isn't configured" apart from "SMTP is configured but wrong" without reading server logs | Super Admin |
 | `GET /admin/team` | List admins and super admins | Super Admin |
 | `GET /admin/team/search?email=` | Look up a user to promote | Super Admin |
+| `POST /admin/team` | Create a brand-new admin/super-admin account (no prior registration needed) and email them a set-password link — re-invites in place instead of conflicting if the email belongs to a still-pending (never-activated) invite | Super Admin |
+| `POST /admin/team/:userId/resend-invite` | Re-send a still-pending invite with a fresh set-password link | Super Admin |
 | `PATCH /admin/team/:userId` | Set a user's admin/super-admin roles | Super Admin |
 | `GET /admin/audit-log` | Paginated log of verification changes, role changes, sponsored-placement create/revoke, and content removal — now including the acting admin's IP and user-agent | Super Admin |
 | `GET /admin/kpis` | Platform-health numbers: users, signups (7d), places, business claim rate, reviews, bookings by status | Super Admin |
 | `GET /admin/security/login-activity?onlyFailed=` | Paginated login attempts (success and failure), with IP/device | Super Admin |
 | `GET /admin/security/overview` | Failed-login counts (1h/24h), distinct failing IPs (24h), admin-team 2FA adoption | Super Admin |
 | `POST /admin/security/users/:id/revoke-sessions` | Force-end every active session on an account (no password needed) — audit-logged | Super Admin |
+| `GET /admin/settings/application` | Read the moderation/security-alert thresholds below — materializes the singleton settings row with its defaults on first read | Super Admin |
+| `PATCH /admin/settings/application` | Update any of the thresholds below (partial update, `{freshnessFlagThreshold?, freshnessWindowDays?, reportFlagThreshold?, reportWindowDays?, failedLoginAlertThreshold1h?, failedLoginAlertThreshold24h?}`) — audit-logged, stamps who changed it | Super Admin |
+
+Proactive alerting: `LoginActivityService.record()` emails every super admin (`MailService.sendFailedLoginAlert`) the instant failed logins first exceed the configured 1h/24h thresholds (5/20 by default — see Settings > Application) — a one-time alert per crossing, not a repeat on every subsequent failed attempt, so an ongoing attack doesn't spam every super admin's inbox. Previously the same numbers only surfaced passively on the Security Alerts page, so nothing happened unless someone was already looking.
+
+Settings > Application (`src/settings/`): the moderation-queue "possibly closed" and "flagged content" thresholds, plus the two failed-login alert thresholds above, used to be hardcoded constants that needed a deploy to change. They now live in a single-row `application_settings` table (materialized lazily with the same defaults the constants used to have, so an unmigrated or freshly-deployed environment behaves identically until a super admin actually changes something) and are editable from Settings > Application in the admin panel.
 
 The first admin is granted directly in the database:
 
@@ -356,6 +368,7 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 - **Audit trail**: `admin_actions` table records verification changes, admin role changes, sponsored-placement create/revoke, content removal, and forced session revocations — each row includes the acting admin's IP address and user-agent (see `src/common/request-info.ts`), exposed via `GET /admin/audit-log` (super-admin-only).
 - **Content moderation**: any signed-in user can report a review or event (`POST /reports`); 3+ independent reports surface it in the admin moderation queue for removal (`DELETE /admin/reviews/:id`, `DELETE /admin/events/:id`).
 - **Login activity & session revocation**: every completed login attempt (password-only, or the final 2FA step for accounts that have it) is recorded — success or failure, with IP/device (`login_activity` table, `src/security/`) — the raw material for basic brute-force detection (a burst of failures against one email or IP) and for a super admin to see who's signing in to admin accounts and from where. A super admin can force-end any account's sessions immediately, without that account's password, via `POST /admin/security/users/:id/revoke-sessions` — reuses the same `tokenVersion` bump as the existing self-service "sign out everywhere," just triggered by someone other than the account holder.
+- **Admin login IP allowlist**: optional (`ADMIN_LOGIN_IP_ALLOWLIST`, see `.env.example`) CIDR/exact-IP restriction on which addresses an `isAdmin`/`isSuperAdmin` account can log in from (`src/auth/ip-allowlist.ts`) — a blocked attempt fails the exact same way a wrong password would, so a prober can't distinguish "wrong password" from "right password, wrong network." No-op when unset, same as every other optional integration.
 - **Dependencies**: `npm audit` clean (0 vulnerabilities) as of the current dependency set.
 
 ## Observability

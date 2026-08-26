@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -11,6 +12,7 @@ import {
 import type { Request } from "express";
 import { AdminTeamService } from "./admin-team.service";
 import { SetTeamRolesDto } from "./dto/set-team-roles.dto";
+import { CreateAdminDto } from "./dto/create-admin.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
@@ -35,6 +37,36 @@ export class AdminTeamController {
   @Get("search")
   async search(@Query("email") email: string) {
     return toPublicUser(await this.adminTeamService.search(email));
+  }
+
+  @Post()
+  async createAdmin(
+    @CurrentUser() actingUser: User,
+    @Body() dto: CreateAdminDto,
+    @Req() req: Request,
+  ) {
+    const created = await this.adminTeamService.createAdmin(
+      actingUser.id,
+      actingUser.name,
+      dto,
+      getRequestInfo(req),
+    );
+    return toPublicUser(created);
+  }
+
+  @Post(":userId/resend-invite")
+  async resendInvite(
+    @CurrentUser() actingUser: User,
+    @Param("userId") userId: string,
+    @Req() req: Request,
+  ) {
+    const updated = await this.adminTeamService.resendInvite(
+      actingUser.id,
+      actingUser.name,
+      userId,
+      getRequestInfo(req),
+    );
+    return toPublicUser(updated);
   }
 
   @Patch(":userId")

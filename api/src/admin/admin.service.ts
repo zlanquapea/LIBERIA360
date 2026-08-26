@@ -26,24 +26,20 @@ import {
 } from "../reports/entities/content-report.enums";
 import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
+import { SettingsService } from "../settings/settings.service";
 
 const NEW_USER_WINDOW_DAYS = 7;
 
 const MODERATION_QUEUE_REVIEW_LIMIT = 20;
 
-// How many distinct users have to say "no longer here" before a place is
-// worth an admin's attention — one report could just be a mistake or a
-// bad day; a handful of independent reports is a real signal a catalog
-// too large to manually re-verify can't otherwise catch.
-const FRESHNESS_FLAG_THRESHOLD = 3;
-// Only recent reports count — an old wave of reports about a place that
-// was later fixed shouldn't keep flagging it forever.
-const FRESHNESS_WINDOW_DAYS = 90;
-
-// Same "a handful of independent signals, not just one" reasoning as
-// freshness reports above, applied to user-reported reviews/events.
-const REPORT_FLAG_THRESHOLD = 3;
-const REPORT_WINDOW_DAYS = 90;
+// The freshness/report flag thresholds and windows used to be hardcoded
+// constants here — "how many independent 'no longer here'/content
+// reports in how many days before it surfaces in the moderation queue."
+// They're now Settings > Application, read fresh on every call via
+// SettingsService so a super admin can tune them without a deploy; see
+// ApplicationSettings's doc comment for the current defaults (which
+// match what these constants used to be, so a fresh deploy behaves
+// identically until someone changes something).
 
 export interface PossiblyClosedPlace {
   place: Place;
@@ -110,6 +106,7 @@ export class AdminService {
     @InjectRepository(BusinessContent)
     private readonly businessContentRepo: Repository<BusinessContent>,
     private readonly adminAuditService: AdminAuditService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async setPlaceVerification(
@@ -269,6 +266,84 @@ export class AdminService {
     return this.businessContentRepo.findOneOrFail({ where: { id: saved.id } });
   }
 
+  /** Runs `action` once per id, sequentially (not Promise.all — a
+   * moderation queue is exactly the kind of place a runaway concurrent
+   * write storm against the DB would be bad, and sequential keeps each
+   * item's audit-log entry in a sane order). One bad id in the batch
+   * doesn't abort the rest: it's collected in `failed` so the caller can
+   * report a partial result instead of an all-or-nothing failure. */
+  private async runBulk<T>(
+    ids: string[],
+    action: (id: string) => Promise<T>,
+  ): Promise<{ succeeded: string[]; failed: { id: string; error: string }[] }> {
+    const succeeded: string[] = [];
+    const failed: { id: string; error: string }[] = [];
+    for (const id of ids) {
+      try {
+        await action(id);
+        succeeded.push(id);
+      } catch (err) {
+        failed.push({
+          id,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+    return { succeeded, failed };
+  }
+
+  /** Multi-select approve/reject from the moderation queue — same
+   * transition as setPlaceReviewStatus, just for a batch. */
+  bulkSetPlaceReviewStatus(
+    adminUserId: string,
+    ids: string[],
+    status: PlaceReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ) {
+    return this.runBulk(ids, (id) =>
+      this.setPlaceReviewStatus(adminUserId, id, status, reason, requestInfo),
+    );
+  }
+
+  /** Bulk sibling of setBusinessReviewStatus — see bulkSetPlaceReviewStatus. */
+  bulkSetBusinessReviewStatus(
+    adminUserId: string,
+    ids: string[],
+    status: BusinessReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ) {
+    return this.runBulk(ids, (id) =>
+      this.setBusinessReviewStatus(
+        adminUserId,
+        id,
+        status,
+        reason,
+        requestInfo,
+      ),
+    );
+  }
+
+  /** Bulk sibling of setBusinessContentReviewStatus — see bulkSetPlaceReviewStatus. */
+  bulkSetBusinessContentReviewStatus(
+    adminUserId: string,
+    ids: string[],
+    status: BusinessContentStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ) {
+    return this.runBulk(ids, (id) =>
+      this.setBusinessContentReviewStatus(
+        adminUserId,
+        id,
+        status,
+        reason,
+        requestInfo,
+      ),
+    );
+  }
+
   /** Every business-authored content item awaiting a review decision,
    * across every business — the admin content-moderation list. */
   findPendingBusinessContent(): Promise<BusinessContent[]> {
@@ -323,6 +398,7 @@ export class AdminService {
    * places think Near Me was broken: their places were never rejected,
    * just never looked at. */
   async getModerationQueue(): Promise<ModerationQueue> {
+    const settings = await this.settingsService.getApplicationSettings();
     const [
       pendingBusinesses,
       pendingPlaces,
@@ -357,8 +433,14 @@ export class AdminService {
         order: { createdAt: "DESC" },
         take: MODERATION_QUEUE_REVIEW_LIMIT,
       }),
-      this.findPossiblyClosedPlaces(),
-      this.findFlaggedContent(),
+      this.findPossiblyClosedPlaces(
+        settings.freshnessFlagThreshold,
+        settings.freshnessWindowDays,
+      ),
+      this.findFlaggedContent(
+        settings.reportFlagThreshold,
+        settings.reportWindowDays,
+      ),
       this.findPendingBusinessContent(),
     ]);
     return {
@@ -371,9 +453,12 @@ export class AdminService {
     };
   }
 
-  private async findPossiblyClosedPlaces(): Promise<PossiblyClosedPlace[]> {
+  private async findPossiblyClosedPlaces(
+    threshold: number,
+    windowDays: number,
+  ): Promise<PossiblyClosedPlace[]> {
     const windowStart = new Date();
-    windowStart.setDate(windowStart.getDate() - FRESHNESS_WINDOW_DAYS);
+    windowStart.setDate(windowStart.getDate() - windowDays);
 
     const rows = await this.freshnessReportRepo
       .createQueryBuilder("report")
@@ -384,9 +469,7 @@ export class AdminService {
       })
       .andWhere("report.createdAt >= :windowStart", { windowStart })
       .groupBy("report.placeId")
-      .having("COUNT(*) >= :threshold", {
-        threshold: FRESHNESS_FLAG_THRESHOLD,
-      })
+      .having("COUNT(*) >= :threshold", { threshold })
       .orderBy("COUNT(*)", "DESC")
       .getRawMany<{ placeId: string; count: string }>();
 
@@ -405,9 +488,12 @@ export class AdminService {
       }));
   }
 
-  private async findFlaggedContent(): Promise<FlaggedContent[]> {
+  private async findFlaggedContent(
+    threshold: number,
+    windowDays: number,
+  ): Promise<FlaggedContent[]> {
     const windowStart = new Date();
-    windowStart.setDate(windowStart.getDate() - REPORT_WINDOW_DAYS);
+    windowStart.setDate(windowStart.getDate() - windowDays);
 
     const rows = await this.contentReportRepo
       .createQueryBuilder("report")
@@ -417,7 +503,7 @@ export class AdminService {
       .where("report.createdAt >= :windowStart", { windowStart })
       .groupBy("report.targetType")
       .addGroupBy("report.targetId")
-      .having("COUNT(*) >= :threshold", { threshold: REPORT_FLAG_THRESHOLD })
+      .having("COUNT(*) >= :threshold", { threshold })
       .orderBy("COUNT(*)", "DESC")
       .getRawMany<{
         targetType: ReportTargetType;

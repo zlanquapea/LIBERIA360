@@ -1,8 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { ConfigService } from "@nestjs/config";
 import { LoginActivityService } from "./login-activity.service";
 import { LoginActivity } from "./entities/login-activity.entity";
 import { User } from "../users/entities/user.entity";
+import { MailService } from "../mail/mail.service";
+import { SettingsService } from "../settings/settings.service";
 
 describe("LoginActivityService", () => {
   let service: LoginActivityService;
@@ -15,12 +18,15 @@ describe("LoginActivityService", () => {
   };
   let userRepo: {
     createQueryBuilder: jest.Mock;
+    find: jest.Mock;
   };
   let qb: {
     select: jest.Mock;
     where: jest.Mock;
     getRawMany: jest.Mock;
   };
+  let mailService: { sendFailedLoginAlert: jest.Mock };
+  let settingsService: { getApplicationSettings: jest.Mock };
 
   beforeEach(async () => {
     activityRepo = {
@@ -37,6 +43,16 @@ describe("LoginActivityService", () => {
     };
     userRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(qb),
+      find: jest.fn().mockResolvedValue([]),
+    };
+    mailService = {
+      sendFailedLoginAlert: jest.fn().mockResolvedValue(undefined),
+    };
+    settingsService = {
+      getApplicationSettings: jest.fn().mockResolvedValue({
+        failedLoginAlertThreshold1h: 5,
+        failedLoginAlertThreshold24h: 20,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -44,6 +60,12 @@ describe("LoginActivityService", () => {
         LoginActivityService,
         { provide: getRepositoryToken(LoginActivity), useValue: activityRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: MailService, useValue: mailService },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn(() => "https://liberia360.example") },
+        },
+        { provide: SettingsService, useValue: settingsService },
       ],
     }).compile();
 
@@ -91,6 +113,113 @@ describe("LoginActivityService", () => {
           reason: "success",
         }),
       ).resolves.toBeUndefined();
+    });
+
+    it("never checks thresholds for a successful login", async () => {
+      await service.record({
+        userId: "u1",
+        emailAttempted: "x@example.com",
+        success: true,
+        reason: "success",
+      });
+      expect(activityRepo.count).not.toHaveBeenCalled();
+    });
+
+    it("stays quiet under the 1h threshold", async () => {
+      activityRepo.count.mockResolvedValue(3);
+      userRepo.find.mockResolvedValue([
+        { email: "super@example.com", name: "Ada" },
+      ]);
+      await service.record({
+        userId: null,
+        emailAttempted: "x@example.com",
+        success: false,
+        reason: "invalid_credentials",
+      });
+      expect(mailService.sendFailedLoginAlert).not.toHaveBeenCalled();
+    });
+
+    it("emails every super admin the instant the 1h count first exceeds the threshold", async () => {
+      activityRepo.count.mockResolvedValue(6); // FAILED_LOGIN_ALERT_THRESHOLD_1H + 1
+      userRepo.find.mockResolvedValue([
+        { email: "super1@example.com", name: "Ada" },
+        { email: "super2@example.com", name: "Nyema" },
+      ]);
+      await service.record({
+        userId: null,
+        emailAttempted: "x@example.com",
+        success: false,
+        reason: "invalid_credentials",
+      });
+      expect(userRepo.find).toHaveBeenCalledWith({
+        where: { isSuperAdmin: true },
+      });
+      expect(mailService.sendFailedLoginAlert).toHaveBeenCalledTimes(2);
+      expect(mailService.sendFailedLoginAlert).toHaveBeenCalledWith(
+        "super1@example.com",
+        "Ada",
+        6,
+        "hour",
+        "https://liberia360.example/admin/security/alerts",
+      );
+    });
+
+    it("does not re-alert on every attempt after the threshold has already been crossed", async () => {
+      activityRepo.count.mockResolvedValue(9); // already well past the +1 crossing point
+      userRepo.find.mockResolvedValue([
+        { email: "super@example.com", name: "Ada" },
+      ]);
+      await service.record({
+        userId: null,
+        emailAttempted: "x@example.com",
+        success: false,
+        reason: "invalid_credentials",
+      });
+      expect(mailService.sendFailedLoginAlert).not.toHaveBeenCalled();
+    });
+
+    it("uses Settings > Application's threshold, not a hardcoded default, once a super admin changes it", async () => {
+      settingsService.getApplicationSettings.mockResolvedValue({
+        failedLoginAlertThreshold1h: 10,
+        failedLoginAlertThreshold24h: 20,
+      });
+      activityRepo.count.mockResolvedValue(11); // configured threshold + 1
+      userRepo.find.mockResolvedValue([
+        { email: "super@example.com", name: "Ada" },
+      ]);
+      await service.record({
+        userId: null,
+        emailAttempted: "x@example.com",
+        success: false,
+        reason: "invalid_credentials",
+      });
+      expect(mailService.sendFailedLoginAlert).toHaveBeenCalledWith(
+        "super@example.com",
+        "Ada",
+        11,
+        "hour",
+        "https://liberia360.example/admin/security/alerts",
+      );
+    });
+
+    it("a failed email send for one super admin doesn't stop the others from being alerted", async () => {
+      activityRepo.count.mockResolvedValue(6);
+      userRepo.find.mockResolvedValue([
+        { email: "super1@example.com", name: "Ada" },
+        { email: "super2@example.com", name: "Nyema" },
+      ]);
+      mailService.sendFailedLoginAlert.mockRejectedValueOnce(
+        new Error("smtp down"),
+      );
+      await expect(
+        service.record({
+          userId: null,
+          emailAttempted: "x@example.com",
+          success: false,
+          reason: "invalid_credentials",
+        }),
+      ).resolves.toBeUndefined();
+      expect(mailService.sendFailedLoginAlert).toHaveBeenCalledTimes(2);
     });
   });
 

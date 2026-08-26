@@ -161,6 +161,11 @@ export interface AuthUser {
   twoFactorEnabled: boolean;
   emailVerified: boolean;
   createdAt: string;
+  /** True for an admin/super-admin account created via the "New person"
+   * invite flow (AdminTeamService.createAdmin) that hasn't set a password
+   * yet. See PublicUser's doc comment — not sensitive, just an activation
+   * state. */
+  pendingActivation: boolean;
 }
 
 export interface PaginatedPlaces {
@@ -857,6 +862,14 @@ export interface SetBusinessContentReviewStatusInput {
   reason?: string;
 }
 
+// api/src/admin/admin.service.ts's runBulk() — the shape every bulk
+// moderation endpoint (places/businesses/business-content review-status)
+// returns, so one bad id in a multi-select batch doesn't abort the rest.
+export interface BulkReviewResult {
+  succeeded: string[];
+  failed: { id: string; error: string }[];
+}
+
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).
 export interface ModerationQueue {
   pendingBusinesses: Business[];
@@ -964,6 +977,7 @@ export interface SystemStatus {
     email: boolean;
     pushNotifications: boolean;
     crashReporting: boolean;
+    adminLoginIpAllowlist: boolean;
   };
   // Richer than integrations.email — whether SMTP creds are present AND
   // what happened the last time this process actually tried to send.
@@ -972,6 +986,34 @@ export interface SystemStatus {
     lastAttempt: MailAttempt | null;
   };
 }
+
+// api/src/settings/entities/application-settings.entity.ts — Settings >
+// Application, GET/PATCH /admin/settings/application, super-admin only.
+// The moderation/alerting thresholds that used to be hardcoded constants,
+// now editable without a deploy. Always exactly one row (id: 1).
+export interface ApplicationSettings {
+  id: number;
+  freshnessFlagThreshold: number;
+  freshnessWindowDays: number;
+  reportFlagThreshold: number;
+  reportWindowDays: number;
+  failedLoginAlertThreshold1h: number;
+  failedLoginAlertThreshold24h: number;
+  updatedByUserId: string | null;
+  updatedAt: string;
+}
+
+export type UpdateApplicationSettingsInput = Partial<
+  Pick<
+    ApplicationSettings,
+    | "freshnessFlagThreshold"
+    | "freshnessWindowDays"
+    | "reportFlagThreshold"
+    | "reportWindowDays"
+    | "failedLoginAlertThreshold1h"
+    | "failedLoginAlertThreshold24h"
+  >
+>;
 
 // api/src/admin/admin-analytics.service.ts's getOverview() — GET
 // /admin/analytics/overview. Current-vs-previous-period comparisons

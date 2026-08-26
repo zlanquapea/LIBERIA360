@@ -9,6 +9,7 @@ import {
   EnvelopeIcon,
   ExclamationCircleIcon,
   ServerIcon,
+  ShieldCheckIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { SuperAdminGate } from '@/components/SuperAdminGate';
@@ -61,6 +62,7 @@ function SystemStatusPanel() {
     { label: 'Transactional email', on: status.integrations.email, icon: EnvelopeIcon },
     { label: 'Push notifications', on: status.integrations.pushNotifications, icon: BoltIcon },
     { label: 'Crash reporting', on: status.integrations.crashReporting, icon: ExclamationCircleIcon },
+    { label: 'Admin login IP allowlist', on: status.integrations.adminLoginIpAllowlist, icon: ShieldCheckIcon },
   ];
 
   return (

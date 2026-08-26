@@ -14,9 +14,32 @@ import { User } from "../users/entities/user.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { AdminAuditService } from "./admin-audit.service";
+import { SettingsService } from "../settings/settings.service";
 
 const ADMIN_ID = "admin-1";
 const PLACE_ID = "place-1";
+
+// The defaults ApplicationSettings' columns used to be — matches what
+// the hardcoded constants this replaced used to be, so these tests
+// exercise exactly the same thresholds they always did.
+const DEFAULT_APPLICATION_SETTINGS = {
+  freshnessFlagThreshold: 3,
+  freshnessWindowDays: 90,
+  reportFlagThreshold: 3,
+  reportWindowDays: 90,
+  failedLoginAlertThreshold1h: 5,
+  failedLoginAlertThreshold24h: 20,
+};
+
+function fakeSettingsService(
+  overrides: Partial<typeof DEFAULT_APPLICATION_SETTINGS> = {},
+) {
+  return {
+    getApplicationSettings: jest
+      .fn()
+      .mockResolvedValue({ ...DEFAULT_APPLICATION_SETTINGS, ...overrides }),
+  };
+}
 
 describe("AdminService.setPlaceReviewStatus", () => {
   let service: AdminService;
@@ -53,6 +76,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
       ],
     }).compile();
 
@@ -134,6 +158,162 @@ describe("AdminService.setPlaceReviewStatus", () => {
   });
 });
 
+describe("AdminService.bulkSetPlaceReviewStatus", () => {
+  let service: AdminService;
+  let placeRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+
+  beforeEach(async () => {
+    placeRepo = {
+      findOne: jest.fn((opts: { where: { id: string } }) =>
+        opts.where.id === "missing"
+          ? Promise.resolve(null)
+          : Promise.resolve({
+              id: opts.where.id,
+              reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+            }),
+      ),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Business), useValue: {} },
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        { provide: getRepositoryToken(Review), useValue: {} },
+        { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
+        { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: getRepositoryToken(ContentReport), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(Booking), useValue: {} },
+        { provide: getRepositoryToken(BusinessContent), useValue: {} },
+        { provide: AdminAuditService, useValue: { log: jest.fn() } },
+        { provide: SettingsService, useValue: fakeSettingsService() },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it("approves every id in the batch", async () => {
+    const result = await service.bulkSetPlaceReviewStatus(
+      ADMIN_ID,
+      ["place-1", "place-2"],
+      PlaceReviewStatus.APPROVED,
+    );
+    expect(result).toEqual({ succeeded: ["place-1", "place-2"], failed: [] });
+    expect(placeRepo.save).toHaveBeenCalledTimes(2);
+  });
+
+  it("collects a failure without aborting the rest of the batch", async () => {
+    const result = await service.bulkSetPlaceReviewStatus(
+      ADMIN_ID,
+      ["place-1", "missing", "place-3"],
+      PlaceReviewStatus.REJECTED,
+      "Duplicate listing",
+    );
+    expect(result.succeeded).toEqual(["place-1", "place-3"]);
+    expect(result.failed).toEqual([
+      { id: "missing", error: 'Place "missing" not found' },
+    ]);
+    expect(placeRepo.save).toHaveBeenCalledTimes(2);
+  });
+});
+
+// bulkSetBusinessReviewStatus and bulkSetBusinessContentReviewStatus are
+// thin wrappers over the same runBulk helper bulkSetPlaceReviewStatus
+// exercises above (partial-failure collection is already covered there)
+// — this just confirms each wrapper reaches its own repo/audit-log
+// correctly, not runBulk's behavior a second time.
+describe("AdminService bulk review-status: business and business-content", () => {
+  let service: AdminService;
+  let businessRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+  let businessContentRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+  let adminAuditService: { log: jest.Mock };
+
+  beforeEach(async () => {
+    businessRepo = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "biz-1", reviewStatus: "pending" }),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+    businessContentRepo = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "content-1", status: "pending" }),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+    adminAuditService = { log: jest.fn() };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(Place), useValue: {} },
+        { provide: getRepositoryToken(Business), useValue: businessRepo },
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        { provide: getRepositoryToken(Review), useValue: {} },
+        { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
+        { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: getRepositoryToken(ContentReport), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(Booking), useValue: {} },
+        {
+          provide: getRepositoryToken(BusinessContent),
+          useValue: businessContentRepo,
+        },
+        { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it("bulkSetBusinessReviewStatus approves a batch and audit-logs each", async () => {
+    const result = await service.bulkSetBusinessReviewStatus(
+      ADMIN_ID,
+      ["biz-1", "biz-2"],
+      "approved" as never,
+    );
+    expect(result).toEqual({ succeeded: ["biz-1", "biz-2"], failed: [] });
+    expect(businessRepo.save).toHaveBeenCalledTimes(2);
+    expect(adminAuditService.log).toHaveBeenCalledTimes(2);
+  });
+
+  it("bulkSetBusinessContentReviewStatus rejects a batch with a shared reason", async () => {
+    const result = await service.bulkSetBusinessContentReviewStatus(
+      ADMIN_ID,
+      ["content-1"],
+      "rejected" as never,
+      "Off-topic",
+    );
+    expect(result).toEqual({ succeeded: ["content-1"], failed: [] });
+    expect(businessContentRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "rejected",
+        rejectionReason: "Off-topic",
+      }),
+    );
+  });
+});
+
 // A self-submitted place sits invisible to the public until an admin acts
 // on it (PlacesService.findAll's APPROVED-only gate) — so it must show up
 // *somewhere* an admin will actually look, or it's stuck forever. This
@@ -142,6 +322,9 @@ describe("AdminService.getModerationQueue", () => {
   let service: AdminService;
   let placeRepo: { find: jest.Mock };
   let businessRepo: { find: jest.Mock };
+  let freshnessQb: ReturnType<typeof emptyQueryBuilder>;
+  let contentQb: ReturnType<typeof emptyQueryBuilder>;
+  let settingsService: ReturnType<typeof fakeSettingsService>;
 
   const PENDING_PLACE = {
     id: "place-2",
@@ -174,6 +357,9 @@ describe("AdminService.getModerationQueue", () => {
   beforeEach(async () => {
     placeRepo = { find: jest.fn().mockResolvedValue([PENDING_PLACE]) };
     businessRepo = { find: jest.fn().mockResolvedValue([]) };
+    freshnessQb = emptyQueryBuilder();
+    contentQb = emptyQueryBuilder();
+    settingsService = fakeSettingsService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -187,12 +373,12 @@ describe("AdminService.getModerationQueue", () => {
         },
         {
           provide: getRepositoryToken(PlaceFreshnessReport),
-          useValue: { createQueryBuilder: jest.fn(() => emptyQueryBuilder()) },
+          useValue: { createQueryBuilder: jest.fn(() => freshnessQb) },
         },
         { provide: getRepositoryToken(Event), useValue: {} },
         {
           provide: getRepositoryToken(ContentReport),
-          useValue: { createQueryBuilder: jest.fn(() => emptyQueryBuilder()) },
+          useValue: { createQueryBuilder: jest.fn(() => contentQb) },
         },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -201,6 +387,7 @@ describe("AdminService.getModerationQueue", () => {
           useValue: { find: jest.fn().mockResolvedValue([]) },
         },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
+        { provide: SettingsService, useValue: settingsService },
       ],
     }).compile();
 
@@ -221,6 +408,26 @@ describe("AdminService.getModerationQueue", () => {
       ],
       relations: ["category", "county", "owner"],
       order: { submittedAt: "DESC" },
+    });
+  });
+
+  it("uses Settings > Application's thresholds, not hardcoded defaults, once a super admin changes them", async () => {
+    settingsService.getApplicationSettings.mockResolvedValue({
+      freshnessFlagThreshold: 7,
+      freshnessWindowDays: 30,
+      reportFlagThreshold: 9,
+      reportWindowDays: 14,
+      failedLoginAlertThreshold1h: 5,
+      failedLoginAlertThreshold24h: 20,
+    });
+
+    await service.getModerationQueue();
+
+    expect(freshnessQb.having).toHaveBeenCalledWith("COUNT(*) >= :threshold", {
+      threshold: 7,
+    });
+    expect(contentQb.having).toHaveBeenCalledWith("COUNT(*) >= :threshold", {
+      threshold: 9,
     });
   });
 });

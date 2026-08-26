@@ -37,6 +37,7 @@ describe("AdminSystemService", () => {
       mail: { smtpHost: "" },
       webPush: { publicKey: "", privateKey: "" },
       errorTracking: { dsn: "" },
+      adminSecurity: { loginIpAllowlist: [] },
       nodeEnv: "development",
     });
 
@@ -48,6 +49,7 @@ describe("AdminSystemService", () => {
       email: false,
       pushNotifications: false,
       crashReporting: false,
+      adminLoginIpAllowlist: false,
     });
   });
 
@@ -58,6 +60,7 @@ describe("AdminSystemService", () => {
       mail: { smtpHost: "smtp.example.com" },
       webPush: { publicKey: "pub", privateKey: "priv" },
       errorTracking: { dsn: "https://sentry.example/1" },
+      adminSecurity: { loginIpAllowlist: ["203.0.113.0/24"] },
       nodeEnv: "production",
     });
 
@@ -70,6 +73,7 @@ describe("AdminSystemService", () => {
       email: true,
       pushNotifications: true,
       crashReporting: true,
+      adminLoginIpAllowlist: true,
     });
   });
 
@@ -80,6 +84,7 @@ describe("AdminSystemService", () => {
       mail: { smtpHost: "" },
       webPush: { publicKey: "pub", privateKey: "" },
       errorTracking: { dsn: "" },
+      adminSecurity: { loginIpAllowlist: [] },
       nodeEnv: "development",
     });
 
@@ -93,6 +98,7 @@ describe("AdminSystemService", () => {
       mail: { smtpHost: "smtp.example.com" },
       webPush: { publicKey: "", privateKey: "" },
       errorTracking: { dsn: "" },
+      adminSecurity: { loginIpAllowlist: [] },
       nodeEnv: "development",
     });
     mailService.getDiagnostics.mockReturnValue({
