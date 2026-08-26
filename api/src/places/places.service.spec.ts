@@ -375,6 +375,62 @@ describe("PlacesService.updateMine", () => {
       }),
     );
   });
+
+  // A submitter needs to be able to fix a category/county picked wrong at
+  // submission time — see updateMine's doc comment. These also guard
+  // against the TypeORM eager-relation gotcha (clearStaleRelation):
+  // category/county are `eager: true`, so findOne() above always returns
+  // the place with the OLD relation objects already attached, and saving
+  // without clearing them would silently keep writing the old FK.
+  it("lets the owner reassign the place's category", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      categoryId: "old-category",
+      category: { id: "old-category", name: "Hospital" },
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, {
+      categoryId: "new-category",
+    });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        categoryId: "new-category",
+        category: undefined,
+      }),
+    );
+  });
+
+  it("lets the owner reassign the place's county", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      countyId: "old-county",
+      county: { id: "old-county", name: "Montserrado" },
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, { countyId: "new-county" });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ countyId: "new-county", county: undefined }),
+    );
+  });
+
+  it("leaves an unset category/county's stale relation alone on an unrelated edit", async () => {
+    placeRepo.findOne.mockResolvedValue({
+      id: PLACE_ID,
+      ownerUserId: OWNER_ID,
+      name: "Kpatawee Waterfall",
+      reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+      categoryId: "cat-1",
+      category: { id: "cat-1", name: "Waterfall" },
+    });
+    await service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ category: { id: "cat-1", name: "Waterfall" } }),
+    );
+  });
 });
 
 describe("PlacesService.findMine", () => {

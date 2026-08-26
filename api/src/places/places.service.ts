@@ -18,6 +18,7 @@ import { parseNaturalLanguageQuery } from "./nl-query";
 import { BusinessesService } from "../businesses/businesses.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
+import { clearStaleRelation } from "../common/typeorm-relations";
 
 const MODERATION_QUEUE_LINK = "/admin/content/moderation";
 
@@ -481,10 +482,11 @@ export class PlacesService {
    * behavior for a REJECTED place (an owner acting on reviewer feedback
    * shouldn't also have to find a separate "resubmit" button; SUSPENDED
    * deliberately does not auto-resubmit, same reasoning as businesses).
-   * Deliberately excludes `categoryId`/`countyId`/`slug`/`ownerUserId` —
-   * what this place fundamentally *is* and where it lives isn't something
-   * a submitter should be able to change themselves after the fact
-   * (that stays admin-only, via UpdatePlaceDto). */
+   * categoryId/countyId ARE self-service-editable (unlike slug/
+   * ownerUserId, which stay admin-only via UpdatePlaceDto) — a submitter
+   * needs to be able to fix a category/county picked wrong at submission
+   * time, and requiring an admin for that correction was leaving
+   * mis-filed places stuck wrong on the map and in search indefinitely. */
   async updateMine(
     userId: string,
     placeId: string,
@@ -497,6 +499,16 @@ export class PlacesService {
     if (place.ownerUserId !== userId) {
       throw new ForbiddenException("You don't manage this place");
     }
+
+    // `category`/`county` are `eager: true`, so the findOne() above already
+    // populated them with the OLD relation — see clearStaleRelation's doc
+    // comment for why leaving that in place would silently defeat the
+    // categoryId/countyId merged below (TypeORM's save writes the FK
+    // column from the *loaded relation object*, not the scalar, when both
+    // are present). Same fix AdminContentService.updatePlace already
+    // needed for the admin edit path.
+    if (dto.categoryId !== undefined) clearStaleRelation(place, "category");
+    if (dto.countyId !== undefined) clearStaleRelation(place, "county");
 
     Object.assign(place, dto);
     if (dto.openingHours !== undefined) {
