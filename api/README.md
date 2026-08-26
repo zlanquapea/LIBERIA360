@@ -310,11 +310,11 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
 | `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
-| `GET /admin/places/data-quality` | Flags places with an editorial problem a review-status pass wouldn't catch: slug that no longer matches the current name (a rename left a stale, mismatched URL — e.g. a card image resolving to the wrong place), missing/too-short/placeholder description, and no photos. Registered ahead of `GET /admin/places/:id` below since Nest matches routes in declaration order |
+| `GET /admin/places/data-quality` | Flags places with an editorial problem a review-status pass wouldn't catch: slug that no longer matches the current name (see `PATCH /admin/places`'s auto-re-slug below, which now closes off the main way this could happen — this stays as a safety net for anything the auto-derivation doesn't cover, e.g. a slug set by hand that no longer matches), missing/too-short/placeholder description, and no photos. Registered ahead of `GET /admin/places/:id` below since Nest matches routes in declaration order |
 | `GET /admin/places/:id` | Single place by id, any review status, with `owner`, `category`, `county`, `activities` — what the review panel loads |
-| `POST` / `PATCH /admin/places` | Create/update places |
+| `POST` / `PATCH /admin/places` | Create/update places — renaming a place without also typing a new slug re-derives the slug from the new name (deduped against any other place's slug), instead of leaving it frozen to the old name |
 | `DELETE /admin/places/:id` | Delete a place — blocked (409) if it still has a linked business or events | Super Admin |
-| `POST` / `PATCH /admin/categories` | Create/update catalog categories (previously seed-data-only) |
+| `POST` / `PATCH /admin/categories` | Create/update catalog categories (previously seed-data-only) — renaming one re-derives its slug the same way `PATCH /admin/places` does |
 | `DELETE /admin/categories/:id` | Delete a category — blocked (409) if any place still uses it | Super Admin |
 | `POST` / `PATCH /admin/activities` | Create/update activities |
 | `DELETE /admin/activities/:id` | Delete an activity | Super Admin |

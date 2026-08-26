@@ -236,6 +236,66 @@ describe("AdminContentService", () => {
         service.updateCategory("category-1", { slug: "waterfalls-nature" }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
+
+    // The exact live-site defect from the Aug 22 product review readout: a
+    // category renamed to fix a typo kept the OLD slug forever, because a
+    // rename only ever changed the name column, not the slug that
+    // /categories/[slug] pages and the map's category filter actually key
+    // off. This is the fix, at the source.
+    it("re-derives the slug from a new name when the admin didn't also type one", async () => {
+      categoryRepo.findOne.mockResolvedValue({
+        id: "category-1",
+        name: "Waterfals",
+        slug: "waterfals",
+      });
+      await service.updateCategory("category-1", { name: "Waterfalls" });
+      expect(categoryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Waterfalls", slug: "waterfalls" }),
+      );
+    });
+
+    it("keeps an admin-typed slug over the auto-derived one when both are given", async () => {
+      categoryRepo.findOne.mockResolvedValue({
+        id: "category-1",
+        name: "Waterfals",
+        slug: "waterfals",
+      });
+      await service.updateCategory("category-1", {
+        name: "Waterfalls",
+        slug: "waterfalls-and-nature",
+      });
+      expect(categoryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Waterfalls",
+          slug: "waterfalls-and-nature",
+        }),
+      );
+    });
+
+    it("leaves the slug alone when the name isn't part of the update", async () => {
+      categoryRepo.findOne.mockResolvedValue({
+        id: "category-1",
+        name: "Beaches",
+        slug: "beaches",
+      });
+      await service.updateCategory("category-1", { icon: "🏖️" });
+      expect(categoryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: "beaches" }),
+      );
+    });
+
+    it("dedupes the re-derived slug against another category's existing slug", async () => {
+      categoryRepo.findOne.mockResolvedValue({
+        id: "category-1",
+        name: "Waterfals",
+        slug: "waterfals",
+      });
+      categoryRepo.exists.mockResolvedValueOnce(true).mockResolvedValue(false);
+      await service.updateCategory("category-1", { name: "Waterfalls" });
+      expect(categoryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: "waterfalls-2" }),
+      );
+    });
   });
 
   describe("deleteCategory", () => {
@@ -367,6 +427,51 @@ describe("AdminContentService", () => {
           county: { id: "county-1", name: "Montserrado" },
           category: { id: "category-1", name: "Beaches" },
         }),
+      );
+    });
+
+    // The exact live-site defect from the Aug 22 product review readout,
+    // reported again directly: "Kpatawee Waterfall" was corrected to
+    // "Nimba Ecolodge" but the slug stayed "kpatawee-waterfall" — silently
+    // serving the new place at a URL that named the wrong one, and
+    // pointing every map/filter link built from the slug at the old name
+    // too. See auditPlaceDataQuality's `expectedSlug` check, which exists
+    // to catch this after the fact; this closes it at the source.
+    it("re-derives the slug from a new name when the admin didn't also type one", async () => {
+      await service.updatePlace("place-1", { name: "Nimba Ecolodge" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Nimba Ecolodge",
+          slug: "nimba-ecolodge",
+        }),
+      );
+    });
+
+    it("keeps an admin-typed slug over the auto-derived one when both are given", async () => {
+      await service.updatePlace("place-1", {
+        name: "Nimba Ecolodge",
+        slug: "nimba-ecolodge-retreat",
+      });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Nimba Ecolodge",
+          slug: "nimba-ecolodge-retreat",
+        }),
+      );
+    });
+
+    it("leaves the slug alone when the name isn't part of the update", async () => {
+      await service.updatePlace("place-1", { city: "Gbarnga" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: "ceecee-beach" }),
+      );
+    });
+
+    it("dedupes the re-derived slug against another place's existing slug", async () => {
+      placeRepo.exists.mockResolvedValueOnce(true).mockResolvedValue(false);
+      await service.updatePlace("place-1", { name: "Nimba Ecolodge" });
+      expect(placeRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: "nimba-ecolodge-2" }),
       );
     });
   });
