@@ -210,6 +210,13 @@ export function getActiveAdvertisements(limit?: number): Promise<Advertisement[]
   return apiFetch<Advertisement[]>('/advertisements/active', limit ? { limit } : undefined, []);
 }
 
+// The "See more" detail page a carousel card links to — a single approved
+// ad. No buildFallback (unlike the list above): a missing/not-yet-approved
+// id is a 404, not an empty state, same as getPlaceBySlug.
+export function getActiveAdvertisement(id: string): Promise<Advertisement> {
+  return apiFetch<Advertisement>(`/advertisements/active/${id}`);
+}
+
 export interface CreatorsQuery {
   page?: number;
   limit?: number;

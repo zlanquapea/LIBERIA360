@@ -14,10 +14,13 @@ import { UsersService } from "../users/users.service";
 
 const ACTIVE_ADS_DEFAULT_LIMIT = 12;
 
-/** Where an admin goes to act on a pending ad — a dedicated queue,
- * distinct from /admin/content/moderation's place/business queue, since
- * an ad isn't a catalog listing (see Advertisement's own doc comment). */
-const AD_MODERATION_QUEUE_LINK = "/admin/advertisements";
+/** Where an admin goes to act on a pending ad — same moderation queue
+ * page as pending places/businesses (its own "Pending advertisements"
+ * section), not a route of its own. Previously pointed at
+ * "/admin/advertisements", which doesn't exist and 404'd every admin who
+ * clicked the notification — mirrors PlacesService/BusinessesService's
+ * MODERATION_QUEUE_LINK. */
+const AD_MODERATION_QUEUE_LINK = "/admin/content/moderation";
 
 @Injectable()
 export class AdvertisementsService {
@@ -142,5 +145,19 @@ export class AdvertisementsService {
       order: { createdAt: "DESC" },
       take: limit,
     });
+  }
+
+  /** Public ad detail page ("See more" from the carousel) — approved only,
+   * same visibility rule as findActive, so a dismissed/rejected/pending ad
+   * (or one that's since been suspended) isn't reachable by guessing its
+   * id once it's no longer meant to be public. */
+  async findActiveOne(id: string): Promise<Advertisement> {
+    const ad = await this.adRepo.findOne({
+      where: { id, reviewStatus: AdvertisementReviewStatus.APPROVED },
+    });
+    if (!ad) {
+      throw new NotFoundException(`Advertisement "${id}" not found`);
+    }
+    return ad;
   }
 }

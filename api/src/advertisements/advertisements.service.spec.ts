@@ -230,4 +230,26 @@ describe("AdvertisementsService", () => {
       );
     });
   });
+
+  describe("findActiveOne", () => {
+    it("returns an approved ad by id", async () => {
+      adRepo.findOne.mockResolvedValue({
+        id: AD_ID,
+        reviewStatus: AdvertisementReviewStatus.APPROVED,
+      });
+      await expect(service.findActiveOne(AD_ID)).resolves.toMatchObject({
+        id: AD_ID,
+      });
+      expect(adRepo.findOne).toHaveBeenCalledWith({
+        where: { id: AD_ID, reviewStatus: AdvertisementReviewStatus.APPROVED },
+      });
+    });
+
+    it("404s an ad that isn't approved (pending, rejected, suspended, or unknown)", async () => {
+      adRepo.findOne.mockResolvedValue(null);
+      await expect(service.findActiveOne(AD_ID)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
 });

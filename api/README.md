@@ -314,6 +314,7 @@ Current triggers: a booking request/confirmation/decline, a new booking message,
 | Method & path | Description | Auth |
 |---|---|---|
 | `GET /advertisements/active` | Currently approved ads — the public "Sponsored" placement feed (`?limit=`, default 12) | — |
+| `GET /advertisements/active/:id` | One approved ad — the "See more" detail page a carousel card links to | — |
 | `POST /advertisements` | Submit a new ad — straight to `submitted_for_review`, not a draft | JWT |
 | `GET /advertisements/mine` | Own ads, every status | JWT |
 | `GET /advertisements/:id` | One own ad | JWT, owner only |

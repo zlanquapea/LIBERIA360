@@ -28,6 +28,7 @@ import type {
 import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
 import { PlaceReviewPanel } from '../PlaceReviewPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { AdvertisementFullDetails } from '@/components/AdvertisementFullDetails';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -251,6 +252,7 @@ export default function ModerationPage() {
                   {formatAdvertisementType(ad.type)} · {ad.owner?.name ?? 'Unknown'}
                 </p>
                 <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{ad.description}</p>
+                <AdvertisementFullDetails ad={ad} />
                 <AdvertisementReviewStatusControl ad={ad} onDone={reload} />
               </li>
             ))}

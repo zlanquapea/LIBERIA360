@@ -43,6 +43,16 @@ export class AdvertisementsController {
     return ads.map(sanitize);
   }
 
+  // Public — the "See more" detail page a carousel card links to.
+  // Declared before the owner-only ":id" route below isn't required for
+  // correctness (different segment count — "active/:id" vs ":id" — so
+  // there's no route-matching ambiguity either way), but keeps it grouped
+  // with the other "active" (approved-only) endpoint above.
+  @Get("active/:id")
+  async findActiveOne(@Param("id") id: string) {
+    return sanitize(await this.adsService.findActiveOne(id));
+  }
+
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
