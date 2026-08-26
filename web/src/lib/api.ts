@@ -46,9 +46,10 @@ class ApiError extends Error {
 // never during `next dev` or while actually serving requests. So this
 // only ever applies during that one narrow window: if a connection-level
 // failure happens then, log it and fall back to an empty result instead
-// of crashing the build. ISR (`next: { revalidate: 60 }` below) means the
-// very first real visitor after deploy — by which point the API is
-// actually up — refetches and replaces this placeholder with real data.
+// of crashing the build. This mechanism now mostly matters for that narrow
+// build-time window — every catalog read below fetches fresh from the
+// live API on every real request (see apiFetch's own comment below for
+// why), so there's no ISR cache left to "wait out" once the app is up.
 //
 // A genuine HTTP error response (res.ok false) gets the same build-time
 // fallback, but only for the specific status codes a gateway/proxy
@@ -84,9 +85,19 @@ async function apiFetch<T>(
   let res: Response;
   try {
     res = await fetch(url.toString(), {
-      // Phase 1 catalog data changes slowly — a short revalidation window
-      // keeps pages fast without serving stale content for long.
-      next: { revalidate: 60 },
+      // A prior 60s ISR window meant an admin's correction (rename,
+      // recategorize, reassign a place's category/county) could keep
+      // showing the old value on the map/catalog pages for up to a
+      // minute — and, on some deploy topologies, effectively longer than
+      // that if a stale copy kept getting served from a particular
+      // instance or edge cache. Reported directly as a real problem
+      // ("Royal Hotel" still showing under Hospital after being
+      // recategorized): at this catalog's size and traffic, the perf cost
+      // of always fetching fresh is negligible next to the cost of the
+      // public site visibly disagreeing with what an admin just fixed.
+      // `cache: 'no-store'` opts every catalog read out of Next's Data
+      // Cache entirely — no window to wait out, on any topology.
+      cache: 'no-store',
     });
   } catch (err) {
     if (IS_BUILD_PHASE && buildFallback !== undefined) {

@@ -237,6 +237,17 @@ Takes effect on that user's very next request — no re-login needed (see
   MTN merchant relationship this environment can't create.
 - **Crash reporting only covers client-side frontend errors and API-side
   exceptions** — see section 7 above for the frontend-specific caveat.
+- **Public catalog pages (map, place/business/category/county pages,
+  search, home) fetch the API fresh on every request** — `web/src/lib/api.ts`
+  used to cache these for 60s (Next.js ISR) but that window was reported as
+  a real problem: an admin's correction (e.g. recategorizing a place) could
+  keep showing the old value on the map for longer than expected,
+  especially across multiple instances/edge caches. Reported directly
+  ("Royal Hotel" still showing under Hospital after being recategorized),
+  fixed by dropping the cache entirely (`cache: 'no-store'`). At this
+  catalog's size this trades a bit of origin load for the public site never
+  visibly disagreeing with an admin correction; revisit only if the catalog
+  or traffic grows enough for that origin load to matter.
 
 ## CI
 
