@@ -1,5 +1,6 @@
 import {
   estimateTravelTime,
+  formatBookingDateRange,
   formatBookingStatus,
   formatBudgetBand,
   formatBusinessReviewStatus,
@@ -136,6 +137,20 @@ describe('formatRating', () => {
   it('pluralizes review count correctly', () => {
     expect(formatRating(4.5, 1)).toBe('4.5 (1 review)');
     expect(formatRating(4.5, 2)).toBe('4.5 (2 reviews)');
+  });
+});
+
+describe('formatBookingDateRange', () => {
+  it('formats a single date with no end date', () => {
+    const result = formatBookingDateRange('2026-03-15T00:00:00.000Z', null);
+    expect(result).not.toMatch(/–/);
+    expect(result).toContain('2026');
+  });
+
+  it('formats a date range with an en-dash', () => {
+    const result = formatBookingDateRange('2026-03-15T00:00:00.000Z', '2026-03-17T00:00:00.000Z');
+    expect(result).toMatch(/–/);
+    expect(result.match(/2026/g)?.length).toBe(2);
   });
 });
 

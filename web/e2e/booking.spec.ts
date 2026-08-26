@@ -17,7 +17,7 @@ test('a signed-in guest can request a booking with a claimed business through th
 
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await page.getByLabel('Date').fill(tomorrow);
-  await page.getByLabel(/notes for/i).fill('E2E fixture booking — safe to ignore.');
+  await page.getByLabel(/leave a message/i).fill('E2E fixture booking — safe to ignore.');
   await page.getByRole('button', { name: 'Send request' }).click();
 
   await expect(page.getByText(/request sent/i)).toBeVisible();

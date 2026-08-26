@@ -1,13 +1,14 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import BookingMessageThread from '@/components/BookingMessageThread';
 import { cancelBooking, getBusinessBookings, getCreatorBookings, getMyBookings, respondToBooking } from '@/lib/booking-api';
 import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
-import { formatBookingStatus } from '@/lib/format';
+import { formatBookingDateRange, formatBookingStatus } from '@/lib/format';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Booking, Business, Creator } from '@/lib/types';
@@ -18,6 +19,13 @@ import type { Booking, Business, Creator } from '@/lib/types';
 // can be a guest (requests they sent), a business owner, and/or a
 // creator (requests either has received) all at once — the account
 // model doesn't distinguish "roles", so neither does this page.
+//
+// Each list renders compact rows only (product feedback, Aug 2026: "don't
+// put the messaging and the booking on that one page to make things
+// long") — the full detail, the confirm/decline or cancel action, and the
+// message thread all live in one BookingDetailModal opened by clicking a
+// row, so a page with many bookings stays a short scannable list instead
+// of a wall of inline forms and chat threads.
 export default function BookingsPage() {
   const { user, token, ready } = useAuth();
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
@@ -26,6 +34,7 @@ export default function BookingsPage() {
   const [incoming, setIncoming] = useState<Record<string, Booking[]>>({});
   const [incomingCreator, setIncomingCreator] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<SelectedBooking | null>(null);
 
   const reloadMine = useCallback(() => {
     if (!token) return;
@@ -107,15 +116,22 @@ export default function BookingsPage() {
             No booking requests yet. Request to book on any claimed listing&apos;s page.
           </p>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2">
             {myBookings.map((booking) => (
-              <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-                <BookingCard booking={booking} />
-                {(booking.status === 'pending' || booking.status === 'confirmed') && token && (
-                  <CancelBookingButton token={token} bookingId={booking.id} onCancelled={reloadMine} />
-                )}
-                <BookingMessageThread bookingId={booking.id} />
-              </li>
+              <BookingRow
+                key={booking.id}
+                booking={booking}
+                onOpen={() =>
+                  setSelected({
+                    booking,
+                    canCancel: booking.status === 'pending' || booking.status === 'confirmed',
+                    onCancelled: () => {
+                      reloadMine();
+                      setSelected(null);
+                    },
+                  })
+                }
+              />
             ))}
           </ul>
         )}
@@ -125,23 +141,29 @@ export default function BookingsPage() {
         <section className="flex flex-col gap-6">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my listings</h2>
           {businesses.map((business) => (
-            <div key={business.id} className="flex flex-col gap-3">
+            <div key={business.id} className="flex flex-col gap-2">
               <h3 className="font-semibold text-slate-800 dark:text-slate-100">{business.name}</h3>
               {(incoming[business.id] ?? []).length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
               ) : (
-                <ul className="flex flex-col gap-3">
+                <ul className="flex flex-col gap-2">
                   {(incoming[business.id] ?? []).map((booking) => (
-                    <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-                      <BookingCard booking={booking} showGuest />
-                      {booking.status === 'pending' && (
-                        <OwnerResponseForm
-                          bookingId={booking.id}
-                          onDone={() => reloadIncoming(business.id)}
-                        />
-                      )}
-                      <BookingMessageThread bookingId={booking.id} />
-                    </li>
+                    <BookingRow
+                      key={booking.id}
+                      booking={booking}
+                      showGuest
+                      onOpen={() =>
+                        setSelected({
+                          booking,
+                          showGuest: true,
+                          canRespond: booking.status === 'pending',
+                          onResponded: () => {
+                            reloadIncoming(business.id);
+                            setSelected(null);
+                          },
+                        })
+                      }
+                    />
                   ))}
                 </ul>
               )}
@@ -151,26 +173,184 @@ export default function BookingsPage() {
       )}
 
       {creator && (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-2">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my creator profile</h2>
           {incomingCreator.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-2">
               {incomingCreator.map((booking) => (
-                <li key={booking.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-                  <BookingCard booking={booking} showGuest />
-                  {booking.status === 'pending' && (
-                    <OwnerResponseForm bookingId={booking.id} onDone={reloadIncomingCreator} />
-                  )}
-                  <BookingMessageThread bookingId={booking.id} />
-                </li>
+                <BookingRow
+                  key={booking.id}
+                  booking={booking}
+                  showGuest
+                  onOpen={() =>
+                    setSelected({
+                      booking,
+                      showGuest: true,
+                      canRespond: booking.status === 'pending',
+                      onResponded: () => {
+                        reloadIncomingCreator();
+                        setSelected(null);
+                      },
+                    })
+                  }
+                />
               ))}
             </ul>
           )}
         </section>
       )}
+
+      {selected && token && (
+        <BookingDetailModal selected={selected} token={token} onClose={() => setSelected(null)} />
+      )}
     </main>
+  );
+}
+
+interface SelectedBooking {
+  booking: Booking;
+  showGuest?: boolean;
+  canCancel?: boolean;
+  canRespond?: boolean;
+  onCancelled?: () => void;
+  onResponded?: () => void;
+}
+
+// Who a row/modal names as "the other side" of the booking — the guest's
+// name when viewing incoming requests for a listing, the listing's name
+// when viewing a guest's own requests.
+function counterpartName(booking: Booking, showGuest?: boolean): string {
+  return showGuest ? booking.guest?.name ?? 'A guest' : booking.business?.name ?? booking.creator?.name ?? 'Listing';
+}
+
+// A small colored initial badge — cheap stand-in for an avatar that gives
+// every row a bit of personality instead of a bare wall of text.
+function InitialBadge({ name, size = 10 }: { name: string; size?: 8 | 10 | 11 }) {
+  const initial = name.trim().charAt(0).toUpperCase() || '?';
+  const sizeClass = size === 8 ? 'h-8 w-8 text-xs' : size === 11 ? 'h-11 w-11 text-base' : 'h-10 w-10 text-sm';
+  return (
+    <span
+      aria-hidden
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-800 font-semibold text-white ${sizeClass}`}
+    >
+      {initial}
+    </span>
+  );
+}
+
+// One compact, clickable summary of a booking. Tapping it (or the chat
+// icon) is the only way in — full details, actions, and the message
+// thread all live behind that one click, in BookingDetailModal.
+function BookingRow({ booking, showGuest, onOpen }: { booking: Booking; showGuest?: boolean; onOpen: () => void }) {
+  const name = counterpartName(booking, showGuest);
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/60 dark:hover:bg-brand-950/20"
+      >
+        <InitialBadge name={name} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-2">
+            <span className="truncate font-medium text-slate-900 dark:text-slate-50">{name}</span>
+            <StatusBadge status={booking.status} />
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+            {formatBookingDateRange(booking.requestedDate, booking.requestedEndDate)}
+            {booking.partySize && ` · Party of ${booking.partySize}`}
+          </span>
+        </span>
+        <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300" />
+      </button>
+    </li>
+  );
+}
+
+function StatusBadge({ status }: { status: Booking['status'] }) {
+  const styles: Record<Booking['status'], string> = {
+    pending: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200',
+    confirmed: 'bg-emerald-100 text-emerald-800',
+    declined: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    cancelled: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+  };
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
+      {formatBookingStatus(status)}
+    </span>
+  );
+}
+
+// The single home for everything about one booking: its details, whichever
+// action applies (a guest can cancel, an owner can respond while pending),
+// and the full conversation — opened from a BookingRow click, closed by
+// the backdrop, the × button, or a completed action.
+function BookingDetailModal({
+  selected,
+  token,
+  onClose,
+}: {
+  selected: SelectedBooking;
+  token: string;
+  onClose: () => void;
+}) {
+  const { booking, showGuest, canCancel, canRespond, onCancelled, onResponded } = selected;
+  const name = counterpartName(booking, showGuest);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Booking with ${name}`}
+      className="fixed inset-0 z-[2000] flex items-end justify-center bg-black/50 p-0 animate-fade-in sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl animate-fade-in-up dark:bg-slate-900 sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
+          <InitialBadge name={name} size={11} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{name}</p>
+            <StatusBadge status={booking.status} />
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          >
+            <XMarkIcon aria-hidden className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <div className="flex flex-col gap-1.5 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
+            <p className="text-slate-700 dark:text-slate-200">
+              {formatBookingDateRange(booking.requestedDate, booking.requestedEndDate)}
+              {booking.partySize && ` · Party of ${booking.partySize}`}
+            </p>
+            {booking.notes && <p className="text-slate-500 dark:text-slate-400">&ldquo;{booking.notes}&rdquo;</p>}
+            {booking.businessResponse && (
+              <p className="mt-1 rounded-lg bg-white px-2.5 py-1.5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                Response: {booking.businessResponse}
+              </p>
+            )}
+          </div>
+
+          {canRespond && onResponded && <OwnerResponseForm bookingId={booking.id} onDone={onResponded} />}
+
+          {canCancel && onCancelled && <CancelBookingButton token={token} bookingId={booking.id} onCancelled={onCancelled} />}
+
+          <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+            <BookingMessageThread bookingId={booking.id} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -217,7 +397,7 @@ function CancelBookingButton({
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="mt-2 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
+        className="self-start rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300"
       >
         Cancel request
       </button>
@@ -241,45 +421,6 @@ function CancelBookingButton({
   );
 }
 
-function BookingCard({ booking, showGuest }: { booking: Booking; showGuest?: boolean }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-medium text-slate-900 dark:text-slate-50">
-          {showGuest ? booking.guest?.name ?? 'A guest' : booking.business?.name ?? booking.creator?.name}
-        </p>
-        <StatusBadge status={booking.status} />
-      </div>
-      <p className="text-sm text-slate-600 dark:text-slate-300">
-        {new Date(booking.requestedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        {booking.requestedEndDate &&
-          ` – ${new Date(booking.requestedEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-        {booking.partySize && ` · Party of ${booking.partySize}`}
-      </p>
-      {booking.notes && <p className="text-sm text-slate-500 dark:text-slate-400">&ldquo;{booking.notes}&rdquo;</p>}
-      {booking.businessResponse && (
-        <p className="rounded-lg bg-slate-50 dark:bg-slate-800 px-2.5 py-1.5 text-sm text-slate-600 dark:text-slate-300">
-          Response: {booking.businessResponse}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: Booking['status'] }) {
-  const styles: Record<Booking['status'], string> = {
-    pending: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200',
-    confirmed: 'bg-emerald-100 text-emerald-800',
-    declined: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
-    cancelled: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
-  };
-  return (
-    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
-      {formatBookingStatus(status)}
-    </span>
-  );
-}
-
 function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
   const { token } = useAuth();
   const [message, setMessage] = useState('');
@@ -300,7 +441,7 @@ function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: (
   }
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <input
         type="text"
         placeholder="Optional message to the guest"
