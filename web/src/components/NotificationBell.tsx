@@ -16,6 +16,8 @@ import type { Notification } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 30000;
 const DROPDOWN_LIMIT = 8;
+const PANEL_WIDTH = 320; // matches the old w-80
+const VIEWPORT_MARGIN = 8;
 
 // Header's general notification center — the one place both a regular
 // traveler and an admin check for "what needs my attention" (Header
@@ -33,6 +35,7 @@ export function NotificationBell() {
   const [pendingInvitationCount, setPendingInvitationCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loadingFeed, setLoadingFeed] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const refreshCounts = useCallback(() => {
@@ -70,6 +73,24 @@ export function NotificationBell() {
   function toggleOpen() {
     const next = !open;
     setOpen(next);
+    if (next) {
+      // Anchors the dropdown's right edge to the bell button like before,
+      // but clamps it within the viewport — the bell isn't always the
+      // header's rightmost element (AccountLink sits after it), so
+      // right-aligning purely against the button could start the panel
+      // off-screen to the left on a narrow phone, clipping its first
+      // couple of characters. Computed fresh on each open rather than via
+      // CSS alone since the safe position depends on the button's actual
+      // location, which varies with what else the header renders (search
+      // link, theme toggle, signed-in state).
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const width = Math.min(PANEL_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
+        const maxLeft = Math.max(window.innerWidth - width - VIEWPORT_MARGIN, VIEWPORT_MARGIN);
+        const left = Math.min(Math.max(rect.right - width, VIEWPORT_MARGIN), maxLeft);
+        setPanelStyle({ top: rect.bottom + 8, left, width });
+      }
+    }
     if (next && token) {
       setLoadingFeed(true);
       listNotifications(token, { limit: DROPDOWN_LIMIT })
@@ -131,8 +152,11 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 z-20 mt-2 w-80 max-w-[90vw] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
+      {open && panelStyle && (
+        <div
+          style={{ position: 'fixed', top: panelStyle.top, left: panelStyle.left, width: panelStyle.width }}
+          className="z-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
+        >
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
             <span className="text-sm font-semibold text-slate-900 dark:text-white">Notifications</span>
             {unreadCount > 0 && (
