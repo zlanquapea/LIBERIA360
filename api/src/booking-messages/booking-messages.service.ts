@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,6 +10,7 @@ import { BookingMessage } from "./entities/booking-message.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { getOwnerUserId } from "../bookings/bookings.service";
 import { CreateBookingMessageDto } from "./dto/create-booking-message.dto";
+import { UpdateBookingMessageDto } from "./dto/update-booking-message.dto";
 
 @Injectable()
 export class BookingMessagesService {
@@ -60,6 +62,71 @@ export class BookingMessagesService {
       { bookingId, senderUserId: Not(userId), readAt: IsNull() },
       { readAt: new Date() },
     );
+  }
+
+  /** Edits the sender's own message — WhatsApp/Messenger convention: only
+   * the person who wrote it can change it, and doing so is flagged (see
+   * BookingMessage.editedAt) rather than silently rewriting history, since
+   * this thread can end up mattering in a booking dispute. */
+  async update(
+    userId: string,
+    bookingId: string,
+    messageId: string,
+    dto: UpdateBookingMessageDto,
+  ): Promise<BookingMessage> {
+    const message = await this.loadOwnMessage(userId, bookingId, messageId);
+    if (message.deletedAt) {
+      throw new ConflictException("This message was deleted");
+    }
+
+    message.body = dto.body;
+    message.editedAt = new Date();
+    await this.messageRepo.save(message);
+    return this.messageRepo.findOneOrFail({ where: { id: messageId } });
+  }
+
+  /** Soft-deletes the sender's own message. The row (and its `body`) stays
+   * in the database — see BookingMessage.deletedAt's doc comment — but the
+   * controller's sanitize() always redacts it once this is set, so every
+   * consumer of the API sees the same "This message was deleted" outcome a
+   * hard delete would give, without losing the record if a booking dispute
+   * ever needs it. Idempotent: deleting an already-deleted message is a
+   * no-op, not an error. */
+  async remove(
+    userId: string,
+    bookingId: string,
+    messageId: string,
+  ): Promise<void> {
+    const message = await this.loadOwnMessage(userId, bookingId, messageId);
+    if (message.deletedAt) return;
+
+    message.deletedAt = new Date();
+    await this.messageRepo.save(message);
+  }
+
+  /** Shared lookup for update()/remove(): confirms the caller participates
+   * in the booking, that the message exists on it, and that the caller is
+   * the one who sent it — editing/deleting someone else's message is never
+   * allowed, unlike reading or posting new ones. */
+  private async loadOwnMessage(
+    userId: string,
+    bookingId: string,
+    messageId: string,
+  ): Promise<BookingMessage> {
+    await this.assertParticipant(userId, bookingId);
+
+    const message = await this.messageRepo.findOne({
+      where: { id: messageId, bookingId },
+    });
+    if (!message) {
+      throw new NotFoundException(`Message "${messageId}" not found`);
+    }
+    if (message.senderUserId !== userId) {
+      throw new ForbiddenException(
+        "You can only edit or delete your own messages",
+      );
+    }
+    return message;
   }
 
   /** Only the guest who made the booking or the business/creator owner it
