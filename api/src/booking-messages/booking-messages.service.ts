@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Not, Repository } from "typeorm";
 import { BookingMessage } from "./entities/booking-message.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { getOwnerUserId } from "../bookings/bookings.service";
@@ -46,6 +46,20 @@ export class BookingMessagesService {
       where: { bookingId },
       order: { createdAt: "ASC" },
     });
+  }
+
+  /** Marks every message the *other* participant sent on this booking as
+   * read — called when a participant opens the thread, so the sender's
+   * side can show a "Viewed" receipt instead of just "Delivered" (see
+   * BookingMessage.readAt's doc comment). Never marks the caller's own
+   * messages read; a no-op if there's nothing unread. */
+  async markRead(userId: string, bookingId: string): Promise<void> {
+    await this.assertParticipant(userId, bookingId);
+
+    await this.messageRepo.update(
+      { bookingId, senderUserId: Not(userId), readAt: IsNull() },
+      { readAt: new Date() },
+    );
   }
 
   /** Only the guest who made the booking or the business/creator owner it

@@ -23,6 +23,7 @@ describe("BookingMessagesService", () => {
     save: jest.Mock;
     create: jest.Mock;
     findOneOrFail: jest.Mock;
+    update: jest.Mock;
   };
   let bookingRepo: { findOne: jest.Mock };
 
@@ -36,6 +37,7 @@ describe("BookingMessagesService", () => {
       }),
       create: jest.fn((data) => data),
       findOneOrFail: jest.fn(() => saved),
+      update: jest.fn().mockResolvedValue({ affected: 0 }),
     };
     bookingRepo = {
       findOne: jest.fn().mockResolvedValue(BOOKING),
@@ -98,6 +100,30 @@ describe("BookingMessagesService", () => {
     expect(messageRepo.find).toHaveBeenCalledWith({
       where: { bookingId: BOOKING_ID },
       order: { createdAt: "ASC" },
+    });
+  });
+
+  describe("markRead", () => {
+    it("rejects a stranger", async () => {
+      await expect(
+        service.markRead(STRANGER_ID, BOOKING_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(messageRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("marks only the other participant's unread messages as read", async () => {
+      await service.markRead(OWNER_ID, BOOKING_ID);
+      expect(messageRepo.update).toHaveBeenCalledTimes(1);
+      const [where, patch] = messageRepo.update.mock.calls[0];
+      expect(where).toMatchObject({ bookingId: BOOKING_ID });
+      expect(patch.readAt).toBeInstanceOf(Date);
+      // Not(userId) / IsNull() are TypeORM FindOperator instances — assert
+      // on their internal _type/_value rather than a plain equality check.
+      expect(where.senderUserId).toMatchObject({
+        _type: "not",
+        _value: OWNER_ID,
+      });
+      expect(where.readAt).toMatchObject({ _type: "isNull" });
     });
   });
 });

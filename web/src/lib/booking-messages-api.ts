@@ -18,3 +18,13 @@ export function sendBookingMessage(
     body: JSON.stringify({ body }),
   });
 }
+
+// Marks every message the *other* participant sent on this booking as
+// read — call this once the current user has the thread open, so their
+// counterpart's messages flip from "Delivered" to "Viewed" on their end.
+export function markBookingMessagesRead(token: string, bookingId: string): Promise<{ success: true }> {
+  return apiRequest<{ success: true }>(`/bookings/${bookingId}/messages/read`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+  });
+}

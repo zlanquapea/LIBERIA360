@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { BookingMessagesService } from "./booking-messages.service";
 import { CreateBookingMessageDto } from "./dto/create-booking-message.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -47,5 +55,14 @@ export class BookingMessagesController {
       bookingId,
     );
     return messages.map(sanitize);
+  }
+
+  @Patch("read")
+  async markRead(
+    @CurrentUser() user: User,
+    @Param("bookingId") bookingId: string,
+  ): Promise<{ success: true }> {
+    await this.bookingMessagesService.markRead(user.id, bookingId);
+    return { success: true };
   }
 }
