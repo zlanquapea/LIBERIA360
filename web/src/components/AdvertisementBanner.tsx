@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MegaphoneIcon } from '@heroicons/react/24/outline';
-import { AdvertisementBannerRow } from './AdvertisementBannerRow';
+import { AdvertisementCard } from './AdvertisementCard';
 import type { Advertisement } from '@/lib/types';
 
 const DISMISSED_KEY = 'liberia360:dismissed-ads';
@@ -25,14 +25,18 @@ function saveDismissed(ids: string[]) {
   }
 }
 
-// Strategic placement wrapper — a stack of full-width horizontal banners
-// (not a card carousel; see AdvertisementBannerRow) dropped between organic
-// content sections rather than above the fold, so it reads as a supplement
-// to discovery rather than competing with it. Each banner is dismissible
-// (persisted in localStorage, not just for this page load) — a viewer who
-// isn't interested in one particular ad shouldn't keep seeing it every
-// visit. Renders nothing once every ad has either never existed or been
-// dismissed (no empty "Sponsored" shelf).
+// Strategic placement wrapper — a horizontal-scroll carousel of ad cards
+// (see AdvertisementCard), same shelf pattern as "Featured this week" on
+// this page, rather than a vertical stack of full-width banners: with
+// many advertisers running at once, a stack would make the page
+// increasingly long, while a carousel scales to any number of ads without
+// growing the page. Dropped between organic content sections rather than
+// above the fold, so it reads as a supplement to discovery rather than
+// competing with it. Each card is dismissible (persisted in localStorage,
+// not just for this page load) — a viewer who isn't interested in one
+// particular ad shouldn't keep seeing it every visit. Renders nothing
+// once every ad has either never existed or been dismissed (no empty
+// "Sponsored" shelf).
 export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
   // Server-rendered markup can't know what a returning visitor already
@@ -68,9 +72,9 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
         <MegaphoneIcon aria-hidden className="h-5 w-5 text-slate-400 dark:text-slate-500" />
         Sponsored
       </h2>
-      <div className="flex flex-col gap-3">
+      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
         {visible.map((ad) => (
-          <AdvertisementBannerRow key={ad.id} ad={ad} onDismiss={() => dismiss(ad.id)} />
+          <AdvertisementCard key={ad.id} ad={ad} onDismiss={() => dismiss(ad.id)} />
         ))}
       </div>
     </section>

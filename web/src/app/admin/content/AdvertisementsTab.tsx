@@ -6,6 +6,7 @@ import { formatAdvertisementReviewStatus, formatAdvertisementType } from '@/lib/
 import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
 import { SafeImage } from '@/components/SafeImage';
+import { AdvertisementFullDetails } from '@/components/AdvertisementFullDetails';
 import { inputClass, TabListHeader } from './content-shared';
 import type { Advertisement, AdvertisementReviewStatus } from '@/lib/types';
 
@@ -116,6 +117,7 @@ export function AdvertisementsTab({ token }: { token: string }) {
               {ad.rejectionReason && (
                 <p className="text-xs italic text-slate-500 dark:text-slate-400">Note: {ad.rejectionReason}</p>
               )}
+              <AdvertisementFullDetails ad={ad} />
               <ReviewStatusControl token={token} ad={ad} onUpdated={updateInList} />
             </li>
           ))}
