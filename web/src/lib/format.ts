@@ -1,4 +1,6 @@
 import type {
+  AdvertisementReviewStatus,
+  AdvertisementType,
   BookingStatus,
   BudgetBand,
   BusinessContentStatus,
@@ -76,6 +78,29 @@ const PLACE_REVIEW_STATUS_LABELS: Record<PlaceReviewStatus, string> = {
 
 export function formatPlaceReviewStatus(status: PlaceReviewStatus): string {
   return PLACE_REVIEW_STATUS_LABELS[status] ?? status;
+}
+
+const ADVERTISEMENT_TYPE_LABELS: Record<AdvertisementType, string> = {
+  digital_product: 'Digital product',
+  business: 'Business',
+};
+
+export function formatAdvertisementType(type: AdvertisementType): string {
+  return ADVERTISEMENT_TYPE_LABELS[type] ?? type;
+}
+
+// No under_review value for an ad (see AdvertisementReviewStatus's doc
+// comment — unlike Place/Business, it's not a status any code path sets).
+const ADVERTISEMENT_REVIEW_STATUS_LABELS: Record<AdvertisementReviewStatus, string> = {
+  draft: 'Draft',
+  submitted_for_review: 'Submitted for review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  suspended: 'Suspended',
+};
+
+export function formatAdvertisementReviewStatus(status: AdvertisementReviewStatus): string {
+  return ADVERTISEMENT_REVIEW_STATUS_LABELS[status] ?? status;
 }
 
 const BUSINESS_CONTENT_TYPE_LABELS: Record<BusinessContentType, string> = {

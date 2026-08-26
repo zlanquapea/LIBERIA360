@@ -16,9 +16,12 @@ import { BusinessContent } from "../business-content/entities/business-content.e
 import { AdminAuditService } from "./admin-audit.service";
 import { SettingsService } from "../settings/settings.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { AdvertisementReviewStatus } from "../advertisements/entities/advertisement.enums";
 
 const ADMIN_ID = "admin-1";
 const PLACE_ID = "place-1";
+const AD_ID = "ad-1";
 
 // DI-satisfying stand-in for describe blocks that don't exercise the
 // submitter-notification path.
@@ -86,6 +89,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
+        { provide: getRepositoryToken(Advertisement), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: notificationsService },
@@ -260,6 +264,7 @@ describe("AdminService.bulkSetPlaceReviewStatus", () => {
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
+        { provide: getRepositoryToken(Advertisement), useValue: {} },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: inertNotificationsService },
@@ -346,6 +351,7 @@ describe("AdminService bulk review-status: business and business-content", () =>
           provide: getRepositoryToken(BusinessContent),
           useValue: businessContentRepo,
         },
+        { provide: getRepositoryToken(Advertisement), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: inertNotificationsService },
@@ -393,12 +399,19 @@ describe("AdminService.getModerationQueue", () => {
   let businessRepo: { find: jest.Mock };
   let freshnessQb: ReturnType<typeof emptyQueryBuilder>;
   let contentQb: ReturnType<typeof emptyQueryBuilder>;
+  let advertisementRepo: { find: jest.Mock };
   let settingsService: ReturnType<typeof fakeSettingsService>;
 
   const PENDING_PLACE = {
     id: "place-2",
     name: "Sapo National Park Trailhead",
     reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
+  };
+
+  const PENDING_AD = {
+    id: "ad-2",
+    title: "Weekend photography course",
+    reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW,
   };
 
   // The three other queue sources (possibly-closed places, flagged
@@ -428,6 +441,7 @@ describe("AdminService.getModerationQueue", () => {
     businessRepo = { find: jest.fn().mockResolvedValue([]) };
     freshnessQb = emptyQueryBuilder();
     contentQb = emptyQueryBuilder();
+    advertisementRepo = { find: jest.fn().mockResolvedValue([PENDING_AD]) };
     settingsService = fakeSettingsService();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -455,6 +469,10 @@ describe("AdminService.getModerationQueue", () => {
           provide: getRepositoryToken(BusinessContent),
           useValue: { find: jest.fn().mockResolvedValue([]) },
         },
+        {
+          provide: getRepositoryToken(Advertisement),
+          useValue: advertisementRepo,
+        },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
         { provide: SettingsService, useValue: settingsService },
         { provide: NotificationsService, useValue: inertNotificationsService },
@@ -467,6 +485,15 @@ describe("AdminService.getModerationQueue", () => {
   it("surfaces places awaiting a review decision, not just business claims", async () => {
     const queue = await service.getModerationQueue();
     expect(queue.pendingPlaces).toEqual([PENDING_PLACE]);
+  });
+
+  it("surfaces advertisements awaiting a review decision", async () => {
+    const queue = await service.getModerationQueue();
+    expect(queue.pendingAdvertisements).toEqual([PENDING_AD]);
+    expect(advertisementRepo.find).toHaveBeenCalledWith({
+      where: { reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW },
+      order: { submittedAt: "DESC" },
+    });
   });
 
   it("queries SUBMITTED_FOR_REVIEW/UNDER_REVIEW places with reviewer-facing relations, newest first", async () => {
@@ -499,5 +526,159 @@ describe("AdminService.getModerationQueue", () => {
     expect(contentQb.having).toHaveBeenCalledWith("COUNT(*) >= :threshold", {
       threshold: 9,
     });
+  });
+});
+
+describe("AdminService.setAdvertisementReviewStatus", () => {
+  let service: AdminService;
+  let advertisementRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+  let adminAuditService: { log: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+
+  beforeEach(async () => {
+    advertisementRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: AD_ID,
+        title: "Weekend photography course",
+        ownerUserId: "owner-1",
+        reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW,
+      }),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+    adminAuditService = { log: jest.fn() };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(Place), useValue: {} },
+        { provide: getRepositoryToken(Business), useValue: {} },
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        { provide: getRepositoryToken(Review), useValue: {} },
+        { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
+        { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: getRepositoryToken(ContentReport), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(Booking), useValue: {} },
+        { provide: getRepositoryToken(BusinessContent), useValue: {} },
+        {
+          provide: getRepositoryToken(Advertisement),
+          useValue: advertisementRepo,
+        },
+        { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
+        { provide: NotificationsService, useValue: notificationsService },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it("404s an unknown advertisement", async () => {
+    advertisementRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.setAdvertisementReviewStatus(
+        ADMIN_ID,
+        AD_ID,
+        AdvertisementReviewStatus.APPROVED,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("approves a pending ad, clearing any rejection reason", async () => {
+    await service.setAdvertisementReviewStatus(
+      ADMIN_ID,
+      AD_ID,
+      AdvertisementReviewStatus.APPROVED,
+    );
+    expect(advertisementRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: AdvertisementReviewStatus.APPROVED,
+        rejectionReason: null,
+        reviewedByUserId: ADMIN_ID,
+        reviewedAt: expect.any(Date),
+      }),
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({
+        type: "advertisement.review_decided",
+        body: expect.stringContaining("Weekend photography course"),
+      }),
+    );
+  });
+
+  it("rejects an ad with a reason and notifies the owner of it", async () => {
+    await service.setAdvertisementReviewStatus(
+      ADMIN_ID,
+      AD_ID,
+      AdvertisementReviewStatus.REJECTED,
+      "Looks like spam",
+    );
+    expect(advertisementRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: AdvertisementReviewStatus.REJECTED,
+        rejectionReason: "Looks like spam",
+      }),
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({
+        type: "advertisement.review_decided",
+        body: expect.stringContaining("Looks like spam"),
+      }),
+    );
+  });
+
+  it("suspends a live ad", async () => {
+    advertisementRepo.findOne.mockResolvedValue({
+      id: AD_ID,
+      title: "Weekend photography course",
+      ownerUserId: "owner-1",
+      reviewStatus: AdvertisementReviewStatus.APPROVED,
+    });
+    await service.setAdvertisementReviewStatus(
+      ADMIN_ID,
+      AD_ID,
+      AdvertisementReviewStatus.SUSPENDED,
+      "Reported for a fake WhatsApp number",
+    );
+    expect(advertisementRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: AdvertisementReviewStatus.SUSPENDED,
+      }),
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({ type: "advertisement.review_decided" }),
+    );
+  });
+
+  it("records the transition in the admin audit log", async () => {
+    await service.setAdvertisementReviewStatus(
+      ADMIN_ID,
+      AD_ID,
+      AdvertisementReviewStatus.APPROVED,
+    );
+    expect(adminAuditService.log).toHaveBeenCalledWith(
+      ADMIN_ID,
+      "advertisement.review_status_changed",
+      "advertisement",
+      AD_ID,
+      {
+        from: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW,
+        to: AdvertisementReviewStatus.APPROVED,
+        reason: null,
+      },
+      undefined,
+    );
   });
 });

@@ -22,19 +22,21 @@ import { StarIcon } from '@heroicons/react/24/solid';
 // same sense — are demoted to a visually quieter, more compact pairing
 // further down instead of two full-bleed gradient banners competing with
 // everything above them.
-import { getActiveSponsoredPlacements, getCategories, getEvents, getPlaces } from '@/lib/api';
+import { getActiveAdvertisements, getActiveSponsoredPlacements, getCategories, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { formatEventDateRange } from '@/lib/format';
 import { CategoryIcon } from '@/lib/icons';
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, trending, upcomingEvents, sponsoredPlacements] = await Promise.all([
+  const [categories, trending, upcomingEvents, sponsoredPlacements, ads] = await Promise.all([
     getCategories(),
     getPlaces({ sort: 'featured', limit: 6 }),
     getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
     getActiveSponsoredPlacements(),
+    getActiveAdvertisements(),
   ]);
 
   return (
@@ -145,6 +147,8 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      <AdvertisementBanner ads={ads} />
 
       <section aria-labelledby="trending-heading" className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

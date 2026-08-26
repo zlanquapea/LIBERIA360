@@ -11,6 +11,7 @@ import { AnalyticsEventType } from "./entities/analytics-event.enums";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
+import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { CreateAnalyticsEventDto } from "./dto/create-analytics-event.dto";
 
 const BUSINESS_ANALYTICS_WINDOW_DAYS = 30;
@@ -42,12 +43,19 @@ export class AnalyticsService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Creator)
     private readonly creatorRepo: Repository<Creator>,
+    @InjectRepository(Advertisement)
+    private readonly advertisementRepo: Repository<Advertisement>,
   ) {}
 
   async record(dto: CreateAnalyticsEventDto): Promise<void> {
-    if (!dto.placeId === !dto.creatorId) {
+    const targetCount = [
+      dto.placeId,
+      dto.creatorId,
+      dto.advertisementId,
+    ].filter((id) => id !== undefined).length;
+    if (targetCount !== 1) {
       throw new BadRequestException(
-        "Provide exactly one of placeId or creatorId",
+        "Provide exactly one of placeId, creatorId, or advertisementId",
       );
     }
 
@@ -67,15 +75,33 @@ export class AnalyticsService {
       return;
     }
 
-    const creatorExists = await this.creatorRepo.exists({
-      where: { id: dto.creatorId },
+    if (dto.creatorId) {
+      const creatorExists = await this.creatorRepo.exists({
+        where: { id: dto.creatorId },
+      });
+      if (!creatorExists) {
+        throw new NotFoundException(`Creator "${dto.creatorId}" not found`);
+      }
+      await this.eventRepo.save(
+        this.eventRepo.create({
+          creatorId: dto.creatorId,
+          eventType: dto.eventType,
+        }),
+      );
+      return;
+    }
+
+    const adExists = await this.advertisementRepo.exists({
+      where: { id: dto.advertisementId },
     });
-    if (!creatorExists) {
-      throw new NotFoundException(`Creator "${dto.creatorId}" not found`);
+    if (!adExists) {
+      throw new NotFoundException(
+        `Advertisement "${dto.advertisementId}" not found`,
+      );
     }
     await this.eventRepo.save(
       this.eventRepo.create({
-        creatorId: dto.creatorId,
+        advertisementId: dto.advertisementId,
         eventType: dto.eventType,
       }),
     );
@@ -123,6 +149,30 @@ export class AnalyticsService {
     }
 
     return this.aggregate("event.creatorId = :id", creatorId);
+  }
+
+  /** Same shape as getBusinessAnalytics/getCreatorAnalytics — "important
+   * metrics of their advertisement" (views, contact clicks) for the ad's
+   * own owner. */
+  async getAdvertisementAnalytics(
+    userId: string,
+    advertisementId: string,
+  ): Promise<BusinessAnalytics> {
+    const ad = await this.advertisementRepo.findOne({
+      where: { id: advertisementId },
+    });
+    if (!ad) {
+      throw new NotFoundException(
+        `Advertisement "${advertisementId}" not found`,
+      );
+    }
+    if (ad.ownerUserId !== userId) {
+      throw new ForbiddenException(
+        "Only the advertisement's owner can view its analytics",
+      );
+    }
+
+    return this.aggregate("event.advertisementId = :id", advertisementId);
   }
 
   private async aggregate(

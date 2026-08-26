@@ -1,5 +1,7 @@
 import type {
   Activity,
+  Advertisement,
+  AdvertisementReviewStatus,
   AggregateAnalytics,
   AnalyticsOverview,
   ApplicationSettings,
@@ -163,6 +165,30 @@ export function bulkSetPlaceReviewStatus(
     method: 'POST',
     headers: authHeader(token),
     body: JSON.stringify({ ids, status, reason }),
+  });
+}
+
+// Every advertisement regardless of review status — an admin's own
+// management view, so an already-approved ad can still be found and
+// suspended. Distinct from moderation-queue's pendingAdvertisements
+// (SUBMITTED_FOR_REVIEW-only slice).
+export function getAllAdvertisements(token: string): Promise<Advertisement[]> {
+  return apiRequest<Advertisement[]>('/admin/advertisements', { headers: authHeader(token) });
+}
+
+// The publish/moderation lifecycle for a self-submitted advertisement —
+// approve/reject/suspend — same shape as setPlaceReviewStatus/
+// setBusinessReviewStatus.
+export function setAdvertisementReviewStatus(
+  token: string,
+  id: string,
+  status: AdvertisementReviewStatus,
+  reason?: string,
+): Promise<Advertisement> {
+  return apiRequest<Advertisement>(`/admin/advertisements/${id}/review-status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status, reason }),
   });
 }
 

@@ -9,6 +9,7 @@ import {
   ExclamationTriangleIcon,
   MapIcon,
   MapPinIcon,
+  MegaphoneIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon } from '@heroicons/react/24/solid';
@@ -107,6 +108,7 @@ export default function AdminPage() {
   const needsAttentionTotal =
     (queue?.pendingBusinesses.length ?? 0) +
     (queue?.pendingPlaces.length ?? 0) +
+    (queue?.pendingAdvertisements.length ?? 0) +
     (queue?.flaggedContent.length ?? 0) +
     (queue?.possiblyClosedPlaces.length ?? 0) +
     (securityOverview?.failedLoginsLast24h ?? 0);
@@ -286,6 +288,12 @@ export default function AdminPage() {
               count={queue.pendingBusinesses.length}
               href="/admin/content/moderation"
               icon={ClipboardDocumentListIcon}
+            />
+            <NeedsAttentionCard
+              label="Pending advertisements"
+              count={queue.pendingAdvertisements.length}
+              href="/admin/content/moderation"
+              icon={MegaphoneIcon}
             />
             <NeedsAttentionCard
               label="Flagged reviews & events"

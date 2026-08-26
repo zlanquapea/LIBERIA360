@@ -47,4 +47,17 @@ export class AnalyticsController {
   ) {
     return this.analyticsService.getCreatorAnalytics(user.id, creatorId);
   }
+
+  @Get("advertisement/:advertisementId")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getAdvertisementAnalytics(
+    @CurrentUser() user: User,
+    @Param("advertisementId") advertisementId: string,
+  ) {
+    return this.analyticsService.getAdvertisementAnalytics(
+      user.id,
+      advertisementId,
+    );
+  }
 }

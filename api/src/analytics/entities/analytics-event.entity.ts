@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import { Place } from "../../places/entities/place.entity";
 import { Creator } from "../../creators/entities/creator.entity";
+import { Advertisement } from "../../advertisements/entities/advertisement.entity";
 import { AnalyticsEventType } from "./analytics-event.enums";
 
 /**
@@ -18,13 +19,14 @@ import { AnalyticsEventType } from "./analytics-event.enums";
  * visitor generates count too, and the B2B analytics product is explicitly
  * meant to be aggregate/anonymized, not per-visitor).
  *
- * Targets either a Place or a Creator, never both — same XOR-at-the-
- * service-layer convention as Review (see its doc comment), and the same
- * "NULL is distinct" reasoning for why one nullable FK per target works.
- * The B2B aggregate tourism analytics queries (admin-analytics.service.ts)
- * are place-specific and explicitly filter out creator-only rows (a
- * creator isn't a destination) — see that file's comments at each query
- * this affects.
+ * Targets exactly one of a Place, a Creator, or an Advertisement, never
+ * more than one — same XOR-at-the-service-layer convention as Review (see
+ * its doc comment), and the same "NULL is distinct" reasoning for why one
+ * nullable FK per target works. The B2B aggregate tourism analytics
+ * queries (admin-analytics.service.ts) are place-specific and explicitly
+ * filter out creator-only rows (a creator isn't a destination) — see that
+ * file's comments at each query this affects; an advertisement isn't a
+ * destination either; same exclusion applies there.
  */
 @Entity("analytics_events")
 export class AnalyticsEvent {
@@ -46,6 +48,14 @@ export class AnalyticsEvent {
   @Index()
   @Column({ name: "creator_id", nullable: true })
   creatorId: string | null;
+
+  @ManyToOne(() => Advertisement, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "advertisement_id" })
+  advertisement: Advertisement | null;
+
+  @Index()
+  @Column({ name: "advertisement_id", nullable: true })
+  advertisementId: string | null;
 
   @Index()
   @Column({ name: "event_type", type: "enum", enum: AnalyticsEventType })

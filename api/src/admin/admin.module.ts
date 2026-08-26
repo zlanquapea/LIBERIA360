@@ -14,6 +14,7 @@ import { AnalyticsEvent } from "../analytics/entities/analytics-event.entity";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { ContentReport } from "../reports/entities/content-report.entity";
 import { Booking } from "../bookings/entities/booking.entity";
+import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { ReviewsModule } from "../reviews/reviews.module";
 import { AuthModule } from "../auth/auth.module";
 import { SecurityModule } from "../security/security.module";
@@ -54,6 +55,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
       PlaceFreshnessReport,
       ContentReport,
       Booking,
+      Advertisement,
     ]),
     AdminAuditModule,
     ReviewsModule,

@@ -19,6 +19,7 @@ import { BulkSetPlaceReviewStatusDto } from "./dto/bulk-set-place-review-status.
 import { BulkSetBusinessReviewStatusDto } from "./dto/bulk-set-business-review-status.dto";
 import { SetBusinessContentReviewStatusDto } from "../business-content/dto/set-business-content-review-status.dto";
 import { BulkSetBusinessContentReviewStatusDto } from "../business-content/dto/bulk-set-business-content-review-status.dto";
+import { SetAdvertisementReviewStatusDto } from "./dto/set-advertisement-review-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -31,6 +32,7 @@ import { Creator } from "../creators/entities/creator.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { BusinessContent } from "../business-content/entities/business-content.entity";
+import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { FlaggedContent } from "./admin.service";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
@@ -68,6 +70,10 @@ function sanitizeBusinessContent(content: BusinessContent) {
     ...content,
     business: content.business ? sanitizeBusiness(content.business) : null,
   };
+}
+
+function sanitizeAdvertisement(ad: Advertisement) {
+  return { ...ad, owner: ad.owner ? toPublicUser(ad.owner) : null };
 }
 
 function sanitizeFlaggedContent(flagged: FlaggedContent) {
@@ -246,7 +252,37 @@ export class AdminController {
       pendingBusinessContent: queue.pendingBusinessContent.map(
         sanitizeBusinessContent,
       ),
+      pendingAdvertisements: queue.pendingAdvertisements.map(
+        sanitizeAdvertisement,
+      ),
     };
+  }
+
+  // Every advertisement, any status — an admin's own dedicated queue
+  // (distinct from moderation-queue's "SUBMITTED_FOR_REVIEW only" slice)
+  // for reviewing/suspending an already-approved ad too.
+  @Get("advertisements")
+  async findAllAdvertisements() {
+    const ads = await this.adminService.findAllAdvertisements();
+    return ads.map(sanitizeAdvertisement);
+  }
+
+  @Patch("advertisements/:id/review-status")
+  async setAdvertisementReviewStatus(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetAdvertisementReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return sanitizeAdvertisement(
+      await this.adminService.setAdvertisementReviewStatus(
+        admin.id,
+        id,
+        dto.status,
+        dto.reason,
+        getRequestInfo(req),
+      ),
+    );
   }
 
   // Super-admin only (stacks with the class-level AdminGuard) — same

@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { getCategories, getCounties, getPlaces } from '@/lib/api';
+import { getActiveAdvertisements, getCategories, getCounties, getPlaces } from '@/lib/api';
 import { findMatchingCategory } from '@/lib/category-match';
 import { PlaceCard } from '@/components/PlaceCard';
 import { SearchFilters } from '@/components/SearchFilters';
+import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import type { Category, PlaceSort, PlacesQuery } from '@/lib/types';
 
 export const metadata = { title: 'Search — LIBERIA360' };
@@ -40,7 +41,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     priceMax,
   };
 
-  const [categories, counties, result] = await Promise.all([getCategories(), getCounties(), getPlaces(query)]);
+  const [categories, counties, result, ads] = await Promise.all([
+    getCategories(),
+    getCounties(),
+    getPlaces(query),
+    page === 1 ? getActiveAdvertisements(6) : Promise.resolve([]),
+  ]);
 
   function pageHref(targetPage: number) {
     const p = new URLSearchParams();
@@ -98,6 +104,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           ))}
         </div>
       )}
+
+      {page === 1 && <AdvertisementBanner ads={ads} />}
 
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
         Don&apos;t see your destination?{' '}

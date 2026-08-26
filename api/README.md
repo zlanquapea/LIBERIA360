@@ -261,8 +261,10 @@ Plain text only; no attachments, read receipts, or editing.
 
 | Method & path | Description | Auth |
 |---|---|---|
-| `POST /analytics/events` | Log an event (`view`/`save`/`contact_click`/`booking_request`) | — |
+| `POST /analytics/events` | Log an event (`view`/`save`/`contact_click`/`booking_request`) against exactly one of `placeId`/`creatorId`/`advertisementId` | — |
 | `GET /analytics/business/:businessId` | Totals + 30-day daily breakdown | Owner |
+| `GET /analytics/creator/:creatorId` | Same shape, for a creator profile | Owner |
+| `GET /analytics/advertisement/:advertisementId` | Same shape, for an advertisement | Owner |
 
 Append-only anonymous event log; no per-visitor data.
 
@@ -305,7 +307,24 @@ Distinct from `Place.featured` (undated editorial curation).
 
 One shared in-app notification center for every account, regular users and admins alike — a `Notification.userId` scoped to whoever is signed in, not a separate "admin notifications" system (an admin sees admin-relevant rows for the same reason a traveler sees booking-relevant ones: both are just "this account's rows"). Creating a notification never fails the action that triggered it (same "never blocks the caller" contract as `AdminAuditService.log`/`LoginActivityService.record`); a broadcast to many recipients (e.g. every admin) writes one independent row per recipient so one person's read state never affects another's.
 
-Current triggers: a booking request/confirmation/decline, a new booking message, a place/business entering admin review (all admins) and the decision on it (the submitter), and a failed-login threshold alert (every super admin, alongside the existing email). Trip invitations, business-content approval, and creator verification don't write a `Notification` yet — trip invitations still surface via the header bell (folded in from `GET /invitations/mine`, not the notifications table), and the others remain email/UI-only for now.
+Current triggers: a booking request/confirmation/decline, a new booking message, a place/business/advertisement entering admin review (all admins) and the decision on it (the submitter), and a failed-login threshold alert (every super admin, alongside the existing email). Trip invitations, business-content approval, and creator verification don't write a `Notification` yet — trip invitations still surface via the header bell (folded in from `GET /invitations/mine`, not the notifications table), and the others remain email/UI-only for now.
+
+### Advertisements
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /advertisements/active` | Currently approved ads — the public "Sponsored" placement feed (`?limit=`, default 12) | — |
+| `POST /advertisements` | Submit a new ad — straight to `submitted_for_review`, not a draft | JWT |
+| `GET /advertisements/mine` | Own ads, every status | JWT |
+| `GET /advertisements/:id` | One own ad | JWT, owner only |
+| `PATCH /advertisements/:id` | Edit — editing a rejected ad resubmits it automatically | JWT, owner only |
+| `DELETE /advertisements/:id` | Delete outright | JWT, owner only |
+
+A self-service, paid marketplace ad slot — "advertise your digital product or business" — independent of the catalog's own Place/Business/Creator listings and of `SponsoredPlacement` (which is an admin-only promotion of an *existing* Place). Any signed-in user can create one for anything they want to advertise; there's no requirement to already have a Business or Place record. Goes through the same review-gate as a self-submitted Place — `submitted_for_review` on creation, invisible and unadvertisable until an admin approves it — and the same `approved`/`rejected`/`suspended` lifecycle as Business/Place (see `AdvertisementReviewStatus`'s doc comment). There's no live payment integration yet — approving an ad is presently a manual admin decision, same posture as everything else gated behind human review on this platform (see `Booking`'s deferred-payment note for the same tradeoff elsewhere).
+
+Metrics ("important metrics of their advertisement") reuse the existing `AnalyticsEvent` engine — see Analytics above.
+
+Admin: `GET /admin/advertisements` (every ad, any status) and `PATCH /admin/advertisements/:id/review-status` (approve/reject/suspend) — see Admin below. A pending ad also surfaces in the moderation queue's `pendingAdvertisements`.
 
 ### Admin
 
