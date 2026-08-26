@@ -6,6 +6,8 @@ import { County } from "../counties/entities/county.entity";
 import { BusinessesModule } from "../businesses/businesses.module";
 import { PlacesService } from "./places.service";
 import { PlacesController } from "./places.controller";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { UsersModule } from "../users/users.module";
 
 @Module({
   // BusinessesModule: PlacesService.submitPlace auto-claims a self-submitted
@@ -15,6 +17,8 @@ import { PlacesController } from "./places.controller";
   imports: [
     TypeOrmModule.forFeature([Place, Category, County]),
     BusinessesModule,
+    NotificationsModule,
+    UsersModule,
   ],
   controllers: [PlacesController],
   providers: [PlacesService],

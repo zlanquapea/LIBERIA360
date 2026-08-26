@@ -294,6 +294,19 @@ Distinct from `Place.featured` (undated editorial curation).
 
 `reason` is one of `spam`/`inappropriate`/`fake`/`other`. 3+ independent reports on the same review or event within 90 days surface it in the admin moderation queue's `flaggedContent`, alongside a per-reason breakdown and the flagged content itself.
 
+### Notifications
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /notifications` | Own notifications, paginated, newest first (`?page=&limit=&unreadOnly=`) | JWT |
+| `GET /notifications/unread-count` | Unread count only — cheap enough to poll from the header bell | JWT |
+| `PATCH /notifications/:id/read` | Mark one as read | JWT, owner only |
+| `POST /notifications/read-all` | Mark every unread notification read | JWT |
+
+One shared in-app notification center for every account, regular users and admins alike — a `Notification.userId` scoped to whoever is signed in, not a separate "admin notifications" system (an admin sees admin-relevant rows for the same reason a traveler sees booking-relevant ones: both are just "this account's rows"). Creating a notification never fails the action that triggered it (same "never blocks the caller" contract as `AdminAuditService.log`/`LoginActivityService.record`); a broadcast to many recipients (e.g. every admin) writes one independent row per recipient so one person's read state never affects another's.
+
+Current triggers: a booking request/confirmation/decline, a new booking message, a place/business entering admin review (all admins) and the decision on it (the submitter), and a failed-login threshold alert (every super admin, alongside the existing email). Trip invitations, business-content approval, and creator verification don't write a `Notification` yet — trip invitations still surface via the header bell (folded in from `GET /invitations/mine`, not the notifications table), and the others remain email/UI-only for now.
+
 ### Admin
 
 All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super Admin.

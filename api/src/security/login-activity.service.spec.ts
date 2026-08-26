@@ -6,6 +6,7 @@ import { LoginActivity } from "./entities/login-activity.entity";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { SettingsService } from "../settings/settings.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 describe("LoginActivityService", () => {
   let service: LoginActivityService;
@@ -27,6 +28,7 @@ describe("LoginActivityService", () => {
   };
   let mailService: { sendFailedLoginAlert: jest.Mock };
   let settingsService: { getApplicationSettings: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
 
   beforeEach(async () => {
     activityRepo = {
@@ -54,6 +56,10 @@ describe("LoginActivityService", () => {
         failedLoginAlertThreshold24h: 20,
       }),
     };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -66,6 +72,7 @@ describe("LoginActivityService", () => {
           useValue: { get: jest.fn(() => "https://liberia360.example") },
         },
         { provide: SettingsService, useValue: settingsService },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 
@@ -199,6 +206,27 @@ describe("LoginActivityService", () => {
         11,
         "hour",
         "https://liberia360.example/admin/security/alerts",
+      );
+    });
+
+    it("also notifies every super admin in-app alongside the email", async () => {
+      activityRepo.count.mockResolvedValue(6);
+      userRepo.find.mockResolvedValue([
+        { id: "super-1", email: "super1@example.com", name: "Ada" },
+        { id: "super-2", email: "super2@example.com", name: "Nyema" },
+      ]);
+      await service.record({
+        userId: null,
+        emailAttempted: "x@example.com",
+        success: false,
+        reason: "invalid_credentials",
+      });
+      expect(notificationsService.createMany).toHaveBeenCalledWith(
+        ["super-1", "super-2"],
+        expect.objectContaining({
+          type: "admin.failed_login_alert",
+          body: expect.stringContaining("hour"),
+        }),
       );
     });
 

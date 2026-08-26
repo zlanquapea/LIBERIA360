@@ -16,6 +16,10 @@ import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
 import { isOpenAt, parseOpeningHoursText } from "./opening-hours";
 import { parseNaturalLanguageQuery } from "./nl-query";
 import { BusinessesService } from "../businesses/businesses.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { UsersService } from "../users/users.service";
+
+const MODERATION_QUEUE_LINK = "/admin/content/moderation";
 
 export type PlaceWithDistance = Place & { distanceKm: number | null };
 
@@ -145,7 +149,22 @@ export class PlacesService {
     @InjectRepository(County)
     private readonly countyRepo: Repository<County>,
     private readonly businessesService: BusinessesService,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
   ) {}
+
+  /** Tells every admin a place needs a review decision — the "someone
+   * submitted/resubmitted something" half of moderation, mirroring
+   * setPlaceReviewStatus's "here's the decision" half in AdminService. */
+  private async notifyAdminsOfPendingPlace(place: Place): Promise<void> {
+    const adminIds = await this.usersService.findAdminIds();
+    await this.notificationsService.createMany(adminIds, {
+      type: "admin.place_pending_review",
+      title: "Place pending review",
+      body: `"${place.name}" is waiting for a review decision.`,
+      link: MODERATION_QUEUE_LINK,
+    });
+  }
 
   /**
    * GET /places — filterable, paginated list (Tech Spec §10). Also used
@@ -449,6 +468,7 @@ export class PlacesService {
     await this.businessesService
       .autoClaimSubmittedPlace(userId, saved, dto)
       .catch(() => undefined);
+    await this.notifyAdminsOfPendingPlace(saved);
 
     return this.placeRepo.findOneOrFail({
       where: { id: saved.id },
@@ -482,12 +502,16 @@ export class PlacesService {
     if (dto.openingHours !== undefined) {
       place.structuredHours = parseOpeningHoursText(dto.openingHours);
     }
-    if (place.reviewStatus === PlaceReviewStatus.REJECTED) {
+    const isResubmission = place.reviewStatus === PlaceReviewStatus.REJECTED;
+    if (isResubmission) {
       place.reviewStatus = PlaceReviewStatus.SUBMITTED_FOR_REVIEW;
       place.submittedAt = new Date();
       place.rejectionReason = null;
     }
     await this.placeRepo.save(place);
+    if (isResubmission) {
+      await this.notifyAdminsOfPendingPlace(place);
+    }
     return this.placeRepo.findOneOrFail({
       where: { id: placeId },
       relations: ["category", "county"],

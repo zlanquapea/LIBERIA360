@@ -239,3 +239,28 @@ export function toDatetimeLocalInput(isoString: string): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+const RELATIVE_TIME_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 31536000],
+  ['month', 2592000],
+  ['week', 604800],
+  ['day', 86400],
+  ['hour', 3600],
+  ['minute', 60],
+];
+
+// "3h ago" style timestamps for the notification bell/feed — full
+// toLocaleString() (as the audit log uses) is precise but noisy for a
+// glanceable list someone scans repeatedly; this trades precision for
+// scannability, same tradeoff most notification UIs make.
+export function formatRelativeTime(isoString: string): string {
+  const seconds = Math.round((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  for (const [unit, secondsInUnit] of RELATIVE_TIME_UNITS) {
+    const value = Math.floor(seconds / secondsInUnit);
+    if (value >= 1) {
+      return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-value, unit);
+    }
+  }
+  return 'just now';
+}
