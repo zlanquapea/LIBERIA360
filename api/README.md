@@ -341,6 +341,8 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `GET /admin/security/overview` | Failed-login counts (1h/24h), distinct failing IPs (24h), admin-team 2FA adoption | Super Admin |
 | `POST /admin/security/users/:id/revoke-sessions` | Force-end every active session on an account (no password needed) — audit-logged | Super Admin |
 
+Proactive alerting: `LoginActivityService.record()` emails every super admin (`MailService.sendFailedLoginAlert`) the instant failed logins first exceed 5 in the last hour or 20 in the last 24 hours — a one-time alert per crossing, not a repeat on every subsequent failed attempt, so an ongoing attack doesn't spam every super admin's inbox. Previously the same numbers only surfaced passively on the Security Alerts page, so nothing happened unless someone was already looking.
+
 The first admin is granted directly in the database:
 
 ```bash

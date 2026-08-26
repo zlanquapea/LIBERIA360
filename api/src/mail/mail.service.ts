@@ -200,6 +200,33 @@ export class MailService {
     });
   }
 
+  /** Proactive brute-force alert (Security Alerts page previously only
+   * showed this passively, to whoever happened to be looking at the
+   * dashboard) — fired once per super admin when LoginActivityService
+   * sees failed logins cross a threshold within a window. Same
+   * swallow-errors contract as every other send here: a broken mail
+   * provider must never turn a login attempt into a 500. */
+  async sendFailedLoginAlert(
+    to: string,
+    name: string,
+    count: number,
+    windowLabel: string,
+    securityUrl: string,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `Security alert: ${count} failed logins in the last ${windowLabel}`,
+      text: `Hi ${name},\n\nLIBERIA360 has seen ${count} failed login attempts in the last ${windowLabel} — worth a look in case it's a brute-force attempt against an account.\n\n${securityUrl}\n\nThis is an automated alert; no action is needed if you recognize this as expected activity.`,
+      html: this.render({
+        heading: "Unusual login activity",
+        intro: `Hi ${escapeHtml(name)} — LIBERIA360 has seen <strong>${count} failed login attempts</strong> in the last ${escapeHtml(windowLabel)}, worth a look in case it's a brute-force attempt against an account.`,
+        ctaLabel: "Review Security Alerts",
+        ctaUrl: securityUrl,
+        note: "This is an automated alert; no action is needed if you recognize this as expected activity.",
+      }),
+    });
+  }
+
   /** Fire-and-forget notice to the organizer once someone actually
    * accepts (Section 8: "the organizer should receive a notification
    * that the person has joined the trip") — same swallow-errors contract

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { ConfigService } from "@nestjs/config";
 import { MoreThanOrEqual, Repository } from "typeorm";
 import {
   LoginActivity,
@@ -7,6 +8,8 @@ import {
 } from "./entities/login-activity.entity";
 import { RequestInfo } from "../common/request-info";
 import { User } from "../users/entities/user.entity";
+import { MailService } from "../mail/mail.service";
+import { AppConfig } from "../config/configuration";
 
 export interface PaginatedLoginActivity {
   data: LoginActivity[];
@@ -31,6 +34,13 @@ export interface SecurityOverview {
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
+// Same numbers the Security Alerts page already flags as a warning
+// (StatCard's `tone` prop) — kept as their own constants here rather
+// than shared, since a UI display threshold and an alerting threshold
+// are allowed to drift independently even though they agree today.
+const FAILED_LOGIN_ALERT_THRESHOLD_1H = 5;
+const FAILED_LOGIN_ALERT_THRESHOLD_24H = 20;
+
 /** Records and queries every completed login attempt — see
  * LoginActivity's own doc comment for exactly what counts as one. Follows
  * the same "never blocks or fails the calling action" contract as
@@ -45,6 +55,8 @@ export class LoginActivityService {
     private readonly activityRepo: Repository<LoginActivity>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   async record(input: {
@@ -54,6 +66,7 @@ export class LoginActivityService {
     reason: LoginActivityReason;
     requestInfo?: RequestInfo;
   }): Promise<void> {
+    let saved = false;
     try {
       await this.activityRepo.save(
         this.activityRepo.create({
@@ -65,11 +78,81 @@ export class LoginActivityService {
           userAgent: input.requestInfo?.userAgent ?? null,
         }),
       );
+      saved = true;
     } catch (error) {
       this.logger.error(
         `Failed to record login activity: ${(error as Error).message}`,
       );
     }
+
+    // Only worth checking once we know this attempt is actually in the
+    // table — checking against a count that doesn't include the row we
+    // just tried to save would risk firing on stale data.
+    if (saved && !input.success) {
+      await this.alertOnThresholdCrossing().catch((error) => {
+        this.logger.error(
+          `Failed to check failed-login alert thresholds: ${(error as Error).message}`,
+        );
+      });
+    }
+  }
+
+  /** Fires an email to every super admin the *instant* a failed-login
+   * count first exceeds a threshold — not on every attempt after that,
+   * which would spam a super admin's inbox for as long as the attack
+   * continues. The two windows are checked independently (both can fire
+   * on the same call): a fast/loud attempt trips the 1h threshold
+   * quickly, while a slow/quiet one that stays under it can still trip
+   * the 24h one. */
+  private async alertOnThresholdCrossing(): Promise<void> {
+    const now = Date.now();
+    const [count1h, count24h] = await Promise.all([
+      this.activityRepo.count({
+        where: {
+          success: false,
+          createdAt: MoreThanOrEqual(new Date(now - ONE_HOUR_MS)),
+        },
+      }),
+      this.activityRepo.count({
+        where: {
+          success: false,
+          createdAt: MoreThanOrEqual(new Date(now - ONE_DAY_MS)),
+        },
+      }),
+    ]);
+
+    if (count1h === FAILED_LOGIN_ALERT_THRESHOLD_1H + 1) {
+      await this.emailSuperAdmins(count1h, "hour");
+    }
+    if (count24h === FAILED_LOGIN_ALERT_THRESHOLD_24H + 1) {
+      await this.emailSuperAdmins(count24h, "24 hours");
+    }
+  }
+
+  private async emailSuperAdmins(
+    count: number,
+    windowLabel: string,
+  ): Promise<void> {
+    const superAdmins = await this.userRepo.find({
+      where: { isSuperAdmin: true },
+    });
+    if (superAdmins.length === 0) return;
+
+    const webAppUrl = this.configService.get("webAppUrl", { infer: true });
+    const securityUrl = `${webAppUrl}/admin/security/alerts`;
+    await Promise.all(
+      superAdmins.map((admin) =>
+        this.mailService
+          .sendFailedLoginAlert(
+            admin.email,
+            admin.name,
+            count,
+            windowLabel,
+            securityUrl,
+          )
+          .catch(() => undefined),
+      ),
+    );
   }
 
   async findAll(

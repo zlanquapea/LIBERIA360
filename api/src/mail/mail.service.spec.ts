@@ -231,6 +231,26 @@ describe("MailService", () => {
       expect(sendMail.mock.calls[0][0].subject).not.toContain("Super Admin");
     });
 
+    it("sendFailedLoginAlert names the count, window, and links to Security Alerts", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      const securityUrl = "https://liberia360.example/admin/security/alerts";
+      await service.sendFailedLoginAlert(
+        "super@example.com",
+        "Ada",
+        6,
+        "hour",
+        securityUrl,
+      );
+
+      const call = sendMail.mock.calls[0][0];
+      expect(call.to).toBe("super@example.com");
+      expect(call.subject).toContain("6 failed logins");
+      expect(call.subject).toContain("hour");
+      expect(call.text).toContain(securityUrl);
+      expect(call.html).toContain(securityUrl);
+      expect(call.html).toContain("6 failed login attempts");
+    });
+
     it("sendInvitationAccepted notifies the organizer", async () => {
       const { service, sendMail } = await buildService(CONFIGURED_MAIL);
       await service.sendInvitationAccepted(
