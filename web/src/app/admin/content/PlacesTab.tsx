@@ -496,6 +496,15 @@ function PlaceEditForm({
   onDeleted: () => void;
 }) {
   const [name, setName] = useState(place.name);
+  const [slug, setSlug] = useState(place.slug);
+  // Whether the admin has hand-edited the slug *in this session* — while
+  // false, renaming the place also updates this preview so it doesn't
+  // silently keep pointing at the old name (see AdminContentService's
+  // updatePlace: renaming without an explicit slug re-derives one
+  // server-side). Left false, nothing slug-related is even sent, so the
+  // backend's own dedup logic — not this client-side preview — decides
+  // the final value.
+  const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState(place.description);
   const [type, setType] = useState<PlaceType>(place.type);
   const [categoryId, setCategoryId] = useState(place.category.id);
@@ -512,6 +521,8 @@ function PlaceEditForm({
 
   useEffect(() => {
     setName(place.name);
+    setSlug(place.slug);
+    setSlugTouched(false);
     setDescription(place.description);
     setType(place.type);
     setCategoryId(place.category.id);
@@ -530,6 +541,11 @@ function PlaceEditForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [place.id]);
 
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugTouched) setSlug(slugify(value));
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (latitude === null || longitude === null) return; // guarded by the disabled submit button too
@@ -539,6 +555,10 @@ function PlaceEditForm({
     try {
       const updated = await updatePlace(token, place.id, {
         name,
+        // Only sent when the admin actually typed a slug themselves —
+        // otherwise the backend re-derives it from the new name (and
+        // handles the uniqueness dedup this client-side preview can't).
+        slug: slugTouched ? slug : undefined,
         description,
         type,
         categoryId,
@@ -571,13 +591,30 @@ function PlaceEditForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
-          <input required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          <input required maxLength={200} value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           City
           <input required maxLength={150} value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
         </label>
       </div>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        Slug
+        <input
+          required
+          maxLength={220}
+          value={slug}
+          onChange={(e) => {
+            setSlug(e.target.value);
+            setSlugTouched(true);
+          }}
+          className={inputClass}
+        />
+        <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+          The web address for this place. Renaming it above updates this to match — a corrected name never leaves the old,
+          wrong URL behind. Edit it directly if you want something different from the name.
+        </span>
+      </label>
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea required rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { QueryFailedError, Repository } from "typeorm";
+import { Not, QueryFailedError, Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
 import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
@@ -17,7 +17,7 @@ import {
   BusinessType,
 } from "../businesses/entities/business.enums";
 import { buildBusinessSlug } from "../businesses/businesses.service";
-import { slugify } from "../common/slugify";
+import { buildUniqueSlug, slugify } from "../common/slugify";
 import { Event } from "../events/entities/event.entity";
 import { CreatePlaceDto } from "./dto/create-place.dto";
 import { UpdatePlaceDto } from "./dto/update-place.dto";
@@ -234,6 +234,8 @@ export class AdminContentService {
     if (!place) {
       throw new NotFoundException(`Place "${id}" not found`);
     }
+    const previousName = place.name;
+
     if (dto.categoryId) {
       await this.assertCategoryExists(dto.categoryId);
       // `category` is `eager: true`, so the findOne() above already
@@ -256,6 +258,23 @@ export class AdminContentService {
     }
 
     this.placeRepo.merge(place, dto);
+
+    // A place renamed to fix a data-entry mistake (e.g. "Kpatawee
+    // Waterfall" corrected to "Nimba Ecolodge") kept the OLD slug unless
+    // an admin also retyped it by hand — silently serving the new name at
+    // a URL, bookmark, and audit record that still named the wrong place.
+    // See auditPlaceDataQuality's `expectedSlug` check, which exists to
+    // catch this drift after the fact; re-deriving the slug here closes
+    // it at the source instead. An admin-typed `dto.slug` above always
+    // wins over this.
+    if (dto.name && dto.name !== previousName && !dto.slug) {
+      place.slug = await buildUniqueSlug(
+        dto.name,
+        (slug) => this.placeRepo.exists({ where: { slug, id: Not(id) } }),
+        "place",
+      );
+    }
+
     if (dto.openingHours !== undefined) {
       place.structuredHours = parseOpeningHoursText(dto.openingHours);
     }
@@ -328,6 +347,8 @@ export class AdminContentService {
     if (!category) {
       throw new NotFoundException(`Category "${id}" not found`);
     }
+    const previousName = category.name;
+
     if (dto.slug && dto.slug !== category.slug) {
       const existingSlug = await this.categoryRepo.exists({
         where: { slug: dto.slug },
@@ -337,6 +358,19 @@ export class AdminContentService {
       }
     }
     this.categoryRepo.merge(category, dto);
+
+    // Same rename-drift fix as updatePlace above: a category retitled to
+    // fix a typo kept the old slug unless an admin also retyped it by
+    // hand, so /categories/[slug] pages and the map's category filter
+    // kept serving the corrected name under a URL for the old one.
+    if (dto.name && dto.name !== previousName && !dto.slug) {
+      category.slug = await buildUniqueSlug(
+        dto.name,
+        (slug) => this.categoryRepo.exists({ where: { slug, id: Not(id) } }),
+        "category",
+      );
+    }
+
     await this.categoryRepo.save(category);
     return this.categoryRepo.findOneOrFail({ where: { id } });
   }

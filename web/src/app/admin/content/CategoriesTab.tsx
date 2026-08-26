@@ -216,6 +216,13 @@ function CategoryEditForm({
   onDeleted: () => void;
 }) {
   const [name, setName] = useState(category.name);
+  const [slug, setSlug] = useState(category.slug);
+  // See PlaceEditForm's identical field for why: while false, renaming
+  // the category also updates this preview, and nothing slug-related is
+  // sent on save — the backend re-derives the slug from the new name
+  // itself (AdminContentService.updateCategory) instead of leaving it
+  // frozen to whatever the category used to be called.
+  const [slugTouched, setSlugTouched] = useState(false);
   const [icon, setIcon] = useState(normalizeIconKey(category.icon));
   const [description, setDescription] = useState(category.description ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -224,6 +231,8 @@ function CategoryEditForm({
 
   useEffect(() => {
     setName(category.name);
+    setSlug(category.slug);
+    setSlugTouched(false);
     setIcon(normalizeIconKey(category.icon));
     setDescription(category.description ?? '');
     setSuccess(false);
@@ -231,6 +240,11 @@ function CategoryEditForm({
     // object of the same id, which must not wipe the success message.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category.id]);
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugTouched) setSlug(slugify(value));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -240,6 +254,7 @@ function CategoryEditForm({
     try {
       const updated = await updateCategory(token, category.id, {
         name,
+        slug: slugTouched ? slug : undefined,
         icon,
         description: description.trim() || undefined,
       });
@@ -267,13 +282,29 @@ function CategoryEditForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Name
-          <input required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          <input required maxLength={100} value={name} onChange={(e) => handleNameChange(e.target.value)} className={inputClass} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Icon
           <IconSelect value={icon} onChange={setIcon} />
         </label>
       </div>
+      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        Slug
+        <input
+          required
+          maxLength={100}
+          value={slug}
+          onChange={(e) => {
+            setSlug(e.target.value);
+            setSlugTouched(true);
+          }}
+          className={inputClass}
+        />
+        <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+          The web address for this category (e.g. /categories/{slug || 'slug'}). Renaming it above updates this to match.
+        </span>
+      </label>
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Description
         <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
