@@ -31,3 +31,20 @@ export function getBusinessAnalytics(token: string, businessId: string): Promise
 export function getCreatorAnalytics(token: string, creatorId: string): Promise<BusinessAnalytics> {
   return apiRequest<BusinessAnalytics>(`/analytics/creator/${creatorId}`, { headers: authHeader(token) });
 }
+
+// Same fire-and-forget shape, for an advertisement's "Sponsored" card
+// (impression on render, contact-click on the WhatsApp/contact CTA).
+export function recordAdvertisementAnalyticsEvent(advertisementId: string, eventType: AnalyticsEventType): void {
+  apiRequest('/analytics/events', {
+    method: 'POST',
+    body: JSON.stringify({ advertisementId, eventType }),
+  }).catch(() => {
+    /* best-effort — nothing for the UI to react to */
+  });
+}
+
+export function getAdvertisementAnalytics(token: string, advertisementId: string): Promise<BusinessAnalytics> {
+  return apiRequest<BusinessAnalytics>(`/analytics/advertisement/${advertisementId}`, {
+    headers: authHeader(token),
+  });
+}

@@ -11,8 +11,9 @@ import { EventsTab } from './EventsTab';
 import { CountiesTab } from './CountiesTab';
 import { CreatorsTab } from './CreatorsTab';
 import { BusinessesTab } from './BusinessesTab';
+import { AdvertisementsTab } from './AdvertisementsTab';
 
-type Tab = 'categories' | 'places' | 'events' | 'counties' | 'creators' | 'businesses';
+type Tab = 'categories' | 'places' | 'events' | 'counties' | 'creators' | 'businesses' | 'advertisements';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'categories', label: 'Categories' },
@@ -21,6 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'counties', label: 'Counties' },
   { id: 'creators', label: 'Creators' },
   { id: 'businesses', label: 'Businesses' },
+  { id: 'advertisements', label: 'Advertisements' },
 ];
 
 function isTab(value: string | null): value is Tab {
@@ -81,6 +83,7 @@ export default function AdminContentPage() {
       )}
       {tab === 'creators' && <CreatorsTab token={token} />}
       {tab === 'businesses' && <BusinessesTab token={token} />}
+      {tab === 'advertisements' && <AdvertisementsTab token={token} />}
     </div>
   );
 }

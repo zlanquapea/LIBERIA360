@@ -45,6 +45,8 @@ import { BookingMessagesModule } from "./booking-messages/booking-messages.modul
 import { ReportsModule } from "./reports/reports.module";
 import { Notification } from "./notifications/entities/notification.entity";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { Advertisement } from "./advertisements/entities/advertisement.entity";
+import { AdvertisementsModule } from "./advertisements/advertisements.module";
 
 @Module({
   imports: [
@@ -96,6 +98,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
             PlaceFreshnessReport,
             BookingMessage,
             Notification,
+            Advertisement,
           ],
           migrations: ["dist/database/migrations/*.js"],
           autoLoadEntities: true,
@@ -124,6 +127,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
     BookingMessagesModule,
     ReportsModule,
     NotificationsModule,
+    AdvertisementsModule,
   ],
   providers: [
     {

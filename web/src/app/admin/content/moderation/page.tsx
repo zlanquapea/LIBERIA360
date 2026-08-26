@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -8,12 +9,22 @@ import {
   deleteEventAdmin,
   deleteReviewAdmin,
   getModerationQueue,
+  setAdvertisementReviewStatus,
   setBusinessContentReviewStatus,
   setBusinessVerification,
 } from '@/lib/admin-api';
-import { formatBusinessContentType, formatBusinessContentStatus, formatBusinessType } from '@/lib/format';
+import { formatAdvertisementReviewStatus, formatAdvertisementType, formatBusinessContentType, formatBusinessContentStatus, formatBusinessType } from '@/lib/format';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
-import type { BulkReviewResult, BusinessContent, BusinessContentStatus, FlaggedContent, ModerationQueue, VerificationStatus } from '@/lib/types';
+import type {
+  Advertisement,
+  AdvertisementReviewStatus,
+  BulkReviewResult,
+  BusinessContent,
+  BusinessContentStatus,
+  FlaggedContent,
+  ModerationQueue,
+  VerificationStatus,
+} from '@/lib/types';
 import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
 import { PlaceReviewPanel } from '../PlaceReviewPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -205,6 +216,45 @@ export default function ModerationPage() {
               ))}
             </ul>
           </>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Pending advertisements
+          {queue && queue.pendingAdvertisements.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {queue.pendingAdvertisements.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Self-service marketplace ads — invisible on the public &ldquo;Sponsored&rdquo; placements until approved.{' '}
+          <Link href="/admin/content?tab=advertisements" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+            See every ad, including approved ones you can suspend
+          </Link>
+          .
+        </p>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.pendingAdvertisements.length === 0 ? (
+          <EmptyState title="Nothing pending — the queue is clear." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queue.pendingAdvertisements.map((ad) => (
+              <li
+                key={ad.id}
+                className="flex flex-col gap-1 rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
+              >
+                <p className="font-medium text-slate-900 dark:text-slate-50">{ad.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {formatAdvertisementType(ad.type)} · {ad.owner?.name ?? 'Unknown'}
+                </p>
+                <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{ad.description}</p>
+                <AdvertisementReviewStatusControl ad={ad} onDone={reload} />
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
@@ -420,6 +470,70 @@ function ContentReviewStatusControl({ content, onDone }: { content: BusinessCont
           {CONTENT_REVIEW_STATUSES.map((s) => (
             <option key={s} value={s}>
               {formatBusinessContentStatus(s)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={apply}
+          className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {submitting ? 'Applying…' : 'Apply'}
+        </button>
+      </div>
+      {status === 'rejected' && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for rejection…"
+          maxLength={1000}
+          className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        />
+      )}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+    </div>
+  );
+}
+
+const ADVERTISEMENT_STATUSES: AdvertisementReviewStatus[] = ['approved', 'rejected'];
+
+// Mirrors ContentReviewStatusControl — but for Advertisement. A pending-queue
+// item is always SUBMITTED_FOR_REVIEW, so only approve/reject apply here;
+// suspend only makes sense for an already-live ad, which this queue never
+// shows (see AdvertisementsTab's fuller ReviewStatusControl for that case).
+function AdvertisementReviewStatusControl({ ad, onDone }: { ad: Advertisement; onDone: () => void }) {
+  const { token } = useAuth();
+  const [status, setStatus] = useState<AdvertisementReviewStatus>('approved');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await setAdvertisementReviewStatus(token, ad.id, status, reason.trim() || undefined);
+      onDone();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'set-advertisement-review-status', advertisementId: ad.id } }));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as AdvertisementReviewStatus)}
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700"
+        >
+          {ADVERTISEMENT_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {formatAdvertisementReviewStatus(s)}
             </option>
           ))}
         </select>

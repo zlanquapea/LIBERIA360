@@ -28,6 +28,8 @@ import { AdminAuditService } from "./admin-audit.service";
 import { RequestInfo } from "../common/request-info";
 import { SettingsService } from "../settings/settings.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { AdvertisementReviewStatus } from "../advertisements/entities/advertisement.enums";
 
 const NEW_USER_WINDOW_DAYS = 7;
 
@@ -44,7 +46,7 @@ const DECISION_STATUSES = new Set([
 ]);
 
 function isReviewDecision(
-  status: PlaceReviewStatus | BusinessReviewStatus,
+  status: PlaceReviewStatus | BusinessReviewStatus | AdvertisementReviewStatus,
 ): boolean {
   return (DECISION_STATUSES as Set<string>).has(status);
 }
@@ -80,6 +82,7 @@ export interface ModerationQueue {
   possiblyClosedPlaces: PossiblyClosedPlace[];
   flaggedContent: FlaggedContent[];
   pendingBusinessContent: BusinessContent[];
+  pendingAdvertisements: Advertisement[];
 }
 
 // Real, honestly-computable numbers only — no revenue figure, since no
@@ -122,6 +125,8 @@ export class AdminService {
     private readonly bookingRepo: Repository<Booking>,
     @InjectRepository(BusinessContent)
     private readonly businessContentRepo: Repository<BusinessContent>,
+    @InjectRepository(Advertisement)
+    private readonly advertisementRepo: Repository<Advertisement>,
     private readonly adminAuditService: AdminAuditService,
     private readonly settingsService: SettingsService,
     private readonly notificationsService: NotificationsService,
@@ -398,6 +403,62 @@ export class AdminService {
     });
   }
 
+  findPendingAdvertisements(): Promise<Advertisement[]> {
+    return this.advertisementRepo.find({
+      where: { reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW },
+      order: { submittedAt: "DESC" },
+    });
+  }
+
+  /** Every advertisement regardless of status — an admin's own management
+   * view, so an already-APPROVED ad can still be found and suspended. */
+  findAllAdvertisements(): Promise<Advertisement[]> {
+    return this.advertisementRepo.find({ order: { createdAt: "DESC" } });
+  }
+
+  /** The publish/moderation lifecycle transition for a self-submitted
+   * advertisement — mirrors setPlaceReviewStatus/setBusinessReviewStatus
+   * exactly; see AdvertisementReviewStatus's doc comment for what each
+   * status means. */
+  async setAdvertisementReviewStatus(
+    adminUserId: string,
+    id: string,
+    status: AdvertisementReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ): Promise<Advertisement> {
+    const ad = await this.advertisementRepo.findOne({ where: { id } });
+    if (!ad) {
+      throw new NotFoundException(`Advertisement "${id}" not found`);
+    }
+    const previousStatus = ad.reviewStatus;
+    ad.reviewStatus = status;
+    ad.rejectionReason =
+      status === AdvertisementReviewStatus.APPROVED ? null : (reason ?? null);
+    ad.reviewedByUserId = adminUserId;
+    ad.reviewedAt = new Date();
+    const saved = await this.advertisementRepo.save(ad);
+    await this.adminAuditService.log(
+      adminUserId,
+      "advertisement.review_status_changed",
+      "advertisement",
+      id,
+      { from: previousStatus, to: status, reason: reason ?? null },
+      requestInfo,
+    );
+    if (isReviewDecision(status)) {
+      await this.notificationsService.create(saved.ownerUserId, {
+        type: "advertisement.review_decided",
+        title: `Your advertisement was ${status}`,
+        body: reason
+          ? `"${saved.title}" was ${status}: ${reason}`
+          : `"${saved.title}" was ${status}.`,
+        link: "/account/my-ads",
+      });
+    }
+    return this.advertisementRepo.findOneOrFail({ where: { id } });
+  }
+
   async setCreatorVerification(
     adminUserId: string,
     creatorId: string,
@@ -450,6 +511,7 @@ export class AdminService {
       possiblyClosedPlaces,
       flaggedContent,
       pendingBusinessContent,
+      pendingAdvertisements,
     ] = await Promise.all([
       // "Pending" now means "awaiting a review-lifecycle decision," not the
       // old "never been given a trust badge" (VerificationStatus stayed
@@ -486,6 +548,7 @@ export class AdminService {
         settings.reportWindowDays,
       ),
       this.findPendingBusinessContent(),
+      this.findPendingAdvertisements(),
     ]);
     return {
       pendingBusinessContent,
@@ -494,6 +557,7 @@ export class AdminService {
       recentReviews,
       possiblyClosedPlaces,
       flaggedContent,
+      pendingAdvertisements,
     };
   }
 

@@ -1,4 +1,5 @@
 import type {
+  Advertisement,
   Business,
   BusinessType,
   Category,
@@ -198,6 +199,15 @@ export function getBusinessContent(
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
   return apiFetch<SponsoredPlacement[]>('/sponsored-placements/active', undefined, []);
+}
+
+// The public "Sponsored" ad placement feed (Home, Explore, Search) —
+// approved advertisements only. See Advertisement's own doc comment for
+// how this differs from SponsoredPlacement (a promotion of an *existing*
+// catalog Place, not a self-service ad slot for anything an advertiser
+// wants to promote).
+export function getActiveAdvertisements(limit?: number): Promise<Advertisement[]> {
+  return apiFetch<Advertisement[]>('/advertisements/active', limit ? { limit } : undefined, []);
 }
 
 export interface CreatorsQuery {

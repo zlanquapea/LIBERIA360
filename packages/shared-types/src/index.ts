@@ -878,6 +878,7 @@ export interface ModerationQueue {
   possiblyClosedPlaces: PossiblyClosedPlace[];
   flaggedContent: FlaggedContent[];
   pendingBusinessContent: BusinessContent[];
+  pendingAdvertisements: Advertisement[];
 }
 
 // api/src/freshness/entities/place-freshness-report.enums.ts
@@ -1132,4 +1133,39 @@ export interface PaginatedNotifications {
     limit: number;
     totalPages: number;
   };
+}
+
+// api/src/advertisements/entities/advertisement.entity.ts — the
+// self-service marketplace ad slot ("advertise your digital product or
+// business"), sanitized (owner is the public user shape, same convention
+// as Business.owner).
+export type AdvertisementType = "digital_product" | "business";
+
+export type AdvertisementReviewStatus =
+  | "draft"
+  | "submitted_for_review"
+  | "approved"
+  | "rejected"
+  | "suspended";
+
+export interface Advertisement {
+  id: string;
+  owner: AuthUser | null;
+  ownerUserId: string;
+  type: AdvertisementType;
+  title: string;
+  description: string;
+  images: string[];
+  priceLabel: string | null;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
+  contactEmail: string | null;
+  externalLink: string | null;
+  reviewStatus: AdvertisementReviewStatus;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
