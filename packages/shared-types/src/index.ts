@@ -443,14 +443,20 @@ export interface Booking {
 // the guest and the business owner. `readAt` is set once the *other*
 // participant has opened the thread since this message was sent — null
 // means the sender's UI should show "Delivered" rather than "Viewed".
+// `editedAt` is set when the sender edits `body` after sending — show an
+// "(edited)" marker to both participants. `deletedAt` is set when the
+// sender deletes the message; the API always sends `body: null` once it
+// is, so render a "This message was deleted" placeholder instead.
 export interface BookingMessage {
   id: string;
   bookingId: string;
   sender: AuthUser | null;
   senderUserId: string;
-  body: string;
+  body: string | null;
   createdAt: string;
   readAt: string | null;
+  editedAt: string | null;
+  deletedAt: string | null;
 }
 
 export interface PaginatedCreators {

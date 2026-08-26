@@ -31,6 +31,8 @@ function message(overrides: Partial<BookingMessage>): BookingMessage {
     body: 'Hello',
     createdAt: '2026-01-02T00:00:00.000Z',
     readAt: null,
+    editedAt: null,
+    deletedAt: null,
     ...overrides,
   };
 }
@@ -137,5 +139,67 @@ describe('BookingMessageThread', () => {
     expect(await screen.findByText('Sending…')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('Delivered')).toBeInTheDocument());
     expect(screen.queryByText('Sending…')).not.toBeInTheDocument();
+  });
+
+  it('only shows Edit/Delete controls under your own messages', async () => {
+    setStoredAuth({ token: 'tok', user: ME });
+    mockFetch([
+      {
+        method: 'GET',
+        path: '/messages',
+        body: [
+          message({ id: 'm1', body: 'Mine', senderUserId: ME.id, sender: ME, readAt: '2026-01-02T01:00:00.000Z' }),
+          message({ id: 'm2', body: 'Theirs', senderUserId: OTHER.id, sender: OTHER }),
+        ],
+      },
+    ]);
+
+    render(<BookingMessageThread bookingId="booking-1" />);
+    await screen.findByText('Mine');
+    await screen.findByText('Theirs');
+
+    expect(screen.getAllByRole('button', { name: /^edit$/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^delete$/i })).toHaveLength(1);
+  });
+
+  it('edits an own message inline and shows an "(edited)" marker afterward', async () => {
+    setStoredAuth({ token: 'tok', user: ME });
+    const edited = message({ id: 'm1', body: 'Corrected text', editedAt: '2026-01-02T02:00:00.000Z' });
+    const calls = mockFetch([
+      { method: 'GET', path: '/messages', body: [message({ id: 'm1', body: 'Original text' })] },
+      { method: 'PATCH', path: '/messages/m1', body: edited },
+    ]);
+
+    render(<BookingMessageThread bookingId="booking-1" />);
+    await screen.findByText('Original text');
+
+    await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    const textbox = screen.getByDisplayValue('Original text');
+    await userEvent.clear(textbox);
+    await userEvent.type(textbox, 'Corrected text');
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await screen.findByText('Corrected text');
+    expect(screen.getByText('(edited)')).toBeInTheDocument();
+    const patchCall = calls.find((c) => c.method === 'PATCH' && c.url.includes('/messages/m1'));
+    expect(patchCall?.body).toEqual({ body: 'Corrected text' });
+  });
+
+  it('deletes an own message after confirming, showing a "deleted" placeholder', async () => {
+    setStoredAuth({ token: 'tok', user: ME });
+    const calls = mockFetch([
+      { method: 'GET', path: '/messages', body: [message({ id: 'm1', body: 'Oops, wrong booking' })] },
+      { method: 'DELETE', path: '/messages/m1', body: { success: true } },
+    ]);
+
+    render(<BookingMessageThread bookingId="booking-1" />);
+    await screen.findByText('Oops, wrong booking');
+
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /delete message/i }));
+
+    await screen.findByText(/this message was deleted/i);
+    expect(screen.queryByText('Oops, wrong booking')).not.toBeInTheDocument();
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('/messages/m1'))).toBe(true);
   });
 });

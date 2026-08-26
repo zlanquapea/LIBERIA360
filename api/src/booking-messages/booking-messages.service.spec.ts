@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { BookingMessagesService } from "./booking-messages.service";
@@ -20,6 +24,7 @@ describe("BookingMessagesService", () => {
   let service: BookingMessagesService;
   let messageRepo: {
     find: jest.Mock;
+    findOne: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
     findOneOrFail: jest.Mock;
@@ -31,6 +36,7 @@ describe("BookingMessagesService", () => {
     let saved: Record<string, unknown> = {};
     messageRepo = {
       find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
       save: jest.fn((data) => {
         saved = { id: "message-1", ...data };
         return saved;
@@ -124,6 +130,108 @@ describe("BookingMessagesService", () => {
         _value: OWNER_ID,
       });
       expect(where.readAt).toMatchObject({ _type: "isNull" });
+    });
+  });
+
+  describe("update", () => {
+    it("rejects a stranger", async () => {
+      await expect(
+        service.update(STRANGER_ID, BOOKING_ID, "message-1", { body: "hi" }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("throws NotFoundException when the message doesn't exist on this booking", async () => {
+      messageRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.update(GUEST_ID, BOOKING_ID, "missing", { body: "hi" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects editing someone else's message", async () => {
+      messageRepo.findOne.mockResolvedValue({
+        id: "message-1",
+        bookingId: BOOKING_ID,
+        senderUserId: GUEST_ID,
+        body: "original",
+        deletedAt: null,
+      });
+      await expect(
+        service.update(OWNER_ID, BOOKING_ID, "message-1", { body: "hacked" }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(messageRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects editing a deleted message", async () => {
+      messageRepo.findOne.mockResolvedValue({
+        id: "message-1",
+        bookingId: BOOKING_ID,
+        senderUserId: GUEST_ID,
+        body: "original",
+        deletedAt: new Date(),
+      });
+      await expect(
+        service.update(GUEST_ID, BOOKING_ID, "message-1", { body: "edit" }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("updates the body and stamps editedAt for the sender", async () => {
+      messageRepo.findOne.mockResolvedValue({
+        id: "message-1",
+        bookingId: BOOKING_ID,
+        senderUserId: GUEST_ID,
+        body: "original",
+        deletedAt: null,
+      });
+      const result = await service.update(GUEST_ID, BOOKING_ID, "message-1", {
+        body: "corrected",
+      });
+      expect(result).toMatchObject({ body: "corrected" });
+      expect(result.editedAt).toBeInstanceOf(Date);
+    });
+  });
+
+  describe("remove", () => {
+    it("rejects a stranger", async () => {
+      await expect(
+        service.remove(STRANGER_ID, BOOKING_ID, "message-1"),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("rejects deleting someone else's message", async () => {
+      messageRepo.findOne.mockResolvedValue({
+        id: "message-1",
+        bookingId: BOOKING_ID,
+        senderUserId: OWNER_ID,
+        deletedAt: null,
+      });
+      await expect(
+        service.remove(GUEST_ID, BOOKING_ID, "message-1"),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(messageRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("soft-deletes the sender's own message", async () => {
+      const message = {
+        id: "message-1",
+        bookingId: BOOKING_ID,
+        senderUserId: GUEST_ID,
+        deletedAt: null,
+      };
+      messageRepo.findOne.mockResolvedValue(message);
+      await service.remove(GUEST_ID, BOOKING_ID, "message-1");
+      expect(messageRepo.save).toHaveBeenCalledTimes(1);
+      expect(message.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it("is a no-op for an already-deleted message", async () => {
+      messageRepo.findOne.mockResolvedValue({
+        id: "message-1",
+        bookingId: BOOKING_ID,
+        senderUserId: GUEST_ID,
+        deletedAt: new Date(),
+      });
+      await service.remove(GUEST_ID, BOOKING_ID, "message-1");
+      expect(messageRepo.save).not.toHaveBeenCalled();
     });
   });
 });

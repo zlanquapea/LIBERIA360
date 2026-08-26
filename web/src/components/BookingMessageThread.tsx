@@ -1,11 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChatBubbleLeftRightIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { MdAccessTime, MdDone, MdDoneAll } from 'react-icons/md';
 import { useAuth } from '@/hooks/useAuth';
-import { getBookingMessages, markBookingMessagesRead, sendBookingMessage } from '@/lib/booking-messages-api';
+import {
+  deleteBookingMessage,
+  getBookingMessages,
+  markBookingMessagesRead,
+  sendBookingMessage,
+  updateBookingMessage,
+} from '@/lib/booking-messages-api';
 import { HttpError } from '@/lib/http';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { BookingMessage } from '@/lib/types';
 
 // How often to re-poll the thread while it's open, so a read receipt
@@ -44,6 +51,22 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasUnreadFromOther = useRef(false);
+
+  // Editing one of your own messages — WhatsApp/Messenger convention: only
+  // the sender can change it, and doing so is flagged (see
+  // updateBookingMessage) rather than silently rewriting what was said, so
+  // it's tracked per-message rather than reusing the compose `draft` above.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Deleting one of your own messages — same confirm-before-destructive
+  // pattern as everywhere else in the app (CancelBookingButton, trip
+  // deletion, ...) rather than an instant, unconfirmed removal.
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -99,6 +122,50 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
     }
   }
 
+  function startEdit(message: BookingMessage) {
+    setEditingId(message.id);
+    setEditDraft(message.body ?? '');
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft('');
+    setEditError(null);
+  }
+
+  async function saveEdit() {
+    const body = editDraft.trim();
+    if (!body || !token || !editingId) return;
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      const updated = await updateBookingMessage(token, bookingId, editingId, body);
+      setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      cancelEdit();
+    } catch (err) {
+      setEditError(err instanceof HttpError ? err.message : 'Could not save the edit.');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!token || !deletingId) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteBookingMessage(token, bookingId, deletingId);
+      const deletedAt = new Date().toISOString();
+      setMessages((prev) => prev.map((m) => (m.id === deletingId ? { ...m, body: null, deletedAt } : m)));
+      setDeletingId(null);
+    } catch (err) {
+      setDeleteError(err instanceof HttpError ? err.message : 'Could not delete the message.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (!token) return null;
 
   const isEmpty = messages.length === 0 && pending.length === 0;
@@ -119,21 +186,84 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
           <ul className="flex flex-col gap-1.5">
             {messages.map((message) => {
               const mine = message.senderUserId === user?.id;
+              const deleted = Boolean(message.deletedAt);
+              const isEditingThis = editingId === message.id;
               return (
                 <li key={message.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-sm shadow-sm ${
-                      mine
-                        ? 'rounded-br-sm bg-brand-700 text-white'
-                        : 'rounded-bl-sm bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'
-                    }`}
-                  >
-                    {!mine && (
-                      <p className="text-[11px] font-semibold opacity-70">{message.sender?.name ?? 'Unknown'}</p>
-                    )}
-                    <p>{message.body}</p>
-                  </div>
-                  {mine && <MessageStatus viewed={Boolean(message.readAt)} />}
+                  {isEditingThis ? (
+                    <div className="flex w-full max-w-[85%] flex-col gap-1.5">
+                      <textarea
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        maxLength={2000}
+                        rows={2}
+                        autoFocus
+                        className="w-full rounded-2xl rounded-br-sm border border-brand-400 bg-white px-3 py-1.5 text-sm text-slate-800 outline-none focus:border-brand-500 dark:border-brand-600 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                      {editError && <p className="text-[11px] text-flag-700 dark:text-flag-300">{editError}</p>}
+                      <div className="flex justify-end gap-3 text-[11px] font-medium">
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          disabled={savingEdit}
+                          className="text-slate-500 hover:underline dark:text-slate-400"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveEdit}
+                          disabled={savingEdit || !editDraft.trim()}
+                          className="text-brand-700 hover:underline disabled:opacity-50 dark:text-brand-300"
+                        >
+                          {savingEdit ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-sm shadow-sm ${
+                        mine
+                          ? 'rounded-br-sm bg-brand-700 text-white'
+                          : 'rounded-bl-sm bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'
+                      } ${deleted ? 'italic opacity-70' : ''}`}
+                    >
+                      {!mine && !deleted && (
+                        <p className="text-[11px] font-semibold opacity-70">{message.sender?.name ?? 'Unknown'}</p>
+                      )}
+                      <p>
+                        {deleted ? 'This message was deleted' : message.body}
+                        {!deleted && message.editedAt && (
+                          <span className={`ml-1 text-[10px] ${mine ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>
+                            (edited)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {mine && !deleted && !isEditingThis && (
+                    <div className="mt-0.5 flex items-center gap-2.5 pr-1 text-[11px] text-slate-400 dark:text-slate-500">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(message)}
+                        className="flex items-center gap-0.5 hover:text-brand-600 hover:underline dark:hover:text-brand-300"
+                      >
+                        <PencilSquareIcon aria-hidden className="h-3 w-3" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingId(message.id)}
+                        className="flex items-center gap-0.5 hover:text-flag-600 hover:underline dark:hover:text-flag-400"
+                      >
+                        <TrashIcon aria-hidden className="h-3 w-3" />
+                        Delete
+                      </button>
+                      <span aria-hidden>·</span>
+                      <MessageStatus viewed={Boolean(message.readAt)} />
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -142,7 +272,9 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
                 <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-brand-700/70 px-3 py-1.5 text-sm text-white shadow-sm">
                   <p>{p.body}</p>
                 </div>
-                <MessageStatus sending />
+                <div className="mt-0.5 pr-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  <MessageStatus sending />
+                </div>
               </li>
             ))}
           </ul>
@@ -176,6 +308,23 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
           <PaperAirplaneIcon aria-hidden className="h-4 w-4 -rotate-45" />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete this message?"
+        description="It'll be replaced with a 'message deleted' notice for both of you."
+        confirmLabel="Delete message"
+        cancelLabel="Keep message"
+        loadingLabel="Deleting…"
+        isLoading={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (deleting) return;
+          setDeletingId(null);
+          setDeleteError(null);
+        }}
+      />
     </div>
   );
 }
@@ -186,18 +335,14 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
 function MessageStatus({ sending, viewed }: { sending?: boolean; viewed?: boolean }) {
   if (sending) {
     return (
-      <span className="mt-0.5 flex items-center gap-1 pr-1 text-[11px] text-slate-400 dark:text-slate-500">
+      <span className="flex items-center gap-1">
         <MdAccessTime aria-hidden className="h-3 w-3" />
         Sending…
       </span>
     );
   }
   return (
-    <span
-      className={`mt-0.5 flex items-center gap-1 pr-1 text-[11px] ${
-        viewed ? 'text-brand-600 dark:text-brand-300' : 'text-slate-400 dark:text-slate-500'
-      }`}
-    >
+    <span className={`flex items-center gap-1 ${viewed ? 'text-brand-600 dark:text-brand-300' : ''}`}>
       {viewed ? <MdDoneAll aria-hidden className="h-3.5 w-3.5" /> : <MdDone aria-hidden className="h-3.5 w-3.5" />}
       {viewed ? 'Viewed' : 'Delivered'}
     </span>

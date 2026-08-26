@@ -28,3 +28,29 @@ export function markBookingMessagesRead(token: string, bookingId: string): Promi
     headers: authHeader(token),
   });
 }
+
+// Edits the sender's own message — the API stamps `editedAt`, which both
+// participants see as an "(edited)" marker.
+export function updateBookingMessage(
+  token: string,
+  bookingId: string,
+  messageId: string,
+  body: string,
+): Promise<BookingMessage> {
+  return apiRequest<BookingMessage>(`/bookings/${bookingId}/messages/${messageId}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ body }),
+  });
+}
+
+// Soft-deletes the sender's own message — the row stays server-side, but
+// every future fetch returns it with `body: null`, so render a "This
+// message was deleted" placeholder rather than removing it from the
+// thread outright (same as WhatsApp/Messenger).
+export function deleteBookingMessage(token: string, bookingId: string, messageId: string): Promise<{ success: true }> {
+  return apiRequest<{ success: true }>(`/bookings/${bookingId}/messages/${messageId}`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
+}
