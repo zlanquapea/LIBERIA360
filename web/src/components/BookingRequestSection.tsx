@@ -149,7 +149,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Notes for {targetName} (optional)
+        Leave a message (optional)
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

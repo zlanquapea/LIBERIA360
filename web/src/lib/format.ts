@@ -182,6 +182,15 @@ export function formatBookingStatus(status: BookingStatus): string {
   return BOOKING_STATUS_LABELS[status] ?? status;
 }
 
+// Shared between the compact booking row and its detail view — kept as one
+// helper so the two don't drift apart on date formatting.
+export function formatBookingDateRange(requestedDate: string, requestedEndDate: string | null): string {
+  const startLabel = new Date(requestedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (!requestedEndDate) return startLabel;
+  const endLabel = new Date(requestedEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${startLabel} – ${endLabel}`;
+}
+
 const CREATOR_CATEGORY_LABELS: Record<CreatorCategory, string> = {
   photographer: 'Photographer',
   videographer: 'Videographer',
