@@ -10,6 +10,7 @@ import { RequestInfo } from "../common/request-info";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { AppConfig } from "../config/configuration";
+import { SettingsService } from "../settings/settings.service";
 
 export interface PaginatedLoginActivity {
   data: LoginActivity[];
@@ -34,13 +35,6 @@ export interface SecurityOverview {
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
-// Same numbers the Security Alerts page already flags as a warning
-// (StatCard's `tone` prop) — kept as their own constants here rather
-// than shared, since a UI display threshold and an alerting threshold
-// are allowed to drift independently even though they agree today.
-const FAILED_LOGIN_ALERT_THRESHOLD_1H = 5;
-const FAILED_LOGIN_ALERT_THRESHOLD_24H = 20;
-
 /** Records and queries every completed login attempt — see
  * LoginActivity's own doc comment for exactly what counts as one. Follows
  * the same "never blocks or fails the calling action" contract as
@@ -57,6 +51,7 @@ export class LoginActivityService {
     private readonly userRepo: Repository<User>,
     private readonly mailService: MailService,
     private readonly configService: ConfigService<AppConfig, true>,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async record(input: {
@@ -103,10 +98,13 @@ export class LoginActivityService {
    * continues. The two windows are checked independently (both can fire
    * on the same call): a fast/loud attempt trips the 1h threshold
    * quickly, while a slow/quiet one that stays under it can still trip
-   * the 24h one. */
+   * the 24h one. Thresholds come from Settings > Application
+   * (failedLoginAlertThreshold1h/24h) rather than a hardcoded constant —
+   * see ApplicationSettings's doc comment for the defaults, which match
+   * what this used to hardcode. */
   private async alertOnThresholdCrossing(): Promise<void> {
     const now = Date.now();
-    const [count1h, count24h] = await Promise.all([
+    const [count1h, count24h, settings] = await Promise.all([
       this.activityRepo.count({
         where: {
           success: false,
@@ -119,12 +117,13 @@ export class LoginActivityService {
           createdAt: MoreThanOrEqual(new Date(now - ONE_DAY_MS)),
         },
       }),
+      this.settingsService.getApplicationSettings(),
     ]);
 
-    if (count1h === FAILED_LOGIN_ALERT_THRESHOLD_1H + 1) {
+    if (count1h === settings.failedLoginAlertThreshold1h + 1) {
       await this.emailSuperAdmins(count1h, "hour");
     }
-    if (count24h === FAILED_LOGIN_ALERT_THRESHOLD_24H + 1) {
+    if (count24h === settings.failedLoginAlertThreshold24h + 1) {
       await this.emailSuperAdmins(count24h, "24 hours");
     }
   }

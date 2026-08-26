@@ -32,7 +32,9 @@ import { AdminUsersService } from "./admin-users.service";
 import { AdminUsersController } from "./admin-users.controller";
 import { AdminSystemService } from "./admin-system.service";
 import { AdminSystemController } from "./admin-system.controller";
+import { AdminSettingsController } from "./admin-settings.controller";
 import { MailModule } from "../mail/mail.module";
+import { SettingsModule } from "../settings/settings.module";
 
 @Module({
   imports: [
@@ -57,6 +59,7 @@ import { MailModule } from "../mail/mail.module";
     AuthModule,
     SecurityModule,
     MailModule,
+    SettingsModule,
   ],
   controllers: [
     AdminController,
@@ -67,6 +70,7 @@ import { MailModule } from "../mail/mail.module";
     AdminSecurityController,
     AdminUsersController,
     AdminSystemController,
+    AdminSettingsController,
   ],
   providers: [
     AdminService,

@@ -14,9 +14,30 @@ import { User } from "../users/entities/user.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { AdminAuditService } from "./admin-audit.service";
+import { SettingsService } from "../settings/settings.service";
 
 const ADMIN_ID = "admin-1";
 const PLACE_ID = "place-1";
+
+// The defaults ApplicationSettings' columns used to be — matches what
+// the hardcoded constants this replaced used to be, so these tests
+// exercise exactly the same thresholds they always did.
+const DEFAULT_APPLICATION_SETTINGS = {
+  freshnessFlagThreshold: 3,
+  freshnessWindowDays: 90,
+  reportFlagThreshold: 3,
+  reportWindowDays: 90,
+  failedLoginAlertThreshold1h: 5,
+  failedLoginAlertThreshold24h: 20,
+};
+
+function fakeSettingsService(overrides: Partial<typeof DEFAULT_APPLICATION_SETTINGS> = {}) {
+  return {
+    getApplicationSettings: jest
+      .fn()
+      .mockResolvedValue({ ...DEFAULT_APPLICATION_SETTINGS, ...overrides }),
+  };
+}
 
 describe("AdminService.setPlaceReviewStatus", () => {
   let service: AdminService;
@@ -53,6 +74,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
       ],
     }).compile();
 
@@ -170,6 +192,7 @@ describe("AdminService.bulkSetPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
+        { provide: SettingsService, useValue: fakeSettingsService() },
       ],
     }).compile();
 
@@ -254,6 +277,7 @@ describe("AdminService bulk review-status: business and business-content", () =>
           useValue: businessContentRepo,
         },
         { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
       ],
     }).compile();
 
@@ -296,6 +320,9 @@ describe("AdminService.getModerationQueue", () => {
   let service: AdminService;
   let placeRepo: { find: jest.Mock };
   let businessRepo: { find: jest.Mock };
+  let freshnessQb: ReturnType<typeof emptyQueryBuilder>;
+  let contentQb: ReturnType<typeof emptyQueryBuilder>;
+  let settingsService: ReturnType<typeof fakeSettingsService>;
 
   const PENDING_PLACE = {
     id: "place-2",
@@ -328,6 +355,9 @@ describe("AdminService.getModerationQueue", () => {
   beforeEach(async () => {
     placeRepo = { find: jest.fn().mockResolvedValue([PENDING_PLACE]) };
     businessRepo = { find: jest.fn().mockResolvedValue([]) };
+    freshnessQb = emptyQueryBuilder();
+    contentQb = emptyQueryBuilder();
+    settingsService = fakeSettingsService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -341,12 +371,12 @@ describe("AdminService.getModerationQueue", () => {
         },
         {
           provide: getRepositoryToken(PlaceFreshnessReport),
-          useValue: { createQueryBuilder: jest.fn(() => emptyQueryBuilder()) },
+          useValue: { createQueryBuilder: jest.fn(() => freshnessQb) },
         },
         { provide: getRepositoryToken(Event), useValue: {} },
         {
           provide: getRepositoryToken(ContentReport),
-          useValue: { createQueryBuilder: jest.fn(() => emptyQueryBuilder()) },
+          useValue: { createQueryBuilder: jest.fn(() => contentQb) },
         },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -355,6 +385,7 @@ describe("AdminService.getModerationQueue", () => {
           useValue: { find: jest.fn().mockResolvedValue([]) },
         },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
+        { provide: SettingsService, useValue: settingsService },
       ],
     }).compile();
 
@@ -375,6 +406,26 @@ describe("AdminService.getModerationQueue", () => {
       ],
       relations: ["category", "county", "owner"],
       order: { submittedAt: "DESC" },
+    });
+  });
+
+  it("uses Settings > Application's thresholds, not hardcoded defaults, once a super admin changes them", async () => {
+    settingsService.getApplicationSettings.mockResolvedValue({
+      freshnessFlagThreshold: 7,
+      freshnessWindowDays: 30,
+      reportFlagThreshold: 9,
+      reportWindowDays: 14,
+      failedLoginAlertThreshold1h: 5,
+      failedLoginAlertThreshold24h: 20,
+    });
+
+    await service.getModerationQueue();
+
+    expect(freshnessQb.having).toHaveBeenCalledWith("COUNT(*) >= :threshold", {
+      threshold: 7,
+    });
+    expect(contentQb.having).toHaveBeenCalledWith("COUNT(*) >= :threshold", {
+      threshold: 9,
     });
   });
 });

@@ -2,6 +2,7 @@ import type {
   Activity,
   AggregateAnalytics,
   AnalyticsOverview,
+  ApplicationSettings,
   AuthUser,
   Business,
   BulkReviewResult,
@@ -32,6 +33,7 @@ import type {
   SponsoredPlacement,
   SystemStatus,
   UpdateActivityInput,
+  UpdateApplicationSettingsInput,
   UpdateBusinessAdminInput,
   UpdateCategoryInput,
   UpdateCountyInput,
@@ -515,5 +517,23 @@ export function sendTestEmail(token: string): Promise<{ success: boolean; error:
   return apiRequest<{ success: boolean; error: string | null }>('/admin/system/test-email', {
     method: 'POST',
     headers: authHeader(token),
+  });
+}
+
+// Settings > Application — super admin only. The moderation/alerting
+// thresholds AdminService and LoginActivityService now read from a real
+// store instead of a hardcoded constant. See admin-settings.controller.ts.
+export function getApplicationSettings(token: string): Promise<ApplicationSettings> {
+  return apiRequest<ApplicationSettings>('/admin/settings/application', { headers: authHeader(token) });
+}
+
+export function updateApplicationSettings(
+  token: string,
+  input: UpdateApplicationSettingsInput,
+): Promise<ApplicationSettings> {
+  return apiRequest<ApplicationSettings>('/admin/settings/application', {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
   });
 }

@@ -987,6 +987,34 @@ export interface SystemStatus {
   };
 }
 
+// api/src/settings/entities/application-settings.entity.ts — Settings >
+// Application, GET/PATCH /admin/settings/application, super-admin only.
+// The moderation/alerting thresholds that used to be hardcoded constants,
+// now editable without a deploy. Always exactly one row (id: 1).
+export interface ApplicationSettings {
+  id: number;
+  freshnessFlagThreshold: number;
+  freshnessWindowDays: number;
+  reportFlagThreshold: number;
+  reportWindowDays: number;
+  failedLoginAlertThreshold1h: number;
+  failedLoginAlertThreshold24h: number;
+  updatedByUserId: string | null;
+  updatedAt: string;
+}
+
+export type UpdateApplicationSettingsInput = Partial<
+  Pick<
+    ApplicationSettings,
+    | "freshnessFlagThreshold"
+    | "freshnessWindowDays"
+    | "reportFlagThreshold"
+    | "reportWindowDays"
+    | "failedLoginAlertThreshold1h"
+    | "failedLoginAlertThreshold24h"
+  >
+>;
+
 // api/src/admin/admin-analytics.service.ts's getOverview() — GET
 // /admin/analytics/overview. Current-vs-previous-period comparisons
 // computed from existing timestamped tables, not a stored metrics

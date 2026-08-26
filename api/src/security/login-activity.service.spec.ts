@@ -5,6 +5,7 @@ import { LoginActivityService } from "./login-activity.service";
 import { LoginActivity } from "./entities/login-activity.entity";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
+import { SettingsService } from "../settings/settings.service";
 
 describe("LoginActivityService", () => {
   let service: LoginActivityService;
@@ -25,6 +26,7 @@ describe("LoginActivityService", () => {
     getRawMany: jest.Mock;
   };
   let mailService: { sendFailedLoginAlert: jest.Mock };
+  let settingsService: { getApplicationSettings: jest.Mock };
 
   beforeEach(async () => {
     activityRepo = {
@@ -46,6 +48,12 @@ describe("LoginActivityService", () => {
     mailService = {
       sendFailedLoginAlert: jest.fn().mockResolvedValue(undefined),
     };
+    settingsService = {
+      getApplicationSettings: jest.fn().mockResolvedValue({
+        failedLoginAlertThreshold1h: 5,
+        failedLoginAlertThreshold24h: 20,
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -57,6 +65,7 @@ describe("LoginActivityService", () => {
           provide: ConfigService,
           useValue: { get: jest.fn(() => "https://liberia360.example") },
         },
+        { provide: SettingsService, useValue: settingsService },
       ],
     }).compile();
 
@@ -167,6 +176,30 @@ describe("LoginActivityService", () => {
         reason: "invalid_credentials",
       });
       expect(mailService.sendFailedLoginAlert).not.toHaveBeenCalled();
+    });
+
+    it("uses Settings > Application's threshold, not a hardcoded default, once a super admin changes it", async () => {
+      settingsService.getApplicationSettings.mockResolvedValue({
+        failedLoginAlertThreshold1h: 10,
+        failedLoginAlertThreshold24h: 20,
+      });
+      activityRepo.count.mockResolvedValue(11); // configured threshold + 1
+      userRepo.find.mockResolvedValue([
+        { email: "super@example.com", name: "Ada" },
+      ]);
+      await service.record({
+        userId: null,
+        emailAttempted: "x@example.com",
+        success: false,
+        reason: "invalid_credentials",
+      });
+      expect(mailService.sendFailedLoginAlert).toHaveBeenCalledWith(
+        "super@example.com",
+        "Ada",
+        11,
+        "hour",
+        "https://liberia360.example/admin/security/alerts",
+      );
     });
 
     it("a failed email send for one super admin doesn't stop the others from being alerted", async () => {

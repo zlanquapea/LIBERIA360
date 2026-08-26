@@ -341,8 +341,12 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `GET /admin/security/login-activity?onlyFailed=` | Paginated login attempts (success and failure), with IP/device | Super Admin |
 | `GET /admin/security/overview` | Failed-login counts (1h/24h), distinct failing IPs (24h), admin-team 2FA adoption | Super Admin |
 | `POST /admin/security/users/:id/revoke-sessions` | Force-end every active session on an account (no password needed) — audit-logged | Super Admin |
+| `GET /admin/settings/application` | Read the moderation/security-alert thresholds below — materializes the singleton settings row with its defaults on first read | Super Admin |
+| `PATCH /admin/settings/application` | Update any of the thresholds below (partial update, `{freshnessFlagThreshold?, freshnessWindowDays?, reportFlagThreshold?, reportWindowDays?, failedLoginAlertThreshold1h?, failedLoginAlertThreshold24h?}`) — audit-logged, stamps who changed it | Super Admin |
 
-Proactive alerting: `LoginActivityService.record()` emails every super admin (`MailService.sendFailedLoginAlert`) the instant failed logins first exceed 5 in the last hour or 20 in the last 24 hours — a one-time alert per crossing, not a repeat on every subsequent failed attempt, so an ongoing attack doesn't spam every super admin's inbox. Previously the same numbers only surfaced passively on the Security Alerts page, so nothing happened unless someone was already looking.
+Proactive alerting: `LoginActivityService.record()` emails every super admin (`MailService.sendFailedLoginAlert`) the instant failed logins first exceed the configured 1h/24h thresholds (5/20 by default — see Settings > Application) — a one-time alert per crossing, not a repeat on every subsequent failed attempt, so an ongoing attack doesn't spam every super admin's inbox. Previously the same numbers only surfaced passively on the Security Alerts page, so nothing happened unless someone was already looking.
+
+Settings > Application (`src/settings/`): the moderation-queue "possibly closed" and "flagged content" thresholds, plus the two failed-login alert thresholds above, used to be hardcoded constants that needed a deploy to change. They now live in a single-row `application_settings` table (materialized lazily with the same defaults the constants used to have, so an unmigrated or freshly-deployed environment behaves identically until a super admin actually changes something) and are editable from Settings > Application in the admin panel.
 
 The first admin is granted directly in the database:
 
