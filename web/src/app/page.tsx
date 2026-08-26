@@ -32,9 +32,12 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // SVG stands in for the mock-up's photo, same mood without an asset.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { PlaceCardCompact } from '@/components/PlaceCardCompact';
+import { CategoryGrid } from '@/components/CategoryGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { formatEventDateRange } from '@/lib/format';
-import { CategoryIcon } from '@/lib/icons';
+
+const TRENDING_PLACES_LIMIT = 10;
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
@@ -42,7 +45,7 @@ export default async function Home() {
   const [categories, counties, trending, upcomingEvents, sponsoredPlacements, ads] = await Promise.all([
     getCategories(),
     getCounties(),
-    getPlaces({ sort: 'featured', limit: 6 }),
+    getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
     getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
@@ -183,18 +186,7 @@ export default async function Home() {
           <h2 id="categories-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
             Browse categories
           </h2>
-          <div className="grid grid-cols-4 gap-3">
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                href={`/categories/${category.slug}`}
-                className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-2 py-4 text-center transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
-              >
-                <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-6 w-6 text-brand-600 dark:text-brand-300" />
-                <span className="text-xs font-medium leading-tight text-slate-700 dark:text-slate-200">{category.name}</span>
-              </Link>
-            ))}
-          </div>
+          <CategoryGrid categories={categories} />
         </section>
 
         {sponsoredPlacements.length > 0 && (
@@ -231,9 +223,9 @@ export default async function Home() {
               <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             {trending.data.map((place) => (
-              <PlaceCard key={place.id} place={place} />
+              <PlaceCardCompact key={place.id} place={place} />
             ))}
           </div>
         </section>
