@@ -197,6 +197,40 @@ describe("MailService", () => {
       expect(html).toContain("&lt;script&gt;");
     });
 
+    it("sendAdminInvite includes the role, the granter's name, and the set-password link", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      const setPasswordUrl =
+        "https://liberia360.example/reset-password?token=xyz";
+      await service.sendAdminInvite(
+        "newadmin@example.com",
+        "Nyema",
+        "Ada",
+        true,
+        setPasswordUrl,
+      );
+
+      const call = sendMail.mock.calls[0][0];
+      expect(call.to).toBe("newadmin@example.com");
+      expect(call.subject).toContain("Super Admin");
+      expect(call.text).toContain(setPasswordUrl);
+      expect(call.html).toContain(setPasswordUrl);
+      expect(call.html).toContain("Ada");
+      expect(call.html).toContain("Nyema");
+    });
+
+    it("sendAdminInvite labels a plain admin grant differently from a super admin one", async () => {
+      const { service, sendMail } = await buildService(CONFIGURED_MAIL);
+      await service.sendAdminInvite(
+        "newadmin@example.com",
+        "Nyema",
+        "Ada",
+        false,
+        "https://liberia360.example/reset-password?token=xyz",
+      );
+      expect(sendMail.mock.calls[0][0].subject).toContain("Admin");
+      expect(sendMail.mock.calls[0][0].subject).not.toContain("Super Admin");
+    });
+
     it("sendInvitationAccepted notifies the organizer", async () => {
       const { service, sendMail } = await buildService(CONFIGURED_MAIL);
       await service.sendInvitationAccepted(

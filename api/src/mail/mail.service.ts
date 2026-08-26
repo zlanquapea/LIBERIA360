@@ -168,6 +168,38 @@ export class MailService {
     });
   }
 
+  /** Team & Access (Tech Spec §7/§8): a super admin creating a brand-new
+   * admin/super-admin account directly, rather than the older path of
+   * promoting someone who already registered on their own (see
+   * AdminTeamService.createAdmin). The new account starts with no
+   * password — this reuses the exact password-reset token/URL mechanism
+   * sendPasswordReset does, just with copy that explains why they're
+   * getting this email and what access they're being given, instead of
+   * implying they lost their password. Same swallow-errors contract as
+   * every other transactional send here — a broken mail provider must
+   * never fail the account-creation request that triggered it. */
+  async sendAdminInvite(
+    to: string,
+    name: string,
+    grantedByName: string,
+    isSuperAdmin: boolean,
+    setPasswordUrl: string,
+  ): Promise<void> {
+    const roleLabel = isSuperAdmin ? "Super Admin" : "Admin";
+    await this.send({
+      to,
+      subject: `You've been added as a LIBERIA360 ${roleLabel}`,
+      text: `Hi ${name},\n\n${grantedByName} added you as a ${roleLabel} on LIBERIA360. Set your password to activate your account:\n\n${setPasswordUrl}\n\nThis link expires in 1 hour. If you weren't expecting this, you can safely ignore this email — no access is granted until you set a password.`,
+      html: this.render({
+        heading: `You're now a ${roleLabel}`,
+        intro: `Hi ${escapeHtml(name)} — <strong>${escapeHtml(grantedByName)}</strong> added you as a <strong>${roleLabel}</strong> on LIBERIA360. Set a password to activate your account and sign in.`,
+        ctaLabel: "Set your password",
+        ctaUrl: setPasswordUrl,
+        note: "This link expires in 1 hour. If you weren't expecting this, you can safely ignore this email — no access is granted until you set a password.",
+      }),
+    });
+  }
+
   /** Fire-and-forget notice to the organizer once someone actually
    * accepts (Section 8: "the organizer should receive a notification
    * that the person has joined the trip") — same swallow-errors contract

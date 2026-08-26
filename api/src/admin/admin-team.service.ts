@@ -1,14 +1,27 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
 import { User } from "../users/entities/user.entity";
+import { AuthProvider } from "../users/entities/user.enums";
 import { SetTeamRolesDto } from "./dto/set-team-roles.dto";
+import { CreateAdminDto } from "./dto/create-admin.dto";
 import { AdminAuditService } from "./admin-audit.service";
+import { MailService } from "../mail/mail.service";
+import { generateToken, hashToken } from "../auth/token-hash";
 import { RequestInfo } from "../common/request-info";
+import { AppConfig } from "../config/configuration";
+
+// Same TTL AuthService.forgotPassword uses for the equivalent link — kept
+// as its own constant here rather than imported, since AuthService's is
+// private and the two flows are allowed to drift independently even
+// though they happen to agree today.
+const SET_PASSWORD_TTL_MS = 60 * 60 * 1000; // 1h
 
 /** Team & Access management (Tech Spec §7/§8) — before this, the *only*
  * way to grant admin access was a raw SQL UPDATE against the users table
@@ -20,6 +33,8 @@ export class AdminTeamService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly adminAuditService: AdminAuditService,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   /** Everyone with any admin access today — the roster a super admin
@@ -43,6 +58,68 @@ export class AdminTeamService {
       throw new NotFoundException(`No account found for "${email}"`);
     }
     return user;
+  }
+
+  /** Create a brand-new admin/super-admin account directly, rather than
+   * requiring the person to already have registered on their own first.
+   * The account starts with no password — same reset-token/URL mechanism
+   * AuthService.forgotPassword uses, just fired directly (that method
+   * refuses to act on an account with no passwordHash yet) and paired
+   * with copy that explains the invite instead of implying a lost
+   * password. A broken mail provider must never fail account creation,
+   * so the send is fire-and-forget. */
+  async createAdmin(
+    actingUserId: string,
+    actingUserName: string,
+    dto: CreateAdminDto,
+    requestInfo?: RequestInfo,
+  ): Promise<User> {
+    const email = dto.email.toLowerCase();
+    const existing = await this.userRepo.findOne({ where: { email } });
+    if (existing) {
+      throw new ConflictException(
+        `An account already exists for "${dto.email}" — promote it from the team roster instead of creating a new one.`,
+      );
+    }
+
+    const resetToken = generateToken();
+    const user = this.userRepo.create({
+      name: dto.name,
+      email,
+      passwordHash: null,
+      authProvider: AuthProvider.EMAIL,
+      isAdmin: true,
+      isSuperAdmin: dto.isSuperAdmin,
+      passwordResetTokenHash: hashToken(resetToken),
+      passwordResetTokenExpiresAt: new Date(Date.now() + SET_PASSWORD_TTL_MS),
+    });
+    const saved = await this.userRepo.save(user);
+
+    const webAppUrl = this.configService.get("webAppUrl", { infer: true });
+    const setPasswordUrl = `${webAppUrl}/reset-password?token=${resetToken}`;
+    this.mailService
+      .sendAdminInvite(
+        saved.email,
+        saved.name,
+        actingUserName,
+        saved.isSuperAdmin,
+        setPasswordUrl,
+      )
+      .catch(() => undefined);
+
+    await this.adminAuditService.log(
+      actingUserId,
+      "admin_team.created",
+      "user",
+      saved.id,
+      {
+        name: saved.name,
+        email: saved.email,
+        isSuperAdmin: saved.isSuperAdmin,
+      },
+      requestInfo,
+    );
+    return saved;
   }
 
   async setRoles(

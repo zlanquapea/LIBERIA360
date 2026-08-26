@@ -368,6 +368,20 @@ export function setTeamRoles(
   });
 }
 
+// Creates a brand-new admin/super-admin account (no existing registration
+// required) and emails them a set-password link. See
+// api/src/admin/admin-team.service.ts's createAdmin().
+export function createAdmin(
+  token: string,
+  input: { name: string; email: string; isSuperAdmin: boolean },
+): Promise<AuthUser> {
+  return apiRequest<AuthUser>('/admin/team', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
 // Audit log — super admin only. See api/src/admin/admin-audit.service.ts.
 export function getAuditLog(token: string, page = 1, limit = 20): Promise<PaginatedAdminActions> {
   return apiRequest<PaginatedAdminActions>(`/admin/audit-log?page=${page}&limit=${limit}`, {
