@@ -440,7 +440,9 @@ export interface Booking {
 
 // api/src/booking-messages/entities/booking-message.entity.ts (sanitized —
 // sender is the public user shape). Threaded notes on a booking between
-// the guest and the business owner.
+// the guest and the business owner. `readAt` is set once the *other*
+// participant has opened the thread since this message was sent — null
+// means the sender's UI should show "Delivered" rather than "Viewed".
 export interface BookingMessage {
   id: string;
   bookingId: string;
@@ -448,6 +450,7 @@ export interface BookingMessage {
   senderUserId: string;
   body: string;
   createdAt: string;
+  readAt: string | null;
 }
 
 export interface PaginatedCreators {

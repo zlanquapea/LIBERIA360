@@ -16,8 +16,8 @@ import { User } from "../../users/entities/user.entity";
  * instead of only a `wa.me` deep-link off to WhatsApp — the same
  * conversation, but visible if there's ever a dispute over what was
  * agreed, and not lost the moment someone's personal WhatsApp history
- * gets cleared. Deliberately narrow: no attachments, no read receipts,
- * no editing/deleting — plain text notes tied to a specific booking.
+ * gets cleared. Deliberately narrow: no attachments, no editing/deleting —
+ * plain text notes tied to a specific booking.
  */
 @Entity("booking_messages")
 export class BookingMessage {
@@ -44,4 +44,12 @@ export class BookingMessage {
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
+
+  /** Set once the *other* participant has opened this booking's thread
+   * after this message was sent (see BookingMessagesService.markRead) —
+   * lets the sender's UI show a "Delivered" -> "Viewed" read receipt, the
+   * same way a chat app's checkmarks work. Null until then; never set by
+   * the sender on their own messages. */
+  @Column({ name: "read_at", type: "timestamp", nullable: true })
+  readAt: Date | null;
 }

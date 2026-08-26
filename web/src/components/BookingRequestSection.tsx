@@ -20,7 +20,6 @@ import type { Business, Creator, BookingStatus } from '@/lib/types';
 export function BookingRequestSection({ business, creator }: { business?: Business; creator?: Creator }) {
   const { user, token, ready } = useAuth();
   const targetId = business?.id ?? creator!.id;
-  const targetName = business?.name ?? creator!.name;
   const isOwner = business ? user?.id === business.owner?.id : user?.id === creator!.user?.id;
 
   const [showForm, setShowForm] = useState(false);
@@ -77,7 +76,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
         <p className="font-medium">Request sent — {formatBookingStatus(sent.status).toLowerCase()}.</p>
         <p className="mt-1">
-          {targetName} will confirm or decline your request. Track it under{' '}
+          You&apos;ll hear back with a confirm or decline. Track it under{' '}
           <Link href="/account/bookings" className="font-medium underline">
             My Bookings
           </Link>
@@ -95,7 +94,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
         <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
           Log in
         </Link>{' '}
-        to request a booking with {targetName}.
+        to request a booking.
       </p>
     );
   }
@@ -166,7 +165,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        This sends a request — {targetName} confirms or declines. No payment is taken now.
+        This sends a request rather than an instant booking — you&apos;ll get a confirm or decline. No payment is taken now.
       </p>
 
       <div className="flex gap-2">
