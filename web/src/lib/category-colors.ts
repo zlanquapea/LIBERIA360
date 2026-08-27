@@ -38,6 +38,15 @@ export function colorForCreator(username: string): string {
   return colorForString(username);
 }
 
+// County browse grid (product feedback, Aug 27, 2026 — "make the counties
+// look as beautiful as the categories") reuses the same deterministic
+// palette, seeded by county slug, for the colored icon badge behind each
+// CountyIcon — matching CategoryGrid's treatment rather than inventing a
+// second color system.
+export function colorForCounty(slug: string): string {
+  return colorForString(slug);
+}
+
 // Card/profile hero imagery (PlaceCard, the Destination Profile banner)
 // used one flat green gradient for every place regardless of category —
 // a hotel, a beach, and a museum all looked identical. This reuses the

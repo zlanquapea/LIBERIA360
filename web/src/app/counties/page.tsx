@@ -1,14 +1,18 @@
 import Link from 'next/link';
 import { CountyIcon } from '@/lib/icons';
+import { colorForCounty } from '@/lib/category-colors';
 import { getCounties } from '@/lib/api';
 
 export const metadata = { title: 'Counties — LIBERIA360' };
 
-// County Browse screen (Tech Spec §4.1) — 15-county grid, staged per
-// Business Plan §9.1 (internal rollout planning — kept out of the visible
-// copy below; a visitor doesn't need to know the plan has "stages", just
-// which counties are browsable today). Counties with no catalog yet are
-// shown, honestly, as not-yet-launched rather than as empty browsable pages.
+// County Browse screen (Tech Spec §4.1) — a 15-county grid, one per
+// Liberian county (Business Plan §9.1). Every county is a real, equally
+// inviting destination here — same colored icon badge as CategoryGrid, no
+// disabled/grayed-out treatment for a county the catalog hasn't reached
+// yet. Its place count is just told straight ("0 places" is honest, not a
+// broken promise), and tapping through to an empty one shows its own
+// honest "nothing here yet" state (see counties/[slug]/page.tsx) rather
+// than this page pre-judging it as unclickable.
 export default async function CountiesPage() {
   const counties = await getCounties();
 
@@ -16,26 +20,28 @@ export default async function CountiesPage() {
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <div>
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Browse by county</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Rolling out county by county, starting with Greater Monrovia.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">All 15 counties of Liberia, one tap away.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {counties.map((county) => {
-          const live = (county.placeCount ?? 0) > 0;
+          const placeCount = county.placeCount ?? 0;
           return (
             <Link
               key={county.id}
               href={`/counties/${county.slug}`}
-              className={`flex flex-col gap-1 rounded-xl border px-4 py-3 transition-all ${
-                live ? 'border-slate-200 dark:border-slate-800 hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card' : 'border-slate-100 dark:border-slate-800'
-              }`}
+              className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900"
             >
-              <span aria-hidden className={`text-xl ${live ? '' : 'opacity-40 grayscale'}`}>
-                <CountyIcon county={county} className="h-5 w-5 text-brand-500" />
+              <span
+                aria-hidden
+                className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm transition-transform group-hover:scale-105"
+                style={{ backgroundColor: colorForCounty(county.slug) }}
+              >
+                <CountyIcon county={county} className="h-7 w-7 text-white" />
               </span>
-              <span className={`font-medium ${live ? 'text-slate-900 dark:text-slate-50' : 'text-slate-400'}`}>{county.name}</span>
-              <span className={`text-xs ${live ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400'}`}>
-                {live ? `${county.placeCount} place${county.placeCount === 1 ? '' : 's'}` : 'Coming soon'}
+              <span className="font-semibold text-slate-900 dark:text-slate-50">{county.name}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {placeCount} place{placeCount === 1 ? '' : 's'}
               </span>
             </Link>
           );
