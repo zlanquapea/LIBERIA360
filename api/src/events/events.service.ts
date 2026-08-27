@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Event } from "./entities/event.entity";
+import { EventReviewStatus } from "./entities/event.enums";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { QueryEventsDto } from "./dto/query-events.dto";
@@ -15,7 +16,13 @@ import { PushService } from "../push/push.service";
 import { UsersService } from "../users/users.service";
 import { BusinessesService } from "../businesses/businesses.service";
 import { CreatorsService } from "../creators/creators.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { User } from "../users/entities/user.entity";
+
+// Where an admin goes to act on a pending event — same moderation queue
+// page as pending places/businesses/advertisements, not a route of its
+// own — mirrors AdvertisementsService's AD_MODERATION_QUEUE_LINK.
+const EVENT_MODERATION_QUEUE_LINK = "/admin/content/moderation";
 
 export interface PaginatedEvents {
   data: Event[];
@@ -31,6 +38,7 @@ export class EventsService {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly creatorsService: CreatorsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(user: User, dto: CreateEventDto): Promise<Event> {
@@ -45,6 +53,13 @@ export class EventsService {
       throw new BadRequestException("endDate cannot be before startDate");
     }
 
+    // Admin-created events skip the review gate — an admin reviewing
+    // their own submission would be reviewing nothing, same reasoning as
+    // AdminContentService.createPlace bypassing PlaceReviewStatus. Every
+    // other organizer (a claimed business or creator — see
+    // assertCanPostEvents) starts PENDING; the event isn't publicly
+    // reachable until an admin approves it (see EventsService.findAll).
+    const isAdminSubmission = user.isAdmin;
     const event = this.eventRepo.create({
       name: dto.name,
       category: dto.category,
@@ -57,18 +72,44 @@ export class EventsService {
       images: dto.images ?? [],
       ticketInfo: dto.ticketInfo ?? null,
       createdByUserId: user.id,
+      reviewStatus: isAdminSubmission
+        ? EventReviewStatus.APPROVED
+        : EventReviewStatus.PENDING,
+      reviewedAt: isAdminSubmission ? new Date() : null,
+      reviewedByUserId: isAdminSubmission ? user.id : null,
     });
     const saved = await this.eventRepo.save(event);
     const full = await this.eventRepo.findOneOrFail({
       where: { id: saved.id },
     });
 
-    // "Events nearby" push (Tech Spec §3.2) — targeted at users who've set
-    // this event's county as their home county. Fire-and-forget: a
-    // notification failure should never fail event creation.
-    void this.notifyNearby(full);
+    if (isAdminSubmission) {
+      // "Events nearby" push (Tech Spec §3.2) — targeted at users who've
+      // set this event's county as their home county. Fire-and-forget: a
+      // notification failure should never fail event creation. Only fires
+      // once the event is actually live — for a self-service submission
+      // that's on approval (see AdminService.setEventReviewStatus), not
+      // here, so nearby residents aren't told about an event that might
+      // still get rejected.
+      void this.notifyNearby(full);
+    } else {
+      await this.notifyAdminsOfPendingEvent(full);
+    }
 
     return full;
+  }
+
+  /** Broadcasts an in-app notification to every admin (see
+   * UsersService.findAdminIds) when an event enters PENDING — mirrors
+   * AdvertisementsService.notifyAdminsOfPendingAd. */
+  private async notifyAdminsOfPendingEvent(event: Event): Promise<void> {
+    const adminIds = await this.usersService.findAdminIds();
+    await this.notificationsService.createMany(adminIds, {
+      type: "admin.event_pending_review",
+      title: "Event pending review",
+      body: `"${event.name}" is waiting for a review decision.`,
+      link: EVENT_MODERATION_QUEUE_LINK,
+    });
   }
 
   // Posting was originally open to any logged-in user — cheap for
@@ -94,7 +135,11 @@ export class EventsService {
     );
   }
 
-  private async notifyNearby(event: Event): Promise<void> {
+  /** Fires once an event is actually live — from create() for an
+   * admin-created event (auto-approved), or from
+   * AdminService.setEventReviewStatus on approval for a self-service one.
+   * Public (not private) so AdminService can call it too. */
+  async notifyNearby(event: Event): Promise<void> {
     const userIds = await this.usersService.findIdsByHomeCounty(event.countyId);
     if (userIds.length === 0) return;
     await this.pushService.sendToUsers(
@@ -115,7 +160,14 @@ export class EventsService {
       .createQueryBuilder("event")
       .leftJoinAndSelect("event.county", "county")
       .leftJoinAndSelect("event.place", "place")
-      .leftJoinAndSelect("event.createdBy", "createdBy");
+      .leftJoinAndSelect("event.createdBy", "createdBy")
+      // Public browsing only ever sees APPROVED events — a PENDING event
+      // hasn't been reviewed yet and a REJECTED one failed review; neither
+      // belongs in front of a visitor. The admin events table uses its own
+      // GET /admin/events (unfiltered), not this endpoint.
+      .where("event.reviewStatus = :approved", {
+        approved: EventReviewStatus.APPROVED,
+      });
 
     if (query.category) {
       qb.andWhere("event.category = :category", { category: query.category });
@@ -154,6 +206,14 @@ export class EventsService {
     };
   }
 
+  /** GET /events/:id — deliberately NOT filtered by reviewStatus, unlike
+   * findAll/PlacesService.findBySlug/AdvertisementsService.findActiveOne:
+   * an event isn't discoverable by anyone browsing (findAll already hides
+   * anything not APPROVED), but the organizer's own "My Events" list
+   * links straight to this route for their just-submitted, still-PENDING
+   * event, and there's no separate "preview my pending event" page to
+   * send them to instead. A stale link to a since-rejected event is an
+   * acceptable trade for that page not 404ing on its own organizer. */
   async findOne(id: string): Promise<Event> {
     const event = await this.eventRepo.findOne({ where: { id } });
     if (!event) {

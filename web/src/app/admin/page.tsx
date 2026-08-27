@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { ComponentType, SVGProps } from 'react';
 import {
   ArrowRightIcon,
+  CalendarDaysIcon,
   ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
   MapIcon,
@@ -109,6 +110,7 @@ export default function AdminPage() {
     (queue?.pendingBusinesses.length ?? 0) +
     (queue?.pendingPlaces.length ?? 0) +
     (queue?.pendingAdvertisements.length ?? 0) +
+    (queue?.pendingEvents.length ?? 0) +
     (queue?.flaggedContent.length ?? 0) +
     (queue?.possiblyClosedPlaces.length ?? 0) +
     (securityOverview?.failedLoginsLast24h ?? 0);
@@ -294,6 +296,12 @@ export default function AdminPage() {
               count={queue.pendingAdvertisements.length}
               href="/admin/content/moderation"
               icon={MegaphoneIcon}
+            />
+            <NeedsAttentionCard
+              label="Pending events"
+              count={queue.pendingEvents.length}
+              href="/admin/content/moderation"
+              icon={CalendarDaysIcon}
             />
             <NeedsAttentionCard
               label="Flagged reviews & events"

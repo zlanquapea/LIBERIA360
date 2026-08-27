@@ -9,6 +9,7 @@ import type {
   BusinessType,
   CreatorCategory,
   EventCategory,
+  EventReviewStatus,
   PlaceReviewStatus,
   PlaceType,
   RecommendedVisitLength,
@@ -184,6 +185,16 @@ const EVENT_CATEGORY_LABELS: Record<EventCategory, string> = {
 
 export function formatEventCategory(category: EventCategory): string {
   return EVENT_CATEGORY_LABELS[category] ?? category;
+}
+
+const EVENT_REVIEW_STATUS_LABELS: Record<EventReviewStatus, string> = {
+  pending: 'Pending review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
+
+export function formatEventReviewStatus(status: EventReviewStatus): string {
+  return EVENT_REVIEW_STATUS_LABELS[status] ?? status;
 }
 
 const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {

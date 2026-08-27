@@ -2,15 +2,20 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import { deleteEventAdmin, updateEventAdmin } from '@/lib/admin-api';
-import { getEvents } from '@/lib/api';
+import { deleteEventAdmin, getAllEventsAdmin, setEventReviewStatus, updateEventAdmin } from '@/lib/admin-api';
 import { HttpError } from '@/lib/http';
-import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+import { formatEventCategory, formatEventDateRange, formatEventReviewStatus } from '@/lib/format';
 import { PhotoManager } from '@/components/PhotoManager';
-import type { County, Event, EventCategory } from '@/lib/types';
+import type { County, Event, EventCategory, EventReviewStatus } from '@/lib/types';
 import { BackToListLink, DeleteButton, inputClass } from './content-shared';
 
 const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nightlife', 'seasonal', 'other'];
+
+const REVIEW_STATUS_BADGE: Record<EventReviewStatus, string> = {
+  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+};
 
 type View = { mode: 'list' } | { mode: 'edit'; event: Event };
 
@@ -23,13 +28,16 @@ export function EventsTab({ token, counties }: { token: string; counties: County
   const [view, setView] = useState<View>({ mode: 'list' });
 
   function reload() {
-    // includePast: the public listing hides events that already happened
-    // by default (see EventsService.findAll) — this management table
-    // still needs to reach them to edit or remove.
-    getEvents({ limit: 100, includePast: true }).then((res) => setEvents(res.data));
+    // Every event regardless of review status — unlike the public GET
+    // /events (approved-only) or the old getEvents({includePast:true})
+    // this used to call, which stopped including anything once
+    // self-submitted events started defaulting to PENDING. Approving/
+    // rejecting a PENDING one is one click away via ReviewStatusControl
+    // below rather than needing the separate Moderation page for it.
+    getAllEventsAdmin(token).then(setEvents);
   }
 
-  useEffect(reload, []);
+  useEffect(reload, [token]);
 
   if (view.mode === 'edit') {
     return (
@@ -81,6 +89,7 @@ export function EventsTab({ token, counties }: { token: string; counties: County
                 <th className="px-4 py-2">Category</th>
                 <th className="px-4 py-2">County</th>
                 <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -91,6 +100,11 @@ export function EventsTab({ token, counties }: { token: string; counties: County
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatEventCategory(event.category)}</td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{event.county.name}</td>
                   <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{formatEventDateRange(event.startDate, event.endDate)}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${REVIEW_STATUS_BADGE[event.reviewStatus]}`}>
+                      {formatEventReviewStatus(event.reviewStatus)}
+                    </span>
+                  </td>
                   <td className="px-4 py-2.5 text-right text-xs font-medium text-brand-700 dark:text-brand-300">Edit →</td>
                 </tr>
               ))}
@@ -171,6 +185,7 @@ function EventEditForm({
             "Flagged content" queue, so it isn't gated to super admin here. */}
         <DeleteButton label="Delete event" onDelete={handleDelete} onDeleted={onDeleted} />
       </div>
+      <EventReviewStatusControl token={token} event={event} onChanged={onSaved} />
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -216,5 +231,80 @@ function EventEditForm({
         {submitting ? 'Saving…' : 'Save event'}
       </button>
     </form>
+  );
+}
+
+// Approve/reject a PENDING event right from its edit form — the same
+// decision available from the Moderation page's "Pending events" queue,
+// just reachable without leaving the Content > Events table. Already-
+// decided events (approved/rejected) show their status as a plain badge;
+// re-reviewing one is still possible via the dropdown below it, e.g. to
+// reject something that was approved in error.
+function EventReviewStatusControl({
+  token,
+  event,
+  onChanged,
+}: {
+  token: string;
+  event: Event;
+  onChanged: (event: Event) => void;
+}) {
+  const [status, setStatus] = useState<EventReviewStatus>(event.reviewStatus === 'pending' ? 'approved' : event.reviewStatus);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const updated = await setEventReviewStatus(token, event.id, status, reason.trim() || undefined);
+      onChanged(updated);
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${REVIEW_STATUS_BADGE[event.reviewStatus]}`}>
+          {formatEventReviewStatus(event.reviewStatus)}
+        </span>
+        {event.reviewStatus === 'rejected' && event.rejectionReason && (
+          <span className="text-xs text-slate-500 dark:text-slate-400">Reason: {event.rejectionReason}</span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as EventReviewStatus)}
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700"
+        >
+          <option value="approved">Approve</option>
+          <option value="rejected">Reject</option>
+        </select>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={apply}
+          className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {submitting ? 'Applying…' : 'Apply'}
+        </button>
+      </div>
+      {status === 'rejected' && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for rejection…"
+          maxLength={1000}
+          className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        />
+      )}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+    </div>
   );
 }

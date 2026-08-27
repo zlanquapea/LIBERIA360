@@ -476,6 +476,7 @@ export interface PaginatedCreators {
 
 // api/src/events/entities/event.enums.ts
 export type EventCategory = "concert" | "festival" | "sports" | "nightlife" | "seasonal" | "other";
+export type EventReviewStatus = "pending" | "approved" | "rejected";
 
 // api/src/events/entities/event.entity.ts (sanitized — createdBy is the
 // public user shape).
@@ -493,6 +494,8 @@ export interface Event {
   images: string[];
   ticketInfo: string | null;
   createdBy: AuthUser | null;
+  reviewStatus: EventReviewStatus;
+  rejectionReason: string | null;
   createdAt: string;
 }
 
@@ -879,6 +882,7 @@ export interface ModerationQueue {
   flaggedContent: FlaggedContent[];
   pendingBusinessContent: BusinessContent[];
   pendingAdvertisements: Advertisement[];
+  pendingEvents: Event[];
 }
 
 // api/src/freshness/entities/place-freshness-report.enums.ts

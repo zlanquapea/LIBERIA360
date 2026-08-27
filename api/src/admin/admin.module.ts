@@ -37,6 +37,7 @@ import { AdminSettingsController } from "./admin-settings.controller";
 import { MailModule } from "../mail/mail.module";
 import { SettingsModule } from "../settings/settings.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { EventsModule } from "../events/events.module";
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
     MailModule,
     SettingsModule,
     NotificationsModule,
+    EventsModule,
   ],
   controllers: [
     AdminController,

@@ -6,13 +6,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { deleteEvent, getMyEvents } from '@/lib/event-api';
 import { getCounties } from '@/lib/api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
-import { formatEventCategory, formatEventDateRange } from '@/lib/format';
+import { formatEventCategory, formatEventDateRange, formatEventReviewStatus } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
 import { NewEventForm } from '@/components/NewEventForm';
 import { SafeImage } from '@/components/SafeImage';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
-import type { County, Event } from '@/lib/types';
+import type { County, Event, EventReviewStatus } from '@/lib/types';
+
+const STATUS_BADGE: Record<EventReviewStatus, string> = {
+  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+};
 
 // "My Events" — everything an organizer has posted, regardless of date
 // (GET /events/mine, unlike the public listing, includes past events too
@@ -151,6 +157,9 @@ export default function MyEventsPage() {
                       <Link href={`/events/${event.id}`} className="font-medium text-slate-900 hover:underline dark:text-slate-50">
                         {event.name}
                       </Link>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[event.reviewStatus]}`}>
+                        {formatEventReviewStatus(event.reviewStatus)}
+                      </span>
                       {isPast && (
                         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                           Past
@@ -160,6 +169,14 @@ export default function MyEventsPage() {
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {formatEventCategory(event.category)} · {formatEventDateRange(event.startDate, event.endDate)}
                     </p>
+                    {event.reviewStatus === 'pending' && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Awaiting admin review — it won&apos;t be shown until approved.</p>
+                    )}
+                    {event.reviewStatus === 'rejected' && (
+                      <p className="text-xs text-flag-700 dark:text-flag-300">
+                        This event was rejected{event.rejectionReason ? `: ${event.rejectionReason}` : '.'}
+                      </p>
+                    )}
                   </div>
                 </div>
 

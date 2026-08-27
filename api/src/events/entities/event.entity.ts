@@ -11,13 +11,21 @@ import {
 import { Place } from "../../places/entities/place.entity";
 import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
-import { EventCategory } from "./event.enums";
+import { EventCategory, EventReviewStatus } from "./event.enums";
 
 /**
  * Event (Tech Spec §5 Event, §3.2). `county` is required so GET /events can
  * always filter by county (§10) even for events with no catalog Place link
  * (spec's "place_id/location" — `place` is optional, `locationText` covers
  * the freeform case, e.g. "Antoinette Tubman Stadium" with no catalog entry).
+ *
+ * Goes through the same review-gate as a self-submitted Place/Advertisement
+ * — starts PENDING, invisible on the public listing until an admin
+ * approves it (see EventReviewStatus's doc comment) — added after
+ * self-service posting shipped with no gate at all: any claimed business
+ * or creator could publish straight to the public listing with nothing
+ * ever reaching an admin to review, unlike every other user-generated
+ * content type on this platform.
  */
 @Entity("events")
 export class Event {
@@ -75,6 +83,26 @@ export class Event {
 
   @Column({ name: "created_by_user_id" })
   createdByUserId: string;
+
+  @Column({
+    name: "review_status",
+    type: "enum",
+    enum: EventReviewStatus,
+    default: EventReviewStatus.PENDING,
+  })
+  reviewStatus: EventReviewStatus;
+
+  // Reviewer-facing note, set alongside REJECTED — same pattern as
+  // Advertisement.rejectionReason/Place.rejectionReason. Cleared on
+  // APPROVED.
+  @Column({ name: "rejection_reason", type: "text", nullable: true })
+  rejectionReason: string | null;
+
+  @Column({ name: "reviewed_at", type: "timestamptz", nullable: true })
+  reviewedAt: Date | null;
+
+  @Column({ name: "reviewed_by_user_id", type: "uuid", nullable: true })
+  reviewedByUserId: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

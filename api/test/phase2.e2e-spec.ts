@@ -594,7 +594,7 @@ describe("Phase 2 (e2e)", () => {
         })
         .expect(400);
 
-      await request(app.getHttpServer())
+      const concert = await request(app.getHttpServer())
         .post("/api/v1/events")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
@@ -605,6 +605,15 @@ describe("Phase 2 (e2e)", () => {
           startDate: "2026-09-01T18:00:00Z",
         })
         .expect(201);
+      // Self-service events start pending and are invisible on the public
+      // listing below until an admin approves them (see Event's
+      // reviewStatus doc comment) — approve directly via the DB rather
+      // than plumbing an admin account through this describe block just
+      // for this one assertion.
+      await dataSource.query(
+        "UPDATE events SET review_status = 'approved' WHERE id = $1",
+        [concert.body.id],
+      );
 
       const byCounty = await request(app.getHttpServer())
         .get("/api/v1/events?county=montserrado")
@@ -635,6 +644,12 @@ describe("Phase 2 (e2e)", () => {
         })
         .expect(201);
       const pastId = past.body.id as string;
+      // Same review-gate as above — approve so the assertions below are
+      // actually testing the past-date filter, not the review-status one.
+      await dataSource.query(
+        "UPDATE events SET review_status = 'approved' WHERE id = $1",
+        [pastId],
+      );
 
       const defaultList = await request(app.getHttpServer())
         .get("/api/v1/events")

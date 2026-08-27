@@ -173,13 +173,13 @@ for directory/card rendering), and additionally accepts `search`, `category`,
 | Method & path | Description | Auth |
 |---|---|---|
 | `POST /events` | Create an event | JWT + claimed business, creator profile, or admin |
-| `GET /events?category=&county=&dateFrom=&dateTo=&includePast=` | List/filter events — hides events whose `startDate` has already passed unless `dateFrom` or `includePast=true` is given | — |
-| `GET /events/:id` | Event detail | — |
-| `GET /events/mine` | Events the caller posted, including past ones | JWT |
+| `GET /events?category=&county=&dateFrom=&dateTo=&includePast=` | List/filter events — hides events whose `startDate` has already passed unless `dateFrom` or `includePast=true` is given. Only ever returns `reviewStatus: approved` events | — |
+| `GET /events/:id` | Event detail — deliberately *not* filtered by review status (unlike `GET /places/:slug`'s approved-only gate): the organizer's own pending/rejected event is reachable here since "My Events" links straight to it and there's no separate preview page | — |
+| `GET /events/mine` | Events the caller posted, including past ones, any review status | JWT |
 | `PATCH /events/:id` | Edit an event | JWT, organizer or admin |
 | `DELETE /events/:id` | Cancel/remove an event | JWT, organizer or admin |
 
-Creating an event triggers a best-effort push notification to users whose home county matches.
+An event goes through the same review-gate as a self-submitted Place/Advertisement (`Event.reviewStatus`: `pending`/`approved`/`rejected`) — a self-service submission from a claimed business or creator profile starts `pending` and is invisible on the public listing above until an admin approves it; an event created directly by an admin publishes `approved` immediately, same reasoning as `AdminContentService.createPlace` bypassing its review gate. The "events nearby" push notification (to users whose home county matches) fires only once the event is actually live — immediately for an admin-created event, or on approval for a self-service one — not at submission time, so residents aren't told about an event that might still get rejected.
 
 ### Uploads
 
@@ -341,7 +341,7 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `POST /admin/businesses/bulk-review-status` | Bulk sibling of the above (`{ids, status, reason?}`, same `{succeeded, failed}` shape) |
 | `POST /admin/business-content/bulk-review-status` | Bulk approve/reject for business-authored content (`{ids, status, reason?}`) |
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
-| `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), recent reviews, possibly-closed places, flagged content |
+| `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), pending events (`pendingEvents`), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
 | `GET /admin/places/data-quality` | Flags places with an editorial problem a review-status pass wouldn't catch: slug that no longer matches the current name (see `PATCH /admin/places`'s auto-re-slug below, which now closes off the main way this could happen — this stays as a safety net for anything the auto-derivation doesn't cover, e.g. a slug set by hand that no longer matches), missing/too-short/placeholder description, and no photos. Registered ahead of `GET /admin/places/:id` below since Nest matches routes in declaration order |
 | `GET /admin/places/:id` | Single place by id, any review status, with `owner`, `category`, `county`, `activities` — what the review panel loads |
@@ -353,7 +353,9 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `DELETE /admin/activities/:id` | Delete an activity | Super Admin |
 | `POST` / `PATCH /admin/businesses` | Create/update businesses, including unowned "shell" listings |
 | `DELETE /admin/businesses/:id` | Delete a business (its bookings cascade with it) | Super Admin |
+| `GET /admin/events` | Every event regardless of review status (unlike the public `GET /events`) — the Content > Events tab's data source |
 | `PATCH /admin/events/:id` | Update an event |
+| `PATCH /admin/events/:id/review-status` | Approve/reject an event (`{status, reason?}`) — approving fires the "events nearby" push that a self-service submission held back at creation time |
 | `DELETE /admin/events/:id` | Remove an event (moderation) |
 | `DELETE /admin/reviews/:id` | Remove a review (moderation) — recomputes the place's rating |
 | `PATCH /admin/counties/:id` | Update a county's safety/practical-info panel |
