@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, type ReactNode } from 'react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
-import { AdminGate } from '@/components/AdminGate';
-import { AdminSidebar } from '@/components/AdminSidebar';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, type ReactNode } from "react";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { AdminGate } from "@/components/AdminGate";
+import { AdminSidebar } from "@/components/AdminSidebar";
+import { useAuth } from "@/hooks/useAuth";
 
 // Shared shell for every /admin/* page — sidebar nav + the isAdmin gate,
 // both previously duplicated (or, for the sidebar, simply absent) on each
@@ -22,56 +22,83 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <AdminGate>
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start">
-        <div className="flex items-center justify-between gap-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
-          >
-            <Bars3Icon aria-hidden className="h-5 w-5" />
-            Menu
-          </button>
-          {user && (
-            <span
-              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                user.isSuperAdmin
-                  ? 'bg-gold-400/20 text-gold-600 dark:text-gold-400'
-                  : 'bg-brand-700/10 text-brand-700 dark:text-brand-300'
-              }`}
-            >
-              {user.isSuperAdmin ? 'Super Admin' : 'Admin'}
-            </span>
-          )}
-        </div>
-
-        {drawerOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden">
+      <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70 dark:bg-slate-950/20">
+        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-3 py-4 sm:px-6 sm:py-6 lg:flex-row lg:items-start lg:gap-8 lg:px-8 lg:py-8">
+          <div className="flex items-center justify-between gap-3 lg:hidden">
             <button
               type="button"
-              aria-label="Close menu"
-              onClick={() => setDrawerOpen(false)}
-              className="absolute inset-0 bg-slate-950/50"
-            />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-4 overflow-y-auto bg-white p-4 shadow-xl dark:bg-slate-900">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  Admin menu
-                </span>
-                <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Close">
-                  <XMarkIcon aria-hidden className="h-5 w-5 text-slate-500" />
-                </button>
+              onClick={() => setDrawerOpen(true)}
+              aria-expanded={drawerOpen}
+              aria-controls="admin-mobile-menu"
+              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+            >
+              <Bars3Icon aria-hidden className="h-5 w-5" />
+              Menu
+            </button>
+            {user && (
+              <span
+                className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                  user.isSuperAdmin
+                    ? "border-gold-400/30 bg-gold-400/15 text-gold-700 dark:text-gold-300"
+                    : "border-brand-300/50 bg-brand-700/10 text-brand-700 dark:border-brand-700 dark:text-brand-300"
+                }`}
+              >
+                {user.isSuperAdmin ? "Super Admin" : "Admin"}
+              </span>
+            )}
+          </div>
+
+          {drawerOpen && (
+            <div className="fixed inset-x-0 bottom-0 top-16 z-40 lg:hidden">
+              <button
+                type="button"
+                aria-label="Close menu"
+                onClick={() => setDrawerOpen(false)}
+                className="absolute inset-0 bg-slate-950/55"
+              />
+              <div
+                id="admin-mobile-menu"
+                className="absolute inset-y-0 left-0 flex w-80 max-w-[88vw] flex-col gap-5 overflow-y-auto bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl dark:bg-slate-900"
+              >
+                <div className="flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+                      Control center
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                      Admin menu
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    aria-label="Close admin menu"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50"
+                  >
+                    <XMarkIcon aria-hidden className="h-5 w-5" />
+                  </button>
+                </div>
+                <AdminSidebar onNavigate={() => setDrawerOpen(false)} />
               </div>
-              <AdminSidebar onNavigate={() => setDrawerOpen(false)} />
+            </div>
+          )}
+
+          <div className="hidden lg:sticky lg:top-20 lg:block lg:shrink-0 lg:self-start">
+            <div className="w-64 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="mb-3 border-b border-slate-100 px-3 pb-3 dark:border-slate-800">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+                  Control center
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-50">
+                  Liberia360 Admin
+                </p>
+              </div>
+              <AdminSidebar />
             </div>
           </div>
-        )}
 
-        <div className="hidden lg:sticky lg:top-20 lg:block lg:shrink-0 lg:self-start">
-          <AdminSidebar />
+          <div className="min-w-0 flex-1">{children}</div>
         </div>
-
-        <div className="min-w-0 flex-1">{children}</div>
       </div>
     </AdminGate>
   );
