@@ -31,10 +31,10 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // PlaceCard's category-color fallback) — a small inline skyline-at-night
 // SVG stands in for the mock-up's photo, same mood without an asset.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
-import { PlaceCard } from '@/components/PlaceCard';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
+import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
 import { formatEventDateRange } from '@/lib/format';
 
 const TRENDING_PLACES_LIMIT = 10;
@@ -61,6 +61,16 @@ export default async function Home() {
   const quickCounties = [...counties]
     .sort((a, b) => (b.placeCount ?? 0) - (a.placeCount ?? 0) || a.rolloutStage - b.rolloutStage)
     .slice(0, 5);
+
+  // "Featured Destination" spotlight — a random pick from every currently
+  // active SponsoredPlacement, re-rolled on every request (this page does
+  // no ISR/caching — see apiFetch's `cache: 'no-store'` comment — so a
+  // fresh visit or a plain refresh both draw again). Several businesses
+  // can be paying for this same slot at once; rather than a first-one-wins
+  // static pick or cramming them all into a carousel, each pays for a
+  // random shot at the single spotlight — see /featured for the full pool.
+  const featuredPlacement =
+    sponsoredPlacements.length > 0 ? sponsoredPlacements[Math.floor(Math.random() * sponsoredPlacements.length)] : null;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col">
@@ -189,26 +199,31 @@ export default async function Home() {
           <CategoryGrid categories={categories} />
         </section>
 
-        {sponsoredPlacements.length > 0 && (
+        <AdvertisementBanner ads={ads} />
+
+        {featuredPlacement && (
           <section aria-labelledby="featured-heading" className="flex flex-col gap-3">
-            <h2
-              id="featured-heading"
-              className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
-            >
-              <StarIcon aria-hidden className="h-5 w-5 text-gold-500" />
-              Featured this week
-            </h2>
-            <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-              {sponsoredPlacements.map((placement) => (
-                <div key={placement.id} className="w-64 shrink-0">
-                  <PlaceCard place={placement.place} />
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <h2
+                id="featured-heading"
+                className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
+              >
+                <StarIcon aria-hidden className="h-5 w-5 text-gold-500" />
+                Featured Destination
+              </h2>
+              {sponsoredPlacements.length > 1 && (
+                <Link
+                  href="/featured"
+                  className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                >
+                  View all
+                  <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+                </Link>
+              )}
             </div>
+            <FeaturedDestinationCard place={featuredPlacement.place} />
           </section>
         )}
-
-        <AdvertisementBanner ads={ads} />
 
         <section aria-labelledby="trending-heading" className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
