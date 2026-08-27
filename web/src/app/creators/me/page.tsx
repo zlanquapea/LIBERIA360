@@ -159,6 +159,20 @@ export default function MyCreatorProfilePage() {
     };
   }, [ready, token, user]);
 
+  // The "Create post" link on the Creators feed header points here as
+  // `/creators/me#composer` — but the composer only mounts once the
+  // creator profile finishes loading, after the browser's own hash-scroll
+  // already ran against an empty page. Scroll to it ourselves once it's
+  // actually in the DOM.
+  useEffect(() => {
+    if (loadingProfile || !creator) return;
+    if (typeof window === "undefined" || window.location.hash !== "#composer")
+      return;
+    document
+      .getElementById("composer")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [loadingProfile, creator]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!token) return;

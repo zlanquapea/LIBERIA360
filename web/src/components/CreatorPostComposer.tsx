@@ -46,7 +46,7 @@ export function CreatorPostComposer({ token, onPublished }: { token: string; onP
   }
 
   return (
-    <section aria-labelledby="creator-post-composer-heading" className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+    <section id="composer" aria-labelledby="creator-post-composer-heading" className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:scroll-mt-28 sm:p-5">
       <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Share with your audience</p>
         <h2 id="creator-post-composer-heading" className="mt-1 font-display text-xl font-bold text-slate-950 dark:text-white">Create a post</h2>
