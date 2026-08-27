@@ -18,6 +18,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Category, County, Place } from '@/lib/types';
 import { colorForCategory, gradientForCategory } from '@/lib/category-colors';
 import { formatRating } from '@/lib/format';
+import { distanceKm, type Coordinates } from '@/lib/geo';
 import { isOpenAt } from '@/lib/opening-hours';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon, iconSvgMarkup } from '@/lib/icons';
@@ -25,6 +26,22 @@ import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
+
+// Product feedback (Aug 27, 2026): once located, Explore should behave like
+// a real "near me" — only what's actually close, not the whole catalog with
+// a recentered map. 5km, not a picker like Near Me's page offers: Explore's
+// job is a quick glance at what's around you right now, not a distance
+// picker.
+const NEARBY_RADIUS_KM = 5;
+
+// "You are here" — a pulsing blue dot, the same convention as every map
+// app, distinct from every category pin so it's never mistaken for a place.
+const USER_LOCATION_ICON = L.divIcon({
+  className: '',
+  html: '<div class="relative flex h-5 w-5 items-center justify-center"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-60"></span><span class="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-sky-500 shadow-md"></span></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
 
 // Single-select price buckets — same ranges SearchFilters offers, reused
 // here so "Under $10" means the same thing everywhere. `id: ''` is the
@@ -56,14 +73,18 @@ function pinIcon(color: string, icon: string | null, categorySlug: string, selec
 // <MapContainer> to reach the map instance via useMap(). Recentering +
 // zooming is Leaflet's own map.locate({ setView: true }), not raw
 // navigator.geolocation, so permission prompts/accuracy circle/etc. all
-// come for free.
-function LocateControl() {
+// come for free. `onLocated` hands the found coordinates up to the parent —
+// drives both the "you are here" marker and the within-5km filter.
+function LocateControl({ located, onLocated }: { located: boolean; onLocated: (coords: Coordinates) => void }) {
   const map = useMap();
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useMapEvents({
-    locationfound: () => setLocating(false),
+    locationfound: (e) => {
+      setLocating(false);
+      onLocated({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
     locationerror: () => {
       setLocating(false);
       setError("Couldn't get your location.");
@@ -88,7 +109,7 @@ function LocateControl() {
         className="pointer-events-auto flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-md transition-colors hover:text-brand-700 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-brand-300"
       >
         <LocateIcon aria-hidden className="h-5 w-5" />
-        {locating ? 'Locating…' : 'Use my location'}
+        {locating ? 'Locating…' : located ? 'Update my location' : 'Use my location'}
       </button>
     </div>
   );
@@ -100,6 +121,14 @@ function LocateControl() {
 // picking one checkbox shouldn't close a multi-select list. The full-screen
 // transparent button behind the open panel is the outside-click-to-close;
 // it's `aria-hidden`/untabbable so it never becomes a real focus stop.
+//
+// The panel and its backdrop use a very high z-index deliberately: this
+// header sits directly above the Leaflet map, and Leaflet's own panes/
+// controls carry z-index values up to 1000 (and some of Leaflet's own
+// panes establish their own stacking context via the transform they use
+// for pan/zoom, which can make an ordinary z-50 lose to them in ways that
+// don't reproduce consistently in every browser). Comfortably clearing
+// Leaflet's own maximum avoids that fight entirely rather than chasing it.
 function FilterPopover({
   label,
   icon: Icon,
@@ -137,9 +166,9 @@ function FilterPopover({
             aria-hidden
             tabIndex={-1}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
+            className="fixed inset-0 z-[9998] cursor-default"
           />
-          <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="absolute left-0 top-full z-[9999] mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
             {children(() => setOpen(false))}
           </div>
         </>
@@ -248,6 +277,7 @@ export function ExploreMapClient({
   const [priceBucketId, setPriceBucketId] = useState('');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
 
   const priceBucket = PRICE_BUCKETS.find((bucket) => bucket.id === priceBucketId);
 
@@ -264,9 +294,10 @@ export function ExploreMapClient({
         if (priceBucket.max != null && place.estimatedCostEntry > priceBucket.max) return false;
       }
       if (q && !place.name.toLowerCase().includes(q) && !place.description.toLowerCase().includes(q)) return false;
+      if (userLocation && distanceKm(userLocation, { lat: place.latitude, lng: place.longitude }) > NEARBY_RADIUS_KM) return false;
       return true;
     });
-  }, [places, activeSlugs, countySlug, openNowOnly, priceBucket, query]);
+  }, [places, activeSlugs, countySlug, openNowOnly, priceBucket, query, userLocation]);
 
   function toggleCategory(slug: string) {
     setActiveSlugs((prev) => {
@@ -281,7 +312,8 @@ export function ExploreMapClient({
   }
 
   const allCategoriesActive = activeSlugs.size === categories.length;
-  const hasActiveFilters = !allCategoriesActive || countySlug !== null || openNowOnly || priceBucketId !== '' || query.trim() !== '';
+  const hasActiveFilters =
+    !allCategoriesActive || countySlug !== null || openNowOnly || priceBucketId !== '' || query.trim() !== '' || userLocation !== null;
 
   function clearFilters() {
     setActiveSlugs(new Set(categories.map((c) => c.slug)));
@@ -289,6 +321,7 @@ export function ExploreMapClient({
     setOpenNowOnly(false);
     setPriceBucketId('');
     setQuery('');
+    setUserLocation(null);
   }
 
   return (
@@ -412,7 +445,10 @@ export function ExploreMapClient({
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
             subdomains="abcd"
           />
-          <LocateControl />
+          <LocateControl located={userLocation !== null} onLocated={setUserLocation} />
+          {userLocation && (
+            <Marker position={[userLocation.lat, userLocation.lng]} icon={USER_LOCATION_ICON} zIndexOffset={1000} />
+          )}
           {visiblePlaces.map((place) => (
             <Marker
               key={place.id}
@@ -446,7 +482,8 @@ export function ExploreMapClient({
         <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
         <div className="flex shrink-0 items-center justify-between">
           <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-50">
-            Results near you <span className="font-normal text-slate-400 dark:text-slate-500">· {visiblePlaces.length}</span>
+            {userLocation ? `Within ${NEARBY_RADIUS_KM} km of you` : 'Results near you'}{' '}
+            <span className="font-normal text-slate-400 dark:text-slate-500">· {visiblePlaces.length}</span>
           </h2>
           <Link href="/search" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">
             See all
