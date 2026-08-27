@@ -4,6 +4,7 @@ import { getActiveAdvertisements, getCategories, getCounties, getPlaces } from '
 import { findMatchingCategory } from '@/lib/category-match';
 import { PlaceCard } from '@/components/PlaceCard';
 import { SearchFilters } from '@/components/SearchFilters';
+import { QuickFilterChips } from '@/components/QuickFilterChips';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import type { Category, PlaceSort, PlacesQuery } from '@/lib/types';
 
@@ -84,6 +85,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </button>
       </form>
 
+      <QuickFilterChips surface="light" />
       <SearchFilters categories={categories} counties={counties} />
 
       <p className="text-sm text-slate-500 dark:text-slate-400">

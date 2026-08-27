@@ -51,7 +51,6 @@ import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
-import { QuickFilterChips } from '@/components/QuickFilterChips';
 import { DiscoveryRecommendations } from '@/components/DiscoveryRecommendations';
 import { formatEventDateRange } from '@/lib/format';
 
@@ -165,8 +164,6 @@ export default async function Home() {
               <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
             </button>
           </form>
-          <QuickFilterChips />
-
           {/* Co-primary discovery tools, inside the hero right under search —
               see the review readout comment above for why these are
               elevated instead of buried at the bottom of the page. */}
