@@ -6,25 +6,20 @@ import { CategoryIcon } from '@/lib/icons';
 import { colorForCategory } from '@/lib/category-colors';
 import type { Category } from '@/lib/types';
 
-const COLUMNS = 4;
-const VISIBLE_ROWS = 2;
-const VISIBLE_COUNT = COLUMNS * VISIBLE_ROWS;
+const INITIAL_VISIBLE_COUNT = 4;
 
-// Home's "Browse categories" grid, capped to two rows by default — a
-// growing category list (admins can add their own, see admin Content >
-// Categories) shouldn't push the rest of the homepage further and further
-// down. A "See more" toggle reveals the rest in place rather than a
-// separate page, since there's no dedicated "all categories" browse screen
-// today; toggling back to "Show less" re-collapses without losing scroll
-// position the way navigating away would.
+// Home's "Browse categories" rail shows four shortcuts initially. A
+// "See more" toggle reveals the rest in the same horizontal scroll row,
+// so a growing category list never creates additional vertical rows on the
+// homepage. Toggling back to "Show less" restores the compact initial row.
 export function CategoryGrid({ categories }: { categories: Category[] }) {
   const [expanded, setExpanded] = useState(false);
-  const hasMore = categories.length > VISIBLE_COUNT;
-  const visible = expanded ? categories : categories.slice(0, VISIBLE_COUNT);
+  const hasMore = categories.length > INITIAL_VISIBLE_COUNT;
+  const visible = expanded ? categories : categories.slice(0, INITIAL_VISIBLE_COUNT);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
+      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {visible.map((category) => (
           <Link
             key={category.id}
@@ -42,7 +37,7 @@ export function CategoryGrid({ categories }: { categories: Category[] }) {
           onClick={() => setExpanded((e) => !e)}
           className="self-center text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
         >
-          {expanded ? 'Show less' : `See ${categories.length - VISIBLE_COUNT} more`}
+          {expanded ? 'Show less' : `See ${categories.length - INITIAL_VISIBLE_COUNT} more`}
         </button>
       )}
     </div>
