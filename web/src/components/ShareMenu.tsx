@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type ComponentType } from "react";
 import {
+  ArrowUturnRightIcon,
   ArrowUpOnSquareIcon,
-  ArrowUpTrayIcon,
   ClipboardDocumentIcon,
   EnvelopeIcon,
 } from "@heroicons/react/24/outline";
@@ -144,7 +144,7 @@ export function ShareMenu({
         onClick={() => setOpen((value) => !value)}
         className={actionTrigger}
       >
-        <ArrowUpTrayIcon
+        <ArrowUturnRightIcon
           aria-hidden
           className={variant === "action" ? "h-5 w-5" : "h-6 w-6"}
         />
