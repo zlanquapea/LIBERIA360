@@ -1,45 +1,48 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
 import { CategoryIcon } from '@/lib/icons';
 import { colorForCategory } from '@/lib/category-colors';
 import type { Category } from '@/lib/types';
 
-const INITIAL_VISIBLE_COUNT = 4;
-
-// Home's "Browse categories" rail shows four shortcuts initially. A
-// "See more" toggle reveals the rest in the same horizontal scroll row,
-// so a growing category list never creates additional vertical rows on the
-// homepage. Toggling back to "Show less" restores the compact initial row.
+// Home's "Browse categories" rail — every category in one horizontally
+// scrollable row, always. Earlier this capped itself to a handful of
+// shortcuts with a "See more" toggle that revealed the rest via a CSS grid
+// (multiple vertical rows) or, after a first fix, appended them to the same
+// row but off-screen — so pressing "See more" visibly did nothing until a
+// visitor scrolled sideways to find them. Dropping the toggle entirely
+// removes that dead-end: everything is here from the start, reachable by
+// the same swipe/scroll gesture already used for "Sponsored" and the
+// county tabs, and a growing admin-managed category list never adds a
+// vertical row to the page no matter how many categories exist.
+//
+// A soft fade on the trailing edge (a gradient-to-transparent overlay,
+// matching the page's own background so it reads as a mask rather than a
+// visible box) stands in for the old "See N more" text link as the
+// "there's more this way" cue — it's just always there rather than
+// computed from actual scroll position, which is a fine trade for not
+// needing a scroll listener just to hint at something `overflow-x-auto`
+// already makes discoverable by touch.
 export function CategoryGrid({ categories }: { categories: Category[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const hasMore = categories.length > INITIAL_VISIBLE_COUNT;
-  const visible = expanded ? categories : categories.slice(0, INITIAL_VISIBLE_COUNT);
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="-mx-4 flex flex-nowrap gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {visible.map((category) => (
+    <div className="relative -mx-4 sm:mx-0">
+      <div className="flex flex-nowrap gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
+        {categories.map((category) => (
           <Link
             key={category.id}
             href={`/categories/${category.slug}`}
-            className="group flex w-[72px] min-w-[72px] shrink-0 flex-col items-center gap-2 px-1 py-1 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:py-3"
+            className="group flex w-[72px] min-w-[72px] shrink-0 flex-col items-center gap-2 px-1 py-1 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:w-20 sm:py-3"
           >
-            <span aria-hidden className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm transition-transform group-hover:scale-105" style={{ backgroundColor: colorForCategory(category.slug) }}><CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-7 w-7 text-white" /></span>
+            <span
+              aria-hidden
+              className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm transition-transform group-hover:scale-105"
+              style={{ backgroundColor: colorForCategory(category.slug) }}
+            >
+              <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-7 w-7 text-white" />
+            </span>
             <span className="text-[11px] font-semibold leading-tight text-slate-700 dark:text-slate-200">{category.name}</span>
           </Link>
         ))}
       </div>
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="self-center text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
-        >
-          {expanded ? 'Show less' : `See ${categories.length - INITIAL_VISIBLE_COUNT} more`}
-        </button>
-      )}
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent dark:from-slate-950" />
     </div>
   );
 }

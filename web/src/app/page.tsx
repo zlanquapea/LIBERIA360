@@ -31,6 +31,21 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // hero (the app has stayed image-dependency-free everywhere else, e.g.
 // PlaceCard's category-color fallback) — a small inline skyline-at-night
 // SVG stands in for the mock-up's photo, same mood without an asset.
+//
+// Hero unification (Aug 27, 2026): the mock-up pass above only gave the
+// rich navy treatment (gradient, decorative glow shapes, skyline, the
+// "One simple flow" panel) to `lg:` and up — mobile fell back to a plain
+// white section with dark text and no `dark:` variants at all, so it (a)
+// looked flat next to every other section on the app's busiest, most
+// screenshotted breakpoint, (b) broke outright in dark mode (a stark white
+// band under the dark header), and (c) left the "Explore Map" pill's
+// `border-white/30 bg-white/10` styling — written assuming a dark
+// backdrop — nearly invisible against that white background. Making the
+// navy hero unconditional fixes all three at once instead of needing a
+// second, mobile-specific dark-mode treatment: it's a deliberately-colored
+// surface (like the "Plan a weekend" banner further down) that looks
+// intentional regardless of which site theme is active, the same reasoning
+// that already applied at `lg:`.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
@@ -75,15 +90,18 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col">
-      <section className="relative overflow-hidden bg-white px-4 pb-8 pt-8 text-brand-900 animate-fade-in-up sm:px-6 lg:bg-brand-900 lg:px-10 lg:pb-14 lg:pt-12 lg:text-white lg:shadow-[0_14px_36px_rgba(8,26,80,0.18)]">
-        {/* Decorative depth — soft glow shapes, no imagery dependency */}
+      <section className="relative overflow-hidden rounded-b-[2rem] bg-gradient-to-br from-brand-800 via-brand-900 to-[#050b24] px-4 pb-8 pt-8 text-white shadow-[0_14px_36px_rgba(8,26,80,0.35)] animate-fade-in-up sm:px-6 lg:rounded-none lg:px-10 lg:pb-14 lg:pt-12">
+        {/* Decorative depth — soft glow shapes, no imagery dependency.
+            Unconditional now (previously lg:block-only, so the hero looked
+            flat below that breakpoint) — sized down on small screens so
+            they read as ambient light rather than crowding the card. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-10 -top-16 hidden h-48 w-48 rounded-full bg-gold-400/20 blur-3xl lg:block"
+          className="pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full bg-gold-400/20 blur-3xl sm:h-40 sm:w-40 lg:h-48 lg:w-48"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-6 -left-8 hidden h-40 w-40 animate-float rounded-full bg-accent-400/20 blur-3xl lg:block"
+          className="pointer-events-none absolute -bottom-6 -left-8 h-28 w-28 animate-float rounded-full bg-accent-400/20 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
         />
         {/* Stylized night skyline standing in for the mock-up's photo — see
             the layout-pass note above for why there's no stock image here. */}
@@ -91,7 +109,7 @@ export default async function Home() {
           aria-hidden
           viewBox="0 0 400 60"
           preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 w-full text-black/30 lg:block"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 w-full text-black/30 sm:h-14 lg:h-16"
         >
           <rect x="0" y="30" width="18" height="30" fill="currentColor" />
           <rect x="22" y="20" width="14" height="40" fill="currentColor" />
@@ -123,8 +141,8 @@ export default async function Home() {
         <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-12">
           <div className="max-w-2xl">
             <h1 className="max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">Discover Liberia.<br />Find your next place.</h1>
-          <p className="max-w-xl text-slate-600 sm:text-lg sm:leading-7 lg:text-brand-100">
-            Discover destinations, food, and stays across all 15 counties — starting with Greater Monrovia.
+          <p className="max-w-xl text-brand-100 sm:text-lg sm:leading-7">
+            Destinations, food, and stays across all 15 counties of Liberia.
           </p>
           <form
             action="/search"
@@ -164,6 +182,15 @@ export default async function Home() {
               <MapIcon aria-hidden className="h-5 w-5" />
               Explore Map
             </Link>
+          </div>
+
+          {/* Quick credibility signal — real counts from this same
+              request, not marketing copy, so it never claims more than the
+              catalog actually has. */}
+          <div className="flex flex-wrap gap-2 pt-3 text-xs font-medium text-brand-100 sm:max-w-xl sm:text-sm">
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">{counties.length} counties</span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">{categories.length}+ categories</span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">{trending.meta.total}+ places</span>
           </div>
           </div>
           <aside className="hidden rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-sm lg:block">
