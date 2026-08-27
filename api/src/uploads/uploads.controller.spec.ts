@@ -119,4 +119,54 @@ describe("UploadsController", () => {
     );
     expect(storage.save).not.toHaveBeenCalled();
   });
+
+  it("rejects a missing video file", async () => {
+    await expect(
+      controller.uploadVideo(undefined as unknown as Express.Multer.File),
+    ).rejects.toThrow(BadRequestException);
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects a video whose declared MIME type is not allowed", async () => {
+    await expect(
+      controller.uploadVideo(
+        makeFile({ mimetype: "text/plain", buffer: Buffer.from("not-video") }),
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects a renamed non-video file even when its MIME type is allowed", async () => {
+    await expect(
+      controller.uploadVideo(
+        makeFile({ mimetype: "video/mp4", buffer: Buffer.from("not-video") }),
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it("stores a valid MP4 video with a unique extension", async () => {
+    storage.save.mockImplementation(({ filename }: { filename: string }) =>
+      Promise.resolve({ url: `/uploads/${filename}` }),
+    );
+    const mp4Header = Buffer.concat([
+      Buffer.alloc(4),
+      Buffer.from("ftyp"),
+      Buffer.alloc(16),
+    ]);
+
+    const result = await controller.uploadVideo(
+      makeFile({ mimetype: "video/mp4", buffer: mp4Header }),
+    );
+
+    expect(storage.save).toHaveBeenCalledTimes(1);
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        buffer: mp4Header,
+        contentType: "video/mp4",
+        filename: expect.stringMatching(/^[0-9a-f-]{36}\.mp4$/),
+      }),
+    );
+    expect(result.url).toMatch(/^\/uploads\/[0-9a-f-]{36}\.mp4$/);
+  });
 });

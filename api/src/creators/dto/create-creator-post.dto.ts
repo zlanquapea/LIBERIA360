@@ -5,9 +5,8 @@ export class CreateCreatorPostDto {
   @IsEnum(CreatorPostMediaType)
   mediaType: CreatorPostMediaType;
 
-  // Uses the same safe uploaded-image or external-video URL contract as the
-  // existing creator portfolio. Video uploads remain external-link only until
-  // a dedicated transcoding/storage pipeline exists.
+  // The URL may reference an uploaded image/video or an external hosted video.
+  // Uploaded video bytes are validated and stored by POST /uploads/video first.
   @IsString()
   @MaxLength(500)
   mediaUrl: string;

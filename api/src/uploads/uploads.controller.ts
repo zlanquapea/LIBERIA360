@@ -15,6 +15,12 @@ import { Throttle, seconds } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ImageTooSmallError, processUploadedImage } from "./image-processing";
 import {
+  ALLOWED_VIDEO_MIME_TYPES,
+  assertSupportedVideo,
+  MAX_VIDEO_FILE_SIZE_BYTES,
+  videoExtensionForMime,
+} from "./video-validation";
+import {
   STORAGE_PROVIDER,
   StorageProvider,
 } from "./storage/storage-provider.interface";
@@ -129,6 +135,43 @@ export class UploadsController {
           );
         }),
     ]);
+    return { url };
+  }
+
+  @Post("video")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_VIDEO_FILE_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (
+          !ALLOWED_VIDEO_MIME_TYPES.includes(
+            file.mimetype as (typeof ALLOWED_VIDEO_MIME_TYPES)[number],
+          )
+        ) {
+          callback(
+            new BadRequestException(
+              "Only MP4, WebM, QuickTime, or Ogg videos are allowed",
+            ),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadVideo(@UploadedFile() file: Express.Multer.File) {
+    assertSupportedVideo(file);
+    const filename = `${randomUUID()}.${videoExtensionForMime(file.mimetype)}`;
+    const { url } = await this.storage.save({
+      buffer: file.buffer,
+      filename,
+      contentType: file.mimetype,
+    });
     return { url };
   }
 }
