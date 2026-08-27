@@ -88,7 +88,7 @@ export function CreatorFeed({
         <div className="mb-4">
           <h2
             id="creator-feed-heading"
-            className="font-display text-2xl font-bold text-slate-950 dark:text-white"
+            className="font-display text-lg font-bold text-slate-950 dark:text-slate-50"
           >
             {mode === "following"
               ? "Latest from creators you follow"
