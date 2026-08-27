@@ -10,6 +10,8 @@ import { Creator } from "../creators/entities/creator.entity";
 import { CreatorVerificationStatus } from "../creators/entities/creator.enums";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
+import { EventReviewStatus } from "../events/entities/event.enums";
+import { EventsService } from "../events/events.service";
 import { User } from "../users/entities/user.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BookingStatus } from "../bookings/entities/booking.enums";
@@ -83,6 +85,7 @@ export interface ModerationQueue {
   flaggedContent: FlaggedContent[];
   pendingBusinessContent: BusinessContent[];
   pendingAdvertisements: Advertisement[];
+  pendingEvents: Event[];
 }
 
 // Real, honestly-computable numbers only — no revenue figure, since no
@@ -130,6 +133,7 @@ export class AdminService {
     private readonly adminAuditService: AdminAuditService,
     private readonly settingsService: SettingsService,
     private readonly notificationsService: NotificationsService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async setPlaceVerification(
@@ -459,6 +463,65 @@ export class AdminService {
     return this.advertisementRepo.findOneOrFail({ where: { id } });
   }
 
+  findPendingEvents(): Promise<Event[]> {
+    return this.eventRepo.find({
+      where: { reviewStatus: EventReviewStatus.PENDING },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  /** Every event regardless of status — the admin events management
+   * table's own list, unlike the public GET /events (approved-only). */
+  findAllEvents(): Promise<Event[]> {
+    return this.eventRepo.find({ order: { createdAt: "DESC" } });
+  }
+
+  /** The publish/moderation decision on a self-submitted event — approve
+   * or reject, mirrors setAdvertisementReviewStatus. Approving fires the
+   * "events nearby" push (EventsService.notifyNearby) that create()
+   * skipped for a PENDING submission, so nearby residents only ever hear
+   * about an event once it's actually live. */
+  async setEventReviewStatus(
+    adminUserId: string,
+    id: string,
+    status: EventReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ): Promise<Event> {
+    const event = await this.eventRepo.findOne({ where: { id } });
+    if (!event) {
+      throw new NotFoundException(`Event "${id}" not found`);
+    }
+    const previousStatus = event.reviewStatus;
+    event.reviewStatus = status;
+    event.rejectionReason =
+      status === EventReviewStatus.APPROVED ? null : (reason ?? null);
+    event.reviewedByUserId = adminUserId;
+    event.reviewedAt = new Date();
+    const saved = await this.eventRepo.save(event);
+    await this.adminAuditService.log(
+      adminUserId,
+      "event.review_status_changed",
+      "event",
+      id,
+      { from: previousStatus, to: status, reason: reason ?? null },
+      requestInfo,
+    );
+    if (status === EventReviewStatus.APPROVED) {
+      const full = await this.eventRepo.findOneOrFail({ where: { id } });
+      await this.eventsService.notifyNearby(full);
+    }
+    await this.notificationsService.create(saved.createdByUserId, {
+      type: "event.review_decided",
+      title: `Your event was ${status}`,
+      body: reason
+        ? `"${saved.name}" was ${status}: ${reason}`
+        : `"${saved.name}" was ${status}.`,
+      link: "/account/my-events",
+    });
+    return this.eventRepo.findOneOrFail({ where: { id } });
+  }
+
   async setCreatorVerification(
     adminUserId: string,
     creatorId: string,
@@ -512,6 +575,7 @@ export class AdminService {
       flaggedContent,
       pendingBusinessContent,
       pendingAdvertisements,
+      pendingEvents,
     ] = await Promise.all([
       // "Pending" now means "awaiting a review-lifecycle decision," not the
       // old "never been given a trust badge" (VerificationStatus stayed
@@ -549,6 +613,7 @@ export class AdminService {
       ),
       this.findPendingBusinessContent(),
       this.findPendingAdvertisements(),
+      this.findPendingEvents(),
     ]);
     return {
       pendingBusinessContent,
@@ -558,6 +623,7 @@ export class AdminService {
       possiblyClosedPlaces,
       flaggedContent,
       pendingAdvertisements,
+      pendingEvents,
     };
   }
 

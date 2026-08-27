@@ -3,12 +3,13 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { EventsService } from "./events.service";
 import { Event } from "./entities/event.entity";
-import { EventCategory } from "./entities/event.enums";
+import { EventCategory, EventReviewStatus } from "./entities/event.enums";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { PushService } from "../push/push.service";
 import { UsersService } from "../users/users.service";
 import { BusinessesService } from "../businesses/businesses.service";
 import { CreatorsService } from "../creators/creators.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 const BASE_DTO: CreateEventDto = {
   name: "Test Event",
@@ -32,6 +33,7 @@ describe("EventsService", () => {
   };
   let queryBuilder: {
     leftJoinAndSelect: jest.Mock;
+    where: jest.Mock;
     andWhere: jest.Mock;
     orderBy: jest.Mock;
     skip: jest.Mock;
@@ -41,18 +43,23 @@ describe("EventsService", () => {
   };
   let businessesService: { findMine: jest.Mock };
   let creatorsService: { findMine: jest.Mock };
+  let usersService: { findIdsByHomeCounty: jest.Mock; findAdminIds: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let pushService: { sendToUsers: jest.Mock };
 
   beforeEach(async () => {
+    const trackWhere = function (
+      this: typeof queryBuilder,
+      sql: string,
+      params: unknown,
+    ) {
+      this.wheres.push({ sql, params });
+      return this;
+    };
     queryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
-      andWhere: jest.fn(function (
-        this: typeof queryBuilder,
-        sql: string,
-        params: unknown,
-      ) {
-        this.wheres.push({ sql, params });
-        return this;
-      }),
+      where: jest.fn(trackWhere),
+      andWhere: jest.fn(trackWhere),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
@@ -60,14 +67,22 @@ describe("EventsService", () => {
       wheres: [],
     };
 
+    let lastSaved: Record<string, unknown> | null = null;
     eventRepo = {
       create: jest.fn((data) => data),
-      save: jest.fn((data) => ({ id: "event-1", ...data })),
+      save: jest.fn((data) => {
+        lastSaved = { id: "event-1", ...data };
+        return lastSaved;
+      }),
+      // Merges in whatever the preceding save() call actually stored (so
+      // reviewStatus/etc. set by create()/update() round-trip correctly)
+      // while still guaranteeing the county shape notifyNearby needs.
       findOneOrFail: jest.fn((opts) => ({
-        id: opts.where.id,
         countyId: "county-1",
         county: { name: "Montserrado" },
         createdByUserId: "user-1",
+        ...lastSaved,
+        id: opts.where.id,
       })),
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
@@ -77,21 +92,25 @@ describe("EventsService", () => {
     };
     businessesService = { findMine: jest.fn().mockResolvedValue([]) };
     creatorsService = { findMine: jest.fn().mockResolvedValue(null) };
+    usersService = {
+      findIdsByHomeCounty: jest.fn().mockResolvedValue([]),
+      findAdminIds: jest.fn().mockResolvedValue([]),
+    };
+    notificationsService = {
+      create: jest.fn(),
+      createMany: jest.fn(),
+    };
+    pushService = { sendToUsers: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventsService,
         { provide: getRepositoryToken(Event), useValue: eventRepo },
-        {
-          provide: PushService,
-          useValue: { sendToUsers: jest.fn() },
-        },
-        {
-          provide: UsersService,
-          useValue: { findIdsByHomeCounty: jest.fn().mockResolvedValue([]) },
-        },
+        { provide: PushService, useValue: pushService },
+        { provide: UsersService, useValue: usersService },
         { provide: BusinessesService, useValue: businessesService },
         { provide: CreatorsService, useValue: creatorsService },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 
@@ -127,6 +146,35 @@ describe("EventsService", () => {
       // The admin bypass short-circuits before either lookup.
       expect(businessesService.findMine).not.toHaveBeenCalled();
       expect(creatorsService.findMine).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("review status on create", () => {
+    it("starts a self-service event PENDING and notifies admins instead of nearby residents", async () => {
+      creatorsService.findMine.mockResolvedValue({ id: "creator-1" });
+      const event = await service.create(
+        { id: "user-1", isAdmin: false } as never,
+        BASE_DTO,
+      );
+      expect(event.reviewStatus).toBe(EventReviewStatus.PENDING);
+      expect(event.reviewedAt).toBeNull();
+      expect(notificationsService.createMany).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({ type: "admin.event_pending_review" }),
+      );
+      expect(pushService.sendToUsers).not.toHaveBeenCalled();
+    });
+
+    it("auto-approves an admin's own event and notifies nearby residents immediately", async () => {
+      usersService.findIdsByHomeCounty.mockResolvedValue(["neighbor-1"]);
+      const event = await service.create(
+        { id: "admin-1", isAdmin: true } as never,
+        BASE_DTO,
+      );
+      expect(event.reviewStatus).toBe(EventReviewStatus.APPROVED);
+      expect(event.reviewedByUserId).toBe("admin-1");
+      expect(notificationsService.createMany).not.toHaveBeenCalled();
+      expect(pushService.sendToUsers).toHaveBeenCalled();
     });
   });
 

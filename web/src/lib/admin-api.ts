@@ -21,6 +21,7 @@ import type {
   Creator,
   CreatorVerificationStatus,
   Event,
+  EventReviewStatus,
   ModerationQueue,
   PaginatedAdminActions,
   PaginatedBusinesses,
@@ -352,6 +353,29 @@ export function updateEventAdmin(token: string, id: string, input: UpdateEventIn
 // moderation queue below.
 export function deleteEventAdmin(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/admin/events/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
+// Every event regardless of review status — the admin events management
+// table, unlike the public GET /events (approved-only). Distinct from
+// moderation-queue's pendingEvents (PENDING-only slice). Mirrors
+// getAllAdvertisements.
+export function getAllEventsAdmin(token: string): Promise<Event[]> {
+  return apiRequest<Event[]>('/admin/events', { headers: authHeader(token) });
+}
+
+// The approve/reject decision on a self-submitted event — mirrors
+// setAdvertisementReviewStatus.
+export function setEventReviewStatus(
+  token: string,
+  id: string,
+  status: EventReviewStatus,
+  reason?: string,
+): Promise<Event> {
+  return apiRequest<Event>(`/admin/events/${id}/review-status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status, reason }),
+  });
 }
 
 export function deleteReviewAdmin(token: string, id: string): Promise<void> {

@@ -9,6 +9,8 @@ import { Creator } from "../creators/entities/creator.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-report.entity";
 import { Event } from "../events/entities/event.entity";
+import { EventReviewStatus } from "../events/entities/event.enums";
+import { EventsService } from "../events/events.service";
 import { ContentReport } from "../reports/entities/content-report.entity";
 import { User } from "../users/entities/user.entity";
 import { Booking } from "../bookings/entities/booking.entity";
@@ -26,6 +28,10 @@ const AD_ID = "ad-1";
 // DI-satisfying stand-in for describe blocks that don't exercise the
 // submitter-notification path.
 const inertNotificationsService = { create: jest.fn(), createMany: jest.fn() };
+
+// DI-satisfying stand-in for describe blocks that don't exercise
+// setEventReviewStatus's "notify nearby residents on approval" call.
+const inertEventsService = { notifyNearby: jest.fn() };
 
 // The defaults ApplicationSettings' columns used to be — matches what
 // the hardcoded constants this replaced used to be, so these tests
@@ -85,6 +91,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Review), useValue: {} },
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: EventsService, useValue: inertEventsService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -260,6 +267,7 @@ describe("AdminService.bulkSetPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Review), useValue: {} },
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: EventsService, useValue: inertEventsService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -344,6 +352,7 @@ describe("AdminService bulk review-status: business and business-content", () =>
         { provide: getRepositoryToken(Review), useValue: {} },
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: EventsService, useValue: inertEventsService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -400,6 +409,7 @@ describe("AdminService.getModerationQueue", () => {
   let freshnessQb: ReturnType<typeof emptyQueryBuilder>;
   let contentQb: ReturnType<typeof emptyQueryBuilder>;
   let advertisementRepo: { find: jest.Mock };
+  let eventRepo: { find: jest.Mock };
   let settingsService: ReturnType<typeof fakeSettingsService>;
 
   const PENDING_PLACE = {
@@ -412,6 +422,12 @@ describe("AdminService.getModerationQueue", () => {
     id: "ad-2",
     title: "Weekend photography course",
     reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW,
+  };
+
+  const PENDING_EVENT = {
+    id: "event-2",
+    name: "Beach Cleanup Day",
+    reviewStatus: EventReviewStatus.PENDING,
   };
 
   // The three other queue sources (possibly-closed places, flagged
@@ -442,6 +458,7 @@ describe("AdminService.getModerationQueue", () => {
     freshnessQb = emptyQueryBuilder();
     contentQb = emptyQueryBuilder();
     advertisementRepo = { find: jest.fn().mockResolvedValue([PENDING_AD]) };
+    eventRepo = { find: jest.fn().mockResolvedValue([PENDING_EVENT]) };
     settingsService = fakeSettingsService();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -458,7 +475,8 @@ describe("AdminService.getModerationQueue", () => {
           provide: getRepositoryToken(PlaceFreshnessReport),
           useValue: { createQueryBuilder: jest.fn(() => freshnessQb) },
         },
-        { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: getRepositoryToken(Event), useValue: eventRepo },
+        { provide: EventsService, useValue: inertEventsService },
         {
           provide: getRepositoryToken(ContentReport),
           useValue: { createQueryBuilder: jest.fn(() => contentQb) },
@@ -493,6 +511,15 @@ describe("AdminService.getModerationQueue", () => {
     expect(advertisementRepo.find).toHaveBeenCalledWith({
       where: { reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW },
       order: { submittedAt: "DESC" },
+    });
+  });
+
+  it("surfaces events awaiting a review decision", async () => {
+    const queue = await service.getModerationQueue();
+    expect(queue.pendingEvents).toEqual([PENDING_EVENT]);
+    expect(eventRepo.find).toHaveBeenCalledWith({
+      where: { reviewStatus: EventReviewStatus.PENDING },
+      order: { createdAt: "DESC" },
     });
   });
 
@@ -565,6 +592,7 @@ describe("AdminService.setAdvertisementReviewStatus", () => {
         { provide: getRepositoryToken(Review), useValue: {} },
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: EventsService, useValue: inertEventsService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -676,6 +704,142 @@ describe("AdminService.setAdvertisementReviewStatus", () => {
       {
         from: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW,
         to: AdvertisementReviewStatus.APPROVED,
+        reason: null,
+      },
+      undefined,
+    );
+  });
+});
+
+const EVENT_ID = "event-1";
+
+describe("AdminService.setEventReviewStatus", () => {
+  let service: AdminService;
+  let eventRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+  let adminAuditService: { log: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let eventsService: { notifyNearby: jest.Mock };
+
+  beforeEach(async () => {
+    eventRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: EVENT_ID,
+        name: "Beach Cleanup Day",
+        createdByUserId: "organizer-1",
+        reviewStatus: EventReviewStatus.PENDING,
+      }),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) =>
+        Promise.resolve({ id: opts.where.id, name: "Beach Cleanup Day" }),
+      ),
+    };
+    adminAuditService = { log: jest.fn() };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+    eventsService = { notifyNearby: jest.fn().mockResolvedValue(undefined) };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(Place), useValue: {} },
+        { provide: getRepositoryToken(Business), useValue: {} },
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        { provide: getRepositoryToken(Review), useValue: {} },
+        { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
+        { provide: getRepositoryToken(Event), useValue: eventRepo },
+        { provide: EventsService, useValue: eventsService },
+        { provide: getRepositoryToken(ContentReport), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(Booking), useValue: {} },
+        { provide: getRepositoryToken(BusinessContent), useValue: {} },
+        { provide: getRepositoryToken(Advertisement), useValue: {} },
+        { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
+        { provide: NotificationsService, useValue: notificationsService },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it("404s an unknown event", async () => {
+    eventRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.setEventReviewStatus(
+        ADMIN_ID,
+        EVENT_ID,
+        EventReviewStatus.APPROVED,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("approves a pending event, notifies the organizer, and fires the nearby-residents push", async () => {
+    await service.setEventReviewStatus(
+      ADMIN_ID,
+      EVENT_ID,
+      EventReviewStatus.APPROVED,
+    );
+    expect(eventRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: EventReviewStatus.APPROVED,
+        rejectionReason: null,
+        reviewedByUserId: ADMIN_ID,
+        reviewedAt: expect.any(Date),
+      }),
+    );
+    expect(eventsService.notifyNearby).toHaveBeenCalled();
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "organizer-1",
+      expect.objectContaining({
+        type: "event.review_decided",
+        body: expect.stringContaining("Beach Cleanup Day"),
+      }),
+    );
+  });
+
+  it("rejects an event with a reason, notifies the organizer, and skips the nearby-residents push", async () => {
+    await service.setEventReviewStatus(
+      ADMIN_ID,
+      EVENT_ID,
+      EventReviewStatus.REJECTED,
+      "Duplicate listing",
+    );
+    expect(eventRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: EventReviewStatus.REJECTED,
+        rejectionReason: "Duplicate listing",
+      }),
+    );
+    expect(eventsService.notifyNearby).not.toHaveBeenCalled();
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "organizer-1",
+      expect.objectContaining({
+        type: "event.review_decided",
+        body: expect.stringContaining("Duplicate listing"),
+      }),
+    );
+  });
+
+  it("records the transition in the admin audit log", async () => {
+    await service.setEventReviewStatus(
+      ADMIN_ID,
+      EVENT_ID,
+      EventReviewStatus.APPROVED,
+    );
+    expect(adminAuditService.log).toHaveBeenCalledWith(
+      ADMIN_ID,
+      "event.review_status_changed",
+      "event",
+      EVENT_ID,
+      {
+        from: EventReviewStatus.PENDING,
+        to: EventReviewStatus.APPROVED,
         reason: null,
       },
       undefined,

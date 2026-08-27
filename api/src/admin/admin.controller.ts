@@ -20,6 +20,7 @@ import { BulkSetBusinessReviewStatusDto } from "./dto/bulk-set-business-review-s
 import { SetBusinessContentReviewStatusDto } from "../business-content/dto/set-business-content-review-status.dto";
 import { BulkSetBusinessContentReviewStatusDto } from "../business-content/dto/bulk-set-business-content-review-status.dto";
 import { SetAdvertisementReviewStatusDto } from "./dto/set-advertisement-review-status.dto";
+import { SetEventReviewStatusDto } from "./dto/set-event-review-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { SuperAdminGuard } from "../auth/guards/super-admin.guard";
@@ -255,7 +256,35 @@ export class AdminController {
       pendingAdvertisements: queue.pendingAdvertisements.map(
         sanitizeAdvertisement,
       ),
+      pendingEvents: queue.pendingEvents.map(sanitizeEvent),
     };
+  }
+
+  // Every event regardless of status — the admin events management table,
+  // unlike the public GET /events (approved-only). Mirrors
+  // GET /admin/advertisements.
+  @Get("events")
+  async findAllEvents() {
+    const events = await this.adminService.findAllEvents();
+    return events.map(sanitizeEvent);
+  }
+
+  @Patch("events/:id/review-status")
+  async setEventReviewStatus(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetEventReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return sanitizeEvent(
+      await this.adminService.setEventReviewStatus(
+        admin.id,
+        id,
+        dto.status,
+        dto.reason,
+        getRequestInfo(req),
+      ),
+    );
   }
 
   // Every advertisement, any status — an admin's own dedicated queue

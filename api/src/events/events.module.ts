@@ -7,6 +7,7 @@ import { PushModule } from "../push/push.module";
 import { UsersModule } from "../users/users.module";
 import { BusinessesModule } from "../businesses/businesses.module";
 import { CreatorsModule } from "../creators/creators.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { CreatorsModule } from "../creators/creators.module";
     UsersModule,
     BusinessesModule,
     CreatorsModule,
+    NotificationsModule,
   ],
   controllers: [EventsController],
   providers: [EventsService],
