@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L, { type LeafletMouseEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -97,6 +97,19 @@ export function PlaceLocationPicker({
   const [latInput, setLatInput] = useState(latitude !== null ? String(latitude) : '');
   const [lngInput, setLngInput] = useState(longitude !== null ? String(longitude) : '');
   const [coordError, setCoordError] = useState<string | null>(null);
+  // Briefly highlights the lat/lng boxes + shows a confirmation line right
+  // after "Use my current location" succeeds — the values updating on
+  // their own is correct but easy to miss; this makes the update visibly
+  // happen instead of just quietly being true, which is the whole point
+  // of offering the button in the first place (trust that it worked).
+  const [justLocated, setJustLocated] = useState(false);
+  const justLocatedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (justLocatedTimeout.current) clearTimeout(justLocatedTimeout.current);
+    };
+  }, []);
 
   // Keep the manual-entry boxes in sync with whatever last set the
   // position — a map click, a drag, a search result, or "use my current
@@ -120,6 +133,9 @@ export function PlaceLocationPicker({
         onChange(lat, lng);
         setFlyTarget([lat, lng]);
         setLocating(false);
+        setJustLocated(true);
+        if (justLocatedTimeout.current) clearTimeout(justLocatedTimeout.current);
+        justLocatedTimeout.current = setTimeout(() => setJustLocated(false), 2000);
       },
       (err) => {
         setLocating(false);
@@ -252,6 +268,11 @@ export function PlaceLocationPicker({
         </button>
       </div>
       {locateError && <p className="text-xs text-flag-700 dark:text-flag-300">{locateError}</p>}
+      {justLocated && (
+        <p className="text-xs font-medium text-emerald-700 transition-opacity dark:text-emerald-400">
+          📍 Found you — coordinates updated below.
+        </p>
+      )}
 
       <div className="h-64 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
         <MapContainer center={position ?? MONROVIA_CENTER} zoom={position ? 14 : 8} className="h-full w-full">
@@ -310,7 +331,9 @@ export function PlaceLocationPicker({
                 commitManualCoords();
               }
             }}
-            className={`w-36 ${inputClass}`}
+            className={`w-36 ${inputClass} transition-colors duration-700 ${
+              justLocated ? 'border-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900' : ''
+            }`}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
@@ -330,7 +353,9 @@ export function PlaceLocationPicker({
                 commitManualCoords();
               }
             }}
-            className={`w-36 ${inputClass}`}
+            className={`w-36 ${inputClass} transition-colors duration-700 ${
+              justLocated ? 'border-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900' : ''
+            }`}
           />
         </label>
         <button
