@@ -20,13 +20,19 @@ export class AddEventReviewStatus1787800959107 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "events" ADD "reviewed_at" TIMESTAMP WITH TIME ZONE`,
     );
-    await queryRunner.query(`ALTER TABLE "events" ADD "reviewed_by_user_id" uuid`);
+    await queryRunner.query(
+      `ALTER TABLE "events" ADD "reviewed_by_user_id" uuid`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "events" DROP COLUMN "reviewed_by_user_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "events" DROP COLUMN "reviewed_by_user_id"`,
+    );
     await queryRunner.query(`ALTER TABLE "events" DROP COLUMN "reviewed_at"`);
-    await queryRunner.query(`ALTER TABLE "events" DROP COLUMN "rejection_reason"`);
+    await queryRunner.query(
+      `ALTER TABLE "events" DROP COLUMN "rejection_reason"`,
+    );
     await queryRunner.query(`ALTER TABLE "events" DROP COLUMN "review_status"`);
     await queryRunner.query(`DROP TYPE "public"."events_review_status_enum"`);
   }
