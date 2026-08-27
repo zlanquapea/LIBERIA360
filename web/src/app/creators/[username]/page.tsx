@@ -232,7 +232,7 @@ export default async function CreatorProfilePage({
   );
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 bg-slate-50/60 px-4 pb-16 pt-3 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 dark:bg-slate-950/20">
+    <main className="mx-auto flex max-w-5xl flex-col gap-3 bg-slate-50/60 px-4 pb-16 pt-3 sm:gap-4 sm:px-6 sm:pt-6 lg:px-8 dark:bg-slate-950/20">
       <JsonLd data={creatorJsonLd(creator)} />
       <CreatorViewTracker creator={creator} />
 
@@ -316,7 +316,7 @@ export default async function CreatorProfilePage({
           )}
 
           <div id="booking">
-            <BookingRequestSection creator={creator} />
+            <BookingRequestSection creator={creator} prominent />
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -358,22 +358,24 @@ export default async function CreatorProfilePage({
 
       <nav
         aria-label="Creator profile sections"
-        className="sticky top-16 z-10 grid grid-cols-4 rounded-2xl border border-slate-200 bg-white/95 p-1 text-center shadow-sm backdrop-blur sm:top-[5.5rem] dark:border-slate-800 dark:bg-slate-900/95"
+        className="sticky top-16 z-10 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1 text-center shadow-sm backdrop-blur sm:top-[5.5rem] dark:border-slate-800 dark:bg-slate-900/95"
       >
-        {[
-          ["Work", hasWork ? "creator-work" : "creator-about"],
-          ["Services", "creator-services"],
-          ["About", "creator-about"],
-          ["Reviews", "creator-reviews"],
-        ].map(([label, id]) => (
-          <a
-            key={label}
-            href={`#${id}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl px-2 py-2.5 text-xs font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-300 sm:text-sm"
-          >
-            {label}
-          </a>
-        ))}
+        <div className="grid min-w-[24rem] grid-cols-4 gap-1 sm:min-w-0">
+          {[
+            ["Work", hasWork ? "creator-work" : "creator-about"],
+            ["Services", "creator-services"],
+            ["About", "creator-about"],
+            ["Reviews", "creator-reviews"],
+          ].map(([label, id]) => (
+            <a
+              key={label}
+              href={`#${id}`}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl px-2 py-2.5 text-xs font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-300 sm:text-sm"
+            >
+              {label}
+            </a>
+          ))}
+        </div>
       </nav>
 
       {hasWork && (

@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { createBooking } from '@/lib/booking-api';
-import { recordAnalyticsEvent, recordCreatorAnalyticsEvent } from '@/lib/analytics-api';
-import { HttpError } from '@/lib/http';
-import { formatBookingStatus } from '@/lib/format';
-import type { Business, Creator, BookingStatus } from '@/lib/types';
+import Link from "next/link";
+import { useState, type FormEvent } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { createBooking } from "@/lib/booking-api";
+import {
+  recordAnalyticsEvent,
+  recordCreatorAnalyticsEvent,
+} from "@/lib/analytics-api";
+import { HttpError } from "@/lib/http";
+import { formatBookingStatus } from "@/lib/format";
+import type { Business, Creator, BookingStatus } from "@/lib/types";
 
 // "Request to book" (Tech Spec §3.3). Request-to-book only — no real
 // payment capture yet (see Booking.paymentProvider: MTN MoMo is the
@@ -17,16 +20,26 @@ import type { Business, Creator, BookingStatus } from '@/lib/types';
 // contact card on their public profile — exactly one of business/creator
 // (same XOR as CreateBookingInput). Hidden entirely for an unclaimed
 // business listing, since there's no one to send the request to.
-export function BookingRequestSection({ business, creator }: { business?: Business; creator?: Creator }) {
+export function BookingRequestSection({
+  business,
+  creator,
+  prominent = false,
+}: {
+  business?: Business;
+  creator?: Creator;
+  prominent?: boolean;
+}) {
   const { user, token, ready } = useAuth();
   const targetId = business?.id ?? creator!.id;
-  const isOwner = business ? user?.id === business.owner?.id : user?.id === creator!.user?.id;
+  const isOwner = business
+    ? user?.id === business.owner?.id
+    : user?.id === creator!.user?.id;
 
   const [showForm, setShowForm] = useState(false);
-  const [requestedDate, setRequestedDate] = useState('');
-  const [requestedEndDate, setRequestedEndDate] = useState('');
-  const [partySize, setPartySize] = useState('');
-  const [notes, setNotes] = useState('');
+  const [requestedDate, setRequestedDate] = useState("");
+  const [requestedEndDate, setRequestedEndDate] = useState("");
+  const [partySize, setPartySize] = useState("");
+  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ status: BookingStatus } | null>(null);
@@ -48,12 +61,16 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       setSent({ status: booking.status });
       setShowForm(false);
       if (business) {
-        recordAnalyticsEvent(business.linkedPlaceId, 'booking_request');
+        recordAnalyticsEvent(business.linkedPlaceId, "booking_request");
       } else {
-        recordCreatorAnalyticsEvent(targetId, 'booking_request');
+        recordCreatorAnalyticsEvent(targetId, "booking_request");
       }
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(
+        err instanceof HttpError
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -62,8 +79,11 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
   if (isOwner) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        You manage this listing —{' '}
-        <Link href="/account/bookings" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+        You manage this listing —{" "}
+        <Link
+          href="/account/bookings"
+          className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
+        >
           view incoming requests
         </Link>
         .
@@ -74,9 +94,11 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
   if (sent) {
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-        <p className="font-medium">Request sent — {formatBookingStatus(sent.status).toLowerCase()}.</p>
+        <p className="font-medium">
+          Request sent — {formatBookingStatus(sent.status).toLowerCase()}.
+        </p>
         <p className="mt-1">
-          You&apos;ll hear back with a confirm or decline. Track it under{' '}
+          You&apos;ll hear back with a confirm or decline. Track it under{" "}
           <Link href="/account/bookings" className="font-medium underline">
             My Bookings
           </Link>
@@ -93,7 +115,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         <Link
           href="/login"
-          className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+          className={`inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${prominent ? "w-full text-base shadow-sm sm:text-lg" : "text-sm"}`}
         >
           Log in to request a booking
         </Link>
@@ -106,7 +128,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       <button
         type="button"
         onClick={() => setShowForm(true)}
-        className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+        className={`inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${prominent ? "text-base shadow-sm sm:text-lg" : "text-sm"}`}
       >
         Request to book
       </button>
@@ -114,7 +136,10 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
+    >
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Date
@@ -161,13 +186,17 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
+        <p
+          role="alert"
+          className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300"
+        >
           {error}
         </p>
       )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        This sends a request rather than an instant booking — you&apos;ll get a confirm or decline. No payment is taken now.
+        This sends a request rather than an instant booking — you&apos;ll get a
+        confirm or decline. No payment is taken now.
       </p>
 
       <div className="flex gap-2">
@@ -176,7 +205,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
           disabled={submitting}
           className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
         >
-          {submitting ? 'Sending…' : 'Send request'}
+          {submitting ? "Sending…" : "Send request"}
         </button>
         <button
           type="button"
