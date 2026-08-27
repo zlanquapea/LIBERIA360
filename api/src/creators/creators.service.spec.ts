@@ -9,6 +9,7 @@ import { CreatorsService } from "./creators.service";
 import { Creator } from "./entities/creator.entity";
 import { CreatorPortfolioItem } from "./entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "./entities/creator-offering.entity";
+import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPortfolioItemType } from "./entities/creator.enums";
 
 const OWNER_ID = "user-1";
@@ -41,6 +42,12 @@ describe("CreatorsService", () => {
     merge: jest.Mock;
     remove: jest.Mock;
     count: jest.Mock;
+  };
+  let followRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+    remove: jest.Mock;
   };
   let creatorQueryBuilder: {
     leftJoinAndSelect: jest.Mock;
@@ -88,6 +95,12 @@ describe("CreatorsService", () => {
       remove: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
     };
+    followRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      save: jest.fn((data) => data),
+      create: jest.fn((data) => data),
+      remove: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -101,6 +114,7 @@ describe("CreatorsService", () => {
           provide: getRepositoryToken(CreatorOffering),
           useValue: offeringRepo,
         },
+        { provide: getRepositoryToken(CreatorFollow), useValue: followRepo },
       ],
     }).compile();
 
@@ -263,6 +277,74 @@ describe("CreatorsService", () => {
       expect(creatorQueryBuilder.andWhere).toHaveBeenCalledWith(
         "creator.featured = true",
       );
+    });
+  });
+
+  describe("creator follows", () => {
+    it("returns the viewer follow state and current follower count", async () => {
+      creatorRepo.findOne.mockResolvedValue({ ...CREATOR, followerCount: 3 });
+      followRepo.findOne.mockResolvedValue({ id: "follow-1" });
+
+      await expect(
+        service.getFollowState("viewer-1", CREATOR.id),
+      ).resolves.toEqual({
+        following: true,
+        canFollow: true,
+        followerCount: 3,
+      });
+    });
+
+    it("creates a follow and increments the creator count", async () => {
+      const creator = { ...CREATOR, userId: "creator-owner", followerCount: 3 };
+      creatorRepo.findOne.mockResolvedValue(creator);
+      followRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.toggleFollow("viewer-1", CREATOR.id),
+      ).resolves.toEqual({
+        following: true,
+        canFollow: true,
+        followerCount: 4,
+      });
+      expect(followRepo.save).toHaveBeenCalledWith({
+        creatorId: CREATOR.id,
+        userId: "viewer-1",
+      });
+      expect(creatorRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ followerCount: 4 }),
+      );
+    });
+
+    it("removes an existing follow and decrements the creator count", async () => {
+      const creator = { ...CREATOR, userId: "creator-owner", followerCount: 3 };
+      const follow = {
+        id: "follow-1",
+        creatorId: CREATOR.id,
+        userId: "viewer-1",
+      };
+      creatorRepo.findOne.mockResolvedValue(creator);
+      followRepo.findOne.mockResolvedValue(follow);
+
+      await expect(
+        service.toggleFollow("viewer-1", CREATOR.id),
+      ).resolves.toEqual({
+        following: false,
+        canFollow: true,
+        followerCount: 2,
+      });
+      expect(followRepo.remove).toHaveBeenCalledWith(follow);
+      expect(creatorRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ followerCount: 2 }),
+      );
+    });
+
+    it("rejects following your own creator profile", async () => {
+      creatorRepo.findOne.mockResolvedValue({ ...CREATOR, followerCount: 3 });
+
+      await expect(
+        service.toggleFollow(OWNER_ID, CREATOR.id),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(followRepo.save).not.toHaveBeenCalled();
     });
   });
 });

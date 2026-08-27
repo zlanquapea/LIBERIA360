@@ -136,6 +136,20 @@ export class CreatorsController {
     return { ...result, data: result.data.map(sanitize) };
   }
 
+  @Get(":id/follow")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getFollowState(@CurrentUser() user: User, @Param("id") creatorId: string) {
+    return this.creatorsService.getFollowState(user.id, creatorId);
+  }
+
+  @Post(":id/follow")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  toggleFollow(@CurrentUser() user: User, @Param("id") creatorId: string) {
+    return this.creatorsService.toggleFollow(user.id, creatorId);
+  }
+
   @Get(":username")
   async findByUsername(@Param("username") username: string) {
     return sanitize(

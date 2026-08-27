@@ -9,6 +9,7 @@ import { Repository } from "typeorm";
 import { Creator } from "./entities/creator.entity";
 import { CreatorPortfolioItem } from "./entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "./entities/creator-offering.entity";
+import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreateCreatorDto } from "./dto/create-creator.dto";
 import { UpdateCreatorDto } from "./dto/update-creator.dto";
 import { SetFeaturedDto } from "./dto/set-featured.dto";
@@ -51,6 +52,8 @@ export class CreatorsService {
     private readonly portfolioRepo: Repository<CreatorPortfolioItem>,
     @InjectRepository(CreatorOffering)
     private readonly offeringRepo: Repository<CreatorOffering>,
+    @InjectRepository(CreatorFollow)
+    private readonly followRepo: Repository<CreatorFollow>,
   ) {}
 
   async create(userId: string, dto: CreateCreatorDto): Promise<Creator> {
@@ -139,6 +142,63 @@ export class CreatorsService {
       }),
     ]);
     return { ...creator, portfolioItems, offerings };
+  }
+
+  async getFollowState(userId: string, creatorId: string) {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+    const following =
+      creator.userId !== userId
+        ? Boolean(
+            await this.followRepo.findOne({ where: { creatorId, userId } }),
+          )
+        : false;
+    return {
+      following,
+      canFollow: creator.userId !== userId,
+      followerCount: creator.followerCount,
+    };
+  }
+
+  async toggleFollow(userId: string, creatorId: string) {
+    const creator = await this.creatorRepo.findOne({
+      where: { id: creatorId },
+    });
+    if (!creator) {
+      throw new NotFoundException(`Creator "${creatorId}" not found`);
+    }
+    if (creator.userId === userId) {
+      throw new ForbiddenException(
+        "You cannot follow your own creator profile",
+      );
+    }
+
+    const existing = await this.followRepo.findOne({
+      where: { creatorId, userId },
+    });
+    if (existing) {
+      await this.followRepo.remove(existing);
+      creator.followerCount = Math.max(0, creator.followerCount - 1);
+      await this.creatorRepo.save(creator);
+      return {
+        following: false,
+        canFollow: true,
+        followerCount: creator.followerCount,
+      };
+    }
+
+    await this.followRepo.save(this.followRepo.create({ creatorId, userId }));
+    creator.followerCount += 1;
+    await this.creatorRepo.save(creator);
+    return {
+      following: true,
+      canFollow: true,
+      followerCount: creator.followerCount,
+    };
   }
 
   async setFeatured(creatorId: string, dto: SetFeaturedDto): Promise<Creator> {

@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { Creator } from "./entities/creator.entity";
 import { CreatorPortfolioItem } from "./entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "./entities/creator-offering.entity";
+import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
 import {
   CreatorPostComment,
@@ -20,6 +21,7 @@ import { CreatorFeedController } from "./creator-feed.controller";
       Creator,
       CreatorPortfolioItem,
       CreatorOffering,
+      CreatorFollow,
       CreatorPost,
       CreatorPostLike,
       CreatorPostSave,

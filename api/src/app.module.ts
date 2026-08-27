@@ -22,6 +22,7 @@ import { Business } from "./businesses/entities/business.entity";
 import { BusinessesModule } from "./businesses/businesses.module";
 import { BusinessContentModule } from "./business-content/business-content.module";
 import { Creator } from "./creators/entities/creator.entity";
+import { CreatorFollow } from "./creators/entities/creator-follow.entity";
 import { CreatorPost } from "./creators/entities/creator-post.entity";
 import {
   CreatorPostComment,
@@ -93,6 +94,7 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
             Review,
             Business,
             Creator,
+            CreatorFollow,
             CreatorPost,
             CreatorPostLike,
             CreatorPostSave,

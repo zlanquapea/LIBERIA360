@@ -3,6 +3,7 @@ import { getCounties, getCreators, getCreatorFeed } from '@/lib/api';
 import { CreatorCard } from '@/components/CreatorCard';
 import { CreatorFeed } from '@/components/CreatorFeed';
 import { CreatorFilters } from '@/components/CreatorFilters';
+import { CreatorDirectoryHeader } from '@/components/CreatorDirectoryHeader';
 import { SafeImage } from '@/components/SafeImage';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
 import { formatCreatorCategory } from '@/lib/format';
@@ -49,21 +50,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 pb-12 sm:px-6 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-5">
-        <div className="flex items-end justify-between gap-4">
-          <div className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">LIBERIA360 community</p>
-            <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">Creators</h1>
-            <p className="mt-2 max-w-xl text-base leading-6 text-slate-500 dark:text-slate-400">
-              Discover local storytellers. Watch, follow, and book.
-            </p>
-          </div>
-          <Link
-            href="/creators/me"
-            className="shrink-0 rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30"
-          >
-            Become a creator
-          </Link>
-        </div>
+        <CreatorDirectoryHeader />
 
         <nav aria-label="Creator sections" className="grid grid-cols-3 rounded-2xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
           <Link

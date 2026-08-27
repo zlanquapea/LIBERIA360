@@ -18,6 +18,7 @@ import type { CreatorPost, CreatorPostComment } from '@/lib/types';
 import { VerificationBadge } from './VerificationBadge';
 import { CreatorPostMedia } from './CreatorPostMedia';
 import { ShareMenu } from './ShareMenu';
+import { CreatorFollowButton } from './CreatorFollowButton';
 
 function timeAgo(value: string): string {
   const date = new Date(value);
@@ -155,9 +156,12 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
             </Link>
             <VerificationBadge compact status={post.creator.verificationStatus === 'verified' ? 'verified' : 'unverified'} />
           </div>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>{timeAgo(post.createdAt)}</time>
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <CreatorFollowButton creatorId={post.creator.id} compact />
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>{timeAgo(post.createdAt)}</time>
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Link href={`/creators/${post.creator.username}#booking`} className="rounded-xl bg-brand-700 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-800">

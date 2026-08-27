@@ -21,6 +21,7 @@ import { ContactLink } from '@/components/ContactLink';
 import { CreatorViewTracker } from '@/components/CreatorViewTracker';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { ShareMenu } from '@/components/ShareMenu';
+import { CreatorFollowButton } from '@/components/CreatorFollowButton';
 import { SafeImage } from '@/components/SafeImage';
 import { JsonLd } from '@/components/JsonLd';
 import { creatorJsonLd } from '@/lib/structured-data';
@@ -216,11 +217,12 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
           {creator.bio && <p className="max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-200">{creator.bio}</p>}
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div id="booking" className="col-span-2 sm:col-span-1">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Request to book</p>
               <BookingRequestSection creator={creator} />
             </div>
+            <CreatorFollowButton creatorId={creator.id} initialFollowerCount={creator.followerCount} />
             <ContactAction creator={creator} hasContactMethod={hasContactMethod} />
             <ShareMenu placeName={creator.name} contentType="creator" variant="action" />
           </div>

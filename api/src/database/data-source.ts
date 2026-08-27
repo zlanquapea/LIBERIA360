@@ -12,6 +12,7 @@ import { BusinessContent } from "../business-content/entities/business-content.e
 import { Creator } from "../creators/entities/creator.entity";
 import { CreatorPortfolioItem } from "../creators/entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "../creators/entities/creator-offering.entity";
+import { CreatorFollow } from "../creators/entities/creator-follow.entity";
 import { CreatorPost } from "../creators/entities/creator-post.entity";
 import {
   CreatorPostComment,
@@ -62,6 +63,7 @@ export const AppDataSource = new DataSource({
     Creator,
     CreatorPortfolioItem,
     CreatorOffering,
+    CreatorFollow,
     CreatorPost,
     CreatorPostLike,
     CreatorPostSave,
