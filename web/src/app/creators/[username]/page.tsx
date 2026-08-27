@@ -315,28 +315,8 @@ export default async function CreatorProfilePage({
             </p>
           )}
 
-          <div
-            id="booking"
-            className="rounded-2xl bg-brand-50/70 p-3.5 ring-1 ring-brand-100 dark:bg-brand-950/25 dark:ring-brand-900/60"
-          >
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-800 dark:text-brand-200">
-                  Request to book
-                </p>
-                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
-                  Send a request to {creator.name}; they&apos;ll confirm or
-                  decline.
-                </p>
-              </div>
-              <CalendarDaysIcon
-                aria-hidden
-                className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
-              />
-            </div>
-            <div className="mt-3">
-              <BookingRequestSection creator={creator} />
-            </div>
+          <div id="booking">
+            <BookingRequestSection creator={creator} />
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -354,11 +334,6 @@ export default async function CreatorProfilePage({
               variant="action"
             />
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            No payment is taken now. Booking remains a request, not an instant
-            confirmation.
-          </p>
-
           {(creator.instagram || creator.tiktok || creator.youtube) && (
             <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-sm font-semibold dark:border-slate-800">
               {SOCIAL_LINKS.map(({ key, label, prefix }) => {
