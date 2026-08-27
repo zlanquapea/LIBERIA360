@@ -3,9 +3,9 @@
 import { useEffect, useState, type ComponentType } from "react";
 import {
   ArrowUpOnSquareIcon,
+  ArrowUpTrayIcon,
   ClipboardDocumentIcon,
   EnvelopeIcon,
-  ShareIcon,
 } from "@heroicons/react/24/outline";
 import {
   FacebookIcon,
@@ -66,7 +66,7 @@ export function ShareMenu({
   const shareItems: ShareItem[] = [
     {
       label: "Facebook",
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      href: `https://www.facebook.com/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
       icon: FacebookIcon,
       className: "bg-[#1877F2] text-white hover:bg-[#166FE5]",
     },
@@ -144,7 +144,7 @@ export function ShareMenu({
         onClick={() => setOpen((value) => !value)}
         className={actionTrigger}
       >
-        <ShareIcon
+        <ArrowUpTrayIcon
           aria-hidden
           className={variant === "action" ? "h-5 w-5" : "h-6 w-6"}
         />
