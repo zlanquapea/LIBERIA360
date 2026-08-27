@@ -2,9 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { StarIcon } from "@heroicons/react/24/solid";
-import { BookmarkIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import {
+  BuildingOffice2Icon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  ClipboardDocumentListIcon,
+  BookmarkIcon,
+  ChevronRightIcon,
+  MegaphoneIcon,
+  UserCircleIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
@@ -24,6 +33,58 @@ import type { AuthUser, Category, County, TravelerType } from "@/lib/types";
 // Account screen — shows the signed-in profile, or prompts to log in.
 // No server-side gate: auth state lives in localStorage (see auth-storage.ts),
 // so this page always renders client-side and redirects itself once ready.
+type QuickAction = {
+  href: string;
+  label: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+};
+
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    href: "/trips",
+    label: "My Trips",
+    description: "Your saved itineraries",
+    icon: CalendarDaysIcon,
+  },
+  {
+    href: "/account/bookings",
+    label: "My Bookings",
+    description: "Track booking requests",
+    icon: ClipboardDocumentListIcon,
+  },
+  {
+    href: "/account/my-places",
+    label: "My Places",
+    description: "Manage submitted places",
+    icon: BuildingOffice2Icon,
+  },
+  {
+    href: "/account/my-events",
+    label: "My Events",
+    description: "Manage your events",
+    icon: CalendarDaysIcon,
+  },
+  {
+    href: "/account/my-ads",
+    label: "My Ads",
+    description: "Manage advertisements",
+    icon: MegaphoneIcon,
+  },
+  {
+    href: "/account/analytics",
+    label: "Place Dashboard",
+    description: "View place performance",
+    icon: ChartBarIcon,
+  },
+  {
+    href: "/creators/me",
+    label: "Creator Profile",
+    description: "Manage your creator page",
+    icon: UserCircleIcon,
+  },
+];
+
 export default function AccountPage() {
   const router = useRouter();
   const { user, ready, logout } = useAuth();
@@ -75,6 +136,69 @@ export default function AccountPage() {
           </p>
         </div>
       </div>
+
+      <section aria-labelledby="account-quick-access" className="space-y-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+            Your workspace
+          </p>
+          <h2
+            id="account-quick-access"
+            className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50"
+          >
+            Quick access
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {QUICK_ACTIONS.map(({ href, label, description, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex min-h-28 flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:border-brand-800 dark:hover:bg-brand-950/30"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+                  <Icon aria-hidden className="h-5 w-5" />
+                </span>
+                <ChevronRightIcon
+                  aria-hidden
+                  className="h-4 w-4 text-slate-400 transition-colors group-hover:text-brand-600 dark:text-slate-500 dark:group-hover:text-brand-300"
+                />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold">{label}</span>
+                <span className="mt-0.5 block text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                  {description}
+                </span>
+              </span>
+            </Link>
+          ))}
+          {user.isAdmin && (
+            <Link
+              href="/admin"
+              className="group flex min-h-28 flex-col justify-between gap-4 rounded-2xl border-2 border-gold-400 bg-gold-50/40 p-3.5 text-slate-900 shadow-sm transition-colors hover:bg-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 dark:bg-gold-950/10 dark:text-slate-50 dark:hover:bg-gold-950/20"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-400 text-brand-950">
+                  <StarIcon aria-hidden className="h-5 w-5" />
+                </span>
+                <ChevronRightIcon
+                  aria-hidden
+                  className="h-4 w-4 text-gold-600 dark:text-gold-300"
+                />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold">
+                  Admin dashboard
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-4 text-slate-600 dark:text-slate-300">
+                  Manage Liberia360
+                </span>
+              </span>
+            </Link>
+          )}
+        </div>
+      </section>
 
       <Link
         href="/saved"
@@ -148,72 +272,6 @@ export default function AccountPage() {
       <AccountSecurity />
 
       <PushNotificationToggle />
-
-      <Link
-        href="/trips"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        My Trips
-      </Link>
-
-      <Link
-        href="/account/bookings"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        My Bookings
-      </Link>
-
-      <Link
-        href="/account/my-places"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        My Places
-      </Link>
-
-      <Link
-        href="/account/my-events"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        My Events
-      </Link>
-
-      <Link
-        href="/account/my-ads"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        My Ads
-      </Link>
-
-      <Link
-        href="/places/submit"
-        className="rounded-full border border-dashed border-brand-400 px-4 py-2.5 text-center text-sm font-medium text-brand-700 dark:border-brand-600 dark:text-brand-300 hover:border-solid hover:bg-brand-50 dark:hover:bg-brand-950/30"
-      >
-        + Add a place
-      </Link>
-
-      <Link
-        href="/account/analytics"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        Place Dashboard
-      </Link>
-
-      <Link
-        href="/creators/me"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        Manage creator profile
-      </Link>
-
-      {user.isAdmin && (
-        <Link
-          href="/admin"
-          className="flex items-center justify-center gap-1.5 rounded-full border-2 border-gold-400 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-gold-600"
-        >
-          <StarIcon aria-hidden className="h-4 w-4 text-gold-500" />
-          Admin dashboard
-        </Link>
-      )}
 
       <button
         type="button"
