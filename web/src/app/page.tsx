@@ -51,6 +51,8 @@ import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
+import { QuickFilterChips } from '@/components/QuickFilterChips';
+import { DiscoveryRecommendations } from '@/components/DiscoveryRecommendations';
 import { formatEventDateRange } from '@/lib/format';
 
 const TRENDING_PLACES_LIMIT = 10;
@@ -163,6 +165,7 @@ export default async function Home() {
               <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
             </button>
           </form>
+          <QuickFilterChips />
 
           {/* Co-primary discovery tools, inside the hero right under search —
               see the review readout comment above for why these are
@@ -291,6 +294,8 @@ export default async function Home() {
             ))}
           </div>
         </section>
+
+        <DiscoveryRecommendations places={trending.data} />
 
         <Link
           href="/places/submit"
