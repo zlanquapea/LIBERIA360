@@ -118,7 +118,7 @@ function ProfileSection({
   return (
     <section
       id={id}
-      className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7"
+      className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:scroll-mt-32 sm:p-7"
     >
       {eyebrow && (
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
@@ -232,21 +232,21 @@ export default async function CreatorProfilePage({
   );
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-5 bg-slate-50/60 px-4 pb-12 sm:px-6 lg:px-8 dark:bg-slate-950/20">
+    <main className="mx-auto flex max-w-5xl flex-col gap-4 bg-slate-50/60 px-4 pb-16 pt-3 sm:gap-5 sm:px-6 sm:pt-6 lg:px-8 dark:bg-slate-950/20">
       <JsonLd data={creatorJsonLd(creator)} />
       <CreatorViewTracker creator={creator} />
 
-      <section className="overflow-hidden rounded-b-[2rem] border-x border-b border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative h-48 overflow-hidden sm:h-64">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative h-44 overflow-hidden sm:h-60">
           <SafeImage
             src={cover}
             thumbSrc={coverThumb}
             alt=""
-            className="h-48 w-full object-cover sm:h-64"
+            className="h-44 w-full object-cover sm:h-60"
             fallback={
               <div
                 aria-hidden
-                className="h-48 w-full sm:h-64"
+                className="h-44 w-full sm:h-60"
                 style={{
                   backgroundImage: gradientForCategory(creator.category),
                 }}
@@ -265,10 +265,10 @@ export default async function CreatorProfilePage({
           )}
         </div>
 
-        <div className="flex flex-col gap-4 p-4 pt-0 sm:p-7 sm:pt-0">
-          <div className="-mt-12 flex items-end justify-between gap-3 sm:-mt-16">
+        <div className="flex flex-col gap-5 px-4 pb-5 sm:px-7 sm:pb-7">
+          <div className="-mt-10 flex items-end sm:-mt-14">
             <span
-              className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white text-3xl font-semibold text-white shadow-lg dark:border-slate-900 sm:h-32 sm:w-32"
+              className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white text-2xl font-semibold text-white shadow-lg dark:border-slate-900 sm:h-28 sm:w-28 sm:text-3xl"
               style={{ backgroundColor: colorForCreator(creator.username) }}
             >
               <SafeImage
@@ -281,13 +281,10 @@ export default async function CreatorProfilePage({
                 }
               />
             </span>
-            <div className="flex items-center gap-2 pb-1">
-              <ShareMenu placeName={creator.name} contentType="creator" />
-            </div>
           </div>
 
           <div>
-            <h1 className="flex flex-wrap items-center gap-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">
+            <h1 className="flex flex-wrap items-center gap-2 font-display text-2xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">
               <span>{creator.name}</span>
               {creator.verificationStatus === "verified" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
@@ -296,16 +293,15 @@ export default async function CreatorProfilePage({
                 </span>
               )}
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <span>{formatCreatorCategory(creator.category)}</span>
               {location && (
-                <>
-                  <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1">
                   <MapPinIcon aria-hidden className="h-4 w-4 text-sky-500" />
-                  <span>{location}</span>
-                </>
+                  {location}
+                </span>
               )}
-            </p>
+            </div>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               @{creator.username}
               {creator.followerCount > 0 &&
@@ -314,18 +310,36 @@ export default async function CreatorProfilePage({
           </div>
 
           {creator.bio && (
-            <p className="max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-200">
+            <p className="max-w-2xl text-sm leading-6 text-slate-700 dark:text-slate-200 sm:text-base sm:leading-7">
               {creator.bio}
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div id="booking" className="col-span-2 sm:col-span-1">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Request to book
-              </p>
+          <div
+            id="booking"
+            className="rounded-2xl bg-brand-50/70 p-3.5 ring-1 ring-brand-100 dark:bg-brand-950/25 dark:ring-brand-900/60"
+          >
+            <div className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-800 dark:text-brand-200">
+                  Request to book
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                  Send a request to {creator.name}; they&apos;ll confirm or
+                  decline.
+                </p>
+              </div>
+              <CalendarDaysIcon
+                aria-hidden
+                className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
+              />
+            </div>
+            <div className="mt-3">
               <BookingRequestSection creator={creator} />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <CreatorFollowButton
               creatorId={creator.id}
               initialFollowerCount={creator.followerCount}
@@ -341,7 +355,8 @@ export default async function CreatorProfilePage({
             />
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Booking sends a request to the creator. No payment is taken now.
+            No payment is taken now. Booking remains a request, not an instant
+            confirmation.
           </p>
 
           {(creator.instagram || creator.tiktok || creator.youtube) && (
@@ -368,7 +383,7 @@ export default async function CreatorProfilePage({
 
       <nav
         aria-label="Creator profile sections"
-        className="sticky top-0 z-20 grid grid-cols-4 rounded-2xl border border-slate-200 bg-white/95 p-1 text-center shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95"
+        className="sticky top-16 z-10 grid grid-cols-4 rounded-2xl border border-slate-200 bg-white/95 p-1 text-center shadow-sm backdrop-blur sm:top-[5.5rem] dark:border-slate-800 dark:bg-slate-900/95"
       >
         {[
           ["Work", hasWork ? "creator-work" : "creator-about"],
@@ -379,7 +394,7 @@ export default async function CreatorProfilePage({
           <a
             key={label}
             href={`#${id}`}
-            className="rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-300"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl px-2 py-2.5 text-xs font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-300 sm:text-sm"
           >
             {label}
           </a>
