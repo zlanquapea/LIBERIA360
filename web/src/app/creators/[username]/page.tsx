@@ -1,29 +1,32 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
+  CalendarDaysIcon,
+  ChatBubbleLeftRightIcon,
   CheckBadgeIcon,
   EnvelopeIcon,
   GlobeAltIcon,
   MapPinIcon,
   StarIcon,
 } from '@heroicons/react/24/solid';
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { ApiError, getCreatorByUsername, getCreatorReviews } from '@/lib/api';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
 import { formatCreatorCategory, formatPriceFrom, formatRating } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { CreatorPortfolioGallery } from '@/components/CreatorPortfolioGallery';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ContactLink } from '@/components/ContactLink';
 import { CreatorViewTracker } from '@/components/CreatorViewTracker';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
+import { ShareMenu } from '@/components/ShareMenu';
+import { SafeImage } from '@/components/SafeImage';
 import { JsonLd } from '@/components/JsonLd';
 import { creatorJsonLd } from '@/lib/structured-data';
 
-// SEO (product review readout, Aug 25, 2026): "each ... creator[] should
-// eventually have its own properly structured page." The previous
-// metadata never fetched the creator, so every profile shared the same
-// generic title — this uses the real name/bio instead.
+// SEO (product review readout, Aug 25, 2026): each creator should have its
+// own structured page. The profile is now also the social-style destination
+// for real portfolio media, offerings, contact actions, and booking requests.
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   const creator = await getCreatorByUsername(username).catch(() => null);
@@ -47,20 +50,11 @@ const SOCIAL_LINKS = [
   { key: 'youtube' as const, label: 'YouTube', prefix: 'https://youtube.com/@' },
 ];
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
-      <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 function TagList({ items }: { items: string[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
-        <span key={item} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300">
+        <span key={item} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           {item}
         </span>
       ))}
@@ -68,13 +62,58 @@ function TagList({ items }: { items: string[] }) {
   );
 }
 
-// Public creator profile (Tech Spec §5 Creator / §3.2) — the "who is this
-// creator, what do they offer, what does their work look like" page a
-// tourist lands on from a CreatorCard anywhere in the app. Sections with no
-// real feature behind them yet (a structured tourism-experiences link to
-// specific places/events, a booking flow) are left out entirely rather
-// than shown empty or faked — see the [Later phase] tasks tracking each of
-// those as separate, deliberately deferred work.
+function ProfileSection({ id, eyebrow, title, children }: { id: string; eyebrow?: string; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+      {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">{eyebrow}</p>}
+      <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function ContactAction({ creator, hasContactMethod }: { creator: Awaited<ReturnType<typeof getCreatorByUsername>>; hasContactMethod: boolean }) {
+  if (!hasContactMethod) return null;
+  if (creator.whatsapp) {
+    return (
+      <ContactLink
+        creatorId={creator.id}
+        href={whatsappLink(creator.whatsapp)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
+      >
+        <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 text-emerald-600" />
+        Message
+      </ContactLink>
+    );
+  }
+  if (creator.contactEmail) {
+    return (
+      <ContactLink
+        creatorId={creator.id}
+        href={`mailto:${creator.contactEmail}`}
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
+      >
+        <EnvelopeIcon aria-hidden className="h-5 w-5 text-brand-600" />
+        Message
+      </ContactLink>
+    );
+  }
+  return (
+    <ContactLink
+      creatorId={creator.id}
+      href={creator.website!}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
+    >
+      <GlobeAltIcon aria-hidden className="h-5 w-5 text-sky-500" />
+      Website
+    </ContactLink>
+  );
+}
+
 export default async function CreatorProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
 
@@ -87,125 +126,104 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   }
 
   const reviewsResult = await getCreatorReviews(creator.id, { limit: 20 });
-
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
+  const coverThumb = creator.coverImage ? resolveThumbUrl(creator.coverImage) : null;
   const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
-  const location = creator.county?.name ?? null;
+  const avatarThumb = creator.profileImage ? resolveThumbUrl(creator.profileImage) : null;
+  const location = creator.county?.name ?? creator.locationsCovered[0] ?? null;
   const hasContactMethod = Boolean(creator.contactEmail || creator.whatsapp || creator.website);
+  const hasWork = Boolean((creator.portfolioItems && creator.portfolioItems.length > 0) || creator.contentLinks.length > 0);
+  const hasAbout = Boolean(
+    creator.bio ||
+      creator.specialties.length > 0 ||
+      creator.languages.length > 0 ||
+      creator.certifications.length > 0 ||
+      creator.locationsCovered.length > 0 ||
+      creator.yearsExperience !== null,
+  );
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
+    <main className="mx-auto flex max-w-4xl flex-col gap-5 bg-slate-50/60 px-4 pb-12 sm:px-6 lg:px-8 dark:bg-slate-950/20">
       <JsonLd data={creatorJsonLd(creator)} />
       <CreatorViewTracker creatorId={creator.id} />
-      {/* Header */}
-      <div className="flex flex-col">
-        <div className="relative h-36 overflow-hidden sm:h-48">
-          {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div aria-hidden className="h-full w-full" style={{ backgroundImage: gradientForCategory(creator.category) }} />
+
+      <section className="overflow-hidden rounded-b-[2rem] border-x border-b border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative h-48 overflow-hidden sm:h-64">
+          <SafeImage
+            src={cover}
+            thumbSrc={coverThumb}
+            alt=""
+            className="h-48 w-full object-cover sm:h-64"
+            fallback={<div aria-hidden className="h-48 w-full sm:h-64" style={{ backgroundImage: gradientForCategory(creator.category) }} />}
+          />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          {creator.featured && (
+            <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-gold-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
+              <StarIcon aria-hidden className="h-3.5 w-3.5" />
+              Featured creator
+            </span>
           )}
         </div>
 
-        <div className="flex flex-col gap-3 px-4 pt-3">
-          <div className="flex items-end justify-between">
+        <div className="flex flex-col gap-4 p-4 pt-0 sm:p-7 sm:pt-0">
+          <div className="-mt-12 flex items-end justify-between gap-3 sm:-mt-16">
             <span
-              className="-mt-14 flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white text-3xl font-semibold text-white shadow-md dark:border-slate-950"
+              className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white text-3xl font-semibold text-white shadow-lg dark:border-slate-900 sm:h-32 sm:w-32"
               style={{ backgroundColor: colorForCreator(creator.username) }}
             >
-              {avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatar} alt="" className="h-full w-full object-cover" />
-              ) : (
-                creator.name.trim().charAt(0).toUpperCase() || '?'
-              )}
+              <SafeImage
+                src={avatar}
+                thumbSrc={avatarThumb}
+                alt=""
+                className="h-full w-full object-cover"
+                fallback={<>{creator.name.trim().charAt(0).toUpperCase() || '?'}</>}
+              />
             </span>
+            <div className="flex items-center gap-2 pb-1">
+              <ShareMenu placeName={creator.name} contentType="creator" />
+            </div>
           </div>
 
           <div>
-            <h1 className="flex flex-wrap items-center gap-1.5 text-xl font-bold text-slate-900 dark:text-slate-50">
-              {creator.name}
+            <h1 className="flex flex-wrap items-center gap-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">
+              <span>{creator.name}</span>
               {creator.verificationStatus === 'verified' && (
-                <span
-                  aria-label="Verified creator"
-                  className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white"
-                >
-                  <CheckBadgeIcon aria-hidden className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-600 px-2.5 py-1 text-xs font-semibold text-white">
+                  <CheckBadgeIcon aria-hidden className="h-4 w-4" />
                   Verified
                 </span>
               )}
-              {creator.featured && (
-                <span
-                  aria-label="Featured creator"
-                  className="inline-flex items-center gap-1 rounded-full bg-gold-500 px-2 py-0.5 text-xs font-medium text-white"
-                >
-                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
-                  Featured
-                </span>
-              )}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {formatCreatorCategory(creator.category)}
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <span>{formatCreatorCategory(creator.category)}</span>
               {location && (
                 <>
-                  {' '}
-                  · <MapPinIcon aria-hidden className="mb-0.5 inline h-3.5 w-3.5" /> {location}
+                  <span aria-hidden>·</span>
+                  <MapPinIcon aria-hidden className="h-4 w-4 text-sky-500" />
+                  <span>{location}</span>
                 </>
               )}
             </p>
-            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               @{creator.username}
               {creator.followerCount > 0 && ` · ${creator.followerCount.toLocaleString()} followers`}
             </p>
-            <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{formatRating(creator.rating, creator.reviewCount)}</p>
           </div>
 
-          {creator.bio && <p className="text-slate-700 dark:text-slate-200">{creator.bio}</p>}
+          {creator.bio && <p className="max-w-2xl text-base leading-7 text-slate-700 dark:text-slate-200">{creator.bio}</p>}
 
-          {hasContactMethod && (
-            <div className="flex flex-wrap gap-2">
-              {creator.contactEmail && (
-                <ContactLink
-                  creatorId={creator.id}
-                  href={`mailto:${creator.contactEmail}`}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
-                >
-                  <EnvelopeIcon aria-hidden className="h-4 w-4" />
-                  Email {creator.name.split(' ')[0]}
-                </ContactLink>
-              )}
-              {creator.whatsapp && (
-                <ContactLink
-                  creatorId={creator.id}
-                  href={whatsappLink(creator.whatsapp)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
-                >
-                  <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
-                  WhatsApp
-                </ContactLink>
-              )}
-              {creator.website && (
-                <ContactLink
-                  creatorId={creator.id}
-                  href={creator.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
-                >
-                  <GlobeAltIcon aria-hidden className="h-4 w-4" />
-                  Website
-                </ContactLink>
-              )}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div id="booking" className="col-span-2 sm:col-span-1">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Request to book</p>
+              <BookingRequestSection creator={creator} />
             </div>
-          )}
-
-          <BookingRequestSection creator={creator} />
+            <ContactAction creator={creator} hasContactMethod={hasContactMethod} />
+            <ShareMenu placeName={creator.name} contentType="creator" variant="action" />
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Booking sends a request to the creator. No payment is taken now.</p>
 
           {(creator.instagram || creator.tiktok || creator.youtube) && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-sm font-semibold dark:border-slate-800">
               {SOCIAL_LINKS.map(({ key, label, prefix }) => {
                 const handle = creator[key];
                 if (!handle) return null;
@@ -215,7 +233,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                     href={`${prefix}${handle.replace(/^@/, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                    className="text-brand-700 hover:underline dark:text-brand-300"
                   >
                     {label}
                   </a>
@@ -224,107 +242,111 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <div className="flex flex-col gap-6 px-4">
-        {/* About */}
-        {(creator.specialties.length > 0 ||
-          creator.languages.length > 0 ||
-          creator.certifications.length > 0 ||
-          creator.locationsCovered.length > 0 ||
-          creator.yearsExperience !== null) && (
-          <Section title="About">
-            <div className="flex flex-col gap-4">
-              {creator.yearsExperience !== null && (
-                <p className="text-sm text-slate-700 dark:text-slate-200">
-                  <span className="font-medium">{creator.yearsExperience}</span>{' '}
-                  {creator.yearsExperience === 1 ? 'year' : 'years'} of experience
-                </p>
-              )}
-              {creator.specialties.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Skills &amp; specialties</h3>
-                  <TagList items={creator.specialties} />
-                </div>
-              )}
-              {creator.languages.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Languages spoken</h3>
-                  <TagList items={creator.languages} />
-                </div>
-              )}
-              {creator.locationsCovered.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Areas served</h3>
-                  <TagList items={creator.locationsCovered} />
-                </div>
-              )}
-              {creator.certifications.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">Certifications &amp; credentials</h3>
-                  <TagList items={creator.certifications} />
-                </div>
-              )}
-            </div>
-          </Section>
-        )}
+      <nav aria-label="Creator profile sections" className="sticky top-0 z-20 grid grid-cols-4 rounded-2xl border border-slate-200 bg-white/95 p-1 text-center shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+        {[
+          ['Work', hasWork ? 'creator-work' : 'creator-about'],
+          ['Services', 'creator-services'],
+          ['About', 'creator-about'],
+          ['Reviews', 'creator-reviews'],
+        ].map(([label, id]) => (
+          <a key={label} href={`#${id}`} className="rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-300">
+            {label}
+          </a>
+        ))}
+      </nav>
 
-        {/* Services & Experiences */}
-        {creator.offerings && creator.offerings.length > 0 && (
-          <Section title="Services & Experiences">
-            <div className="flex flex-col gap-3">
-              {creator.offerings.map((offering) => (
-                <div key={offering.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-50">{offering.title}</h3>
-                    {offering.priceFrom !== null && (
-                      <span className="shrink-0 text-sm font-medium text-brand-700 dark:text-brand-300">{formatPriceFrom(offering.priceFrom)}</span>
-                    )}
-                  </div>
-                  {offering.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{offering.description}</p>}
-                  <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                    {offering.durationLabel && <span>{offering.durationLabel}</span>}
-                    {offering.location && <span>{offering.location}</span>}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Portfolio */}
-        {creator.portfolioItems && creator.portfolioItems.length > 0 && (
-          <Section title="Portfolio">
+      {hasWork && (
+        <ProfileSection id="creator-work" eyebrow="Creator feed" title="Latest work">
+          {creator.portfolioItems && creator.portfolioItems.length > 0 ? (
             <CreatorPortfolioGallery items={creator.portfolioItems} />
-          </Section>
-        )}
-
-        {/* Availability */}
-        {creator.availabilityNote && (
-          <Section title="Availability">
-            <p className="text-sm text-slate-700 dark:text-slate-200">{creator.availabilityNote}</p>
-          </Section>
-        )}
-
-        {creator.contentLinks.length > 0 && (
-          <Section title="Featured content">
-            <ul className="flex flex-col gap-1.5">
+          ) : (
+            <ul className="flex flex-col gap-2">
               {creator.contentLinks.map((link) => (
                 <li key={link}>
-                  <a href={link} target="_blank" rel="noopener noreferrer" className="break-all text-sm text-brand-700 dark:text-brand-300 hover:underline">
-                    {link}
+                  <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-800 dark:text-brand-300 dark:hover:bg-brand-950/30">
+                    <span className="break-all">{link}</span>
+                    <span aria-hidden>↗</span>
                   </a>
                 </li>
               ))}
             </ul>
-          </Section>
-        )}
+          )}
+        </ProfileSection>
+      )}
 
-        {/* Reviews */}
-        <Section title="Reviews">
-          <ReviewsSection creatorId={creator.id} initialReviews={reviewsResult.data} />
-        </Section>
-      </div>
+      {creator.offerings && creator.offerings.length > 0 && (
+        <ProfileSection id="creator-services" eyebrow="Book an experience" title="Services & experiences">
+          <div className="flex flex-col gap-3">
+            {creator.offerings.map((offering) => (
+              <article key={offering.id} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">{offering.title}</h3>
+                  {offering.priceFrom !== null && <span className="shrink-0 text-sm font-semibold text-brand-700 dark:text-brand-300">{formatPriceFrom(offering.priceFrom)}</span>}
+                </div>
+                {offering.description && <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">{offering.description}</p>}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    {offering.durationLabel && <span>{offering.durationLabel}</span>}
+                    {offering.location && <span>{offering.location}</span>}
+                  </p>
+                  <a href="#booking" className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400">
+                    <CalendarDaysIcon aria-hidden className="h-4 w-4" />
+                    Request to book
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+        </ProfileSection>
+      )}
+
+      {hasAbout && (
+        <ProfileSection id="creator-about" eyebrow="Get to know the creator" title="About">
+          <div className="flex flex-col gap-4">
+            {creator.yearsExperience !== null && (
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-semibold">{creator.yearsExperience}</span> {creator.yearsExperience === 1 ? 'year' : 'years'} of experience
+              </p>
+            )}
+            {creator.specialties.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Skills &amp; specialties</h3>
+                <div className="mt-2"><TagList items={creator.specialties} /></div>
+              </div>
+            )}
+            {creator.languages.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Languages spoken</h3>
+                <div className="mt-2"><TagList items={creator.languages} /></div>
+              </div>
+            )}
+            {creator.locationsCovered.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Areas served</h3>
+                <div className="mt-2"><TagList items={creator.locationsCovered} /></div>
+              </div>
+            )}
+            {creator.certifications.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Certifications &amp; credentials</h3>
+                <div className="mt-2"><TagList items={creator.certifications} /></div>
+              </div>
+            )}
+          </div>
+        </ProfileSection>
+      )}
+
+      {creator.availabilityNote && (
+        <ProfileSection id="creator-availability" eyebrow="Plan ahead" title="Availability">
+          <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">{creator.availabilityNote}</p>
+        </ProfileSection>
+      )}
+
+      <ProfileSection id="creator-reviews" eyebrow="Community notes" title="Reviews">
+        <ReviewsSection creatorId={creator.id} initialReviews={reviewsResult.data} />
+      </ProfileSection>
     </main>
   );
 }

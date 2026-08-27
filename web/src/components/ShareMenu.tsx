@@ -8,6 +8,7 @@ type ShareMenuProps = {
   placeName: string;
   shareUrl?: string;
   variant?: 'circle' | 'action';
+  contentType?: 'place' | 'creator';
 };
 
 type ShareItem = {
@@ -17,8 +18,9 @@ type ShareItem = {
   className: string;
 };
 
-export function ShareMenu({ placeName, shareUrl, variant = 'circle' }: ShareMenuProps) {
+export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType = 'place' }: ShareMenuProps) {
   const [open, setOpen] = useState(false);
+  const contentNoun = contentType === 'creator' ? 'creator' : 'place';
   const [currentUrl, setCurrentUrl] = useState(shareUrl ?? '');
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle' }: ShareMenu
         >
           <div className="flex items-center justify-between gap-3 px-1 pb-3">
             <div>
-              <p className="font-display text-sm font-bold">Share this place</p>
+              <p className="font-display text-sm font-bold">Share this {contentNoun}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">Send it to friends or save the link.</p>
             </div>
             <button

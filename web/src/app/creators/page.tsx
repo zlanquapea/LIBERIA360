@@ -2,6 +2,10 @@ import Link from 'next/link';
 import { getCounties, getCreators } from '@/lib/api';
 import { CreatorCard } from '@/components/CreatorCard';
 import { CreatorFilters } from '@/components/CreatorFilters';
+import { SafeImage } from '@/components/SafeImage';
+import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
+import { formatCreatorCategory } from '@/lib/format';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import type { CreatorCategory } from '@/lib/types';
 
 export const metadata = { title: 'Creators — LIBERIA360' };
@@ -12,9 +16,9 @@ function first(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-// Creator directory (Tech Spec §5 Creator / §3.2) — Liberian content
-// creators, guides, and operators who've made a public profile. Featured
-// creators sort first (see CreatorsService.findAll), then by follower count.
+// Creator directory (Tech Spec §5 Creator / §3.2) — a social-style discovery
+// surface for Liberian content creators, guides, and storytellers. The list
+// endpoint stays the source of truth; portfolio media remains on profile pages.
 export default async function CreatorsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const page = Number(first(params.page) ?? '1') || 1;
@@ -32,49 +36,123 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
     if (search) p.set('search', search);
     if (category) p.set('category', category);
     if (countyId) p.set('countyId', countyId);
-    p.set('page', String(targetPage));
-    return `/creators?${p.toString()}`;
+    if (targetPage > 1) p.set('page', String(targetPage));
+    const query = p.toString();
+    return query ? `/creators?${query}` : '/creators';
   }
 
   const hasFilters = Boolean(search || category || countyId);
+  const railCreators = result.data.slice(0, 5);
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Creators</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Photographers, guides, and storytellers helping you experience Liberia.
-          </p>
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 pb-12 sm:px-6 lg:px-10 lg:py-8">
+      <header className="flex flex-col gap-5">
+        <div className="flex items-end justify-between gap-4">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">LIBERIA360 community</p>
+            <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">Creators</h1>
+            <p className="mt-2 max-w-xl text-base leading-6 text-slate-500 dark:text-slate-400">
+              Discover local storytellers. Watch, follow, and book.
+            </p>
+          </div>
+          <Link
+            href="/creators/me"
+            className="shrink-0 rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30"
+          >
+            Become a creator
+          </Link>
         </div>
-        <Link
-          href="/creators/me"
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-        >
-          Become a creator
-        </Link>
-      </div>
+
+        <nav aria-label="Creator sections" className="grid grid-cols-3 rounded-2xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+          <Link
+            href={pageHref(1)}
+            aria-current="page"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-3 py-2 text-sm font-semibold text-white shadow-sm"
+          >
+            Discover
+          </Link>
+          <Link
+            href="/account/bookings"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300"
+          >
+            Bookings
+          </Link>
+          <Link
+            href="/creators/me"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300"
+          >
+            My profile
+          </Link>
+        </nav>
+      </header>
 
       <CreatorFilters counties={counties} />
 
-      {result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-          {hasFilters ? 'No creators match these filters.' : 'No creator profiles yet — be the first.'}
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
-          {result.data.map((creator) => (
-            <CreatorCard key={creator.id} creator={creator} />
-          ))}
-        </div>
+      {railCreators.length > 0 && (
+        <section aria-labelledby="trending-creators-heading" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 id="trending-creators-heading" className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
+              Trending creators
+            </h2>
+            <span className="text-sm font-medium text-brand-700 dark:text-brand-300">{result.meta.total} available</span>
+          </div>
+          <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
+            {railCreators.map((creator) => {
+              const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
+              const avatarThumb = creator.profileImage ? resolveThumbUrl(creator.profileImage) : null;
+              return (
+                <Link key={creator.id} href={`/creators/${creator.username}`} className="flex w-20 shrink-0 flex-col items-center gap-1.5 text-center">
+                  <span
+                    className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-accent-400 p-0.5"
+                    style={{ backgroundColor: colorForCreator(creator.username) }}
+                  >
+                    <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white text-lg font-semibold text-white dark:bg-slate-900">
+                      <SafeImage
+                        src={avatar}
+                        thumbSrc={avatarThumb}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        fallback={<span>{creator.name.trim().charAt(0).toUpperCase() || '?'}</span>}
+                      />
+                    </span>
+                  </span>
+                  <span className="w-full truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{creator.name}</span>
+                  <span className="w-full truncate text-xs text-slate-500 dark:text-slate-400">{formatCreatorCategory(creator.category)}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       )}
 
+      <section aria-labelledby="creator-feed-heading" className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">Explore the community</p>
+            <h2 id="creator-feed-heading" className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Creator feed</h2>
+          </div>
+          {!hasFilters && <span className="text-sm text-slate-500 dark:text-slate-400">Fresh local perspectives</span>}
+        </div>
+
+        {result.data.length === 0 ? (
+          <p className="rounded-3xl border border-dashed border-slate-300 px-4 py-10 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            {hasFilters ? 'No creators match these filters.' : 'No creator profiles yet — be the first.'}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {result.data.map((creator) => (
+              <CreatorCard key={creator.id} creator={creator} />
+            ))}
+          </div>
+        )}
+      </section>
+
       {result.meta.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
+        <nav aria-label="Creator pages" className="flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-800">
           <Link
-            href={pageHref(page - 1)}
+            href={page <= 1 ? pageHref(1) : pageHref(page - 1)}
             aria-disabled={page <= 1}
-            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'}`}
+            className={`text-sm font-semibold ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline dark:text-brand-300'}`}
           >
             ← Previous
           </Link>
@@ -82,15 +160,15 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
             Page {result.meta.page} of {result.meta.totalPages}
           </span>
           <Link
-            href={pageHref(page + 1)}
+            href={page >= result.meta.totalPages ? pageHref(page) : pageHref(page + 1)}
             aria-disabled={page >= result.meta.totalPages}
-            className={`text-sm font-medium ${
-              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'
+            className={`text-sm font-semibold ${
+              page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 hover:underline dark:text-brand-300'
             }`}
           >
             Next →
           </Link>
-        </div>
+        </nav>
       )}
     </main>
   );
