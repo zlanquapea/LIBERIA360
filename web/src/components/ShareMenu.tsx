@@ -1,14 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  ArrowUpOnSquareIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
-  ClipboardDocumentIcon,
-  EnvelopeIcon,
-  LinkIcon,
-  ShareIcon,
-} from '@heroicons/react/24/outline';
+import { useEffect, useState, type ComponentType } from 'react';
+import { ArrowUpOnSquareIcon, ClipboardDocumentIcon, EnvelopeIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { FacebookIcon, LinkedInIcon, TelegramIcon, WhatsAppIcon, XIcon } from './icons/SocialIcons';
 
 type ShareMenuProps = {
   placeName: string;
@@ -19,7 +13,7 @@ type ShareMenuProps = {
 type ShareItem = {
   label: string;
   href: string;
-  icon: typeof ShareIcon;
+  icon: ComponentType<{ className?: string }>;
   className: string;
 };
 
@@ -42,31 +36,31 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle' }: ShareMenu
     {
       label: 'Facebook',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-      icon: ShareIcon,
+      icon: FacebookIcon,
       className: 'bg-[#1877F2] text-white hover:bg-[#166FE5]',
     },
     {
       label: 'WhatsApp',
       href: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
-      icon: ChatBubbleOvalLeftEllipsisIcon,
+      icon: WhatsAppIcon,
       className: 'bg-[#25D366] text-white hover:bg-[#1ebe5d]',
     },
     {
       label: 'X',
       href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-      icon: ShareIcon,
+      icon: XIcon,
       className: 'bg-slate-950 text-white hover:bg-slate-800',
     },
     {
       label: 'Telegram',
       href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
-      icon: ChatBubbleOvalLeftEllipsisIcon,
+      icon: TelegramIcon,
       className: 'bg-[#229ED9] text-white hover:bg-[#1789bf]',
     },
     {
       label: 'LinkedIn',
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-      icon: LinkIcon,
+      icon: LinkedInIcon,
       className: 'bg-[#0A66C2] text-white hover:bg-[#0959a9]',
     },
     {
@@ -147,36 +141,36 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle' }: ShareMenu
                 rel={label === 'Email' ? undefined : 'noopener noreferrer'}
                 role="menuitem"
                 onClick={() => setOpen(false)}
-                className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-2 py-2 text-center text-[11px] font-semibold transition-colors hover:border-transparent dark:border-slate-800 dark:bg-slate-800"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-2 py-3 text-center transition-colors hover:border-transparent hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
               >
-                <span className={`flex h-8 w-8 items-center justify-center rounded-full ${className}`}>
-                  <Icon aria-hidden className="h-4 w-4" />
+                <span className={`flex h-11 w-11 items-center justify-center rounded-full ${className}`}>
+                  <Icon className="h-5 w-5" />
                 </span>
-                {label}
+                <span className="text-[11px] font-medium leading-none text-slate-600 dark:text-slate-300">{label}</span>
               </a>
             ))}
             <button
               type="button"
               role="menuitem"
               onClick={copyLink}
-              className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-2 py-2 text-center text-[11px] font-semibold transition-colors hover:border-brand-200 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-brand-950/30"
+              className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-2 py-3 text-center transition-colors hover:border-brand-200 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-brand-950/30"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                <ClipboardDocumentIcon aria-hidden className="h-4 w-4" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                <ClipboardDocumentIcon aria-hidden className="h-5 w-5" />
               </span>
-              Copy link
+              <span className="text-[11px] font-medium leading-none text-slate-600 dark:text-slate-300">Copy link</span>
             </button>
             {canNativeShare && (
               <button
                 type="button"
                 role="menuitem"
                 onClick={nativeShare}
-                className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-2 py-2 text-center text-[11px] font-semibold transition-colors hover:border-brand-200 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-brand-950/30"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-2 py-3 text-center transition-colors hover:border-brand-200 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-brand-950/30"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold-400 text-brand-950">
-                  <ArrowUpOnSquareIcon aria-hidden className="h-4 w-4" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gold-400 text-brand-950">
+                  <ArrowUpOnSquareIcon aria-hidden className="h-5 w-5" />
                 </span>
-                More apps
+                <span className="text-[11px] font-medium leading-none text-slate-600 dark:text-slate-300">More apps</span>
               </button>
             )}
           </div>
