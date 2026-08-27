@@ -31,7 +31,9 @@ export default async function CreatorsPage({
   const search = first(params.search);
   const category = first(params.category) as CreatorCategory | undefined;
   const countyId = first(params.countyId);
-  const isFollowing = first(params.view) === "following";
+  const view = first(params.view);
+  const isFollowing = view === "following";
+  const isDirectory = view === "directory";
 
   const [counties, result, feed] = await Promise.all([
     getCounties(),
@@ -44,6 +46,7 @@ export default async function CreatorsPage({
     if (search) p.set("search", search);
     if (category) p.set("category", category);
     if (countyId) p.set("countyId", countyId);
+    if (isDirectory) p.set("view", "directory");
     if (targetPage > 1) p.set("page", String(targetPage));
     const query = p.toString();
     return query ? `/creators?${query}` : "/creators";
@@ -88,9 +91,11 @@ export default async function CreatorsPage({
         <CreatorFeed initialPosts={[]} mode="following" />
       ) : (
         <>
-          <CreatorFilters counties={counties} />
+          {(isDirectory || hasFilters) && (
+            <CreatorFilters counties={counties} />
+          )}
 
-          {railCreators.length > 0 && (
+          {!isDirectory && !hasFilters && railCreators.length > 0 && (
             <section
               aria-labelledby="trending-creators-heading"
               className="flex flex-col gap-3"
@@ -102,9 +107,13 @@ export default async function CreatorsPage({
                 >
                   Trending creators
                 </h2>
-                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
-                  {result.meta.total} available
-                </span>
+                <Link
+                  href="/creators?view=directory"
+                  aria-label="See more creators"
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  See more
+                </Link>
               </div>
               <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
                 {railCreators.map((creator) => {
@@ -154,7 +163,7 @@ export default async function CreatorsPage({
             </section>
           )}
 
-          {hasFilters ? (
+          {isDirectory || hasFilters ? (
             <section
               aria-labelledby="creator-results-heading"
               className="flex flex-col gap-3"
