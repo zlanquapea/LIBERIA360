@@ -286,7 +286,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         </div>
       </section>
 
-      <Section eyebrow="Discover the business" title={`About ${business.name}`}>
+      <Section eyebrow="Discover the business" title="About this business">
         <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
       </Section>
 

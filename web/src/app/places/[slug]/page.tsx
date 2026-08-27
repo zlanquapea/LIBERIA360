@@ -129,7 +129,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <section id="about" className="scroll-mt-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Discover the place</p>
-        <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">About {place.name}</h2>
+        <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">About this place</h2>
         <p className="mt-4 max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{place.description}</p>
       </section>
 
