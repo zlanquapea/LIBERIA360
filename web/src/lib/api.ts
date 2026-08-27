@@ -11,6 +11,7 @@ import type {
   PaginatedBusinessContent,
   PaginatedBusinesses,
   PaginatedCreators,
+  PaginatedCreatorPosts,
   PaginatedEvents,
   PaginatedPlaces,
   PaginatedReviews,
@@ -236,6 +237,22 @@ export function getCreators(query: CreatorsQuery = {}): Promise<PaginatedCreator
 
 export function getCreatorByUsername(username: string): Promise<Creator> {
   return apiFetch<Creator>(`/creators/${username}`);
+}
+
+export function getCreatorFeed(query: { page?: number; limit?: number } = {}): Promise<PaginatedCreatorPosts> {
+  return apiFetch<PaginatedCreatorPosts>(
+    '/creators/feed',
+    query,
+    emptyPage(query.limit),
+  );
+}
+
+export function getCreatorFeedForCreator(username: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedCreatorPosts> {
+  return apiFetch<PaginatedCreatorPosts>(
+    `/creators/feed/creator/${encodeURIComponent(username)}`,
+    query,
+    emptyPage(query.limit),
+  );
 }
 
 export interface EventsQuery {

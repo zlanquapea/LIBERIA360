@@ -9,12 +9,13 @@ import {
   MapPinIcon,
   StarIcon,
 } from '@heroicons/react/24/solid';
-import { ApiError, getCreatorByUsername, getCreatorReviews } from '@/lib/api';
+import { ApiError, getCreatorByUsername, getCreatorFeedForCreator, getCreatorReviews } from '@/lib/api';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
 import { formatCreatorCategory, formatPriceFrom, formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { CreatorPortfolioGallery } from '@/components/CreatorPortfolioGallery';
+import { CreatorFeed } from '@/components/CreatorFeed';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ContactLink } from '@/components/ContactLink';
 import { CreatorViewTracker } from '@/components/CreatorViewTracker';
@@ -125,14 +126,17 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
     notFound();
   }
 
-  const reviewsResult = await getCreatorReviews(creator.id, { limit: 20 });
+  const [reviewsResult, creatorFeedResult] = await Promise.all([
+    getCreatorReviews(creator.id, { limit: 20 }),
+    getCreatorFeedForCreator(creator.username, { limit: 20 }),
+  ]);
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
   const coverThumb = creator.coverImage ? resolveThumbUrl(creator.coverImage) : null;
   const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
   const avatarThumb = creator.profileImage ? resolveThumbUrl(creator.profileImage) : null;
   const location = creator.county?.name ?? creator.locationsCovered[0] ?? null;
   const hasContactMethod = Boolean(creator.contactEmail || creator.whatsapp || creator.website);
-  const hasWork = Boolean((creator.portfolioItems && creator.portfolioItems.length > 0) || creator.contentLinks.length > 0);
+  const hasWork = Boolean(creatorFeedResult.data.length > 0 || (creator.portfolioItems && creator.portfolioItems.length > 0) || creator.contentLinks.length > 0);
   const hasAbout = Boolean(
     creator.bio ||
       creator.specialties.length > 0 ||
@@ -259,7 +263,9 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
       {hasWork && (
         <ProfileSection id="creator-work" eyebrow="Creator feed" title="Latest work">
-          {creator.portfolioItems && creator.portfolioItems.length > 0 ? (
+          {creatorFeedResult.data.length > 0 ? (
+            <CreatorFeed initialPosts={creatorFeedResult.data} showHeader={false} />
+          ) : creator.portfolioItems && creator.portfolioItems.length > 0 ? (
             <CreatorPortfolioGallery items={creator.portfolioItems} />
           ) : (
             <ul className="flex flex-col gap-2">

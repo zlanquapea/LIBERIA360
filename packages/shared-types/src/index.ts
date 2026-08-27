@@ -383,6 +383,52 @@ export interface Creator {
   offerings?: CreatorOffering[];
 }
 
+export type CreatorPostMediaType = "image" | "video";
+export type CreatorPostStatus = "published" | "hidden";
+
+export interface CreatorPostAuthor {
+  id: string;
+  name: string;
+  username: string;
+  profileImage: string | null;
+  verificationStatus: CreatorVerificationStatus;
+  category: CreatorCategory;
+  county: County | null;
+}
+
+export interface CreatorPost {
+  id: string;
+  creatorId: string;
+  mediaType: CreatorPostMediaType;
+  mediaUrl: string;
+  caption: string | null;
+  status: CreatorPostStatus;
+  likeCount: number;
+  commentCount: number;
+  saveCount: number;
+  shareCount: number;
+  creator: CreatorPostAuthor;
+  viewerLiked?: boolean;
+  viewerSaved?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatorPostComment {
+  id: string;
+  postId: string;
+  userId: string;
+  body: string;
+  user: AuthUser | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedCreatorPosts {
+  data: CreatorPost[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
 // api/src/analytics/entities/analytics-event.enums.ts
 export type AnalyticsEventType = "view" | "save" | "contact_click" | "booking_request";
 

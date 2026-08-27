@@ -12,6 +12,12 @@ import { BusinessContent } from "../business-content/entities/business-content.e
 import { Creator } from "../creators/entities/creator.entity";
 import { CreatorPortfolioItem } from "../creators/entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "../creators/entities/creator-offering.entity";
+import { CreatorPost } from "../creators/entities/creator-post.entity";
+import {
+  CreatorPostComment,
+  CreatorPostLike,
+  CreatorPostSave,
+} from "../creators/entities/creator-post-interaction.entity";
 import { Event } from "../events/entities/event.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
@@ -56,6 +62,10 @@ export const AppDataSource = new DataSource({
     Creator,
     CreatorPortfolioItem,
     CreatorOffering,
+    CreatorPost,
+    CreatorPostLike,
+    CreatorPostSave,
+    CreatorPostComment,
     Event,
     Itinerary,
     ItineraryCollaborator,

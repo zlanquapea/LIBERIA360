@@ -22,6 +22,12 @@ import { Business } from "./businesses/entities/business.entity";
 import { BusinessesModule } from "./businesses/businesses.module";
 import { BusinessContentModule } from "./business-content/business-content.module";
 import { Creator } from "./creators/entities/creator.entity";
+import { CreatorPost } from "./creators/entities/creator-post.entity";
+import {
+  CreatorPostComment,
+  CreatorPostLike,
+  CreatorPostSave,
+} from "./creators/entities/creator-post-interaction.entity";
 import { CreatorsModule } from "./creators/creators.module";
 import { Event } from "./events/entities/event.entity";
 import { EventsModule } from "./events/events.module";
@@ -87,6 +93,10 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
             Review,
             Business,
             Creator,
+            CreatorPost,
+            CreatorPostLike,
+            CreatorPostSave,
+            CreatorPostComment,
             Event,
             Itinerary,
             ItineraryCollaborator,

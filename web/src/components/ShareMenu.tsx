@@ -8,7 +8,8 @@ type ShareMenuProps = {
   placeName: string;
   shareUrl?: string;
   variant?: 'circle' | 'action';
-  contentType?: 'place' | 'creator';
+  contentType?: 'place' | 'creator' | 'post';
+  onShare?: () => void;
 };
 
 type ShareItem = {
@@ -18,9 +19,9 @@ type ShareItem = {
   className: string;
 };
 
-export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType = 'place' }: ShareMenuProps) {
+export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType = 'place', onShare }: ShareMenuProps) {
   const [open, setOpen] = useState(false);
-  const contentNoun = contentType === 'creator' ? 'creator' : 'place';
+  const contentNoun = contentType === 'creator' ? 'creator' : contentType === 'post' ? 'post' : 'place';
   const [currentUrl, setCurrentUrl] = useState(shareUrl ?? '');
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -75,6 +76,7 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType
 
   async function copyLink() {
     if (!currentUrl) return;
+    onShare?.();
     try {
       await navigator.clipboard.writeText(currentUrl);
       setStatus('Link copied');
@@ -88,6 +90,7 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType
     if (!currentUrl || !navigator.share) return;
     try {
       await navigator.share({ title: placeName, text: `Check out ${placeName} on LIBERIA360`, url: currentUrl });
+      onShare?.();
       setOpen(false);
     } catch {
       // Closing or cancelling the native sheet is not an error to show the user.
@@ -96,8 +99,8 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType
 
   const actionTrigger =
     variant === 'action'
-      ? 'inline-flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-sky-400 px-3 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400'
-      : 'flex h-12 w-12 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400';
+      ? 'inline-flex min-h-14 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl bg-sky-400 px-2 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400'
+      : 'flex h-12 w-12 min-w-0 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400';
 
   return (
     <div className="relative h-full">
@@ -117,7 +120,7 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType
         <div
           role="menu"
           aria-label={`Share ${placeName}`}
-          className="absolute right-0 top-[4.5rem] z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          className="fixed inset-x-4 bottom-24 z-[100] w-auto max-w-md rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:bottom-auto sm:top-[4.5rem] sm:w-72 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         >
           <div className="flex items-center justify-between gap-3 px-1 pb-3">
             <div>
@@ -142,7 +145,7 @@ export function ShareMenu({ placeName, shareUrl, variant = 'circle', contentType
                 target={label === 'Email' ? undefined : '_blank'}
                 rel={label === 'Email' ? undefined : 'noopener noreferrer'}
                 role="menuitem"
-                onClick={() => setOpen(false)}
+                onClick={() => { onShare?.(); setOpen(false); }}
                 className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-2 py-3 text-center transition-colors hover:border-transparent hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
               >
                 <span className={`flex h-11 w-11 items-center justify-center rounded-full ${className}`}>

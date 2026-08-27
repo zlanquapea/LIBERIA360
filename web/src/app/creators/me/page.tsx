@@ -13,6 +13,7 @@ import { getCounties } from '@/lib/api';
 import { CountySelect } from '@/components/ProfileFields';
 import { SingleImageUploader } from '@/components/SingleImageUploader';
 import { CreatorPortfolioManager } from '@/components/CreatorPortfolioManager';
+import { CreatorPostComposer } from '@/components/CreatorPostComposer';
 import { CreatorOfferingsManager } from '@/components/CreatorOfferingsManager';
 import { AnalyticsSummary } from '@/components/AnalyticsSummary';
 import { CREATOR_CATEGORIES } from '@/lib/creator-categories';
@@ -398,6 +399,7 @@ export default function MyCreatorProfilePage() {
 
       {creator && token && (
         <>
+          <CreatorPostComposer token={token} />
           <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">Portfolio</h2>
             <CreatorPortfolioManager

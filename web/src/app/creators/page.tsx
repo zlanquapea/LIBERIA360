@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { getCounties, getCreators } from '@/lib/api';
+import { getCounties, getCreators, getCreatorFeed } from '@/lib/api';
 import { CreatorCard } from '@/components/CreatorCard';
+import { CreatorFeed } from '@/components/CreatorFeed';
 import { CreatorFilters } from '@/components/CreatorFilters';
 import { SafeImage } from '@/components/SafeImage';
 import { colorForCreator, gradientForCategory } from '@/lib/category-colors';
@@ -26,9 +27,10 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
   const category = first(params.category) as CreatorCategory | undefined;
   const countyId = first(params.countyId);
 
-  const [counties, result] = await Promise.all([
+  const [counties, result, feed] = await Promise.all([
     getCounties(),
     getCreators({ page, limit: 20, search, category, countyId }),
+    getCreatorFeed({ page: 1, limit: 20 }),
   ]);
 
   function pageHref(targetPage: number) {
@@ -126,27 +128,23 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
         </section>
       )}
 
-      <section aria-labelledby="creator-feed-heading" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+      {hasFilters ? (
+        <section aria-labelledby="creator-results-heading" className="flex flex-col gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">Explore the community</p>
-            <h2 id="creator-feed-heading" className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Creator feed</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">Matching profiles</p>
+            <h2 id="creator-results-heading" className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Creator directory</h2>
           </div>
-          {!hasFilters && <span className="text-sm text-slate-500 dark:text-slate-400">Fresh local perspectives</span>}
-        </div>
-
-        {result.data.length === 0 ? (
-          <p className="rounded-3xl border border-dashed border-slate-300 px-4 py-10 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            {hasFilters ? 'No creators match these filters.' : 'No creator profiles yet — be the first.'}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {result.data.map((creator) => (
-              <CreatorCard key={creator.id} creator={creator} />
-            ))}
-          </div>
-        )}
-      </section>
+          {result.data.length === 0 ? (
+            <p className="rounded-3xl border border-dashed border-slate-300 px-4 py-10 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">No creators match these filters.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              {result.data.map((creator) => <CreatorCard key={creator.id} creator={creator} />)}
+            </div>
+          )}
+        </section>
+      ) : (
+        <CreatorFeed initialPosts={feed.data} />
+      )}
 
       {result.meta.totalPages > 1 && (
         <nav aria-label="Creator pages" className="flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-800">
