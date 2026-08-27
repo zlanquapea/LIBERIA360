@@ -5,10 +5,14 @@ import { useState } from "react";
 import {
   BookmarkIcon,
   ChatBubbleOvalLeftIcon,
+  GlobeAltIcon,
   HeartIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import {
+  BookmarkIcon as BookmarkSolidIcon,
+  HeartIcon as HeartSolidIcon,
+} from "@heroicons/react/24/solid";
 import { useAuth } from "@/hooks/useAuth";
 import { HttpError } from "@/lib/http";
 import {
@@ -25,6 +29,18 @@ import { CreatorPostMedia } from "./CreatorPostMedia";
 import { ShareMenu } from "./ShareMenu";
 import { CreatorFollowButton } from "./CreatorFollowButton";
 
+// Feed card redesign (product ask: "full Facebook UI and UX for the
+// creator feed... adjust for our situation"): a recognizable social-feed
+// card shape — caption before media, a timestamp + reach indicator in the
+// header, an engagement summary line, avatars on comments — reassembled
+// from this app's own primitives (heart-based Like, an existing
+// ShareMenu, a bookmark-based Save that this platform treats as a first-
+// class feature) rather than reproducing Facebook's exact iconography
+// (its dual thumbs-up/heart reaction stack, its blue palette, its
+// "Facebook" wordmark) — recognizable as the genre, not a copy of the
+// brand. Save moves out of the primary action row into a corner icon
+// next to the header, Instagram-style, since a 4th button crowded the
+// Like/Comment/Share row this platform's own comment convention expects.
 function timeAgo(value: string): string {
   const date = new Date(value);
   const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
@@ -34,11 +50,50 @@ function timeAgo(value: string): string {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h`;
   const days = Math.round(hours / 24);
-  return `${days}d`;
+  if (days < 7) return `${days}d`;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
 }
 
 function displayName(comment: CreatorPostComment): string {
   return comment.user?.name?.trim() || "LIBERIA360 member";
+}
+
+function commentInitial(comment: CreatorPostComment): string {
+  return displayName(comment).trim().charAt(0).toUpperCase() || "?";
+}
+
+// Caption sits above the media, like a real feed post — long ones clamp
+// to 3 lines with a "See more" toggle rather than pushing the media
+// further down the card.
+function PostCaption({ text }: { text: string | null }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!text) {
+    return (
+      <p className="text-sm italic text-slate-400">
+        Shared a new story from Liberia.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <p
+        className={`whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200 ${expanded ? "" : "line-clamp-3"}`}
+      >
+        {text}
+      </p>
+      {!expanded && text.length > 160 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-0.5 text-sm font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          See more
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function CreatorPostCard({ post }: { post: CreatorPost }) {
@@ -164,12 +219,14 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
     }
   }
 
+  const hasEngagement = likeCount > 0 || commentCount > 0 || shareCount > 0;
+
   return (
     <article
       id={`post-${post.id}`}
       className="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
+      <div className="flex items-start gap-3 px-4 pt-4 sm:px-5">
         <Link
           href={`/creators/${post.creator.username}`}
           className="shrink-0"
@@ -192,21 +249,66 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
           )}
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Link
-              href={`/creators/${post.creator.username}`}
-              className="min-w-0 truncate font-display text-sm font-bold text-slate-950 hover:text-brand-700 dark:text-white dark:hover:text-brand-300 sm:text-base"
-            >
-              {post.creator.name}
-            </Link>
-            <VerificationBadge
-              compact
-              status={
-                post.creator.verificationStatus === "verified"
-                  ? "verified"
-                  : "unverified"
-              }
-            />
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Link
+                  href={`/creators/${post.creator.username}`}
+                  className="min-w-0 truncate font-display text-sm font-bold text-slate-950 hover:text-brand-700 dark:text-white dark:hover:text-brand-300 sm:text-base"
+                >
+                  {post.creator.name}
+                </Link>
+                <VerificationBadge
+                  compact
+                  status={
+                    post.creator.verificationStatus === "verified"
+                      ? "verified"
+                      : "unverified"
+                  }
+                />
+              </div>
+              <div className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time>
+                <span aria-hidden>·</span>
+                <GlobeAltIcon
+                  aria-hidden
+                  className="h-3.5 w-3.5 shrink-0"
+                  title="Public"
+                />
+                <span className="sr-only">Public</span>
+                {post.creator.county && (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">{post.creator.county.name}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {token ? (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={busy === "save"}
+                aria-pressed={saved}
+                aria-label={saved ? "Remove from saved posts" : "Save this post"}
+                className={`shrink-0 rounded-full p-2 transition-colors disabled:opacity-50 ${saved ? "text-brand-700 dark:text-brand-300" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"}`}
+              >
+                {saved ? (
+                  <BookmarkSolidIcon aria-hidden className="h-5 w-5" />
+                ) : (
+                  <BookmarkIcon aria-hidden className="h-5 w-5" />
+                )}
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                aria-label="Log in to save this post"
+                className="shrink-0 rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              >
+                <BookmarkIcon aria-hidden className="h-5 w-5" />
+              </Link>
+            )}
           </div>
           <div className="mt-2">
             <CreatorFollowButton
@@ -218,32 +320,53 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
         </div>
       </div>
 
+      <div className="px-4 pb-3 pt-3 sm:px-5">
+        <PostCaption text={post.caption} />
+      </div>
+
       <CreatorPostMedia post={post} />
 
       <div className="px-4 pb-4 pt-3 sm:px-5">
-        <div className="flex items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
-          <span>
-            {likeCount > 0
-              ? `${likeCount} like${likeCount === 1 ? "" : "s"}`
-              : "Be the first to like this"}
-          </span>
-          <span>
-            {commentCount > 0
-              ? `${commentCount} comment${commentCount === 1 ? "" : "s"}`
-              : "No comments yet"}
-            {shareCount > 0 &&
-              ` · ${shareCount} share${shareCount === 1 ? "" : "s"}`}
-          </span>
-        </div>
+        {hasEngagement && (
+          <div className="flex items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1.5">
+              {likeCount > 0 && (
+                <>
+                  <span
+                    aria-hidden
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white"
+                  >
+                    <HeartSolidIcon aria-hidden className="h-3 w-3" />
+                  </span>
+                  <span>{likeCount}</span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2 truncate">
+              {commentCount > 0 && (
+                <span>
+                  {commentCount} comment{commentCount === 1 ? "" : "s"}
+                </span>
+              )}
+              {shareCount > 0 && (
+                <span>
+                  {shareCount} share{shareCount === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
-        <div className="mt-3 grid grid-cols-4 gap-1 border-y border-slate-100 py-2 dark:border-slate-800">
+        <div
+          className={`grid grid-cols-3 gap-1 py-1 ${hasEngagement ? "mt-2 border-y border-slate-100 dark:border-slate-800" : "border-b border-slate-100 pb-2 dark:border-slate-800"}`}
+        >
           {token ? (
             <button
               type="button"
               onClick={handleLike}
               disabled={busy === "like"}
               aria-pressed={liked}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${liked ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"}`}
+              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${liked ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"}`}
             >
               {liked ? (
                 <HeartSolidIcon aria-hidden className="h-5 w-5" />
@@ -255,7 +378,7 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
           ) : (
             <Link
               href="/login"
-              className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               <HeartIcon aria-hidden className="h-5 w-5" />
               <span className="truncate">Like</span>
@@ -265,47 +388,19 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
             type="button"
             onClick={toggleComments}
             aria-expanded={commentsOpen}
-            className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             <ChatBubbleOvalLeftIcon aria-hidden className="h-5 w-5" />
             <span className="truncate">Comment</span>
           </button>
-          {token ? (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={busy === "save"}
-              aria-pressed={saved}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${saved ? "text-brand-700 dark:text-brand-300" : "text-slate-600 dark:text-slate-300"}`}
-            >
-              <BookmarkIcon aria-hidden className="h-5 w-5" />
-              <span className="truncate">Save</span>
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <BookmarkIcon aria-hidden className="h-5 w-5" />
-              <span className="truncate">Save</span>
-            </Link>
-          )}
           <ShareMenu
             placeName={post.creator.name}
             shareUrl={shareUrl}
             contentType="post"
-            variant="circle"
+            variant="feed"
             onShare={handleShare}
           />
         </div>
-
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200">
-          {post.caption || (
-            <span className="italic text-slate-400">
-              Shared a new story from Liberia.
-            </span>
-          )}
-        </p>
 
         {commentsOpen && (
           <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
@@ -315,6 +410,12 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
               <div className="space-y-3">
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex items-start gap-2">
+                    <span
+                      aria-hidden
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                    >
+                      {commentInitial(comment)}
+                    </span>
                     <div className="min-w-0 flex-1 rounded-2xl bg-slate-50 px-3 py-2 dark:bg-slate-800">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
@@ -335,7 +436,7 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
                       <button
                         type="button"
                         onClick={() => deleteComment(comment.id)}
-                        className="rounded-full p-1 text-slate-400 hover:text-rose-600"
+                        className="mt-0.5 rounded-full p-1 text-slate-400 hover:text-rose-600"
                         aria-label="Delete comment"
                       >
                         <TrashIcon aria-hidden className="h-4 w-4" />
@@ -349,9 +450,15 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
                 No comments yet. Start the conversation.
               </p>
             )}
-            <div className="mt-3 flex items-end gap-2">
+            <div className="mt-3 flex items-start gap-2">
               {token ? (
                 <>
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                  >
+                    {(user?.name?.trim().charAt(0) || "?").toUpperCase()}
+                  </span>
                   <textarea
                     value={commentBody}
                     onChange={(event) => setCommentBody(event.target.value)}
@@ -364,7 +471,7 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
                     type="button"
                     onClick={submitComment}
                     disabled={submittingComment || !commentBody.trim()}
-                    className="min-h-11 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
+                    className="min-h-11 shrink-0 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     {submittingComment ? "Posting…" : "Post"}
                   </button>

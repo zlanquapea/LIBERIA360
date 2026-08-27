@@ -18,7 +18,11 @@ import {
 type ShareMenuProps = {
   placeName: string;
   shareUrl?: string;
-  variant?: "circle" | "action";
+  // "feed" matches a plain-text icon+label button (this platform's own
+  // Like/Comment button recipe) — for a feed action row where "action"'s
+  // filled sky-blue pill or "circle"'s solid brand button would stick out
+  // next to two minimal-styled siblings.
+  variant?: "circle" | "action" | "feed";
   contentType?: "place" | "creator" | "post" | "event";
   onShare?: () => void;
 };
@@ -132,7 +136,9 @@ export function ShareMenu({
   const actionTrigger =
     variant === "action"
       ? "inline-flex min-h-14 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl bg-sky-400 px-2 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
-      : "flex h-12 w-12 min-w-0 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
+      : variant === "feed"
+        ? "flex min-h-11 min-w-0 w-full items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+        : "flex h-12 w-12 min-w-0 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400";
 
   return (
     <div className="relative h-full">
@@ -146,9 +152,9 @@ export function ShareMenu({
       >
         <ArrowUturnRightIcon
           aria-hidden
-          className={variant === "action" ? "h-5 w-5" : "h-6 w-6"}
+          className={variant === "circle" ? "h-6 w-6" : "h-5 w-5"}
         />
-        {variant === "action" && "Share"}
+        {(variant === "action" || variant === "feed") && "Share"}
       </button>
 
       {open && (
