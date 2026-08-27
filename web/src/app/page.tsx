@@ -73,6 +73,20 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // bit of brand signature without a stock photo. Near Me/Explore Map keep
 // their elevated co-primary spot per the review-readout pass above — they
 // gained the room the search input used to take instead of losing it.
+//
+// Events re-ordering + motion cleanup (Aug 27, 2026): product feedback —
+// "the event area should be the last section of the home page" (reversing
+// the "Events visibility fix" placement above, now that the hero and the
+// sections above it carry enough of their own discovery weight) and
+// "remove this animation that's looking like breathing, it's not really
+// professional" — the hero's bottom-left glow blob used `animate-float`,
+// a slow infinite translateY drift shared with the splash screen's logo;
+// fine as a one-time loading flourish, but looping indefinitely behind
+// the page's primary content read as an unintentional distraction rather
+// than a design choice. Dropped the animation and kept the blob itself
+// (still a static soft-light accent, matching its top-right sibling,
+// which was never animated). EventCarousel keeps its exact carousel
+// mechanism — only its position in the page changed.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
@@ -133,7 +147,7 @@ export default async function Home() {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-6 -left-8 h-28 w-28 animate-float rounded-full bg-accent-400/20 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
+          className="pointer-events-none absolute -bottom-6 -left-8 h-28 w-28 rounded-full bg-accent-400/20 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
         />
         {/* Stylized night skyline standing in for the mock-up's photo — see
             the layout-pass note above for why there's no stock image here. */}
@@ -337,8 +351,6 @@ export default async function Home() {
           </div>
         </section>
 
-        <EventCarousel events={upcomingEvents.data} />
-
         <Link
           href="/places/submit"
           className="group flex items-center gap-4 rounded-3xl border border-dashed border-brand-300 bg-white p-4 text-brand-900 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card-hover dark:border-brand-700 dark:bg-slate-900 dark:text-slate-50"
@@ -413,6 +425,8 @@ export default async function Home() {
             />
           </Link>
         </div>
+
+        <EventCarousel events={upcomingEvents.data} />
       </div>
     </main>
   );
