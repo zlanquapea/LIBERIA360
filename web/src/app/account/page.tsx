@@ -102,6 +102,13 @@ export default function AccountPage() {
       <PushNotificationToggle />
 
       <Link
+        href="/saved"
+        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
+      >
+        Saved places
+      </Link>
+
+      <Link
         href="/trips"
         className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
       >
