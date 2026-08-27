@@ -56,13 +56,13 @@ export default async function CreatorsPage({
   const railCreators = result.data.slice(0, 5);
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 pb-12 sm:px-6 lg:px-10 lg:py-8">
+    <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 pb-12 sm:gap-6 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-5">
         <CreatorDirectoryHeader />
 
         <nav
           aria-label="Creator sections"
-          className="grid grid-cols-3 rounded-2xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900"
+          className="grid grid-cols-3 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >
           <Link
             href={pageHref(1)}
@@ -92,7 +92,33 @@ export default async function CreatorsPage({
       ) : (
         <>
           {(isDirectory || hasFilters) && (
-            <CreatorFilters counties={counties} />
+            <section
+              aria-labelledby="creator-directory-filters"
+              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+            >
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+                    Find your creator
+                  </p>
+                  <h2
+                    id="creator-directory-filters"
+                    className="mt-1 font-display text-xl font-bold text-slate-950 dark:text-slate-50"
+                  >
+                    Search the community
+                  </h2>
+                </div>
+                {hasFilters && (
+                  <Link
+                    href="/creators?view=directory"
+                    className="shrink-0 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                  >
+                    Clear filters
+                  </Link>
+                )}
+              </div>
+              <CreatorFilters counties={counties} />
+            </section>
           )}
 
           {!isDirectory && !hasFilters && railCreators.length > 0 && (
@@ -168,23 +194,28 @@ export default async function CreatorsPage({
               aria-labelledby="creator-results-heading"
               className="flex flex-col gap-3"
             >
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-                  Matching profiles
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+                    Directory
+                  </p>
+                  <h2
+                    id="creator-results-heading"
+                    className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50"
+                  >
+                    Creators to explore
+                  </h2>
+                </div>
+                <p className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                  {result.meta.total.toLocaleString()} profiles
                 </p>
-                <h2
-                  id="creator-results-heading"
-                  className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50"
-                >
-                  Creator directory
-                </h2>
               </div>
               {result.data.length === 0 ? (
                 <p className="rounded-3xl border border-dashed border-slate-300 px-4 py-10 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
                   No creators match these filters.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {result.data.map((creator) => (
                     <CreatorCard key={creator.id} creator={creator} />
                   ))}
