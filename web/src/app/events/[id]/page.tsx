@@ -1,20 +1,25 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { CalendarDaysIcon, MapPinIcon } from '@heroicons/react/24/outline';
-import { ApiError, getEvent } from '@/lib/api';
-import { formatEventCategory, formatEventDateRange } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
-import { JsonLd } from '@/components/JsonLd';
-import { eventJsonLd } from '@/lib/structured-data';
-import { ReportButton } from '@/components/ReportButton';
-import { EventOwnerActions } from '@/components/EventOwnerActions';
-import { SafeImage } from '@/components/SafeImage';
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { CalendarDaysIcon, MapPinIcon } from "@heroicons/react/24/outline";
+import { ApiError, getEvent } from "@/lib/api";
+import { formatEventCategory, formatEventDateRange } from "@/lib/format";
+import { resolveImageUrl } from "@/lib/images";
+import { JsonLd } from "@/components/JsonLd";
+import { eventJsonLd } from "@/lib/structured-data";
+import { ReportButton } from "@/components/ReportButton";
+import { EventOwnerActions } from "@/components/EventOwnerActions";
+import { SafeImage } from "@/components/SafeImage";
+import { EventViewTracker } from "@/components/EventViewTracker";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const event = await getEvent(id).catch(() => null);
   if (!event) {
-    return { title: 'Event — LIBERIA360' };
+    return { title: "Event — LIBERIA360" };
   }
   return {
     title: `${event.name} — LIBERIA360 Events`,
@@ -22,7 +27,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EventDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
 
   const event = await getEvent(id).catch((error) => {
@@ -38,6 +47,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
       <JsonLd data={eventJsonLd(event)} />
+      <EventViewTracker event={event} />
 
       {gallery.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -47,7 +57,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               src={img}
               alt={`${event.name} photo`}
               className="aspect-square w-full rounded-lg object-cover"
-              fallback={<div aria-hidden className="aspect-square w-full rounded-lg bg-slate-200 dark:bg-slate-700" />}
+              fallback={
+                <div
+                  aria-hidden
+                  className="aspect-square w-full rounded-lg bg-slate-200 dark:bg-slate-700"
+                />
+              }
             />
           ))}
         </div>
@@ -57,40 +72,61 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         {formatEventCategory(event.category)}
       </span>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{event.name}</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
+        {event.name}
+      </h1>
 
       <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
         <p className="flex items-center gap-1.5">
-          <CalendarDaysIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
+          <CalendarDaysIcon
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300"
+          />
           {formatEventDateRange(event.startDate, event.endDate)}
         </p>
         <p className="flex items-center gap-1.5">
-          <MapPinIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
+          <MapPinIcon
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300"
+          />
           {event.place ? (
-            <Link href={`/places/${event.place.slug}`} className="text-brand-700 dark:text-brand-300 hover:underline">
+            <Link
+              href={`/places/${event.place.slug}`}
+              className="text-brand-700 dark:text-brand-300 hover:underline"
+            >
               {event.place.name}
             </Link>
           ) : (
             event.locationText
-          )}{' '}
+          )}{" "}
           · {event.county.name} County
         </p>
       </div>
 
       <EventOwnerActions event={event} />
 
-      {event.description && <p className="text-slate-700 dark:text-slate-200">{event.description}</p>}
+      {event.description && (
+        <p className="text-slate-700 dark:text-slate-200">
+          {event.description}
+        </p>
+      )}
 
       {event.ticketInfo && (
         <section className="flex flex-col gap-1 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Tickets</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300">{event.ticketInfo}</p>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+            Tickets
+          </h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {event.ticketInfo}
+          </p>
         </section>
       )}
 
       <div className="flex items-center justify-between gap-2">
         {event.createdBy ? (
-          <p className="text-xs text-slate-400 dark:text-slate-400">Posted by {event.createdBy.name}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-400">
+            Posted by {event.createdBy.name}
+          </p>
         ) : (
           <span />
         )}

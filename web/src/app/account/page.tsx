@@ -1,19 +1,25 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
-import { StarIcon } from '@heroicons/react/24/solid';
-import { useAuth } from '@/hooks/useAuth';
-import { PushNotificationToggle } from '@/components/PushNotificationToggle';
-import { TwoFactorSettings } from '@/components/TwoFactorSettings';
-import { AccountSecurity } from '@/components/AccountSecurity';
-import { EmailVerificationBanner } from '@/components/EmailVerificationBanner';
-import { CountySelect, InterestChips, TravelerTypeSelect } from '@/components/ProfileFields';
-import { getCategories, getCounties } from '@/lib/api';
-import { formatTravelerType } from '@/lib/format';
-import { HttpError } from '@/lib/http';
-import type { AuthUser, Category, County, TravelerType } from '@/lib/types';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { StarIcon } from "@heroicons/react/24/solid";
+import { BookmarkIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+import { AccountSecurity } from "@/components/AccountSecurity";
+import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import {
+  CountySelect,
+  InterestChips,
+  TravelerTypeSelect,
+} from "@/components/ProfileFields";
+import { getCategories, getCounties } from "@/lib/api";
+import { formatTravelerType } from "@/lib/format";
+import { HttpError } from "@/lib/http";
+import type { AuthUser, Category, County, TravelerType } from "@/lib/types";
 
 // Account screen — shows the signed-in profile, or prompts to log in.
 // No server-side gate: auth state lives in localStorage (see auth-storage.ts),
@@ -33,8 +39,12 @@ export default function AccountPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">You&apos;re not logged in</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to save trips, write reviews, and claim your business.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          You&apos;re not logged in
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Log in to save trips, write reviews, and claim your business.
+        </p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -47,48 +57,86 @@ export default function AccountPage() {
 
   function handleLogout() {
     logout();
-    router.push('/');
+    router.push("/");
   }
 
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
       <div className="flex items-center gap-4">
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-700 text-xl font-semibold text-white">
-          {user.name.trim().charAt(0).toUpperCase() || '?'}
+          {user.name.trim().charAt(0).toUpperCase() || "?"}
         </span>
         <div>
-          <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">{user.name}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+          <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">
+            {user.name}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {user.email}
+          </p>
         </div>
       </div>
+
+      <Link
+        href="/saved"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-brand-900 hover:border-brand-400 hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-900 dark:bg-brand-950/30 dark:text-brand-100 dark:hover:bg-brand-950/50"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white">
+            <BookmarkIcon aria-hidden className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">Saved places</span>
+            <span className="mt-0.5 block truncate text-xs text-slate-600 dark:text-slate-300">
+              Return to destinations saved on this device.
+            </span>
+          </span>
+        </span>
+        <ChevronRightIcon
+          aria-hidden
+          className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
+        />
+      </Link>
+
+      <RecentlyViewedSection />
 
       <EmailVerificationBanner />
 
       <dl className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
         <div className="flex justify-between px-4 py-3">
           <dt className="text-slate-500 dark:text-slate-400">Home county</dt>
-          <dd className="font-medium text-slate-900 dark:text-slate-50">{user.homeCounty?.name ?? 'Not set'}</dd>
+          <dd className="font-medium text-slate-900 dark:text-slate-50">
+            {user.homeCounty?.name ?? "Not set"}
+          </dd>
         </div>
         <div className="flex justify-between px-4 py-3">
           <dt className="text-slate-500 dark:text-slate-400">Traveler type</dt>
           <dd className="font-medium text-slate-900 dark:text-slate-50">
-            {user.travelerType ? formatTravelerType(user.travelerType) : 'Not set'}
+            {user.travelerType
+              ? formatTravelerType(user.travelerType)
+              : "Not set"}
           </dd>
         </div>
         <div className="flex flex-col gap-1.5 px-4 py-3">
           <dt className="text-slate-500 dark:text-slate-400">Interests</dt>
           <dd>
             {user.interests.length === 0 ? (
-              <span className="font-medium text-slate-900 dark:text-slate-50">Not set</span>
+              <span className="font-medium text-slate-900 dark:text-slate-50">
+                Not set
+              </span>
             ) : (
-              <span className="text-slate-700 dark:text-slate-200">{user.interests.join(', ')}</span>
+              <span className="text-slate-700 dark:text-slate-200">
+                {user.interests.join(", ")}
+              </span>
             )}
           </dd>
         </div>
         <div className="flex justify-between px-4 py-3">
           <dt className="text-slate-500 dark:text-slate-400">Member since</dt>
           <dd className="font-medium text-slate-900 dark:text-slate-50">
-            {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {new Date(user.createdAt).toLocaleDateString("en-US", {
+              month: "long",
+              year: "numeric",
+            })}
           </dd>
         </div>
       </dl>
@@ -100,13 +148,6 @@ export default function AccountPage() {
       <AccountSecurity />
 
       <PushNotificationToggle />
-
-      <Link
-        href="/saved"
-        className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        Saved places
-      </Link>
 
       <Link
         href="/trips"
@@ -206,9 +247,11 @@ export default function AccountPage() {
 function ProfileEditor({ user }: { user: AuthUser }) {
   const { updateProfile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [travelerType, setTravelerType] = useState<TravelerType | ''>(user.travelerType ?? '');
+  const [travelerType, setTravelerType] = useState<TravelerType | "">(
+    user.travelerType ?? "",
+  );
   const [interests, setInterests] = useState<string[]>(user.interests ?? []);
-  const [homeCountyId, setHomeCountyId] = useState(user.homeCounty?.id ?? '');
+  const [homeCountyId, setHomeCountyId] = useState(user.homeCounty?.id ?? "");
   const [categories, setCategories] = useState<Category[]>([]);
   const [counties, setCounties] = useState<County[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -225,7 +268,9 @@ function ProfileEditor({ user }: { user: AuthUser }) {
   }, [open, categories.length, counties.length]);
 
   function toggleInterest(slug: string) {
-    setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+    setInterests((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
+    );
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -242,7 +287,11 @@ function ProfileEditor({ user }: { user: AuthUser }) {
       setSuccess(true);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(
+        err instanceof HttpError
+          ? err.message
+          : "Something went wrong. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -258,13 +307,20 @@ function ProfileEditor({ user }: { user: AuthUser }) {
         >
           Edit traveler type &amp; interests
         </button>
-        {success && <p className="text-xs text-emerald-700 dark:text-emerald-300">Saved.</p>}
+        {success && (
+          <p className="text-xs text-emerald-700 dark:text-emerald-300">
+            Saved.
+          </p>
+        )}
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
+    >
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Traveler type
         <TravelerTypeSelect value={travelerType} onChange={setTravelerType} />
@@ -272,17 +328,30 @@ function ProfileEditor({ user }: { user: AuthUser }) {
       {counties.length > 0 && (
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Home county
-          <CountySelect value={homeCountyId} onChange={setHomeCountyId} counties={counties} />
+          <CountySelect
+            value={homeCountyId}
+            onChange={setHomeCountyId}
+            counties={counties}
+          />
         </label>
       )}
       {categories.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Interests</p>
-          <InterestChips categories={categories} selected={interests} onToggle={toggleInterest} />
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Interests
+          </p>
+          <InterestChips
+            categories={categories}
+            selected={interests}
+            onToggle={toggleInterest}
+          />
         </div>
       )}
       {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
+        <p
+          role="alert"
+          className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300"
+        >
           {error}
         </p>
       )}
@@ -292,7 +361,7 @@ function ProfileEditor({ user }: { user: AuthUser }) {
           disabled={submitting}
           className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
         >
-          {submitting ? 'Saving…' : 'Save'}
+          {submitting ? "Saving…" : "Save"}
         </button>
         <button
           type="button"

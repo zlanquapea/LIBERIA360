@@ -234,7 +234,7 @@ export default async function CreatorProfilePage({
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-5 bg-slate-50/60 px-4 pb-12 sm:px-6 lg:px-8 dark:bg-slate-950/20">
       <JsonLd data={creatorJsonLd(creator)} />
-      <CreatorViewTracker creatorId={creator.id} />
+      <CreatorViewTracker creator={creator} />
 
       <section className="overflow-hidden rounded-b-[2rem] border-x border-b border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
         <div className="relative h-48 overflow-hidden sm:h-64">
