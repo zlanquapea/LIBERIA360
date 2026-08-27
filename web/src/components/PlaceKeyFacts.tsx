@@ -147,7 +147,11 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
             (shows a "manage" message instead) and for a logged-out visitor
             (shows a login prompt), so this is safe to render unconditionally
             whenever there's a business to book with. */}
-        {effectiveBusiness && <BookingRequestSection business={effectiveBusiness} />}
+        {effectiveBusiness && (
+          <div className="col-span-2 sm:col-span-1">
+            <BookingRequestSection business={effectiveBusiness} />
+          </div>
+        )}
       </div>
 
       {amenities.length > 0 && (

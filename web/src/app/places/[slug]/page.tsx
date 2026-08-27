@@ -8,6 +8,7 @@ import { VerificationBadge } from '@/components/VerificationBadge';
 import { PlaceGallery } from '@/components/PlaceGallery';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { PlaceKeyFacts } from '@/components/PlaceKeyFacts';
+import { ShareMenu } from '@/components/ShareMenu';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { BusinessClaimSection } from '@/components/BusinessClaimSection';
 import { PlaceViewTracker } from '@/components/PlaceViewTracker';
@@ -84,8 +85,11 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <header className="flex flex-col gap-3 rounded-3xl bg-white p-4 shadow-card dark:bg-slate-900 sm:p-6">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">{place.name}</h1>
-          <VerificationBadge status={place.verificationStatus} />
+          <h1 className="min-w-0 font-display text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">{place.name}</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            <VerificationBadge status={place.verificationStatus} />
+            <ShareMenu placeName={place.name} />
+          </div>
         </div>
         <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           {formatPlaceType(place.type)} · {place.city}, {place.county.name} County

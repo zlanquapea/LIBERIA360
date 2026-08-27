@@ -91,10 +91,12 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
   if (!user) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/login" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          Log in
-        </Link>{' '}
-        to request a booking.
+        <Link
+          href="/login"
+          className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+        >
+          Log in to request a booking
+        </Link>
       </p>
     );
   }
@@ -104,7 +106,7 @@ export function BookingRequestSection({ business, creator }: { business?: Busine
       <button
         type="button"
         onClick={() => setShowForm(true)}
-        className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+        className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
       >
         Request to book
       </button>
