@@ -6,11 +6,9 @@ import { resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon } from '@/lib/icons';
 import { SafeImage } from './SafeImage';
 
-// Destination profile hero. Real photos are the point — a traveler
-// deciding on a hotel wants to see the room and the pool, not a category
-// icon — but plenty of listings genuinely have no photos yet (freshly
-// seeded, not yet claimed), so this falls back to the existing
-// gradient+icon placeholder rather than showing an empty box.
+// Place-detail gallery. The layout is intentionally shared only by place
+// profiles: large rounded media first, then a compact selectable thumbnail
+// strip. It never invents a featured label or substitute business imagery.
 export function PlaceGallery({
   images,
   categorySlug,
@@ -28,35 +26,47 @@ export function PlaceGallery({
     return (
       <div
         aria-hidden
-        className="flex h-40 items-center justify-center rounded-2xl text-6xl"
+        className="flex min-h-72 items-center justify-center rounded-[2rem] bg-slate-100 text-6xl dark:bg-slate-800 sm:min-h-[30rem]"
         style={{ backgroundImage: gradientForCategory(categorySlug) }}
       >
-        <CategoryIcon iconKey={categoryIcon} categorySlug={categorySlug} className="h-14 w-14 text-white/90" />
+        <CategoryIcon iconKey={categoryIcon} categorySlug={categorySlug} className="h-16 w-16 text-white/90" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800">
+    <div className="flex flex-col gap-3">
+      <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-800">
         <SafeImage
           src={images[active]}
           alt={alt}
           loading="eager"
-          className="h-64 w-full object-cover sm:h-80"
+          className="h-72 w-full object-cover sm:h-[30rem]"
           fallback={
             <div
               aria-hidden
-              className="flex h-64 items-center justify-center text-6xl sm:h-80"
+              className="flex h-72 items-center justify-center text-6xl sm:h-[30rem]"
               style={{ backgroundImage: gradientForCategory(categorySlug) }}
             >
-              <CategoryIcon iconKey={categoryIcon} categorySlug={categorySlug} className="h-14 w-14 text-white/90" />
+              <CategoryIcon iconKey={categoryIcon} categorySlug={categorySlug} className="h-16 w-16 text-white/90" />
             </div>
           }
         />
+        {images.length > 1 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+            {images.map((image, index) => (
+              <span
+                key={image}
+                aria-hidden
+                className={`h-2.5 w-2.5 rounded-full border border-white/80 ${index === active ? 'bg-white' : 'bg-white/45'}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {images.map((img, i) => (
             <button
               key={img}
@@ -64,7 +74,7 @@ export function PlaceGallery({
               onClick={() => setActive(i)}
               aria-label={`Show photo ${i + 1} of ${images.length}`}
               aria-current={i === active}
-              className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${
+              className={`h-16 w-20 shrink-0 overflow-hidden rounded-2xl border-2 bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:h-20 sm:w-24 ${
                 i === active ? 'border-brand-600' : 'border-transparent'
               }`}
             >

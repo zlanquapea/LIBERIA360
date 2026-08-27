@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { listBusinessesAdmin, setBusinessReviewStatus } from '@/lib/admin-api';
+import { listBusinessesAdmin, setBusinessReviewStatus, setBusinessVerification } from '@/lib/admin-api';
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
 import { inputClass, TabListHeader } from './content-shared';
 import { VerificationBadge } from '@/components/VerificationBadge';
-import type { Business, BusinessReviewStatus } from '@/lib/types';
+import type { Business, BusinessReviewStatus, VerificationStatus } from '@/lib/types';
 
 const PAGE_SIZE = 20;
 
@@ -29,6 +29,15 @@ const REVIEW_STATUS_BADGE: Record<BusinessReviewStatus, string> = {
   rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
   suspended: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
 };
+
+const VERIFICATION_OPTIONS: { id: VerificationStatus; label: string }[] = [
+  { id: 'unverified', label: 'No badge' },
+  { id: 'verified', label: 'Verified' },
+  { id: 'recommended', label: 'Recommended' },
+  { id: 'official', label: 'Official' },
+  { id: 'eco_certified', label: 'Eco Certified' },
+  { id: 'community_favorite', label: 'Community Favorite' },
+];
 
 // Content > Businesses — the "Business Management" area: every business
 // regardless of review status (unlike the public directory), with the
@@ -134,6 +143,7 @@ export function BusinessesTab({ token }: { token: string }) {
                 <p className="text-xs italic text-slate-500 dark:text-slate-400">Note: {business.rejectionReason}</p>
               )}
               <ReviewStatusControl token={token} business={business} onUpdated={updateInList} />
+              <VerificationControl token={token} business={business} onUpdated={updateInList} />
             </li>
           ))}
         </ul>
@@ -245,6 +255,65 @@ function ReviewStatusControl({
         />
       )}
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+    </div>
+  );
+}
+
+
+function VerificationControl({
+  token,
+  business,
+  onUpdated,
+}: {
+  token: string;
+  business: Business;
+  onUpdated: (business: Business) => void;
+}) {
+  const [status, setStatus] = useState<VerificationStatus>(business.verificationStatus);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (status === business.verificationStatus) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const updated = await setBusinessVerification(token, business.id, status);
+      onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+      <label className="text-xs font-medium text-slate-500 dark:text-slate-400" htmlFor={`verification-${business.id}`}>
+        Public badge
+      </label>
+      <select
+        id={`verification-${business.id}`}
+        aria-label={`Public verification badge for ${business.name}`}
+        value={status}
+        onChange={(e) => setStatus(e.target.value as VerificationStatus)}
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+      >
+        {VERIFICATION_OPTIONS.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        disabled={submitting || status === business.verificationStatus}
+        onClick={apply}
+        className="rounded-full border border-brand-600 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 dark:border-brand-400 dark:text-brand-300 dark:hover:bg-brand-950/30 dark:disabled:border-slate-700 dark:disabled:text-slate-600"
+      >
+        {submitting ? 'Saving…' : 'Save badge'}
+      </button>
+      {error && <p role="alert" className="basis-full text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }

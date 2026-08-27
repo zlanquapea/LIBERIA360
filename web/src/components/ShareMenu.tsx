@@ -13,6 +13,7 @@ import {
 type ShareMenuProps = {
   placeName: string;
   shareUrl?: string;
+  variant?: 'circle' | 'action';
 };
 
 type ShareItem = {
@@ -22,7 +23,7 @@ type ShareItem = {
   className: string;
 };
 
-export function ShareMenu({ placeName, shareUrl }: ShareMenuProps) {
+export function ShareMenu({ placeName, shareUrl, variant = 'circle' }: ShareMenuProps) {
   const [open, setOpen] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(shareUrl ?? '');
   const [canNativeShare, setCanNativeShare] = useState(false);
@@ -97,24 +98,30 @@ export function ShareMenu({ placeName, shareUrl }: ShareMenuProps) {
     }
   }
 
+  const actionTrigger =
+    variant === 'action'
+      ? 'inline-flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl bg-sky-400 px-3 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400'
+      : 'flex h-12 w-12 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400';
+
   return (
-    <div className="relative">
+    <div className="relative h-full">
       <button
         type="button"
         aria-label={`Share ${placeName}`}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+        className={actionTrigger}
       >
-        <ShareIcon aria-hidden className="h-6 w-6" />
+        <ShareIcon aria-hidden className={variant === 'action' ? 'h-5 w-5' : 'h-6 w-6'} />
+        {variant === 'action' && 'Share'}
       </button>
 
       {open && (
         <div
           role="menu"
           aria-label={`Share ${placeName}`}
-          className="absolute right-0 top-14 z-40 w-72 rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          className="absolute right-0 top-[4.5rem] z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         >
           <div className="flex items-center justify-between gap-3 px-1 pb-3">
             <div>

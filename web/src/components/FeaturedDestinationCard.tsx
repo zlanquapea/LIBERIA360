@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { ChevronRightIcon } from '@heroicons/react/24/solid';
-import type { Place } from '@/lib/types';
+import type { Place, VerificationStatus } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { resolveImageUrl } from '@/lib/images';
 import { CategoryIcon } from '@/lib/icons';
 import { SafeImage } from './SafeImage';
+import { VerificationBadge } from './VerificationBadge';
 
 // Home's single spotlight banner — one paid "featured" placement
 // (SponsoredPlacement), picked at random from every currently active one
@@ -18,7 +19,7 @@ import { SafeImage } from './SafeImage';
 // weekend" banner elsewhere on this page) — the "Explore" pill is a
 // decorative `<span>`, not a nested `<button>`, so there's no invalid
 // button-inside-anchor markup.
-export function FeaturedDestinationCard({ place }: { place: Place }) {
+export function FeaturedDestinationCard({ place, verificationStatus }: { place: Place; verificationStatus?: VerificationStatus }) {
   const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
 
   return (
@@ -42,7 +43,10 @@ export function FeaturedDestinationCard({ place }: { place: Place }) {
       />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-4 text-white">
-        <h3 className="font-display text-xl font-bold leading-tight sm:text-2xl">{place.name}</h3>
+        <h3 className="flex flex-wrap items-center gap-2 font-display text-xl font-bold leading-tight sm:text-2xl">
+          <span>{place.name}</span>
+          <VerificationBadge status={verificationStatus ?? place.verificationStatus} />
+        </h3>
         <p className="line-clamp-2 text-sm text-white/85">{place.description}</p>
         <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors group-hover:bg-emerald-700">
           Explore
