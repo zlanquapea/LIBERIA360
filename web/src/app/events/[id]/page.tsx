@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDaysIcon, MapPinIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowLeftIcon,
+  CalendarDaysIcon,
+  MapPinIcon,
+} from "@heroicons/react/24/outline";
 import { ApiError, getEvent } from "@/lib/api";
 import { formatEventCategory, formatEventDateRange } from "@/lib/format";
 import { resolveImageUrl } from "@/lib/images";
@@ -10,6 +14,7 @@ import { ReportButton } from "@/components/ReportButton";
 import { EventOwnerActions } from "@/components/EventOwnerActions";
 import { SafeImage } from "@/components/SafeImage";
 import { EventViewTracker } from "@/components/EventViewTracker";
+import { ShareMenu } from "@/components/ShareMenu";
 
 export async function generateMetadata({
   params,
@@ -46,6 +51,16 @@ export default async function EventDetailPage({
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/events"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-brand-300 dark:hover:bg-brand-950/30"
+        >
+          <ArrowLeftIcon aria-hidden className="h-4 w-4" />
+          All events
+        </Link>
+        <ShareMenu placeName={event.name} contentType="event" />
+      </div>
       <JsonLd data={eventJsonLd(event)} />
       <EventViewTracker event={event} />
 
