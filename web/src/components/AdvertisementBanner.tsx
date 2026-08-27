@@ -1,18 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { MegaphoneIcon } from '@heroicons/react/24/outline';
 import { AdvertisementCard } from './AdvertisementCard';
 import type { Advertisement } from '@/lib/types';
 
-// Strategic placement wrapper — a horizontal-scroll carousel of ad cards
-// (see AdvertisementCard), same shelf pattern as "Featured this week" on
-// this page, rather than a vertical stack of full-width banners: with
-// many advertisers running at once, a stack would make the page
+// Strategic placement wrapper — a snap-scrolling carousel of full-bleed ad
+// slides (see AdvertisementCard), same shelf pattern as "Featured this
+// week" on this page, rather than a vertical stack of full-width banners:
+// with many advertisers running at once, a stack would make the page
 // increasingly long, while a carousel scales to any number of ads without
 // growing the page. Dropped between organic content sections rather than
 // above the fold, so it reads as a supplement to discovery rather than
 // competing with it.
+//
+// `snap-x snap-mandatory` on the track makes a drag/swipe settle on
+// exactly one slide instead of stopping at an arbitrary scroll offset —
+// what makes a horizontally-scrollable div actually feel like a carousel
+// rather than a viewport onto a long strip. The arrow buttons and dot
+// indicators are the same affordance for anyone not dragging (desktop
+// mouse users, screen-reader/keyboard users tabbing to a button instead of
+// a swipe gesture); both just point-and-click through the same scroll
+// container rather than keeping separate "which slide is showing" state,
+// so the two navigation methods can never disagree.
 //
 // Each card is dismissible for the current page view only — NOT persisted
 // across reloads/visits (previously written to localStorage, so a single
@@ -24,13 +35,61 @@ import type { Advertisement } from '@/lib/types';
 // existed or been dismissed (no empty "Sponsored" shelf).
 export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const cardEls = useRef<(HTMLDivElement | null)[]>([]);
 
   function dismiss(id: string) {
     setDismissed((prev) => [...prev, id]);
   }
 
   const visible = ads.filter((ad) => !dismissed.includes(ad.id));
+
+  // Tracks which slide is currently centered in the scroll container so
+  // the dot indicator stays in sync whether the visitor got there by
+  // dragging, an arrow click, or a dot click — all three just move the
+  // same scrollLeft, this just reads it back.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || visible.length === 0) return;
+
+    let raf = 0;
+    function updateActive() {
+      const trackEl = trackRef.current;
+      if (!trackEl) return;
+      const center = trackEl.scrollLeft + trackEl.clientWidth / 2;
+      let closest = 0;
+      let closestDistance = Infinity;
+      cardEls.current.forEach((el, i) => {
+        if (!el) return;
+        const distance = Math.abs(el.offsetLeft + el.offsetWidth / 2 - center);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closest = i;
+        }
+      });
+      setActiveIndex(closest);
+    }
+    function onScroll() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateActive);
+    }
+
+    track.addEventListener('scroll', onScroll, { passive: true });
+    updateActive();
+    return () => {
+      track.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [visible.length]);
+
   if (visible.length === 0) return null;
+
+  function scrollToIndex(index: number) {
+    const count = visible.length;
+    const target = ((index % count) + count) % count;
+    cardEls.current[target]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
 
   return (
     <section aria-labelledby="sponsored-heading" className="flex flex-col gap-3">
@@ -41,11 +100,62 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
         <MegaphoneIcon aria-hidden className="h-5 w-5 text-slate-400 dark:text-slate-500" />
         Sponsored
       </h2>
-      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-        {visible.map((ad) => (
-          <AdvertisementCard key={ad.id} ad={ad} onDismiss={() => dismiss(ad.id)} />
-        ))}
+
+      <div className="relative">
+        <div
+          ref={trackRef}
+          className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {visible.map((ad, i) => (
+            <AdvertisementCard
+              key={ad.id}
+              ad={ad}
+              onDismiss={() => dismiss(ad.id)}
+              cardRef={(el) => {
+                cardEls.current[i] = el;
+              }}
+            />
+          ))}
+        </div>
+
+        {visible.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() => scrollToIndex(activeIndex - 1)}
+              aria-label="Previous ad"
+              className="absolute left-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <ChevronLeftIcon aria-hidden className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToIndex(activeIndex + 1)}
+              aria-label="Next ad"
+              className="absolute right-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              <ChevronRightIcon aria-hidden className="h-5 w-5" />
+            </button>
+          </>
+        )}
       </div>
+
+      {visible.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5">
+          {visible.map((ad, i) => (
+            <button
+              key={ad.id}
+              type="button"
+              onClick={() => scrollToIndex(i)}
+              aria-label={`Go to ad ${i + 1}`}
+              aria-current={i === activeIndex}
+              className={`h-1.5 rounded-full transition-all ${
+                i === activeIndex ? 'w-5 bg-brand-700 dark:bg-brand-400' : 'w-1.5 bg-slate-300 dark:bg-slate-700'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
