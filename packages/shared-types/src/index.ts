@@ -117,6 +117,8 @@ export interface Place {
   rating: number;
   reviewCount: number;
   verificationStatus: VerificationStatus;
+  // Set by admin verification actions; optional for older/public responses.
+  verifiedAt?: string | null;
   featured: boolean;
   activities?: Activity[];
   // Populated (non-null) only when the request included lat/lng/radiusKm —
@@ -270,6 +272,8 @@ export interface Business {
   reviewedAt: string | null;
   reviewedByUserId: string | null;
   verificationStatus: VerificationStatus;
+  // Set by admin verification actions; optional for older/public responses.
+  verifiedAt?: string | null;
   subscriptionTier: SubscriptionTier;
   createdAt: string;
 }

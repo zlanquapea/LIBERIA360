@@ -16,6 +16,7 @@ import { formatBusinessContentType, formatBusinessType, formatCost, formatRating
 import { resolveImageUrl } from '@/lib/images';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { VerificationBadge } from '@/components/VerificationBadge';
+import { VerificationTrustInfo } from '@/components/VerificationTrustInfo';
 import { PlaceGallery } from '@/components/PlaceGallery';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { SafeImage } from '@/components/SafeImage';
@@ -281,6 +282,8 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
             </div>
           )}
         </div>
+
+        <VerificationTrustInfo status={business.verificationStatus} verifiedAt={business.verifiedAt} />
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
           <span>See something that needs correcting?</span>

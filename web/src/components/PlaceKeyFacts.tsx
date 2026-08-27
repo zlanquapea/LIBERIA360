@@ -23,6 +23,7 @@ import { ReportButton } from './ReportButton';
 import { BookingRequestSection } from './BookingRequestSection';
 import { ShareMenu } from './ShareMenu';
 import { VerificationBadge } from './VerificationBadge';
+import { VerificationTrustInfo } from './VerificationTrustInfo';
 import type { Business, Place } from '@/lib/types';
 
 // Place-profile actions and trust facts. This component deliberately keeps
@@ -57,6 +58,8 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
   const priceLabel = formatKeyFactsPrice(place, effectiveBusiness);
   const amenities = effectiveBusiness?.servicesOffered ?? [];
   const isClaimed = effectiveBusiness != null;
+  const verificationStatus = effectiveBusiness?.verificationStatus ?? place.verificationStatus;
+  const verifiedAt = effectiveBusiness ? effectiveBusiness.verifiedAt : place.verifiedAt;
 
   // A business's free-text hours have no structured equivalent, so only show
   // Open now/Closed now when the displayed hours are the place's structured
@@ -167,7 +170,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-slate-900 dark:text-slate-50">Listing information</span>
-            <VerificationBadge status={effectiveBusiness?.verificationStatus ?? place.verificationStatus} />
+            <VerificationBadge status={verificationStatus} />
           </div>
 
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -233,6 +236,8 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           <MissingFact label="No verified contact on file yet" isClaimed={isClaimed} business={effectiveBusiness} />
         </div>
       )}
+
+      <VerificationTrustInfo status={verificationStatus} verifiedAt={verifiedAt} />
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
         <span>See something that needs correcting?</span>
