@@ -30,6 +30,12 @@ export enum CreatorVerificationStatus {
   VERIFIED = "verified",
 }
 
+export enum CreatorAvailabilityStatus {
+  ACCEPTING_REQUESTS = "accepting_requests",
+  LIMITED = "limited",
+  UNAVAILABLE = "unavailable",
+}
+
 /**
  * One row in a creator's portfolio gallery. Video is link/embed-only by
  * design (YouTube/Vimeo/Instagram, same idea as the existing `contentLinks`

@@ -7,6 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { toPublicUser } from "../users/user.serializer";
 import { Creator } from "./entities/creator.entity";
+import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
 import {
   CreatorPostComment,
@@ -35,6 +36,8 @@ export class CreatorFeedService {
     private readonly saveRepo: Repository<CreatorPostSave>,
     @InjectRepository(CreatorPostComment)
     private readonly commentRepo: Repository<CreatorPostComment>,
+    @InjectRepository(CreatorFollow)
+    private readonly followRepo: Repository<CreatorFollow>,
   ) {}
 
   async findPublicFeed(
@@ -43,6 +46,7 @@ export class CreatorFeedService {
       limit?: number;
       userId?: string;
       creatorId?: string;
+      creatorIds?: string[];
     } = {},
   ): Promise<PaginatedCreatorPosts> {
     const page = Math.max(1, params.page ?? 1);
@@ -55,6 +59,16 @@ export class CreatorFeedService {
       .andWhere(
         params.creatorId ? "post.creator_id = :creatorId" : "1 = 1",
         params.creatorId ? { creatorId: params.creatorId } : {},
+      )
+      .andWhere(
+        params.creatorIds
+          ? params.creatorIds.length > 0
+            ? "post.creator_id IN (:...creatorIds)"
+            : "1 = 0"
+          : "1 = 1",
+        params.creatorIds && params.creatorIds.length > 0
+          ? { creatorIds: params.creatorIds }
+          : {},
       )
       .orderBy("post.createdAt", "DESC")
       .skip((page - 1) * limit)
@@ -87,6 +101,21 @@ export class CreatorFeedService {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
+  }
+
+  async findFollowedFeed(
+    userId: string,
+    params: { page?: number; limit?: number } = {},
+  ): Promise<PaginatedCreatorPosts> {
+    const follows = await this.followRepo.find({
+      where: { userId },
+      select: { creatorId: true },
+    });
+    return this.findPublicFeed({
+      ...params,
+      userId,
+      creatorIds: follows.map((follow) => follow.creatorId),
+    });
   }
 
   async findPublicFeedForCreator(
@@ -301,6 +330,8 @@ export class CreatorFeedService {
         username: post.creator?.username ?? "creator",
         profileImage: post.creator?.profileImage ?? null,
         verificationStatus: post.creator?.verificationStatus ?? "unverified",
+        availabilityStatus:
+          post.creator?.availabilityStatus ?? "accepting_requests",
         category: post.creator?.category,
         county: post.creator?.county ?? null,
       },

@@ -200,6 +200,7 @@ describe('creatorJsonLd', () => {
     yearsExperience: null,
     certifications: [],
     availabilityNote: null,
+    availabilityStatus: 'accepting_requests',
     followerCount: 0,
     specialties: [],
     locationsCovered: [],

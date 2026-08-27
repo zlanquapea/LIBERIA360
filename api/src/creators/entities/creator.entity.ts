@@ -10,7 +10,11 @@ import {
 } from "typeorm";
 import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
-import { CreatorCategory, CreatorVerificationStatus } from "./creator.enums";
+import {
+  CreatorAvailabilityStatus,
+  CreatorCategory,
+  CreatorVerificationStatus,
+} from "./creator.enums";
 import { decimalTransformer } from "../../database/decimal.transformer";
 
 /**
@@ -125,6 +129,14 @@ export class Creator {
   // structured calendar would actually earn its keep.
   @Column({ name: "availability_note", type: "text", nullable: true })
   availabilityNote: string | null;
+
+  @Column({
+    name: "availability_status",
+    type: "enum",
+    enum: CreatorAvailabilityStatus,
+    default: CreatorAvailabilityStatus.ACCEPTING_REQUESTS,
+  })
+  availabilityStatus: CreatorAvailabilityStatus;
 
   // Self-reported — no social-platform API integration to verify this.
   @Column({ name: "follower_count", type: "int", default: 0 })

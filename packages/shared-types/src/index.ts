@@ -16,11 +16,7 @@
 // practice, by asserting on real HTTP response bodies.
 
 export type PlaceType =
-  | "attraction"
-  | "nature_site"
-  | "hotel"
-  | "restaurant"
-  | "activity_provider";
+  "attraction" | "nature_site" | "hotel" | "restaurant" | "activity_provider";
 
 export type RecommendedVisitLength = "day_trip" | "overnight" | "multi_day";
 
@@ -141,11 +137,7 @@ export interface Place {
 
 // api/src/users/entities/user.enums.ts
 export type TravelerType =
-  | "diaspora"
-  | "tourist"
-  | "expat"
-  | "business_traveler"
-  | "local_resident";
+  "diaspora" | "tourist" | "expat" | "business_traveler" | "local_resident";
 
 // api/src/users/user.serializer.ts's PublicUser — passwordHash is never
 // sent to the client, so it has no field for it here either.
@@ -312,6 +304,8 @@ export type CreatorCategory =
 // Deliberately just two states, unlike Place/Business's VerificationStatus
 // above — see CreatorVerificationStatus's backend doc comment for why.
 export type CreatorVerificationStatus = "unverified" | "verified";
+export type CreatorAvailabilityStatus =
+  "accepting_requests" | "limited" | "unavailable";
 
 export type CreatorPortfolioItemType = "image" | "video";
 
@@ -361,6 +355,7 @@ export interface Creator {
   yearsExperience: number | null;
   certifications: string[];
   availabilityNote: string | null;
+  availabilityStatus: CreatorAvailabilityStatus;
   followerCount: number;
   specialties: string[];
   locationsCovered: string[];
@@ -392,6 +387,7 @@ export interface CreatorPostAuthor {
   username: string;
   profileImage: string | null;
   verificationStatus: CreatorVerificationStatus;
+  availabilityStatus: CreatorAvailabilityStatus;
   category: CreatorCategory;
   county: County | null;
 }
@@ -430,7 +426,8 @@ export interface PaginatedCreatorPosts {
 }
 
 // api/src/analytics/entities/analytics-event.enums.ts
-export type AnalyticsEventType = "view" | "save" | "contact_click" | "booking_request";
+export type AnalyticsEventType =
+  "view" | "save" | "contact_click" | "booking_request";
 
 // api/src/analytics/analytics.service.ts's AnalyticsTotals/BusinessAnalytics.
 export interface AnalyticsTotals {
@@ -525,7 +522,8 @@ export interface PaginatedCreators {
 }
 
 // api/src/events/entities/event.enums.ts
-export type EventCategory = "concert" | "festival" | "sports" | "nightlife" | "seasonal" | "other";
+export type EventCategory =
+  "concert" | "festival" | "sports" | "nightlife" | "seasonal" | "other";
 export type EventReviewStatus = "pending" | "approved" | "rejected";
 
 // api/src/events/entities/event.entity.ts (sanitized — createdBy is the
@@ -622,11 +620,7 @@ export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
 // "viewed" and "expired" below are derived server-side (viewedAt /
 // expiresAt vs now), not separate stored transitions.
 export type InvitationDisplayStatus =
-  | "pending"
-  | "viewed"
-  | "accepted"
-  | "declined"
-  | "expired";
+  "pending" | "viewed" | "accepted" | "declined" | "expired";
 
 // api/src/users/user.serializer.ts's InvitableUser — the "people you may
 // want to invite" search result. Deliberately thinner than AuthUser: a
@@ -856,16 +850,9 @@ export interface FlaggedContent {
 
 // api/src/business-content/entities/business-content.enums.ts
 export type BusinessContentType =
-  | "offer"
-  | "announcement"
-  | "article"
-  | "travel_tip"
-  | "experience";
+  "offer" | "announcement" | "article" | "travel_tip" | "experience";
 export type BusinessContentStatus =
-  | "draft"
-  | "submitted_for_review"
-  | "approved"
-  | "rejected";
+  "draft" | "submitted_for_review" | "approved" | "rejected";
 
 // api/src/business-content/entities/business-content.entity.ts (sanitized
 // — business is the sanitized Business shape, present whenever the
@@ -1108,9 +1095,7 @@ export interface AnalyticsOverview {
 // see api/README.md's "Security — login activity & session revocation"
 // section). Every completed login attempt, success or failure.
 export type LoginActivityReason =
-  | "success"
-  | "invalid_credentials"
-  | "invalid_2fa_code";
+  "success" | "invalid_credentials" | "invalid_2fa_code";
 
 export interface LoginActivity {
   id: string;
@@ -1196,11 +1181,7 @@ export interface PaginatedNotifications {
 export type AdvertisementType = "digital_product" | "business";
 
 export type AdvertisementReviewStatus =
-  | "draft"
-  | "submitted_for_review"
-  | "approved"
-  | "rejected"
-  | "suspended";
+  "draft" | "submitted_for_review" | "approved" | "rejected" | "suspended";
 
 export interface Advertisement {
   id: string;

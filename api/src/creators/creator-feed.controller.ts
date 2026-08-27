@@ -34,6 +34,20 @@ export class CreatorFeedController {
     });
   }
 
+  @Get("feed/following")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  findFollowedFeed(
+    @CurrentUser() user: User,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.feedService.findFollowedFeed(user.id, {
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
+
   @Get("feed/creator/:username")
   findCreatorFeed(
     @Param("username") username: string,

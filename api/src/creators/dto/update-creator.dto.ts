@@ -13,7 +13,10 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
-import { CreatorCategory } from "../entities/creator.enums";
+import {
+  CreatorAvailabilityStatus,
+  CreatorCategory,
+} from "../entities/creator.enums";
 
 export class UpdateCreatorDto {
   @IsOptional() @IsString() @MaxLength(150) name?: string;
@@ -55,6 +58,9 @@ export class UpdateCreatorDto {
   certifications?: string[];
 
   @IsOptional() @IsString() @MaxLength(500) availabilityNote?: string;
+  @IsOptional()
+  @IsEnum(CreatorAvailabilityStatus)
+  availabilityStatus?: CreatorAvailabilityStatus;
 
   @IsOptional() @IsInt() @Min(0) @Max(1_000_000_000) followerCount?: number;
 

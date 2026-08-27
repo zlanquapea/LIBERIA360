@@ -1,5 +1,12 @@
-import type { Creator, CreatorCategory, CreatorOffering, CreatorPortfolioItem, CreatorPortfolioItemType } from './types';
-import { apiRequest, authHeader } from './http';
+import type {
+  Creator,
+  CreatorAvailabilityStatus,
+  CreatorCategory,
+  CreatorOffering,
+  CreatorPortfolioItem,
+  CreatorPortfolioItemType,
+} from "./types";
+import { apiRequest, authHeader } from "./http";
 
 export interface CreatorProfileInput {
   name: string;
@@ -20,26 +27,35 @@ export interface CreatorProfileInput {
   yearsExperience?: number;
   certifications?: string[];
   availabilityNote?: string;
+  availabilityStatus?: CreatorAvailabilityStatus;
   specialties?: string[];
   locationsCovered?: string[];
   contentLinks?: string[];
 }
 
 export function getMyCreatorProfile(token: string): Promise<Creator | null> {
-  return apiRequest<Creator | null>('/creators/me', { headers: authHeader(token) });
+  return apiRequest<Creator | null>("/creators/me", {
+    headers: authHeader(token),
+  });
 }
 
-export function createCreatorProfile(token: string, input: CreatorProfileInput): Promise<Creator> {
-  return apiRequest<Creator>('/creators', {
-    method: 'POST',
+export function createCreatorProfile(
+  token: string,
+  input: CreatorProfileInput,
+): Promise<Creator> {
+  return apiRequest<Creator>("/creators", {
+    method: "POST",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
 }
 
-export function updateCreatorProfile(token: string, input: Partial<CreatorProfileInput>): Promise<Creator> {
-  return apiRequest<Creator>('/creators/me', {
-    method: 'PATCH',
+export function updateCreatorProfile(
+  token: string,
+  input: Partial<CreatorProfileInput>,
+): Promise<Creator> {
+  return apiRequest<Creator>("/creators/me", {
+    method: "PATCH",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
@@ -52,9 +68,12 @@ export interface PortfolioItemInput {
   category?: string;
 }
 
-export function addPortfolioItem(token: string, input: PortfolioItemInput): Promise<CreatorPortfolioItem> {
-  return apiRequest<CreatorPortfolioItem>('/creators/me/portfolio', {
-    method: 'POST',
+export function addPortfolioItem(
+  token: string,
+  input: PortfolioItemInput,
+): Promise<CreatorPortfolioItem> {
+  return apiRequest<CreatorPortfolioItem>("/creators/me/portfolio", {
+    method: "POST",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
@@ -63,18 +82,23 @@ export function addPortfolioItem(token: string, input: PortfolioItemInput): Prom
 export function updatePortfolioItem(
   token: string,
   itemId: string,
-  input: Partial<Pick<PortfolioItemInput, 'caption' | 'category'>> & { sortOrder?: number },
+  input: Partial<Pick<PortfolioItemInput, "caption" | "category">> & {
+    sortOrder?: number;
+  },
 ): Promise<CreatorPortfolioItem> {
   return apiRequest<CreatorPortfolioItem>(`/creators/me/portfolio/${itemId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
 }
 
-export function removePortfolioItem(token: string, itemId: string): Promise<void> {
+export function removePortfolioItem(
+  token: string,
+  itemId: string,
+): Promise<void> {
   return apiRequest<void>(`/creators/me/portfolio/${itemId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: authHeader(token),
   });
 }
@@ -87,9 +111,12 @@ export interface OfferingInput {
   location?: string;
 }
 
-export function addOffering(token: string, input: OfferingInput): Promise<CreatorOffering> {
-  return apiRequest<CreatorOffering>('/creators/me/offerings', {
-    method: 'POST',
+export function addOffering(
+  token: string,
+  input: OfferingInput,
+): Promise<CreatorOffering> {
+  return apiRequest<CreatorOffering>("/creators/me/offerings", {
+    method: "POST",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
@@ -101,15 +128,18 @@ export function updateOffering(
   input: Partial<OfferingInput> & { sortOrder?: number },
 ): Promise<CreatorOffering> {
   return apiRequest<CreatorOffering>(`/creators/me/offerings/${offeringId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
 }
 
-export function removeOffering(token: string, offeringId: string): Promise<void> {
+export function removeOffering(
+  token: string,
+  offeringId: string,
+): Promise<void> {
   return apiRequest<void>(`/creators/me/offerings/${offeringId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: authHeader(token),
   });
 }
