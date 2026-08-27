@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { Category, Place } from '@/lib/types';
+import type { Category, County, Place } from '@/lib/types';
 import { MapFallbackBoundary } from './MapFallbackBoundary';
 import { PlaceCard } from './PlaceCard';
 
@@ -29,10 +29,18 @@ function ExplorePlaceListFallback({ places }: { places: Place[] }) {
   );
 }
 
-export function ExploreMapLoader({ places, categories }: { places: Place[]; categories: Category[] }) {
+export function ExploreMapLoader({
+  places,
+  categories,
+  counties,
+}: {
+  places: Place[];
+  categories: Category[];
+  counties: County[];
+}) {
   return (
     <MapFallbackBoundary fallback={<ExplorePlaceListFallback places={places} />}>
-      <ExploreMapClient places={places} categories={categories} />
+      <ExploreMapClient places={places} categories={categories} counties={counties} />
     </MapFallbackBoundary>
   );
 }
