@@ -72,7 +72,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
   const visitLength = formatVisitLength(place.recommendedVisitLength);
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
       <JsonLd data={placeJsonLd(place)} />
       <PlaceViewTracker placeId={place.id} />
       <PlaceGallery
@@ -82,12 +82,12 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         alt={place.name}
       />
 
-      <header className="flex flex-col gap-2">
+      <header className="flex flex-col gap-3 rounded-3xl bg-white p-4 shadow-card dark:bg-slate-900 sm:p-6">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{place.name}</h1>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">{place.name}</h1>
           <VerificationBadge status={place.verificationStatus} />
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           {formatPlaceType(place.type)} · {place.city}, {place.county.name} County
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
@@ -111,10 +111,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <PlaceFreshnessPrompt placeId={place.id} />
 
-      <p className="text-slate-700 dark:text-slate-200">{place.description}</p>
+      <p className="rounded-3xl bg-brand-50/70 p-5 leading-7 text-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:p-6">{place.description}</p>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Location</h2>
+      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50">Location</h2>
         <div className="h-48 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
           <PlaceMiniMapLoader
             latitude={place.latitude}
@@ -129,8 +129,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         </p>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Estimated cost</h2>
+      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50">Estimated cost</h2>
         <dl className="grid grid-cols-3 gap-3 text-sm">
           <CostItem label="Entry" value={formatCost(place.estimatedCostEntry)} />
           <CostItem label="Guide" value={formatCost(place.estimatedCostGuide)} />
@@ -168,8 +168,8 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         />
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-50">Reviews</h2>
+      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50">Reviews</h2>
         <ReviewsSection placeId={place.id} initialReviews={reviewsResult.data} />
       </section>
 
@@ -196,10 +196,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         </section>
       )}
 
-      <section className="flex gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
+      <section className="flex gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
         <Link
           href={`/trips/new?interest=${place.category.slug}`}
-          className="flex flex-1 items-center justify-center rounded-full bg-brand-700 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-800"
+          className="flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
         >
           Plan a trip with this place
         </Link>

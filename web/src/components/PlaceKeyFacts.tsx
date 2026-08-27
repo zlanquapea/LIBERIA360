@@ -89,13 +89,13 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
   const primary: Primary = whatsapp ? 'whatsapp' : phone ? 'call' : website ? 'website' : 'directions';
 
   const primaryClass =
-    'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors';
+    'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
   const secondaryClass =
-    'inline-flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30';
+    'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30';
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {whatsapp && (
           <ContactLink
             placeId={place.id}
@@ -151,7 +151,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
       </div>
 
       {amenities.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
           {amenities.map((amenity) => {
             const Icon = iconForAmenity(amenity);
             return (
@@ -167,7 +167,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         </div>
       )}
 
-      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 dark:border-slate-800">
         <div className="flex items-start gap-1.5">
           <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
           {hours ? (

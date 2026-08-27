@@ -24,7 +24,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky bottom-0 z-10 flex border-t border-slate-200 dark:border-slate-800 bg-white/95 backdrop-blur dark:bg-slate-950/95">
+    <nav className="sticky bottom-0 z-30 flex border-t border-white/10 bg-brand-900/95 pb-[env(safe-area-inset-bottom)] text-white shadow-[0_-8px_24px_rgba(8,26,80,0.16)] backdrop-blur lg:hidden">
       {TABS.map((tab) => {
         const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
         const Icon = active ? tab.activeIcon : tab.icon;
@@ -32,13 +32,13 @@ export function BottomNav() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
-              active ? 'font-semibold text-brand-700 dark:text-brand-300' : 'text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300'
+            className={`relative flex min-h-16 flex-1 flex-col items-center gap-0.5 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400 ${
+              active ? 'font-semibold text-white' : 'text-white/65 hover:text-white'
             }`}
             aria-current={active ? 'page' : undefined}
           >
             {active && (
-              <span aria-hidden className="absolute top-0 h-0.5 w-8 rounded-full bg-brand-600 animate-fade-in" />
+              <span aria-hidden className="absolute top-0 h-1 w-12 rounded-b-full bg-gold-400 animate-fade-in" />
             )}
             <Icon aria-hidden className={`h-5 w-5 transition-transform ${active ? 'scale-110' : ''}`} />
             {tab.label}

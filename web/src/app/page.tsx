@@ -73,8 +73,8 @@ export default async function Home() {
     sponsoredPlacements.length > 0 ? sponsoredPlacements[Math.floor(Math.random() * sponsoredPlacements.length)] : null;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col">
-      <section className="relative overflow-hidden bg-gradient-to-b from-brand-800 via-brand-900 to-brand-900 px-4 pb-8 pt-6 text-white animate-fade-in-up">
+    <main className="mx-auto flex max-w-7xl flex-col">
+      <section className="relative overflow-hidden rounded-b-[2rem] bg-brand-900 px-4 pb-10 pt-8 text-white shadow-[0_14px_36px_rgba(8,26,80,0.18)] animate-fade-in-up sm:px-6 lg:rounded-none lg:px-10 lg:pb-14 lg:pt-12">
         {/* Decorative depth — soft glow shapes, no imagery dependency */}
         <div
           aria-hidden
@@ -119,26 +119,27 @@ export default async function Home() {
           </g>
         </svg>
 
-        <div className="relative flex flex-col gap-3">
-          <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Everything Liberia. One Place.</h1>
-          <p className="text-brand-100">
+        <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-12">
+          <div className="max-w-2xl">
+            <h1 className="max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">Discover Liberia.<br />Find your next place.</h1>
+          <p className="max-w-xl text-brand-100 sm:text-lg sm:leading-7">
             Discover destinations, food, and stays across all 15 counties — starting with Greater Monrovia.
           </p>
           <form
             action="/search"
             method="GET"
-            className="flex items-center overflow-hidden rounded-full bg-white dark:bg-slate-900 shadow-lg ring-1 ring-black/5 transition-shadow focus-within:ring-2 focus-within:ring-gold-400"
+            className="flex items-center overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/5 transition-shadow focus-within:ring-2 focus-within:ring-gold-400"
           >
             <input
               type="search"
               name="q"
               placeholder="What are you looking for?"
-              className="w-full px-4 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none"
+              className="w-full px-4 py-3.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-base"
             />
             <button
               type="submit"
               aria-label="Search"
-              className="m-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-500 text-white transition-colors hover:bg-accent-600"
+              className="m-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             >
               <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
             </button>
@@ -147,28 +148,48 @@ export default async function Home() {
           {/* Co-primary discovery tools, inside the hero right under search —
               see the review readout comment above for why these are
               elevated instead of buried at the bottom of the page. */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-2 gap-3 pt-1 sm:max-w-xl">
             <Link
               href="/near-me"
-              className="flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/5 px-4 py-2.5 text-sm font-medium transition-colors hover:border-gold-400 hover:bg-white/10"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-accent-300/50 bg-accent-600 px-4 py-2.5 text-sm font-semibold shadow-lg transition-colors hover:bg-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
-              <ViewfinderCircleIcon aria-hidden className="h-5 w-5 text-gold-400" />
+              <ViewfinderCircleIcon aria-hidden className="h-5 w-5 text-white" />
               Near Me
             </Link>
             <Link
               href="/explore"
-              className="flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/5 px-4 py-2.5 text-sm font-medium transition-colors hover:border-white/70 hover:bg-white/10"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <MapIcon aria-hidden className="h-5 w-5" />
               Explore Map
             </Link>
           </div>
+          </div>
+          <aside className="hidden rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-sm lg:block">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-400">One simple flow</p>
+            <h2 className="mt-3 max-w-sm font-display text-2xl font-bold leading-tight">Search, explore, and save what matters.</h2>
+            <div className="mt-6 grid gap-4">
+              {[
+                ['01', 'Search', 'Start with a place, experience, or event.'],
+                ['02', 'Explore', 'Use the map and county filters to compare.'],
+                ['03', 'Take action', 'Save a place, get directions, or report an update.'],
+              ].map(([number, title, body]) => (
+                <div key={number} className="flex items-start gap-3 border-t border-white/15 pt-4 first:border-t-0 first:pt-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-brand-900">{number}</span>
+                  <div>
+                    <p className="font-semibold text-white">{title}</p>
+                    <p className="mt-0.5 text-sm leading-5 text-brand-100">{body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
         </div>
       </section>
 
-      <div className="flex flex-col gap-8 px-4 py-6">
+      <div className="flex flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
         {quickCounties.length > 0 && (
-          <nav aria-label="Browse by county" className="-mx-4 flex items-center gap-5 overflow-x-auto border-b border-slate-200 dark:border-slate-800 px-4">
+          <nav aria-label="Browse by county" className="-mx-4 flex items-center gap-5 overflow-x-auto border-b border-slate-200 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
             {quickCounties.map((county, i) => (
               <Link
                 key={county.id}
@@ -238,7 +259,7 @@ export default async function Home() {
               <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {trending.data.map((place) => (
               <PlaceCardCompact key={place.id} place={place} />
             ))}
@@ -250,11 +271,11 @@ export default async function Home() {
             link at the bottom of the page). */}
         <Link
           href="/trips/weekend/new"
-          className="group flex items-center gap-4 rounded-2xl bg-gradient-to-br from-brand-800 to-brand-900 p-3 text-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+          className="group flex items-center gap-4 rounded-3xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-4 text-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5"
         >
           <div
             aria-hidden
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-gold-400/20 ring-1 ring-gold-400/40"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gold-400/20 ring-1 ring-gold-400/40"
           >
             <SunIcon aria-hidden className="h-7 w-7 text-gold-400" />
           </div>

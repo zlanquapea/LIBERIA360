@@ -22,7 +22,7 @@ export function AccountLink() {
     return (
       <Link
         href="/login"
-        className="flex items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 dark:hover:text-brand-300"
+        className="flex items-center gap-1.5 rounded-full border border-white/30 bg-white/5 px-3 py-1.5 text-sm text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
       >
         <UserCircleIcon aria-hidden className="h-4 w-4" />
         Log in
@@ -36,7 +36,7 @@ export function AccountLink() {
     <Link
       href="/account"
       aria-label={`Account — signed in as ${user.name}`}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-brand-800"
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       {initial}
     </Link>

@@ -47,6 +47,22 @@ const config: Config = {
           500: '#fbb308',
           600: '#d99400',
         },
+        // Full LIBERIA360 logo palette for the responsive product UI. Keep
+        // semantic states on the existing `flag` scale; these named tokens
+        // are for brand expression, category accents, and editorial framing.
+        liberia: {
+          navy: '#081a50',
+          royal: '#3355ad',
+          sky: '#2896c8',
+          red: '#e21f22',
+          green: '#3aa01e',
+          forest: '#1e633c',
+          lime: '#8ed177',
+          gold: '#ffc63d',
+          orange: '#f6a800',
+          charcoal: '#0f172a',
+          mist: '#f6f9fc',
+        },
         flag: {
           // Light tints, same hue as 500-700 below, added for dark-mode
           // text/icons — 700 (the shade used for nearly all error/danger

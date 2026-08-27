@@ -139,7 +139,7 @@ export function NotificationBell() {
         onClick={toggleOpen}
         aria-label={badgeCount > 0 ? `Notifications — ${badgeCount} unread` : 'Notifications'}
         aria-expanded={open}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-brand-400 dark:hover:bg-slate-800 dark:hover:text-brand-300"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/5 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
       >
         <BellIcon aria-hidden className="h-5 w-5" />
         {badgeCount > 0 && (
