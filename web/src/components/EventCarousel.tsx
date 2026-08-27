@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
-import { CalendarDaysIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
-import { EventCard } from './EventCard';
-import type { Event } from '@/lib/types';
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
+import { CalendarDaysIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { EventCard } from "./EventCard";
+import type { Event } from "@/lib/types";
 
 // Strategic placement fix — events previously surfaced only as a plain
 // text list at the very bottom of Home (below the ad carousel and the
@@ -49,30 +49,75 @@ export function EventCarousel({ events }: { events: Event[] }) {
       raf = requestAnimationFrame(updateActive);
     }
 
-    track.addEventListener('scroll', onScroll, { passive: true });
+    track.addEventListener("scroll", onScroll, { passive: true });
     updateActive();
     return () => {
-      track.removeEventListener('scroll', onScroll);
+      track.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
     };
   }, [events.length]);
 
-  if (events.length === 0) return null;
+  if (events.length === 0) {
+    return (
+      <section
+        aria-labelledby="events-carousel-heading"
+        className="flex flex-col gap-3"
+      >
+        <div className="flex items-center justify-between">
+          <h2
+            id="events-carousel-heading"
+            className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
+          >
+            <CalendarDaysIcon
+              aria-hidden
+              className="h-5 w-5 text-accent-600 dark:text-accent-400"
+            />
+            Happening soon
+          </h2>
+          <Link
+            href="/events"
+            className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+          >
+            See all
+            <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+            No upcoming events listed yet.
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Check back soon for real events across Liberia.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   function scrollToIndex(index: number) {
     const count = events.length;
     const target = ((index % count) + count) % count;
-    cardEls.current[target]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    cardEls.current[target]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
   }
 
   return (
-    <section aria-labelledby="events-carousel-heading" className="flex flex-col gap-3">
+    <section
+      aria-labelledby="events-carousel-heading"
+      className="flex flex-col gap-3"
+    >
       <div className="flex items-center justify-between">
         <h2
           id="events-carousel-heading"
           className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
         >
-          <CalendarDaysIcon aria-hidden className="h-5 w-5 text-accent-600 dark:text-accent-400" />
+          <CalendarDaysIcon
+            aria-hidden
+            className="h-5 w-5 text-accent-600 dark:text-accent-400"
+          />
           Happening soon
         </h2>
         <Link
@@ -132,7 +177,9 @@ export function EventCarousel({ events }: { events: Event[] }) {
               aria-label={`Go to event ${i + 1}`}
               aria-current={i === activeIndex}
               className={`h-1.5 rounded-full transition-all ${
-                i === activeIndex ? 'w-5 bg-brand-700 dark:bg-brand-400' : 'w-1.5 bg-slate-300 dark:bg-slate-700'
+                i === activeIndex
+                  ? "w-5 bg-brand-700 dark:bg-brand-400"
+                  : "w-1.5 bg-slate-300 dark:bg-slate-700"
               }`}
             />
           ))}
