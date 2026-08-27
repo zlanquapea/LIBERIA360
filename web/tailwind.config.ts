@@ -29,6 +29,17 @@ const config: Config = {
           700: '#16307a',
           800: '#0e2361',
           900: '#081a50',
+          // Darker-than-900 navy for dark-mode surface tints (translucent
+          // panel/badge backgrounds) — the exact value the homepage hero's
+          // gradient already reaches for at its darkest stop (`to-[#050b24]`
+          // in page.tsx). Added because `brand-950` was already in use
+          // across a dozen components (VerificationTrustInfo, PlaceKeyFacts,
+          // ShareMenu, CreatorPostCard, account/page, ...) as if it existed;
+          // Tailwind silently drops classes for undefined shades, so every
+          // one of those `bg-brand-950`/`text-brand-950`/`ring-brand-950`
+          // usages was a no-op — the exact kind of bug behind the "gray box
+          // with unreadable text" report on the verification info panel.
+          950: '#050b24',
         },
         accent: {
           50: '#f1faed',
@@ -43,9 +54,17 @@ const config: Config = {
           900: '#123f08',
         },
         gold: {
+          // 50/300/950 added alongside the same audit as `brand.950` above —
+          // `bg-gold-50`, `text-gold-300`, and `dark:bg-gold-950` were
+          // already used (account/page.tsx's featured-listing card) as if
+          // they existed; none of them did, so that card's tint silently
+          // never rendered in either theme.
+          50: '#fef6e3',
+          300: '#ffdc8a',
           400: '#ffc63d',
           500: '#fbb308',
           600: '#d99400',
+          950: '#2b1c02',
         },
         // Full LIBERIA360 logo palette for the responsive product UI. Keep
         // semantic states on the existing `flag` scale; these named tokens
@@ -73,11 +92,18 @@ const config: Config = {
           // 400 is available for icons/accents that don't need quite as
           // much lift (icons only need to clear the looser 3:1 non-text
           // threshold).
+          // 50/200/800 added alongside the same audit as `brand.950` above —
+          // `bg-flag-50`, `border-flag-200`, and `dark:border-flag-800` were
+          // already used (security-shared.tsx, AccountSecurity.tsx,
+          // BusinessClaimSection.tsx) as if they existed; none of them did.
+          50: '#fdeeee',
+          200: '#f3bcbd',
           300: '#e9aaab',
           400: '#e57678',
           500: '#e21f22',
           600: '#c80305',
           700: '#a10204',
+          800: '#7a0103',
         },
       },
       fontFamily: {
