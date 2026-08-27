@@ -42,12 +42,12 @@ export function VerificationTrustInfo({
     <aside
       role="note"
       aria-label="Verification badge information"
-      className="flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 px-3.5 py-3 text-sm dark:border-brand-900/50 dark:bg-brand-950/25"
+      className="flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50/70 px-3.5 py-3 text-sm dark:border-brand-400/30 dark:bg-brand-600/15"
     >
       <InformationCircleIcon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300" />
       <div className="min-w-0">
-        <h3 className="font-semibold text-brand-950 dark:text-brand-100">What does this badge mean?</h3>
-        <p className="mt-1 leading-5 text-brand-900/80 dark:text-brand-200/80">{body}</p>
+        <h3 className="font-semibold text-brand-950 dark:text-white">What does this badge mean?</h3>
+        <p className="mt-1 leading-5 text-brand-900/80 dark:text-brand-100">{body}</p>
         {date && <p className="mt-2 text-xs font-semibold text-brand-800 dark:text-brand-200">Verification date: {date}</p>}
       </div>
     </aside>
