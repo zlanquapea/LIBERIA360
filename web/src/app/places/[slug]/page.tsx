@@ -5,6 +5,7 @@ import { colorForCategory } from '@/lib/category-colors';
 import { estimateTravelTime, formatCost, formatDistance, formatPlaceType, formatRating, formatVisitLength } from '@/lib/format';
 import { galleryImages } from '@/lib/images';
 import { VerificationBadge } from '@/components/VerificationBadge';
+import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { PlaceGallery } from '@/components/PlaceGallery';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
 import { PlaceKeyFacts } from '@/components/PlaceKeyFacts';
@@ -216,14 +217,9 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">{NEARBY_TYPE_LABELS[type as PlaceType] ?? formatPlaceType(type as PlaceType)}</h3>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {places.map((nearbyPlace) => (
-                  <Link
-                    key={nearbyPlace.id}
-                    href={`/places/${nearbyPlace.slug}`}
-                    className="w-52 shrink-0 rounded-2xl border border-slate-200 bg-white p-4 hover:border-brand-500 dark:border-slate-800 dark:bg-slate-900"
-                  >
-                    <p className="font-semibold text-slate-950 dark:text-slate-50">{nearbyPlace.name}</p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{nearbyPlace.city}</p>
-                  </Link>
+                  <div key={nearbyPlace.id} className="w-44 shrink-0 sm:w-48">
+                    <PlaceCardCompact place={nearbyPlace} />
+                  </div>
                 ))}
               </div>
             </div>
