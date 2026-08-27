@@ -115,9 +115,6 @@ export function CreatorCard({ creator }: { creator: Creator }) {
           aria-hidden
           className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/5"
         />
-        <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
-          View profile
-        </span>
       </Link>
 
       <div className="flex flex-col gap-3 p-4 pt-3">
