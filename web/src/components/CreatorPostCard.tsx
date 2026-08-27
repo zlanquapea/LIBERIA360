@@ -19,11 +19,7 @@ import {
   toggleCreatorPostLike,
   toggleCreatorPostSave,
 } from "@/lib/creator-feed-api";
-import type {
-  CreatorAvailabilityStatus,
-  CreatorPost,
-  CreatorPostComment,
-} from "@/lib/types";
+import type { CreatorPost, CreatorPostComment } from "@/lib/types";
 import { VerificationBadge } from "./VerificationBadge";
 import { CreatorPostMedia } from "./CreatorPostMedia";
 import { ShareMenu } from "./ShareMenu";
@@ -44,21 +40,6 @@ function timeAgo(value: string): string {
 function displayName(comment: CreatorPostComment): string {
   return comment.user?.name?.trim() || "LIBERIA360 member";
 }
-
-const AVAILABILITY_LABELS: Record<CreatorAvailabilityStatus, string> = {
-  accepting_requests: "Accepting requests",
-  limited: "Limited availability",
-  unavailable: "Currently unavailable",
-};
-
-const AVAILABILITY_TONES: Record<CreatorAvailabilityStatus, string> = {
-  accepting_requests:
-    "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300",
-  limited:
-    "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300",
-  unavailable:
-    "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-};
 
 export function CreatorPostCard({ post }: { post: CreatorPost }) {
   const { user, token } = useAuth();
@@ -188,7 +169,7 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
       id={`post-${post.id}`}
       className="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="flex items-center gap-3 px-4 py-4 sm:px-5">
+      <div className="flex items-start gap-3 px-4 py-4 sm:px-5">
         <Link
           href={`/creators/${post.creator.username}`}
           className="shrink-0"
@@ -227,31 +208,13 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
               }
             />
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <CreatorFollowButton creatorId={post.creator.id} compact />
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              <time
-                dateTime={post.createdAt}
-                title={new Date(post.createdAt).toLocaleString()}
-              >
-                {timeAgo(post.createdAt)}
-              </time>
-            </p>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${AVAILABILITY_TONES[post.creator.availabilityStatus]}`}
-            >
-              {AVAILABILITY_LABELS[post.creator.availabilityStatus]}
-            </span>
+          <div className="mt-2">
+            <CreatorFollowButton
+              creatorId={post.creator.id}
+              compact
+              hideWhenFollowing
+            />
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href={`/creators/${post.creator.username}#booking`}
-            aria-label={`Request to book ${post.creator.name}`}
-            className="rounded-xl bg-brand-700 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-800"
-          >
-            Book {post.creator.name.split(" ")[0]}
-          </Link>
         </div>
       </div>
 
