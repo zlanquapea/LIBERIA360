@@ -57,6 +57,22 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // to organic content instead of paid ads — and moved up to sit right
 // after Trending Places: a co-equal discovery surface instead of a
 // footnote nobody scrolled far enough to see.
+//
+// Hero decluttering (Aug 27, 2026): product feedback — "the information
+// here is too [much]... move the search bar since there's a search bar
+// at the top... give the user what the platform is about when they
+// arrive." The Header carries its own persistent "Search" entry point, so
+// the hero's full-width input directly beneath the tagline was pure
+// duplication on the app's first screen; it's now a single-tap text link
+// instead. The three separate stat chips (counties/categories/places)
+// collapsed into one quiet line so they read as a footnote, not a fourth
+// call to action. In their place: the site's own tagline ("Everything
+// Liberia. One place.", previously sr-only in the Header) surfaced as a
+// visible eyebrow so the very first thing a visitor reads answers "what
+// is this", and a gradient treatment on "Liberia" in the headline for a
+// bit of brand signature without a stock photo. Near Me/Explore Map keep
+// their elevated co-primary spot per the review-readout pass above — they
+// gained the room the search input used to take instead of losing it.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
@@ -156,57 +172,63 @@ export default async function Home() {
 
         <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-12">
           <div className="max-w-2xl">
-            <h1 className="max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">Discover Liberia.<br />Find your next place.</h1>
+            {/* The site's own tagline (previously sr-only in the Header)
+                surfaced as a visible eyebrow — the first thing a new
+                visitor reads is a one-line answer to "what is this",
+                reusing established brand copy instead of inventing new. */}
+            <p className="inline-flex w-fit items-center rounded-full border border-gold-400/40 bg-gold-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold-400 sm:text-xs">
+              Everything Liberia. One place.
+            </p>
+            <h1 className="mt-3 max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+              Discover <span className="text-gold-400">Liberia</span>.<br />Find your next place.
+            </h1>
           <p className="max-w-xl text-brand-100 sm:text-lg sm:leading-7">
-            Destinations, food, and stays across all 15 counties of Liberia.
+            Real places, real reviews — across all 15 counties.
           </p>
-          <form
-            action="/search"
-            method="GET"
-            className="flex items-center overflow-hidden rounded-2xl bg-white shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-black/5 transition-shadow focus-within:ring-2 focus-within:ring-gold-400"
-          >
-            <input
-              type="search"
-              name="q"
-              placeholder="What are you looking for?"
-              className="w-full px-4 py-3.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:text-base"
-            />
-            <button
-              type="submit"
-              aria-label="Search"
-              className="m-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition-colors hover:bg-brand-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
-            >
-              <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
-            </button>
-          </form>
 
-          {/* Co-primary discovery tools, inside the hero right under search —
-              see the review readout comment above for why these are
-              elevated instead of buried at the bottom of the page. */}
-          <div className="grid grid-cols-2 gap-3 pt-1 sm:max-w-xl">
+          {/* Co-primary discovery tools, front and center with nothing
+              competing above them. The hero's own search input was dropped
+              here — the Header already carries a persistent Search entry
+              point, so repeating a full-width input directly beneath it
+              was pure duplication; a lightweight link below still gets
+              people there in one tap. See the review readout comment above
+              for why Near Me/Explore are elevated over a buried footer link. */}
+          <div className="grid grid-cols-2 gap-3 pt-5 sm:max-w-xl">
             <Link
               href="/near-me"
-              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-accent-300/50 bg-accent-600 px-4 py-2.5 text-sm font-semibold shadow-lg transition-colors hover:bg-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-accent-300/50 bg-accent-600 px-4 py-3 text-sm font-semibold shadow-lg transition-colors hover:bg-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               <ViewfinderCircleIcon aria-hidden className="h-5 w-5 text-white" />
               Near Me
             </Link>
             <Link
               href="/explore"
-              className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <MapIcon aria-hidden className="h-5 w-5" />
               Explore Map
             </Link>
           </div>
 
+          <Link
+            href="/search"
+            className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-brand-100 transition-colors hover:text-white"
+          >
+            <MagnifyingGlassIcon aria-hidden className="h-4 w-4" />
+            Search for something specific
+            <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+
           {/* Quick credibility signal — real counts from this same
               request, not marketing copy, so it never claims more than the
-              catalog actually has. */}
-          <div className="flex flex-wrap gap-2 pt-3 text-xs font-medium text-brand-100 sm:max-w-xl sm:text-sm">
-            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">{counties.length} counties</span>
-            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">{categories.length}+ categories</span>
-            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1">{trending.meta.total}+ places</span>
+              catalog actually has. Condensed from three separate chips into
+              one quiet line so it reads as a footnote, not a fourth CTA. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-5 text-xs font-medium text-brand-200/80 sm:text-sm">
+            <span>{counties.length} counties</span>
+            <span aria-hidden>·</span>
+            <span>{categories.length}+ categories</span>
+            <span aria-hidden>·</span>
+            <span>{trending.meta.total}+ places</span>
           </div>
           </div>
           <aside className="hidden rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-sm lg:block">
