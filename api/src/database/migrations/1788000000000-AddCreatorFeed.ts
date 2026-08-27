@@ -81,7 +81,7 @@ export class AddCreatorFeed1788000000000 implements MigrationInterface {
     // does not invent captions or engagement; it simply makes existing public
     // media discoverable in the new feed after the migration.
     await queryRunner.query(
-      `INSERT INTO "creator_posts" ("creator_id", "media_type", "media_url", "caption", "status", "created_at", "updated_at") SELECT "creator_id", "type", "url", "caption", 'published', "created_at", "created_at" FROM "creator_portfolio_items"`,
+      `INSERT INTO "creator_posts" ("creator_id", "media_type", "media_url", "caption", "status", "created_at", "updated_at") SELECT "creator_id", ("type"::text)::"public"."creator_posts_media_type_enum", "url", "caption", 'published', "created_at", "created_at" FROM "creator_portfolio_items"`,
     );
     await queryRunner.query(
       `UPDATE "creator_posts" SET "like_count" = 0, "comment_count" = 0, "save_count" = 0, "share_count" = 0`,
