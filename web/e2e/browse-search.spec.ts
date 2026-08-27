@@ -5,7 +5,12 @@ test.describe('Browse and search', () => {
   test('home page loads with the header search entry point', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/LIBERIA360/);
-    await expect(page.getByRole('link', { name: /search/i })).toBeVisible();
+    // Scoped to the header — the hero also carries a "Search for something
+    // specific" link (see page.tsx's hero decluttering pass), so a bare
+    // name match against /search/i now resolves to both.
+    await expect(
+      page.getByRole('banner').getByRole('link', { name: /search/i }),
+    ).toBeVisible();
   });
 
   test('searching for a real catalog place finds it and opens its destination profile', async ({ page, request }) => {
