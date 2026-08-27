@@ -167,7 +167,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-slate-900 dark:text-slate-50">Listing information</span>
-            <VerificationBadge status={place.verificationStatus} />
+            <VerificationBadge status={effectiveBusiness?.verificationStatus ?? place.verificationStatus} />
           </div>
 
           <dl className="grid gap-3 text-sm sm:grid-cols-2">

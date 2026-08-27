@@ -46,7 +46,7 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // surface (like the "Plan a weekend" banner further down) that looks
 // intentional regardless of which site theme is active, the same reasoning
 // that already applied at `lg:`.
-import { getActiveAdvertisements, getActiveSponsoredPlacements, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
+import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
@@ -58,13 +58,14 @@ const TRENDING_PLACES_LIMIT = 10;
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, counties, trending, upcomingEvents, sponsoredPlacements, ads] = await Promise.all([
+  const [categories, counties, trending, upcomingEvents, sponsoredPlacements, ads, businesses] = await Promise.all([
     getCategories(),
     getCounties(),
     getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
     getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
+    getBusinesses({ limit: 100 }),
   ]);
 
   // Rollout order, not alphabetical — the first tab is the flagship county
@@ -87,6 +88,9 @@ export default async function Home() {
   // random shot at the single spotlight — see /featured for the full pool.
   const featuredPlacement =
     sponsoredPlacements.length > 0 ? sponsoredPlacements[Math.floor(Math.random() * sponsoredPlacements.length)] : null;
+  const businessVerificationByPlaceId = new Map(
+    businesses.data.map((business) => [business.linkedPlaceId, business.verificationStatus]),
+  );
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col">
@@ -268,7 +272,10 @@ export default async function Home() {
                 </Link>
               )}
             </div>
-            <FeaturedDestinationCard place={featuredPlacement.place} />
+            <FeaturedDestinationCard
+              place={featuredPlacement.place}
+              verificationStatus={businessVerificationByPlaceId.get(featuredPlacement.place.id)}
+            />
           </section>
         )}
 
@@ -287,7 +294,11 @@ export default async function Home() {
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {trending.data.map((place) => (
-              <PlaceCardCompact key={place.id} place={place} />
+              <PlaceCardCompact
+                key={place.id}
+                place={place}
+                verificationStatus={businessVerificationByPlaceId.get(place.id)}
+              />
             ))}
           </div>
         </section>

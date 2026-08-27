@@ -90,7 +90,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{formatPlaceType(place.type)}</p>
             <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">
               <span>{place.name}</span>
-              <VerificationBadge status={place.verificationStatus} />
+              <VerificationBadge status={business?.verificationStatus ?? place.verificationStatus} />
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">

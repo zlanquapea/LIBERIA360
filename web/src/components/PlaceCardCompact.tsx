@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { StarIcon } from '@heroicons/react/20/solid';
-import type { Place } from '@/lib/types';
+import type { Place, VerificationStatus } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
@@ -16,7 +16,7 @@ import { VerificationBadge } from './VerificationBadge';
 // search/category/county listing pages, where that extra context is worth
 // the space; this one is deliberately terser so two can sit side by side
 // even on a narrow phone screen.
-export function PlaceCardCompact({ place }: { place: Place }) {
+export function PlaceCardCompact({ place, verificationStatus }: { place: Place; verificationStatus?: VerificationStatus }) {
   const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
   const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
@@ -44,7 +44,7 @@ export function PlaceCardCompact({ place }: { place: Place }) {
         <div className="flex flex-col gap-1.5 p-3">
           <h3 className="flex min-w-0 flex-wrap items-center gap-1 font-display text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300">
             <span className="min-w-0 truncate">{place.name}</span>
-            <VerificationBadge status={place.verificationStatus} />
+            <VerificationBadge status={verificationStatus ?? place.verificationStatus} />
           </h3>
           <p className="truncate text-xs text-slate-500 dark:text-slate-400">
             {place.city}, {place.county.name}
