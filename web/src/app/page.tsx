@@ -46,14 +46,26 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // surface (like the "Plan a weekend" banner further down) that looks
 // intentional regardless of which site theme is active, the same reasoning
 // that already applied at `lg:`.
+//
+// Events visibility fix (Aug 27, 2026): "Upcoming events" previously sat
+// as a plain text list at the very bottom of the page, below the ad
+// carousel — the least prominent spot here, and it silently rendered
+// nothing at all whenever there were zero *approved* events on hand (see
+// EventReviewStatus), which is most of the time on a freshly-seeded or
+// low-traffic day. Replaced with EventCarousel — the same full-bleed
+// snap-scroll carousel mechanism as AdvertisementBanner below it, applied
+// to organic content instead of paid ads — and moved up to sit right
+// after Trending Places: a co-equal discovery surface instead of a
+// footnote nobody scrolled far enough to see.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
+import { EventCarousel } from '@/components/EventCarousel';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
-import { formatEventDateRange } from '@/lib/format';
 
 const TRENDING_PLACES_LIMIT = 10;
+const UPCOMING_EVENTS_LIMIT = 8;
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
@@ -62,7 +74,7 @@ export default async function Home() {
     getCategories(),
     getCounties(),
     getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
-    getEvents({ dateFrom: new Date().toISOString(), limit: 3 }),
+    getEvents({ dateFrom: new Date().toISOString(), limit: UPCOMING_EVENTS_LIMIT }),
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
   ]);
@@ -292,6 +304,8 @@ export default async function Home() {
           </div>
         </section>
 
+        <EventCarousel events={upcomingEvents.data} />
+
         <Link
           href="/places/submit"
           className="group flex items-center gap-4 rounded-3xl border border-dashed border-brand-300 bg-white p-4 text-brand-900 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card-hover dark:border-brand-700 dark:bg-slate-900 dark:text-slate-50"
@@ -366,38 +380,6 @@ export default async function Home() {
             />
           </Link>
         </div>
-
-        {upcomingEvents.data.length > 0 && (
-          <section aria-labelledby="events-heading" className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 id="events-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
-                Upcoming events
-              </h2>
-              <Link
-                href="/events"
-                className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
-              >
-                See all
-                <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-            <ul className="flex flex-col gap-2">
-              {upcomingEvents.data.map((event) => (
-                <li key={event.id}>
-                  <Link
-                    href={`/events/${event.id}`}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-slate-900 dark:text-slate-50">{event.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{formatEventDateRange(event.startDate, event.endDate)}</p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </div>
     </main>
   );
