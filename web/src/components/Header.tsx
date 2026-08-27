@@ -15,7 +15,7 @@ export function Header() {
           width={160}
           height={160}
           priority
-          className="h-14 w-14 object-contain transition-transform duration-300 group-hover:scale-105"
+          className="h-16 w-16 object-contain transition-transform duration-300 group-hover:scale-105 sm:h-[4.5rem] sm:w-[4.5rem]"
         />
         <span className="sr-only">LIBERIA360 — Everything Liberia. One Place.</span>
       </Link>

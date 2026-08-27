@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-screen flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-50">
         <SplashScreen />
         <Header />
-        <div className="flex-1">
+        <div className="flex-1 pb-20 lg:pb-0">
           {children}
           <Footer />
         </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { CategoryIcon } from '@/lib/icons';
+import { colorForCategory } from '@/lib/category-colors';
 import type { Category } from '@/lib/types';
 
 const COLUMNS = 4;
@@ -23,15 +24,15 @@ export function CategoryGrid({ categories }: { categories: Category[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 lg:grid-cols-6">
         {visible.map((category) => (
           <Link
             key={category.id}
             href={`/categories/${category.slug}`}
-            className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-2 py-4 text-center transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card"
+            className="group flex w-[72px] shrink-0 flex-col items-center gap-2 px-1 py-1 text-center transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 sm:w-auto sm:py-3"
           >
-            <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-6 w-6 text-brand-600 dark:text-brand-300" />
-            <span className="text-xs font-medium leading-tight text-slate-700 dark:text-slate-200">{category.name}</span>
+            <span aria-hidden className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm transition-transform group-hover:scale-105" style={{ backgroundColor: colorForCategory(category.slug) }}><CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-7 w-7 text-white" /></span>
+            <span className="text-[11px] font-semibold leading-tight text-slate-700 dark:text-slate-200">{category.name}</span>
           </Link>
         ))}
       </div>

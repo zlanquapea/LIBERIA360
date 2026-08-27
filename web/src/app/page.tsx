@@ -6,6 +6,7 @@ import {
   VideoCameraIcon,
   ViewfinderCircleIcon,
   ArrowRightIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // Product review readout (Aug 25, 2026), "homepage hierarchy": "the
@@ -74,15 +75,15 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col">
-      <section className="relative overflow-hidden rounded-b-[2rem] bg-brand-900 px-4 pb-10 pt-8 text-white shadow-[0_14px_36px_rgba(8,26,80,0.18)] animate-fade-in-up sm:px-6 lg:rounded-none lg:px-10 lg:pb-14 lg:pt-12">
+      <section className="relative overflow-hidden bg-white px-4 pb-8 pt-8 text-brand-900 animate-fade-in-up sm:px-6 lg:bg-brand-900 lg:px-10 lg:pb-14 lg:pt-12 lg:text-white lg:shadow-[0_14px_36px_rgba(8,26,80,0.18)]">
         {/* Decorative depth — soft glow shapes, no imagery dependency */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-gold-400/20 blur-3xl"
+          className="pointer-events-none absolute -right-10 -top-16 hidden h-48 w-48 rounded-full bg-gold-400/20 blur-3xl lg:block"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-6 -left-8 h-40 w-40 animate-float rounded-full bg-accent-400/20 blur-3xl"
+          className="pointer-events-none absolute -bottom-6 -left-8 hidden h-40 w-40 animate-float rounded-full bg-accent-400/20 blur-3xl lg:block"
         />
         {/* Stylized night skyline standing in for the mock-up's photo — see
             the layout-pass note above for why there's no stock image here. */}
@@ -90,7 +91,7 @@ export default async function Home() {
           aria-hidden
           viewBox="0 0 400 60"
           preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full text-black/30"
+          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 w-full text-black/30 lg:block"
         >
           <rect x="0" y="30" width="18" height="30" fill="currentColor" />
           <rect x="22" y="20" width="14" height="40" fill="currentColor" />
@@ -122,7 +123,7 @@ export default async function Home() {
         <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-12">
           <div className="max-w-2xl">
             <h1 className="max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">Discover Liberia.<br />Find your next place.</h1>
-          <p className="max-w-xl text-brand-100 sm:text-lg sm:leading-7">
+          <p className="max-w-xl text-slate-600 sm:text-lg sm:leading-7 lg:text-brand-100">
             Discover destinations, food, and stays across all 15 counties — starting with Greater Monrovia.
           </p>
           <form
@@ -220,8 +221,6 @@ export default async function Home() {
           <CategoryGrid categories={categories} />
         </section>
 
-        <AdvertisementBanner ads={ads} />
-
         {featuredPlacement && (
           <section aria-labelledby="featured-heading" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -265,6 +264,22 @@ export default async function Home() {
             ))}
           </div>
         </section>
+
+        <Link
+          href="/places/submit"
+          className="group flex items-center gap-4 rounded-3xl border border-dashed border-brand-300 bg-white p-4 text-brand-900 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card-hover dark:border-brand-700 dark:bg-slate-900 dark:text-slate-50"
+        >
+          <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white transition-transform group-hover:scale-105">
+            <PlusIcon className="h-6 w-6" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-base font-bold">Add a place</span>
+            <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">Help others discover great places in Liberia.</span>
+          </span>
+          <ArrowRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-700 transition-transform group-hover:translate-x-1" />
+        </Link>
+
+        <AdvertisementBanner ads={ads} />
 
         {/* Primary trip-planning CTA, styled after the mock-up's banner —
             the actual "Weekend Explorer" feature (previously a bare text

@@ -20,19 +20,19 @@ export function PlaceCardCompact({ place }: { place: Place }) {
   const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
       <SaveIconButton slug={place.slug} placeId={place.id} className="absolute right-1.5 top-1.5 z-10" />
       <Link href={`/places/${place.slug}`} className="flex flex-col">
-        <div className="h-28 overflow-hidden">
+        <div className="h-32 overflow-hidden">
           <SafeImage
             src={cover}
             thumbSrc={coverThumb}
             alt=""
-            className="h-28 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-105"
             fallback={
               <div
                 aria-hidden
-                className="flex h-28 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110"
+                className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-105"
                 style={{ backgroundImage: gradientForCategory(place.category.slug) }}
               >
                 <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-8 w-8 text-white/90" />
@@ -40,7 +40,7 @@ export function PlaceCardCompact({ place }: { place: Place }) {
             }
           />
         </div>
-        <div className="flex flex-col gap-1 p-2.5">
+        <div className="flex flex-col gap-1.5 p-3">
           <h3 className="truncate font-display text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300">
             {place.name}
           </h3>
