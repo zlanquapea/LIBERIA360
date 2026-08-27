@@ -65,7 +65,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
     getReviews(place.id, { limit: 20 }),
     getBusinessByPlace(place.id),
   ]);
-  const nearby = nearbyResult.data.filter((p) => p.id !== place.id);
+  const nearby = nearbyResult.data.filter((candidate) => candidate.id !== place.id);
   const nearbyByType = groupByType(nearby);
 
   const travelTime = estimateTravelTime(place.distanceFromMonroviaKm);
@@ -73,9 +73,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
   const visitLength = formatVisitLength(place.recommendedVisitLength);
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-12">
+    <main className="mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
       <JsonLd data={placeJsonLd(place)} />
       <PlaceViewTracker placeId={place.id} />
+
       <PlaceGallery
         images={galleryImages(place.images, business?.images)}
         categorySlug={place.category.slug}
@@ -83,27 +84,36 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         alt={place.name}
       />
 
-      <header className="flex flex-col gap-3 rounded-3xl bg-white p-4 shadow-card dark:bg-slate-900 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="min-w-0 font-display text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">{place.name}</h1>
+      <header className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{formatPlaceType(place.type)}</p>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">{place.name}</h1>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             <VerificationBadge status={place.verificationStatus} />
             <ShareMenu placeName={place.name} />
           </div>
         </div>
-        <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          {formatPlaceType(place.type)} · {place.city}, {place.county.name} County
+
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          {place.city}, {place.county.name} County
         </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
-          <span>{formatRating(place.rating, place.reviewCount)}</span>
-          {distance && <span>· {distance}</span>}
-          {travelTime && <span>· {travelTime}</span>}
-          {visitLength && <span>· {visitLength}</span>}
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-700 dark:text-slate-200">
+          <span className="font-semibold text-slate-950 dark:text-slate-50">{formatRating(place.rating, place.reviewCount)}</span>
+          {distance && <span className="text-slate-300 dark:text-slate-600">•</span>}
+          {distance && <span>{distance}</span>}
+          {travelTime && <span className="text-slate-300 dark:text-slate-600">•</span>}
+          {travelTime && <span>{travelTime}</span>}
+          {visitLength && <span className="text-slate-300 dark:text-slate-600">•</span>}
+          {visitLength && <span>{visitLength}</span>}
         </div>
+
         {place.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {place.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300">
+              <span key={tag} className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
                 {tag}
               </span>
             ))}
@@ -113,13 +123,22 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
       <PlaceKeyFacts place={place} business={business} />
 
-      <PlaceFreshnessPrompt placeId={place.id} />
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-5">
+        <PlaceFreshnessPrompt placeId={place.id} />
+      </div>
 
-      <p className="rounded-3xl bg-brand-50/70 p-5 leading-7 text-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:p-6">{place.description}</p>
+      <section id="about" className="scroll-mt-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Discover the place</p>
+        <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">About {place.name}</h2>
+        <p className="mt-4 max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{place.description}</p>
+      </section>
 
-      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50">Location</h2>
-        <div className="h-48 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+      <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Find your way</p>
+          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Location</h2>
+        </div>
+        <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
           <PlaceMiniMapLoader
             latitude={place.latitude}
             longitude={place.longitude}
@@ -128,14 +147,15 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
             categorySlug={place.category.slug}
           />
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
           Getting there: private car, taxi, tour operator arrangement, or shared/bus transport where available.
         </p>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50">Estimated cost</h2>
-        <dl className="grid grid-cols-3 gap-3 text-sm">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Budget planning</p>
+        <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Estimated cost</h2>
+        <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">
           <CostItem label="Entry" value={formatCost(place.estimatedCostEntry)} />
           <CostItem label="Guide" value={formatCost(place.estimatedCostGuide)} />
           <CostItem label="Transport" value={formatCost(place.estimatedCostTransport)} />
@@ -143,17 +163,20 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
       </section>
 
       {place.activities && place.activities.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Things to do</h2>
-          <ul className="flex flex-col gap-2">
+        <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Make the most of it</p>
+            <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Things to do</h2>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
             {place.activities.map((activity) => (
-              <li key={activity.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-slate-900 dark:text-slate-50">{activity.name}</p>
-                  <p className="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{formatCost(activity.price)}</p>
+              <li key={activity.id} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold text-slate-950 dark:text-slate-50">{activity.name}</p>
+                  <p className="whitespace-nowrap text-sm font-semibold text-brand-700 dark:text-brand-300">{formatCost(activity.price)}</p>
                 </div>
-                {activity.description && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{activity.description}</p>}
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {activity.description && <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{activity.description}</p>}
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   {[activity.duration, activity.difficulty, activity.guideRequired ? 'Guide required' : null]
                     .filter(Boolean)
                     .join(' · ')}
@@ -164,7 +187,7 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         </section>
       )}
 
-      <section id="claim" className="flex scroll-mt-4 flex-col gap-2">
+      <section id="claim" className="scroll-mt-4">
         <BusinessClaimSection
           placeId={place.id}
           suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
@@ -172,26 +195,32 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         />
       </section>
 
-      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50">Reviews</h2>
+      <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Visitor notes</p>
+          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Reviews</h2>
+        </div>
         <ReviewsSection placeId={place.id} initialReviews={reviewsResult.data} />
       </section>
 
       {Object.keys(nearbyByType).length > 0 && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-semibold text-slate-900 dark:text-slate-50">Nearby in {place.county.name}</h2>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Keep exploring</p>
+            <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Nearby in {place.county.name}</h2>
+          </div>
           {Object.entries(nearbyByType).map(([type, places]) => (
             <div key={type} className="flex flex-col gap-2">
-              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">{NEARBY_TYPE_LABELS[type as PlaceType] ?? formatPlaceType(type as PlaceType)}</h3>
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">{NEARBY_TYPE_LABELS[type as PlaceType] ?? formatPlaceType(type as PlaceType)}</h3>
               <div className="flex gap-3 overflow-x-auto pb-1">
-                {places.map((p) => (
+                {places.map((nearbyPlace) => (
                   <Link
-                    key={p.id}
-                    href={`/places/${p.slug}`}
-                    className="w-48 shrink-0 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
+                    key={nearbyPlace.id}
+                    href={`/places/${nearbyPlace.slug}`}
+                    className="w-52 shrink-0 rounded-2xl border border-slate-200 bg-white p-4 hover:border-brand-500 dark:border-slate-800 dark:bg-slate-900"
                   >
-                    <p className="font-medium text-slate-900 dark:text-slate-50">{p.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{p.city}</p>
+                    <p className="font-semibold text-slate-950 dark:text-slate-50">{nearbyPlace.name}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{nearbyPlace.city}</p>
                   </Link>
                 ))}
               </div>
@@ -200,10 +229,10 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         </section>
       )}
 
-      <section className="flex gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+      <section className="border-t border-slate-200 pt-5 dark:border-slate-800">
         <Link
           href={`/trips/new?interest=${place.category.slug}`}
-          className="flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
         >
           Plan a trip with this place
         </Link>
@@ -214,9 +243,9 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
 
 function CostItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center">
-      <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="mt-1 font-semibold text-slate-900 dark:text-slate-50">{value}</dd>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-950/40">
+      <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="mt-1 font-semibold text-slate-950 dark:text-slate-50">{value}</dd>
     </div>
   );
 }
