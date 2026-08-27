@@ -7,6 +7,7 @@ import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon } from '@/lib/icons';
 import { VerificationBadge } from './VerificationBadge';
 import { SafeImage } from './SafeImage';
+import { SaveIconButton } from './SaveIconButton';
 
 // `distanceOverride` lets a caller show a more relevant distance than the
 // catalog's fixed distanceFromMonroviaKm — e.g. Near Me results show
@@ -22,54 +23,54 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
   const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
   return (
-    <Link
-      href={`/places/${place.slug}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
-    >
-      <div className="h-32 overflow-hidden">
-        <SafeImage
-          src={cover}
-          thumbSrc={coverThumb}
-          alt=""
-          className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          fallback={
-            <div
-              aria-hidden
-              className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110"
-              style={{ backgroundImage: gradientForCategory(place.category.slug) }}
-            >
-              <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-9 w-9 text-white/90" />
-            </div>
-          }
-        />
-      </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
-            {place.name}
-          </h3>
-          <VerificationBadge status={place.verificationStatus} />
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover">
+      <SaveIconButton slug={place.slug} placeId={place.id} className="absolute right-2 top-2 z-10" />
+      <Link href={`/places/${place.slug}`} className="flex flex-col">
+        <div className="h-32 overflow-hidden">
+          <SafeImage
+            src={cover}
+            thumbSrc={coverThumb}
+            alt=""
+            className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            fallback={
+              <div
+                aria-hidden
+                className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-110"
+                style={{ backgroundImage: gradientForCategory(place.category.slug) }}
+              >
+                <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-9 w-9 text-white/90" />
+              </div>
+            }
+          />
         </div>
-        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {formatPlaceType(place.type)} · {place.city}, {place.county.name}
-        </p>
-        <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{place.description}</p>
-        <div className="mt-auto flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
-          <span className="flex items-center gap-1">
-            {place.reviewCount > 0 && <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />}
-            {formatRating(place.rating, place.reviewCount)}
-          </span>
-          <span className="flex items-center gap-2">
-            {place.estimatedCostEntry != null && <span>{formatCost(place.estimatedCostEntry)}</span>}
-            {distance && (
-              <span className="flex items-center gap-0.5">
-                <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-400" />
-                {distance}
-              </span>
-            )}
-          </span>
+        <div className="flex flex-1 flex-col gap-1.5 p-3">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
+              {place.name}
+            </h3>
+            <VerificationBadge status={place.verificationStatus} />
+          </div>
+          <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {formatPlaceType(place.type)} · {place.city}, {place.county.name}
+          </p>
+          <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{place.description}</p>
+          <div className="mt-auto flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1">
+              {place.reviewCount > 0 && <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />}
+              {formatRating(place.rating, place.reviewCount)}
+            </span>
+            <span className="flex items-center gap-2">
+              {place.estimatedCostEntry != null && <span>{formatCost(place.estimatedCostEntry)}</span>}
+              {distance && (
+                <span className="flex items-center gap-0.5">
+                  <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-400" />
+                  {distance}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
