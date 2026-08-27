@@ -16,10 +16,18 @@ const BADGE_CONFIG: Partial<
   community_favorite: { label: 'Community Favorite', icon: HeartIcon, className: 'bg-rose-500 text-white' },
 };
 
-export function VerificationBadge({ status }: { status: VerificationStatus }) {
+export function VerificationBadge({ status, compact = false }: { status: VerificationStatus; compact?: boolean }) {
   const config = BADGE_CONFIG[status];
   if (!config) return null;
   const Icon = config.icon;
+
+  if (compact) {
+    return (
+      <span className="inline-flex shrink-0 items-center" title={config.label} aria-label={config.label}>
+        <Icon aria-hidden className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+      </span>
+    );
+  }
 
   return (
     <span

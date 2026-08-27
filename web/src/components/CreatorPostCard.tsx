@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { BookmarkIcon, ChatBubbleOvalLeftIcon, HeartIcon, MapPinIcon, ShareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, ChatBubbleOvalLeftIcon, HeartIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
-import { formatCreatorCategory } from '@/lib/format';
 import { HttpError } from '@/lib/http';
 import {
   addCreatorPostComment,
@@ -52,7 +51,6 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
   const [busy, setBusy] = useState<'like' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const county = post.creator.county?.name;
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/creators/${post.creator.username}#post-${post.id}` : `/creators/${post.creator.username}#post-${post.id}`;
 
   async function handleLike() {
@@ -151,16 +149,13 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
           )}
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/creators/${post.creator.username}`} className="font-display text-base font-bold text-slate-950 hover:text-brand-700 dark:text-white dark:hover:text-brand-300">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Link href={`/creators/${post.creator.username}`} className="min-w-0 truncate font-display text-sm font-bold text-slate-950 hover:text-brand-700 dark:text-white dark:hover:text-brand-300 sm:text-base">
               {post.creator.name}
             </Link>
-            <VerificationBadge status={post.creator.verificationStatus === 'verified' ? 'verified' : 'unverified'} />
+            <VerificationBadge compact status={post.creator.verificationStatus === 'verified' ? 'verified' : 'unverified'} />
           </div>
-          <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            {county && <><MapPinIcon aria-hidden className="h-3.5 w-3.5" />{county}<span aria-hidden>·</span></>}
-            <span>{formatCreatorCategory(post.creator.category)}</span>
-            <span aria-hidden>·</span>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString()}>{timeAgo(post.createdAt)}</time>
           </p>
         </div>
