@@ -85,25 +85,15 @@ export function CreatorFeed({
       className={showHeader ? "mt-8" : ""}
     >
       {showHeader && (
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-700 dark:text-brand-300">
-              {mode === "following"
-                ? "Your community"
-                : "Explore the community"}
-            </p>
-            <h2
-              id="creator-feed-heading"
-              className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-white"
-            >
-              {mode === "following" ? "Following feed" : "Creator feed"}
-            </h2>
-          </div>
-          <p className="text-right text-sm text-slate-500 dark:text-slate-400">
+        <div className="mb-4">
+          <h2
+            id="creator-feed-heading"
+            className="font-display text-2xl font-bold text-slate-950 dark:text-white"
+          >
             {mode === "following"
-              ? "Posts from creators you follow"
-              : "Fresh local perspectives"}
-          </p>
+              ? "Latest from creators you follow"
+              : "Real stories from Liberia's creators"}
+          </h2>
         </div>
       )}
 
