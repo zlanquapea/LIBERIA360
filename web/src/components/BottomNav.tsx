@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType, SVGProps } from 'react';
-import { HomeIcon, MapIcon, MapPinIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, MapIcon, UserGroupIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
   MapIcon as MapIconSolid,
-  MapPinIcon as MapPinIconSolid,
+  UserGroupIcon as UserGroupIconSolid,
   BookmarkIcon as BookmarkIconSolid,
 } from '@heroicons/react/24/solid';
 
@@ -16,7 +16,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 const TABS: { href: string; label: string; icon: IconComponent; activeIcon: IconComponent }[] = [
   { href: '/', label: 'Home', icon: HomeIcon, activeIcon: HomeIconSolid },
   { href: '/explore', label: 'Explore', icon: MapIcon, activeIcon: MapIconSolid },
-  { href: '/counties', label: 'Counties', icon: MapPinIcon, activeIcon: MapPinIconSolid },
+  { href: '/creators', label: 'Creators', icon: UserGroupIcon, activeIcon: UserGroupIconSolid },
   { href: '/saved', label: 'Saved', icon: BookmarkIcon, activeIcon: BookmarkIconSolid },
 ];
 
