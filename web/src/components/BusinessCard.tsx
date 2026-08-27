@@ -43,12 +43,10 @@ export function BusinessCard({ business }: { business: Business }) {
         />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
-            {business.name}
-          </h3>
+        <h3 className="flex min-w-0 flex-wrap items-center gap-1 font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300 dark:hover:text-brand-300">
+          <span className="min-w-0 truncate">{business.name}</span>
           <VerificationBadge status={business.verificationStatus} />
-        </div>
+        </h3>
         <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
           {formatBusinessType(business.type)} · {location}
         </p>

@@ -88,10 +88,12 @@ export default async function PlaceProfilePage({ params }: { params: Promise<{ s
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{formatPlaceType(place.type)}</p>
-            <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">{place.name}</h1>
+            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">
+              <span>{place.name}</span>
+              <VerificationBadge status={place.verificationStatus} />
+            </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <VerificationBadge status={place.verificationStatus} />
             <ShareMenu placeName={place.name} />
           </div>
         </div>
