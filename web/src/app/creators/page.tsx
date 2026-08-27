@@ -71,17 +71,18 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
           >
             Discover
           </Link>
+          <span
+            aria-disabled="true"
+            title="Following will be available when creator following is enabled"
+            className="inline-flex min-h-11 cursor-not-allowed items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-400 dark:text-slate-500"
+          >
+            Following
+          </span>
           <Link
             href="/account/bookings"
             className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300"
           >
             Bookings
-          </Link>
-          <Link
-            href="/creators/me"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-white hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300"
-          >
-            My profile
           </Link>
         </nav>
       </header>

@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, PlayCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import type { CreatorPortfolioItem } from '@/lib/types';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { creatorVideoPosterUrl } from '@/lib/creator-media';
 import { SafeImage } from './SafeImage';
+import { CreatorVideoThumbnail } from './CreatorVideoThumbnail';
 
 // The "visually appealing rather than a basic image list" gallery the spec
 // asks for: category filter chips (from whatever tags the creator actually
@@ -109,10 +111,18 @@ export function CreatorPortfolioGallery({ items }: { items: CreatorPortfolioItem
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-lg bg-slate-900 px-2 text-center text-white transition-transform duration-300 hover:scale-[1.02]"
+              className="group relative aspect-square overflow-hidden rounded-2xl bg-slate-950 text-white transition-transform duration-300 hover:scale-[1.02]"
             >
-              <PlayCircleIcon aria-hidden className="h-10 w-10" />
-              <span className="line-clamp-2 text-xs">{item.caption ?? 'Watch video'}</span>
+              <CreatorVideoThumbnail
+                src={resolveImageUrl(item.url)}
+                poster={creatorVideoPosterUrl(item.url)}
+                label={item.caption ?? 'Watch video'}
+              />
+              {item.caption && (
+                <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 text-xs font-medium text-white">
+                  {item.caption}
+                </span>
+              )}
             </a>
           ),
         )}
