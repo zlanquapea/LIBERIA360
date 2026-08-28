@@ -5,6 +5,8 @@ import {
   ArrowUpTrayIcon,
   EllipsisVerticalIcon,
   EyeIcon,
+  MagnifyingGlassMinusIcon,
+  MagnifyingGlassPlusIcon,
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -12,6 +14,76 @@ import { uploadImage } from "@/lib/uploads-api";
 import { resolveImageUrl } from "@/lib/images";
 import { HttpError } from "@/lib/http";
 import { SafeImage } from "./SafeImage";
+
+function readImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("This image could not be read."));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function cropImage(
+  file: File,
+  aspectRatio: number,
+  zoom: number,
+  positionX: number,
+  positionY: number,
+): Promise<File> {
+  const image = await readImage(file);
+  const sourceWidth = image.naturalWidth;
+  const sourceHeight = image.naturalHeight;
+  const sourceAspect = sourceWidth / sourceHeight;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+
+  if (sourceAspect > aspectRatio) {
+    cropWidth = sourceHeight * aspectRatio;
+  } else {
+    cropHeight = sourceWidth / aspectRatio;
+  }
+
+  cropWidth = Math.min(sourceWidth, cropWidth / zoom);
+  cropHeight = Math.min(sourceHeight, cropHeight / zoom);
+  const left = (sourceWidth - cropWidth) * (positionX / 100);
+  const top = (sourceHeight - cropHeight) * (positionY / 100);
+  const outputWidth = Math.min(1600, Math.max(800, Math.round(cropWidth)));
+  const outputHeight = Math.max(1, Math.round(outputWidth / aspectRatio));
+  const canvas = document.createElement("canvas");
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Your browser could not prepare this image.");
+  context.imageSmoothingQuality = "high";
+  context.drawImage(
+    image,
+    left,
+    top,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    outputWidth,
+    outputHeight,
+  );
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.9),
+  );
+  if (!blob) throw new Error("Your browser could not prepare this image.");
+  return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}-cropped.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
 
 export function CreatorPhotoActionMenu({
   token,
@@ -28,34 +100,81 @@ export function CreatorPhotoActionMenu({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [positionX, setPositionX] = useState(50);
+  const [positionY, setPositionY] = useState(50);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isProfilePhoto = label.toLowerCase().includes("profile");
+  const cropAspectRatio = isProfilePhoto ? 1 : 3.2;
 
   useEffect(() => {
-    if (!viewerOpen) return;
+    if (!viewerOpen && !cropOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setViewerOpen(false);
+      if (event.key === "Escape" && !uploading) {
+        setViewerOpen(false);
+        setCropOpen(false);
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [viewerOpen]);
+  }, [viewerOpen, cropOpen, uploading]);
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    return () => {
+      if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    };
+  }, [pendingPreviewUrl]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     setError(null);
+    setPendingFile(file);
+    setPendingPreviewUrl(URL.createObjectURL(file));
+    setZoom(1);
+    setPositionX(50);
+    setPositionY(50);
+    setCropOpen(true);
+    setMenuOpen(false);
+  }
+
+  function cancelCrop() {
+    if (uploading) return;
+    setCropOpen(false);
+    setPendingFile(null);
+    setPendingPreviewUrl(null);
+  }
+
+  async function confirmCropAndUpload() {
+    if (!pendingFile) return;
+    setError(null);
     setUploading(true);
     try {
-      const uploadedUrl = await uploadImage(token, file);
+      const croppedFile = await cropImage(
+        pendingFile,
+        cropAspectRatio,
+        zoom,
+        positionX,
+        positionY,
+      );
+      const uploadedUrl = await uploadImage(token, croppedFile);
       onChange(uploadedUrl);
-      setMenuOpen(false);
+      setCropOpen(false);
+      setPendingFile(null);
+      setPendingPreviewUrl(null);
     } catch (err) {
       setError(
         err instanceof HttpError
           ? err.message
-          : "Photo upload failed. Please try again.",
+          : err instanceof Error
+            ? err.message
+            : "Photo upload failed. Please try again.",
       );
     } finally {
       setUploading(false);
@@ -193,10 +312,122 @@ export function CreatorPhotoActionMenu({
               src={resolveImageUrl(value)}
               alt={label}
               className="max-h-[90dvh] max-w-full object-contain"
-              fallback={
-                <p className="text-sm text-white/70">Image unavailable</p>
-              }
+              fallback={<p className="text-sm text-white/70">Image unavailable</p>}
             />
+          </div>
+        </div>
+      )}
+
+      {cropOpen && pendingPreviewUrl && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`${label.replaceAll(" ", "-")}-crop-title`}
+          className="fixed inset-0 z-[2200] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-slate-950/90 p-4 text-white backdrop-blur-sm sm:p-6"
+        >
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-slate-900 p-4 shadow-2xl sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-300">
+                  Preview before upload
+                </p>
+                <h2 id={`${label.replaceAll(" ", "-")}-crop-title`} className="mt-1 text-xl font-bold">
+                  Adjust {label.toLowerCase()}
+                </h2>
+                <p className="mt-1 text-sm leading-5 text-white/65">
+                  Move the sliders to frame the part of the photo you want people to see.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close photo crop preview"
+                onClick={cancelCrop}
+                disabled={uploading}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50"
+              >
+                <XMarkIcon aria-hidden className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div
+              className={`mx-auto mt-5 w-full max-w-lg overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 ${isProfilePhoto ? "aspect-square" : "aspect-[16/6]"}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={pendingPreviewUrl}
+                alt={`${label} crop preview`}
+                className="h-full w-full object-cover"
+                style={{
+                  objectPosition: `${positionX}% ${positionY}%`,
+                  transform: `scale(${zoom})`,
+                }}
+              />
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <label className="block text-sm font-medium text-white/85">
+                <span className="mb-2 flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2"><MagnifyingGlassMinusIcon aria-hidden className="h-4 w-4" /> Zoom</span>
+                  <span className="text-xs text-white/55">{zoom.toFixed(1)}×</span>
+                </span>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(event) => setZoom(Number(event.target.value))}
+                  className="w-full accent-brand-500"
+                  aria-label="Zoom photo"
+                />
+                <MagnifyingGlassPlusIcon aria-hidden className="ml-auto mt-1 h-4 w-4" />
+              </label>
+              <label className="block text-sm font-medium text-white/85">
+                <span className="mb-2 flex justify-between gap-3"><span>Horizontal position</span><span className="text-xs text-white/55">{Math.round(positionX)}%</span></span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={positionX}
+                  onChange={(event) => setPositionX(Number(event.target.value))}
+                  className="w-full accent-brand-500"
+                  aria-label="Horizontal photo position"
+                />
+              </label>
+              <label className="block text-sm font-medium text-white/85">
+                <span className="mb-2 flex justify-between gap-3"><span>Vertical position</span><span className="text-xs text-white/55">{Math.round(positionY)}%</span></span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={positionY}
+                  onChange={(event) => setPositionY(Number(event.target.value))}
+                  className="w-full accent-brand-500"
+                  aria-label="Vertical photo position"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={cancelCrop}
+                disabled={uploading}
+                className="min-h-11 rounded-full border border-white/20 px-5 text-sm font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmCropAndUpload}
+                disabled={uploading}
+                className="min-h-11 rounded-full bg-brand-500 px-5 text-sm font-bold text-white hover:bg-brand-400 disabled:opacity-60"
+              >
+                {uploading ? "Cropping & uploading…" : "Crop & upload"}
+              </button>
+            </div>
           </div>
         </div>
       )}
