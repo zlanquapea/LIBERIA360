@@ -6,6 +6,8 @@ import type { ComponentType, SVGProps } from "react";
 import {
   ArrowRightIcon,
   CalendarDaysIcon,
+  ChartBarIcon,
+  ChevronRightIcon,
   ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
   MapIcon,
@@ -120,34 +122,47 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-            Control center
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 sm:text-3xl">
-            Dashboard
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-slate-500 dark:text-slate-400">
-            Monitor Liberia360, review what needs attention, and move quickly to
-            the right workspace.
-          </p>
+      <header className="relative overflow-hidden rounded-[2rem] border border-brand-800/70 bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 px-5 py-7 text-white shadow-xl shadow-brand-950/15 sm:px-8 sm:py-9">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-10 -top-12 h-64 w-40 rounded-[48%] bg-brand-700/60 blur-[1px] sm:h-80 sm:w-52"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-0 h-28 w-52 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.5)_1px,transparent_0)] [background-size:10px_10px]"
+        />
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.28em] text-gold-300">
+                Control center
+              </p>
+              <h1 className="mt-2 text-4xl font-extrabold tracking-tight sm:text-5xl">
+                Dashboard
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-brand-100 sm:text-base">
+                Monitor Liberia360, review what needs attention, and move quickly
+                to the right workspace.
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-2.5 py-2 text-[11px] font-semibold text-white/90 sm:px-3 sm:text-xs">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.16)]" />
+              Workspace ready
+            </span>
+          </div>
+          <span
+            className={`inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${
+              user?.isSuperAdmin
+                ? "border-gold-300/40 bg-gold-300/15 text-gold-200"
+                : "border-white/20 bg-white/10 text-white"
+            }`}
+          >
+            {user?.isSuperAdmin && (
+              <StarIcon aria-hidden className="h-4 w-4 text-gold-300" />
+            )}
+            {user?.isSuperAdmin ? "Super Admin" : "Admin"}
+          </span>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            user?.isSuperAdmin
-              ? "bg-gold-400/20 text-gold-600 dark:text-gold-400"
-              : "bg-brand-700/10 text-brand-700 dark:text-brand-300"
-          }`}
-        >
-          {user?.isSuperAdmin && (
-            <StarIcon
-              aria-hidden
-              className="mr-1 inline h-3 w-3 align-[-1px]"
-            />
-          )}
-          {user?.isSuperAdmin ? "Super Admin" : "Admin"}
-        </span>
       </header>
 
       <QuickActions />
@@ -526,14 +541,23 @@ function QuickActions() {
   const groups = visibleAdminNav(user).filter((g) => g.id !== "dashboard");
 
   return (
-    <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="font-semibold text-slate-800 dark:text-slate-100">
-          Manage Liberia360
-        </h2>
-        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-          Jump into the workspace you need.
-        </p>
+    <section className="flex flex-col gap-4">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 className="flex items-center gap-2 border-l-4 border-brand-700 pl-3 text-2xl font-extrabold tracking-tight text-slate-950 dark:border-brand-400 dark:text-slate-50 sm:text-3xl">
+            Manage Liberia360
+          </h2>
+          <p className="mt-1 pl-4 text-sm text-slate-500 dark:text-slate-400 sm:text-base">
+            Jump into the workspace you need.
+          </p>
+        </div>
+        <Link
+          href="/admin/analytics"
+          aria-label="Open analytics"
+          className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-brand-800 shadow-sm hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:text-brand-300 dark:hover:bg-slate-800"
+        >
+          <ChartBarIcon aria-hidden className="h-7 w-7" />
+        </Link>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {groups.map((group) => {
@@ -543,16 +567,22 @@ function QuickActions() {
             <Link
               key={group.id}
               href={href}
-              className="group flex min-h-20 items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:p-4"
+              className="group flex min-h-36 flex-col justify-between rounded-[1.45rem] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(8,26,80,0.08)] transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_14px_30px_rgba(8,26,80,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:min-h-40 sm:p-5"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700/10 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white dark:bg-brand-900/40 dark:text-brand-300">
-                <Icon aria-hidden className="h-5 w-5" />
+              <span className="flex items-start justify-between gap-2">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-800 group-hover:bg-brand-100 dark:bg-brand-950/60 dark:text-brand-300 dark:group-hover:bg-brand-900/60">
+                  <Icon aria-hidden className="h-8 w-8" />
+                </span>
+                <ChevronRightIcon
+                  aria-hidden
+                  className="mt-1 h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700 dark:text-slate-500 dark:group-hover:text-brand-300"
+                />
               </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-slate-900 dark:text-slate-50">
+              <span className="mt-4 min-w-0">
+                <span className="block text-base font-bold leading-tight text-slate-950 dark:text-slate-50 sm:text-lg">
                   {group.label}
                 </span>
-                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                <span className="mt-1 block truncate text-sm text-slate-500 dark:text-slate-400">
                   {group.items ? `${group.items.length} sections` : "Overview"}
                 </span>
               </span>

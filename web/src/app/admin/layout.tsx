@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
 import { AdminGate } from "@/components/AdminGate";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,21 +29,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
+              aria-label="Open admin menu"
               aria-expanded={drawerOpen}
               aria-controls="admin-mobile-menu"
-              className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+              className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-brand-950 shadow-sm hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
             >
-              <Bars3Icon aria-hidden className="h-5 w-5" />
-              Menu
+              <Bars3Icon aria-hidden className="h-7 w-7" />
             </button>
             {user && (
               <span
-                className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold shadow-sm ${
                   user.isSuperAdmin
-                    ? "border-gold-400/30 bg-gold-400/15 text-gold-700 dark:text-gold-300"
+                    ? "border-gold-400/50 bg-gold-50 text-gold-700 dark:bg-gold-400/15 dark:text-gold-300"
                     : "border-brand-300/50 bg-brand-700/10 text-brand-700 dark:border-brand-700 dark:text-brand-300"
                 }`}
               >
+                {user.isSuperAdmin && <StarIcon aria-hidden className="h-4 w-4" />}
                 {user.isSuperAdmin ? "Super Admin" : "Admin"}
               </span>
             )}
