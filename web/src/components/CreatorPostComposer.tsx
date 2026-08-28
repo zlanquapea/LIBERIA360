@@ -94,11 +94,13 @@ export function CreatorPostComposer({
     );
     try {
       const mediaUrl =
-        mediaType === "image"
-          ? imageMediaUrl!
-          : videoSource === "link"
-            ? videoUrl.trim()
-            : await uploadVideo(token, videoFile!, setUploadProgress);
+        mediaType === "text"
+          ? ""
+          : mediaType === "image"
+            ? imageMediaUrl!
+            : videoSource === "link"
+              ? videoUrl.trim()
+              : await uploadVideo(token, videoFile!, setUploadProgress);
 
       await createCreatorPost(token, {
         mediaType,
