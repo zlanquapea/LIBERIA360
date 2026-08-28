@@ -32,6 +32,7 @@ import { BookingRequestSection } from "@/components/BookingRequestSection";
 import { ShareMenu } from "@/components/ShareMenu";
 import { CreatorFollowButton } from "@/components/CreatorFollowButton";
 import { SafeImage } from "@/components/SafeImage";
+import { CreatorPublicPhotoViewer } from "@/components/CreatorPublicPhotoViewer";
 import { JsonLd } from "@/components/JsonLd";
 import { creatorJsonLd } from "@/lib/structured-data";
 import type { CreatorAvailabilityStatus } from "@/lib/types";
@@ -238,10 +239,11 @@ export default async function CreatorProfilePage({
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
         <div className="relative h-44 overflow-hidden sm:h-60">
-          <SafeImage
+          <CreatorPublicPhotoViewer
             src={cover}
             thumbSrc={coverThumb}
-            alt=""
+            alt={`${creator.name} cover photo`}
+            label="cover photo"
             className="h-44 w-full object-cover sm:h-60"
             fallback={
               <div
@@ -271,10 +273,11 @@ export default async function CreatorProfilePage({
               className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white text-2xl font-semibold text-white shadow-lg dark:border-slate-900 sm:h-28 sm:w-28 sm:text-3xl"
               style={{ backgroundColor: colorForCreator(creator.username) }}
             >
-              <SafeImage
+              <CreatorPublicPhotoViewer
                 src={avatar}
                 thumbSrc={avatarThumb}
-                alt=""
+                alt={`${creator.name} profile photo`}
+                label="profile photo"
                 className="h-full w-full object-cover"
                 fallback={
                   <>{creator.name.trim().charAt(0).toUpperCase() || "?"}</>
