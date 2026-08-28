@@ -18,7 +18,7 @@ export function CreatorPostComposer({
   token: string;
   onPublished?: () => void;
 }) {
-  const [mediaType, setMediaType] = useState<CreatorPostMediaType>("image");
+  const [mediaType, setMediaType] = useState<CreatorPostMediaType>("text");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoSource, setVideoSource] = useState<VideoSource>("upload");
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -68,6 +68,11 @@ export function CreatorPostComposer({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const imageMediaUrl = mediaType === "image" ? imageUrl : null;
+    const trimmedCaption = caption.trim();
+    if (mediaType === "text" && !trimmedCaption) {
+      setError("Write something before publishing.");
+      return;
+    }
     if (mediaType === "image" && !imageMediaUrl) {
       setError("Upload an image before publishing.");
       return;
@@ -98,7 +103,7 @@ export function CreatorPostComposer({
       await createCreatorPost(token, {
         mediaType,
         mediaUrl,
-        caption: caption.trim() || undefined,
+        caption: trimmedCaption || undefined,
       });
       setImageUrl(null);
       clearVideoFile();
@@ -135,14 +140,14 @@ export function CreatorPostComposer({
           Create a post
         </h2>
         <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Share a real photo or video and write the caption your viewers will
-          see in the creator feed.
+          Share a thought, real photo, or video with your audience in the
+          creator feed.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
-          {(["image", "video"] as CreatorPostMediaType[]).map((type) => (
+        <div className="grid grid-cols-3 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+          {(["text", "image", "video"] as CreatorPostMediaType[]).map((type) => (
             <button
               key={type}
               type="button"
@@ -152,12 +157,31 @@ export function CreatorPostComposer({
               }}
               className={`min-h-11 rounded-xl px-3 text-sm font-semibold capitalize ${mediaType === type ? "bg-white text-brand-800 shadow-sm dark:bg-slate-700 dark:text-brand-200" : "text-slate-500 dark:text-slate-400"}`}
             >
-              {type === "image" ? "Photo post" : "Video post"}
+              {type === "text"
+                ? "Text post"
+                : type === "image"
+                  ? "Photo post"
+                  : "Video post"}
             </button>
           ))}
         </div>
 
-        {mediaType === "image" ? (
+        {mediaType === "text" ? (
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Your post
+            <textarea
+              value={caption}
+              onChange={(event) => setCaption(event.target.value)}
+              maxLength={2000}
+              rows={8}
+              placeholder="Share a story, tip, question, or thought with your audience…"
+              className="resize-y rounded-2xl border border-slate-300 px-4 py-4 text-base leading-7 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-brand-950"
+            />
+            <span className="text-right text-xs font-normal text-slate-400">
+              {caption.length}/2000
+            </span>
+          </label>
+        ) : mediaType === "image" ? (
           <SingleImageUploader
             token={token}
             value={imageUrl}
@@ -274,20 +298,22 @@ export function CreatorPostComposer({
           </div>
         )}
 
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Caption
-          <textarea
-            value={caption}
-            onChange={(event) => setCaption(event.target.value)}
-            maxLength={2000}
-            rows={4}
-            placeholder="Tell your audience what this moment means…"
-            className="resize-y rounded-2xl border border-slate-300 px-3 py-3 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-brand-950"
-          />
-          <span className="text-right text-xs font-normal text-slate-400">
-            {caption.length}/2000
-          </span>
-        </label>
+        {mediaType !== "text" && (
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Caption
+            <textarea
+              value={caption}
+              onChange={(event) => setCaption(event.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="Tell your audience what this moment means…"
+              className="resize-y rounded-2xl border border-slate-300 px-3 py-3 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:focus:ring-brand-950"
+            />
+            <span className="text-right text-xs font-normal text-slate-400">
+              {caption.length}/2000
+            </span>
+          </label>
+        )}
 
         {error && (
           <p

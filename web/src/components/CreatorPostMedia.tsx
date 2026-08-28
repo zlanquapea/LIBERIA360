@@ -42,6 +42,16 @@ export function CreatorPostMedia({
   const [open, setOpen] = useState(false);
   const mode = post.mediaType === "video" ? "video" : "image";
 
+  if (post.mediaType === "text") {
+    return (
+      <div className="flex min-h-52 items-center justify-center bg-gradient-to-br from-brand-950 via-brand-800 to-brand-600 px-6 py-10 text-center text-white">
+        <p className="max-w-xl whitespace-pre-wrap text-lg font-semibold leading-8 sm:text-xl">
+          {post.caption}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {mode === "video" ? (

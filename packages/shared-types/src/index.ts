@@ -378,7 +378,7 @@ export interface Creator {
   offerings?: CreatorOffering[];
 }
 
-export type CreatorPostMediaType = "image" | "video";
+export type CreatorPostMediaType = "image" | "video" | "text";
 export type CreatorPostStatus = "published" | "hidden";
 
 export interface CreatorPostAuthor {

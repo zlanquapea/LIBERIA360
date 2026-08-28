@@ -44,7 +44,7 @@ export function CreatorDirectoryHeader() {
       </div>
       {creatorState === 'creator' && (
         <Link
-          href="/creators/me#composer"
+          href="/creators/me/create"
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
           <PlusIcon aria-hidden className="h-4 w-4" />

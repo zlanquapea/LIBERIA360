@@ -1,6 +1,7 @@
 export enum CreatorPostMediaType {
   IMAGE = "image",
   VIDEO = "video",
+  TEXT = "text",
 }
 
 // Creator posts are published immediately after the creator submits them;

@@ -320,9 +320,11 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
         </div>
       </div>
 
-      <div className="px-4 pb-3 pt-3 sm:px-5">
-        <PostCaption text={post.caption} />
-      </div>
+      {post.mediaType !== "text" && (
+        <div className="px-4 pb-3 pt-3 sm:px-5">
+          <PostCaption text={post.caption} />
+        </div>
+      )}
 
       <CreatorPostMedia
         post={post}

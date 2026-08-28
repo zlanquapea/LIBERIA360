@@ -13,7 +13,6 @@ import { getCounties } from "@/lib/api";
 import { CountySelect } from "@/components/ProfileFields";
 import { SingleImageUploader } from "@/components/SingleImageUploader";
 import { CreatorPortfolioManager } from "@/components/CreatorPortfolioManager";
-import { CreatorPostComposer } from "@/components/CreatorPostComposer";
 import { CreatorOfferingsManager } from "@/components/CreatorOfferingsManager";
 import { AnalyticsSummary } from "@/components/AnalyticsSummary";
 import { CREATOR_CATEGORIES } from "@/lib/creator-categories";
@@ -159,20 +158,6 @@ export default function MyCreatorProfilePage() {
     };
   }, [ready, token, user]);
 
-  // The "Create post" link on the Creators feed header points here as
-  // `/creators/me#composer` — but the composer only mounts once the
-  // creator profile finishes loading, after the browser's own hash-scroll
-  // already ran against an empty page. Scroll to it ourselves once it's
-  // actually in the DOM.
-  useEffect(() => {
-    if (loadingProfile || !creator) return;
-    if (typeof window === "undefined" || window.location.hash !== "#composer")
-      return;
-    document
-      .getElementById("composer")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [loadingProfile, creator]);
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -259,12 +244,20 @@ export default function MyCreatorProfilePage() {
             : "Share your work and services with LIBERIA360 travelers."}
         </p>
         {creator && (
-          <Link
-            href={`/creators/${creator.username}`}
-            className="mt-1 inline-block text-sm text-brand-700 dark:text-brand-300 hover:underline"
-          >
-            View public profile →
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Link
+              href={`/creators/${creator.username}`}
+              className="text-sm text-brand-700 hover:underline dark:text-brand-300"
+            >
+              View public profile →
+            </Link>
+            <Link
+              href="/creators/me/create"
+              className="inline-flex min-h-10 items-center rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              Create post
+            </Link>
+          </div>
         )}
       </div>
 
@@ -596,7 +589,6 @@ export default function MyCreatorProfilePage() {
 
       {creator && token && (
         <>
-          <CreatorPostComposer token={token} />
           <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
               Portfolio

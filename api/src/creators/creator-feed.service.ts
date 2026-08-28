@@ -143,14 +143,17 @@ export class CreatorFeedService {
   async create(userId: string, dto: CreateCreatorPostDto) {
     const creator = await this.getOwnedCreator(userId);
     const mediaUrl = dto.mediaUrl.trim();
-    if (!mediaUrl)
+    const caption = dto.caption?.trim() || null;
+    if (dto.mediaType === "text" && !caption)
+      throw new ForbiddenException("A text post needs some text");
+    if (dto.mediaType !== "text" && !mediaUrl)
       throw new ForbiddenException("A post needs an image or video link");
     const post = await this.postRepo.save(
       this.postRepo.create({
         creatorId: creator.id,
         mediaType: dto.mediaType,
-        mediaUrl,
-        caption: dto.caption?.trim() || null,
+        mediaUrl: dto.mediaType === "text" ? "" : mediaUrl,
+        caption,
         status: CreatorPostStatus.PUBLISHED,
       }),
     );
@@ -167,14 +170,18 @@ export class CreatorFeedService {
     dto: Partial<CreateCreatorPostDto>,
   ) {
     const post = await this.getOwnedPost(userId, postId);
-    if (dto.mediaType !== undefined) post.mediaType = dto.mediaType;
-    if (dto.mediaUrl !== undefined) {
-      const mediaUrl = dto.mediaUrl.trim();
-      if (!mediaUrl)
-        throw new ForbiddenException("A post needs an image or video link");
-      post.mediaUrl = mediaUrl;
-    }
-    if (dto.caption !== undefined) post.caption = dto.caption.trim() || null;
+    const nextMediaType = dto.mediaType ?? post.mediaType;
+    const nextMediaUrl =
+      dto.mediaUrl !== undefined ? dto.mediaUrl.trim() : post.mediaUrl;
+    const nextCaption =
+      dto.caption !== undefined ? dto.caption.trim() || null : post.caption;
+    if (nextMediaType === "text" && !nextCaption)
+      throw new ForbiddenException("A text post needs some text");
+    if (nextMediaType !== "text" && !nextMediaUrl)
+      throw new ForbiddenException("A post needs an image or video link");
+    post.mediaType = nextMediaType;
+    post.mediaUrl = nextMediaType === "text" ? "" : nextMediaUrl;
+    post.caption = nextCaption;
     await this.postRepo.save(post);
     const saved = await this.postRepo.findOneOrFail({
       where: { id: post.id },
