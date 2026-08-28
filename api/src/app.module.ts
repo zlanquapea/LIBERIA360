@@ -31,6 +31,7 @@ import {
 } from "./creators/entities/creator-post-interaction.entity";
 import { CreatorsModule } from "./creators/creators.module";
 import { Event } from "./events/entities/event.entity";
+import { EventRsvp } from "./events/entities/event-rsvp.entity";
 import { EventsModule } from "./events/events.module";
 import { Itinerary } from "./itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "./itineraries/entities/itinerary-collaborator.entity";
@@ -100,6 +101,7 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
             CreatorPostSave,
             CreatorPostComment,
             Event,
+            EventRsvp,
             Itinerary,
             ItineraryCollaborator,
             TripInvitation,

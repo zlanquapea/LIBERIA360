@@ -1,4 +1,9 @@
-import type { Event, EventCategory } from './types';
+import type {
+  Event,
+  EventCategory,
+  EventRsvpState,
+  EventRsvpStatus,
+} from './types';
 import { apiRequest, authHeader } from './http';
 
 export interface CreateEventInput {
@@ -44,4 +49,46 @@ export function updateEvent(token: string, id: string, input: UpdateEventInput):
 // Self-service cancel/remove — same ownership rule as updateEvent.
 export function deleteEvent(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/events/${id}`, { method: 'DELETE', headers: authHeader(token) });
+}
+
+export interface EventRsvpResult {
+  status: EventRsvpStatus;
+  interestedCount: number;
+  goingCount: number;
+}
+
+// Marks the viewer Interested or Going. Mutually exclusive on the backend
+// (see EventsService.setRsvp) — calling this with "going" while already
+// Interested moves the count across rather than adding a second RSVP.
+export function setEventRsvp(
+  token: string,
+  eventId: string,
+  status: EventRsvpStatus,
+): Promise<EventRsvpResult> {
+  return apiRequest<EventRsvpResult>(`/events/${eventId}/rsvp`, {
+    method: 'PUT',
+    headers: authHeader(token),
+    body: JSON.stringify({ status }),
+  });
+}
+
+// Un-marks Interested/Going entirely — tapping an already-active button
+// again, Facebook-style.
+export function removeEventRsvp(
+  token: string,
+  eventId: string,
+): Promise<{ interestedCount: number; goingCount: number }> {
+  return apiRequest(`/events/${eventId}/rsvp`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
+}
+
+// The viewer's own RSVP status. A separate authenticated fetch rather than
+// a field on the public Event shape — see EventRsvpState's doc comment in
+// shared-types. Called client-side once a token is available.
+export function getEventRsvp(token: string, eventId: string): Promise<EventRsvpState> {
+  return apiRequest<EventRsvpState>(`/events/${eventId}/rsvp`, {
+    headers: authHeader(token),
+  });
 }

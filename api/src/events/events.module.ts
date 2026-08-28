@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Event } from "./entities/event.entity";
+import { EventRsvp } from "./entities/event-rsvp.entity";
 import { EventsService } from "./events.service";
 import { EventsController } from "./events.controller";
 import { PushModule } from "../push/push.module";
@@ -11,7 +12,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Event]),
+    TypeOrmModule.forFeature([Event, EventRsvp]),
     PushModule,
     UsersModule,
     BusinessesModule,

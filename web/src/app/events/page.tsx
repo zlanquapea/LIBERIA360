@@ -1,9 +1,7 @@
 import Link from 'next/link';
 import { getCounties, getEvents } from '@/lib/api';
-import { formatEventCategory, formatEventDateRange } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
 import { EventFilters } from '@/components/EventFilters';
-import { SafeImage } from '@/components/SafeImage';
+import { EventFeedCard } from '@/components/EventFeedCard';
 import type { EventCategory } from '@/lib/types';
 
 export const metadata = { title: 'Events — LIBERIA360' };
@@ -42,11 +40,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Events</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Concerts, festivals, sports, and more — across Liberia.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">LIBERIA360 events</p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">Events</h1>
         </div>
         <Link
           href="/events/new"
@@ -63,35 +61,11 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           No upcoming events match these filters.
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {result.data.map((event) => (
-            <li key={event.id}>
-              <Link
-                href={`/events/${event.id}`}
-                className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3 hover:border-brand-500"
-              >
-                {event.images[0] && (
-                  <SafeImage
-                    src={resolveImageUrl(event.images[0])}
-                    alt=""
-                    className="h-16 w-16 shrink-0 rounded-lg object-cover"
-                    fallback={<div aria-hidden className="h-16 w-16 shrink-0 rounded-lg bg-slate-200 dark:bg-slate-700" />}
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-900 dark:text-slate-50">{event.name}</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">{formatEventDateRange(event.startDate, event.endDate)}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {event.place?.name ?? event.locationText} · {event.county.name} County
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-                  {formatEventCategory(event.category)}
-                </span>
-              </Link>
-            </li>
+            <EventFeedCard key={event.id} event={event} />
           ))}
-        </ul>
+        </div>
       )}
 
       {result.meta.totalPages > 1 && (

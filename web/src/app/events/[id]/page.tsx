@@ -5,13 +5,15 @@ import {
   CalendarDaysIcon,
   MapPinIcon,
 } from "@heroicons/react/24/outline";
-import { ApiError, getEvent } from "@/lib/api";
+import { ApiError, getEvent, getEventAttendees } from "@/lib/api";
 import { formatEventCategory, formatEventDateRange } from "@/lib/format";
 import { resolveImageUrl } from "@/lib/images";
+import { gradientForCategory } from "@/lib/category-colors";
 import { JsonLd } from "@/components/JsonLd";
 import { eventJsonLd } from "@/lib/structured-data";
 import { ReportButton } from "@/components/ReportButton";
 import { EventOwnerActions } from "@/components/EventOwnerActions";
+import { EventRsvpButtons } from "@/components/EventRsvpButtons";
 import { SafeImage } from "@/components/SafeImage";
 import { EventViewTracker } from "@/components/EventViewTracker";
 import { ShareMenu } from "@/components/ShareMenu";
@@ -32,6 +34,10 @@ export async function generateMetadata({
   };
 }
 
+function attendeeInitial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || "?";
+}
+
 export default async function EventDetailPage({
   params,
 }: {
@@ -47,7 +53,10 @@ export default async function EventDetailPage({
     notFound();
   }
 
+  const attendees = await getEventAttendees(id);
   const gallery = event.images.map(resolveImageUrl);
+  const [cover, ...moreImages] = gallery;
+  const hasStats = event.interestedCount > 0 || event.goingCount > 0;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
@@ -64,30 +73,32 @@ export default async function EventDetailPage({
       <JsonLd data={eventJsonLd(event)} />
       <EventViewTracker event={event} />
 
-      {gallery.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {gallery.map((img) => (
-            <SafeImage
-              key={img}
-              src={img}
-              alt={`${event.name} photo`}
-              className="aspect-square w-full rounded-lg object-cover"
-              fallback={
-                <div
-                  aria-hidden
-                  className="aspect-square w-full rounded-lg bg-slate-200 dark:bg-slate-700"
-                />
-              }
-            />
-          ))}
-        </div>
-      )}
+      {/* Facebook-style event page: one large cover photo up top (the
+          "poster" a real event flyer or venue shot reads as) instead of
+          every uploaded image in an equal-sized grid — extra images, if
+          any, still show further down as a smaller gallery. */}
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
+        <SafeImage
+          src={cover ?? null}
+          alt={`${event.name} cover photo`}
+          className="h-full w-full object-cover"
+          fallback={
+            <div
+              aria-hidden
+              className="flex h-full w-full items-center justify-center"
+              style={{ backgroundImage: gradientForCategory(event.category) }}
+            >
+              <CalendarDaysIcon aria-hidden className="h-16 w-16 text-white/70" />
+            </div>
+          }
+        />
+      </div>
 
       <span className="w-fit rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
         {formatEventCategory(event.category)}
       </span>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
+      <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-50">
         {event.name}
       </h1>
 
@@ -117,6 +128,66 @@ export default async function EventDetailPage({
           · {event.county.name} County
         </p>
       </div>
+
+      <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+        {hasStats && (
+          <p className="pb-2 text-sm text-slate-500 dark:text-slate-400">
+            {event.interestedCount > 0 && `${event.interestedCount} interested`}
+            {event.interestedCount > 0 && event.goingCount > 0 && " · "}
+            {event.goingCount > 0 && `${event.goingCount} going`}
+          </p>
+        )}
+        <EventRsvpButtons
+          eventId={event.id}
+          initialStatus={null}
+          initialInterestedCount={event.interestedCount}
+          initialGoingCount={event.goingCount}
+          variant="detail"
+          hydrateFromServer
+        />
+        {attendees.length > 0 && (
+          <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <div className="flex -space-x-2">
+              {attendees.map((attendee) => (
+                <span
+                  key={attendee.id}
+                  title={attendee.name}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-brand-100 text-xs font-bold text-brand-800 dark:border-slate-900 dark:bg-brand-900 dark:text-brand-200"
+                >
+                  {attendeeInitial(attendee.name)}
+                </span>
+              ))}
+            </div>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {attendees[0].name}
+              {event.goingCount > attendees.length
+                ? ` and ${event.goingCount - attendees.length} more going`
+                : attendees.length > 1
+                  ? ` and ${attendees.length - 1} more going`
+                  : " is going"}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {moreImages.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {moreImages.map((img) => (
+            <SafeImage
+              key={img}
+              src={img}
+              alt={`${event.name} photo`}
+              className="aspect-square w-full rounded-lg object-cover"
+              fallback={
+                <div
+                  aria-hidden
+                  className="aspect-square w-full rounded-lg bg-slate-200 dark:bg-slate-700"
+                />
+              }
+            />
+          ))}
+        </div>
+      )}
 
       <EventOwnerActions event={event} />
 

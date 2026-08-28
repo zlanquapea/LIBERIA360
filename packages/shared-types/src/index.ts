@@ -528,9 +528,13 @@ export interface PaginatedCreators {
 export type EventCategory =
   "concert" | "festival" | "sports" | "nightlife" | "seasonal" | "other";
 export type EventReviewStatus = "pending" | "approved" | "rejected";
+export type EventRsvpStatus = "interested" | "going";
 
 // api/src/events/entities/event.entity.ts (sanitized — createdBy is the
-// public user shape).
+// public user shape). interestedCount/goingCount are always present;
+// viewerRsvpStatus is NOT — see events.controller.ts's GET :id/rsvp doc
+// comment for why the viewer's own status is a separate authenticated
+// fetch rather than a field on this shape.
 export interface Event {
   id: string;
   name: string;
@@ -547,7 +551,22 @@ export interface Event {
   createdBy: AuthUser | null;
   reviewStatus: EventReviewStatus;
   rejectionReason: string | null;
+  interestedCount: number;
+  goingCount: number;
   createdAt: string;
+}
+
+// GET /events/:id/rsvp response.
+export interface EventRsvpState {
+  status: EventRsvpStatus | null;
+}
+
+// GET /events/:id/attendees response — just enough to show a name next to
+// an avatar-initial circle, same shape the creator feed's comment list
+// already uses.
+export interface EventAttendee {
+  id: string;
+  name: string;
 }
 
 export interface PaginatedEvents {
