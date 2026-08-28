@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ArrowUturnLeftIcon,
   BookmarkIcon,
+  EllipsisHorizontalIcon,
+  PencilIcon,
   ChatBubbleOvalLeftIcon,
   GlobeAltIcon,
   HeartIcon,
@@ -23,6 +26,7 @@ import {
   removeCreatorPostComment,
   toggleCreatorPostCommentLike,
   toggleCreatorPostLike,
+  removeCreatorPost,
   toggleCreatorPostSave,
 } from "@/lib/creator-feed-api";
 import type { CreatorPost, CreatorPostComment } from "@/lib/types";
@@ -30,6 +34,7 @@ import { VerificationBadge } from "./VerificationBadge";
 import { CreatorPostMedia } from "./CreatorPostMedia";
 import { ShareMenu } from "./ShareMenu";
 import { CreatorFollowButton } from "./CreatorFollowButton";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 // Feed card redesign (product ask: "full Facebook UI and UX for the
 // creator feed... adjust for our situation"): a recognizable social-feed
@@ -98,8 +103,23 @@ function PostCaption({ text }: { text: string | null }) {
   );
 }
 
-export function CreatorPostCard({ post }: { post: CreatorPost }) {
+export interface CreatorPostCardProps {
+  post: CreatorPost;
+  onEdit?: (postId: string, postData: CreatorPost) => void;
+  onDelete?: (postId: string) => void | Promise<void>;
+  onSave?: (postId: string) => void | Promise<void>;
+  onUnsave?: (postId: string) => void | Promise<void>;
+}
+
+export function CreatorPostCard({
+  post,
+  onEdit,
+  onDelete,
+  onSave,
+  onUnsave,
+}: CreatorPostCardProps) {
   const { user, token } = useAuth();
+  const router = useRouter();
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [saveCount, setSaveCount] = useState(post.saveCount);
   const [shareCount, setShareCount] = useState(post.shareCount);
@@ -114,12 +134,85 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [busy, setBusy] = useState<"like" | "save" | null>(null);
   const [commentLikeBusy, setCommentLikeBusy] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState<"above" | "below">("below");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState(false);
+  const overflowButtonRef = useRef<HTMLButtonElement>(null);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   const shareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/creators/${post.creator.username}#post-${post.id}`
       : `/creators/${post.creator.username}#post-${post.id}`;
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutsideClick(event: MouseEvent) {
+      if (!overflowMenuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuOpen]);
+
+  function togglePostActions() {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    const rect = overflowButtonRef.current?.getBoundingClientRect();
+    setMenuPlacement(
+      rect && window.innerHeight - rect.bottom < 150 ? "above" : "below",
+    );
+    setMenuOpen(true);
+  }
+
+  function handleEdit() {
+    setMenuOpen(false);
+    if (onEdit) {
+      onEdit(post.id, post);
+      return;
+    }
+    router.push(`/creators/me/create?edit=${encodeURIComponent(post.id)}`);
+  }
+
+  function openDeleteDialog() {
+    setMenuOpen(false);
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      if (onDelete) {
+        await onDelete(post.id);
+      } else if (token) {
+        await removeCreatorPost(token, post.id);
+      }
+      setDeleteDialogOpen(false);
+      setDeleted(true);
+    } catch (err) {
+      setDeleteError(
+        err instanceof HttpError ? err.message : "Post could not be deleted.",
+      );
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   async function handleLike() {
     if (!token) return;
@@ -143,9 +236,25 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
     setBusy("save");
     setError(null);
     try {
-      const result = await toggleCreatorPostSave(token, post.id);
-      setSaved(result.saved);
-      setSaveCount(result.saveCount);
+      if (saved) {
+        if (onUnsave) {
+          await onUnsave(post.id);
+          setSaved(false);
+          setSaveCount((current) => Math.max(0, current - 1));
+        } else {
+          const result = await toggleCreatorPostSave(token, post.id);
+          setSaved(result.saved);
+          setSaveCount(result.saveCount);
+        }
+      } else if (onSave) {
+        await onSave(post.id);
+        setSaved(true);
+        setSaveCount((current) => current + 1);
+      } else {
+        const result = await toggleCreatorPostSave(token, post.id);
+        setSaved(result.saved);
+        setSaveCount(result.saveCount);
+      }
     } catch (err) {
       setError(
         err instanceof HttpError ? err.message : "Save could not be updated.",
@@ -339,8 +448,11 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
 
   const hasEngagement = likeCount > 0 || commentCount > 0 || shareCount > 0;
 
+  if (deleted) return null;
+
   return (
-    <article
+    <>
+      <article
       id={`post-${post.id}`}
       className="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
@@ -403,30 +515,45 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
               </div>
             </div>
 
-            {token ? (
+            <div ref={overflowMenuRef} className="relative shrink-0">
               <button
+                ref={overflowButtonRef}
                 type="button"
-                onClick={handleSave}
-                disabled={busy === "save"}
-                aria-pressed={saved}
-                aria-label={saved ? "Remove from saved posts" : "Save this post"}
-                className={`shrink-0 rounded-full p-2 transition-colors disabled:opacity-50 ${saved ? "text-brand-700 dark:text-brand-300" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"}`}
+                onClick={togglePostActions}
+                aria-label="More post actions"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-500 outline-none hover:bg-slate-50 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               >
-                {saved ? (
-                  <BookmarkSolidIcon aria-hidden className="h-5 w-5" />
-                ) : (
-                  <BookmarkIcon aria-hidden className="h-5 w-5" />
-                )}
+                <EllipsisHorizontalIcon aria-hidden className="h-6 w-6" />
               </button>
-            ) : (
-              <Link
-                href="/login"
-                aria-label="Log in to save this post"
-                className="shrink-0 rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              >
-                <BookmarkIcon aria-hidden className="h-5 w-5" />
-              </Link>
-            )}
+              {menuOpen && (
+                <div
+                  role="menu"
+                  aria-label="Post actions"
+                  className={`absolute right-0 z-30 w-40 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ${menuPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"}`}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleEdit}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+                  >
+                    <PencilIcon aria-hidden className="h-4 w-4" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={openDeleteDialog}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-rose-600 outline-none hover:bg-rose-50 focus-visible:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:focus-visible:bg-rose-950/40"
+                  >
+                    <TrashIcon aria-hidden className="h-4 w-4" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="mt-2">
             <CreatorFollowButton
@@ -489,7 +616,7 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
         )}
 
         <div
-          className={`grid grid-cols-3 gap-1 py-1 ${hasEngagement ? "mt-2 border-y border-slate-100 dark:border-slate-800" : "border-b border-slate-100 pb-2 dark:border-slate-800"}`}
+          className={`grid grid-cols-4 gap-1 py-1 ${hasEngagement ? "mt-2 border-y border-slate-100 dark:border-slate-800" : "border-b border-slate-100 pb-2 dark:border-slate-800"}`}
         >
           {token ? (
             <button
@@ -531,6 +658,32 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
             variant="feed"
             onShare={handleShare}
           />
+          {token ? (
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={busy === "save"}
+              aria-pressed={saved}
+              aria-label={saved ? "Unsave post" : "Save post"}
+              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${saved ? "text-brand-700 dark:text-brand-300" : "text-slate-600 dark:text-slate-300"}`}
+            >
+              {saved ? (
+                <BookmarkSolidIcon aria-hidden className="h-5 w-5" />
+              ) : (
+                <BookmarkIcon aria-hidden className="h-5 w-5" />
+              )}
+              <span className="truncate">Save</span>
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              aria-label="Save post"
+              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <BookmarkIcon aria-hidden className="h-5 w-5" />
+              <span className="truncate">Save</span>
+            </Link>
+          )}
         </div>
 
         {commentsOpen && (
@@ -605,7 +758,24 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
             {error}
           </p>
         )}
-      </div>
-    </article>
+        </div>
+      </article>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="Delete post?"
+        description="This will permanently remove the post from your creator feed."
+        confirmLabel="Delete"
+        loadingLabel="Deleting…"
+        isLoading={deleteBusy}
+        error={deleteError ?? undefined}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          if (!deleteBusy) {
+            setDeleteDialogOpen(false);
+            setDeleteError(null);
+          }
+        }}
+      />
+    </>
   );
 }
