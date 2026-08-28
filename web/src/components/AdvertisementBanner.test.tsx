@@ -52,26 +52,26 @@ describe("AdvertisementBanner", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders a pause control and automatically advances real ad slides", async () => {
+  // Regression test for "the home page keeps scrolling down by itself" —
+  // a previous version auto-advanced slides on a timer via scrollIntoView,
+  // which could also nudge the page's own vertical scroll (see this
+  // component's doc comment). Navigation must only ever happen from an
+  // explicit click/drag, never on its own after time passes.
+  it("never advances slides on its own — no timer-driven scrollIntoView calls", async () => {
     render(
       <AdvertisementBanner
         ads={[makeAd("a1", "First ad"), makeAd("a2", "Second ad")]}
       />,
     );
 
-    const pauseButton = screen.getByRole("button", {
-      name: /pause sponsored advertisements/i,
-    });
-    expect(pauseButton).toHaveAttribute("aria-pressed", "false");
-
     await act(async () => {
-      jest.advanceTimersByTime(6500);
+      jest.advanceTimersByTime(60_000);
     });
 
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
-  it("pauses and resumes autoplay from the visible control", async () => {
+  it("only scrolls in response to an explicit arrow click", async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(
       <AdvertisementBanner
@@ -79,25 +79,10 @@ describe("AdvertisementBanner", () => {
       />,
     );
 
-    const toggle = screen.getByRole("button", {
-      name: /pause sponsored advertisements/i,
-    });
-    await user.click(toggle);
-    expect(
-      screen.getByRole("button", { name: /resume sponsored advertisements/i }),
-    ).toHaveAttribute("aria-pressed", "true");
-
-    await act(async () => {
-      jest.advanceTimersByTime(6500);
-    });
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole("button", { name: /resume sponsored advertisements/i }),
-    );
-    await act(async () => {
-      jest.advanceTimersByTime(6500);
-    });
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: /next ad/i }));
+
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

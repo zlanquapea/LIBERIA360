@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PauseIcon,
-  PlayIcon,
-} from "@heroicons/react/24/solid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import { MegaphoneIcon } from "@heroicons/react/24/outline";
 import { AdvertisementCard } from "./AdvertisementCard";
 import type { Advertisement } from "@/lib/types";
@@ -30,6 +25,18 @@ import type { Advertisement } from "@/lib/types";
 // container rather than keeping separate "which slide is showing" state,
 // so the two navigation methods can never disagree.
 //
+// Navigation is manual-only — arrows, dots, or a drag/swipe. This
+// previously auto-advanced on a timer via `scrollIntoView({ block:
+// "nearest" })`, which reads as "horizontal only" but isn't: whenever this
+// section sat only partially within the viewport's vertical bounds (any
+// mobile screen shorter than the page, which is most of them), the browser
+// also nudged the page's own vertical scroll to satisfy that same call —
+// reported as "the home page keeps scrolling down by itself" on a fixed
+// interval. Removed rather than patched (e.g. clamping to horizontal-only
+// via a lower-level scrollLeft assignment) — an unrequested background
+// scroll is the wrong default for a page a visitor is actively reading,
+// on top of being an unwelcome un-asked-for animation in the first place.
+//
 // Each card is dismissible for the current page view only — NOT persisted
 // across reloads/visits (previously written to localStorage, so a single
 // dismiss hid an ad from that visitor forever). Advertisers are paying for
@@ -41,7 +48,6 @@ import type { Advertisement } from "@/lib/types";
 export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const cardEls = useRef<(HTMLDivElement | null)[]>([]);
@@ -109,22 +115,6 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
     });
   }
 
-  useEffect(() => {
-    if (visible.length <= 1 || paused || reducedMotion) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      const target =
-        (((activeIndex + 1) % visible.length) + visible.length) %
-        visible.length;
-      cardEls.current[target]?.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
-      });
-    }, 6500);
-    return () => window.clearInterval(timer);
-  }, [visible.length, activeIndex, paused, reducedMotion]);
-
   if (visible.length === 0) return null;
 
   return (
@@ -144,38 +134,9 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
           />
           Sponsored
         </h2>
-        {visible.length > 1 && (
-          <button
-            type="button"
-            onClick={() => setPaused((value) => !value)}
-            aria-label={
-              paused
-                ? "Resume sponsored advertisements"
-                : "Pause sponsored advertisements"
-            }
-            aria-pressed={paused}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-          >
-            {paused ? (
-              <PlayIcon aria-hidden className="h-3.5 w-3.5" />
-            ) : (
-              <PauseIcon aria-hidden className="h-3.5 w-3.5" />
-            )}
-            {paused ? "Play" : "Pause"}
-          </button>
-        )}
       </div>
 
-      <div
-        className="relative"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-            setPaused(false);
-        }}
-      >
+      <div className="relative">
         <div
           ref={trackRef}
           className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
