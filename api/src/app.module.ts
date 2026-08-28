@@ -113,6 +113,9 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
             Advertisement,
           ],
           migrations: ["dist/database/migrations/*.js"],
+          // Apply committed schema changes during deployment before the API
+          // accepts requests, preventing new enum values from failing writes.
+          migrationsRun: true,
           autoLoadEntities: true,
         };
       },
