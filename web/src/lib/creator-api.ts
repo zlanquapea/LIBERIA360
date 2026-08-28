@@ -12,8 +12,8 @@ export interface CreatorProfileInput {
   name: string;
   username: string;
   bio?: string;
-  profileImage?: string;
-  coverImage?: string;
+  profileImage?: string | null;
+  coverImage?: string | null;
   category?: CreatorCategory;
   countyId?: string;
   instagram?: string;

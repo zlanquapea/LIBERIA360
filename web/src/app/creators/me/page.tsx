@@ -11,7 +11,7 @@ import {
 } from "@/lib/creator-api";
 import { getCounties } from "@/lib/api";
 import { CountySelect } from "@/components/ProfileFields";
-import { SingleImageUploader } from "@/components/SingleImageUploader";
+import { CreatorPhotoActionMenu } from "@/components/CreatorPhotoActionMenu";
 import { CreatorPortfolioManager } from "@/components/CreatorPortfolioManager";
 import { CreatorOfferingsManager } from "@/components/CreatorOfferingsManager";
 import { AnalyticsSummary } from "@/components/AnalyticsSummary";
@@ -170,8 +170,8 @@ export default function MyCreatorProfilePage() {
       category,
       countyId: countyId || undefined,
       bio: bio.trim() || undefined,
-      profileImage: profileImage || undefined,
-      coverImage: coverImage || undefined,
+      profileImage: creator ? profileImage : profileImage ?? undefined,
+      coverImage: creator ? coverImage : coverImage ?? undefined,
       instagram: instagram.trim() || undefined,
       tiktok: tiktok.trim() || undefined,
       youtube: youtube.trim() || undefined,
@@ -290,19 +290,19 @@ export default function MyCreatorProfilePage() {
           Basic info
         </h2>
 
-        <div className="flex gap-4">
-          <SingleImageUploader
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-[auto_1fr] sm:items-end">
+          <CreatorPhotoActionMenu
             token={token}
             value={profileImage}
             onChange={setProfileImage}
-            label="Profile picture"
+            label="Profile photo"
           />
-          <SingleImageUploader
+          <CreatorPhotoActionMenu
             token={token}
             value={coverImage}
             onChange={setCoverImage}
-            label="Cover image"
-            className="h-28 w-44"
+            label="Cover photo"
+            className="h-32 w-full sm:h-28"
           />
         </div>
 

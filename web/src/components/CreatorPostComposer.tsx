@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  DocumentTextIcon,
+  PhotoIcon,
+  VideoCameraIcon,
+} from "@heroicons/react/24/outline";
 import { HttpError } from "@/lib/http";
 import { createCreatorPost } from "@/lib/creator-feed-api";
 import type { CreatorPostMediaType } from "@/lib/types";
@@ -125,31 +130,48 @@ export function CreatorPostComposer({
     }
   }
 
+  const postTypes: Array<{
+    type: CreatorPostMediaType;
+    label: string;
+    hint: string;
+    Icon: typeof DocumentTextIcon;
+  }> = [
+    { type: "text", label: "Text", hint: "Share an update", Icon: DocumentTextIcon },
+    { type: "image", label: "Photo", hint: "Add a photo", Icon: PhotoIcon },
+    { type: "video", label: "Video", hint: "Share a video", Icon: VideoCameraIcon },
+  ];
+
   return (
     <section
       id="composer"
       aria-labelledby="creator-post-composer-heading"
-      className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:scroll-mt-28 sm:p-5"
+      className="scroll-mt-24 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_18px_60px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900 sm:scroll-mt-28"
     >
-      <div className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-          Share with your audience
-        </p>
-        <h2
-          id="creator-post-composer-heading"
-          className="mt-1 font-display text-xl font-bold text-slate-950 dark:text-white"
-        >
-          Create a post
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Share a thought, real photo, or video with your audience in the
-          creator feed.
-        </p>
+      <div className="bg-gradient-to-br from-brand-950 via-brand-800 to-brand-700 px-5 pb-6 pt-6 text-white sm:px-7 sm:pt-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-200">
+              Creator studio
+            </p>
+            <h2
+              id="creator-post-composer-heading"
+              className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl"
+            >
+              Create a post
+            </h2>
+            <p className="mt-2 max-w-lg text-sm leading-6 text-white/75">
+              Share a thought, real photo, or video with the LIBERIA360 community.
+            </p>
+          </div>
+          <span className="hidden rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 sm:inline-flex">
+            Public post
+          </span>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-3 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
-          {(["text", "image", "video"] as CreatorPostMediaType[]).map((type) => (
+      <form onSubmit={handleSubmit} className="space-y-5 p-4 sm:p-7">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-100 p-2 dark:bg-slate-800">
+          {postTypes.map(({ type, label, hint, Icon }) => (
             <button
               key={type}
               type="button"
@@ -157,13 +179,12 @@ export function CreatorPostComposer({
                 setMediaType(type);
                 setError(null);
               }}
-              className={`min-h-11 rounded-xl px-3 text-sm font-semibold capitalize ${mediaType === type ? "bg-white text-brand-800 shadow-sm dark:bg-slate-700 dark:text-brand-200" : "text-slate-500 dark:text-slate-400"}`}
+              aria-pressed={mediaType === type}
+              className={`flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${mediaType === type ? "bg-white text-brand-800 shadow-sm ring-1 ring-brand-100 dark:bg-slate-700 dark:text-brand-100 dark:ring-brand-900" : "text-slate-500 hover:bg-white/70 hover:text-brand-700 dark:text-slate-400 dark:hover:bg-slate-700/60 dark:hover:text-brand-200"}`}
             >
-              {type === "text"
-                ? "Text post"
-                : type === "image"
-                  ? "Photo post"
-                  : "Video post"}
+              <Icon aria-hidden className="h-6 w-6" />
+              <span className="text-sm font-bold">{label}</span>
+              <span className="text-[11px] font-normal leading-4 opacity-75">{hint}</span>
             </button>
           ))}
         </div>
@@ -237,17 +258,14 @@ export function CreatorPostComposer({
                 </label>
                 {videoPreviewUrl && (
                   <div className="relative aspect-video overflow-hidden rounded-2xl">
-                    <video
+                    <CreatorVideoThumbnail
                       src={videoPreviewUrl}
-                      controls
-                      playsInline
-                      className="h-full w-full bg-slate-950 object-contain"
-                      aria-label="Video post preview"
+                      label="Video post preview"
                     />
                     <button
                       type="button"
                       onClick={clearVideoFile}
-                      className="absolute right-2 top-2 rounded-full bg-black/65 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/80"
+                      className="absolute right-2 top-2 z-10 rounded-full bg-black/65 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/80"
                     >
                       Remove
                     </button>

@@ -24,6 +24,7 @@ import {
 import type { CreatorPost } from "@/lib/types";
 import { ShareMenu } from "./ShareMenu";
 import { VerificationBadge } from "./VerificationBadge";
+import { CreatorVideoThumbnail } from "./CreatorVideoThumbnail";
 
 function formatCount(value: number): string {
   if (value < 1000) return String(value);
@@ -523,6 +524,11 @@ export function CreatorPostViewerVideoPreview({
           src={poster}
           alt=""
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+        />
+      ) : isDirectVideoFile(post.mediaUrl) ? (
+        <CreatorVideoThumbnail
+          src={post.mediaUrl}
+          label={`${post.creator.name}'s video post preview`}
         />
       ) : (
         <div

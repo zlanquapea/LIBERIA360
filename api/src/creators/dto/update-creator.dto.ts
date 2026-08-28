@@ -31,8 +31,8 @@ export class UpdateCreatorDto {
   username?: string;
 
   @IsOptional() @IsString() @MaxLength(1000) bio?: string;
-  @IsOptional() @IsString() @MaxLength(500) profileImage?: string;
-  @IsOptional() @IsString() @MaxLength(500) coverImage?: string;
+  @IsOptional() @IsString() @MaxLength(500) profileImage?: string | null;
+  @IsOptional() @IsString() @MaxLength(500) coverImage?: string | null;
   @IsOptional() @IsEnum(CreatorCategory) category?: CreatorCategory;
   @IsOptional() @IsUUID() countyId?: string;
   @IsOptional() @IsString() @MaxLength(100) instagram?: string;
