@@ -173,7 +173,12 @@ export function BookingRequestSection({
       onSubmit={handleSubmit}
       className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
     >
-      <div className="grid grid-cols-2 gap-3">
+      {/* Stacked below `sm` — a native date input's own chrome
+          (mm/dd/yyyy plus the calendar icon) doesn't shrink past a
+          point, so two side by side in a `grid-cols-2` had nowhere to
+          go but overlap/wrap on a real phone. Two columns only once
+          there's actually room. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
           Date
           <input
