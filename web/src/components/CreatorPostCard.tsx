@@ -324,7 +324,18 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
         <PostCaption text={post.caption} />
       </div>
 
-      <CreatorPostMedia post={post} />
+      <CreatorPostMedia
+        post={post}
+        liked={liked}
+        saved={saved}
+        likeCount={likeCount}
+        commentCount={commentCount}
+        shareCount={shareCount}
+        onLike={() => void handleLike()}
+        onComment={() => void toggleComments()}
+        onSave={() => void handleSave()}
+        onShare={() => void handleShare()}
+      />
 
       <div className="px-4 pb-4 pt-3 sm:px-5">
         {hasEngagement && (
