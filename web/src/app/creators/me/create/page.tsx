@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { getMyCreatorProfile } from "@/lib/creator-api";
-import type { Creator } from "@/lib/types";
+import { getMyCreatorPosts } from "@/lib/creator-feed-api";
+import type { Creator, CreatorPost } from "@/lib/types";
 import { CreatorPostComposer } from "@/components/CreatorPostComposer";
 
-export default function CreateCreatorPostPage() {
+function CreateCreatorPostPageContent() {
   const { user, token, ready } = useAuth();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
   const [creator, setCreator] = useState<Creator | null>(null);
+  const [editingPost, setEditingPost] = useState<CreatorPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -21,9 +26,18 @@ export default function CreateCreatorPostPage() {
     }
     let cancelled = false;
     setLoading(true);
-    getMyCreatorProfile(token)
-      .then((profile) => {
-        if (!cancelled) setCreator(profile);
+    Promise.all([
+      getMyCreatorProfile(token),
+      editId ? getMyCreatorPosts(token) : Promise.resolve([] as CreatorPost[]),
+    ])
+      .then(([profile, posts]) => {
+        if (cancelled) return;
+        setCreator(profile);
+        if (editId) {
+          const post = posts.find((item) => item.id === editId);
+          if (!post) throw new Error("Post not found");
+          setEditingPost(post);
+        }
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -34,7 +48,7 @@ export default function CreateCreatorPostPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, token]);
+  }, [editId, ready, token]);
 
   if (!ready || loading) {
     return (
@@ -119,21 +133,40 @@ export default function CreateCreatorPostPage() {
             Creator studio
           </p>
           <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-white">
-            Create post
+            {editingPost ? "Edit post" : "Create post"}
           </h1>
         </div>
       </header>
 
       <div className="rounded-2xl border border-brand-100 bg-brand-50/60 px-4 py-3 text-sm leading-6 text-brand-950 dark:border-brand-900/60 dark:bg-brand-950/20 dark:text-brand-100">
-        Share a thought, photo, or video. Your post will appear in the creator feed after you publish it.
+        {editingPost
+          ? "Update your caption or media details, then save the changes."
+          : "Share a thought, photo, or video. Your post will appear in the creator feed after you publish it."}
       </div>
 
       <CreatorPostComposer
         token={token}
+        initialPost={editingPost}
         onPublished={() => {
           window.location.href = "/creators?posted=1";
         }}
       />
     </main>
+  );
+}
+
+export default function CreateCreatorPostPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto flex max-w-xl flex-col gap-3 px-4 py-10">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Loading post editor…
+          </p>
+        </main>
+      }
+    >
+      <CreateCreatorPostPageContent />
+    </Suspense>
   );
 }

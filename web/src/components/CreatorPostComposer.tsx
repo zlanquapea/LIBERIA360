@@ -7,8 +7,8 @@ import {
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { HttpError } from "@/lib/http";
-import { createCreatorPost } from "@/lib/creator-feed-api";
-import type { CreatorPostMediaType } from "@/lib/types";
+import { createCreatorPost, updateCreatorPost } from "@/lib/creator-feed-api";
+import type { CreatorPost, CreatorPostMediaType } from "@/lib/types";
 import { validateVideoFile, uploadVideo } from "@/lib/video-uploads-api";
 import { SingleImageUploader } from "./SingleImageUploader";
 import { CreatorVideoThumbnail } from "./CreatorVideoThumbnail";
@@ -18,19 +18,22 @@ type VideoSource = "upload" | "link";
 
 export function CreatorPostComposer({
   token,
+  initialPost = null,
   onPublished,
 }: {
   token: string;
+  initialPost?: CreatorPost | null;
   onPublished?: () => void;
 }) {
-  const [mediaType, setMediaType] = useState<CreatorPostMediaType>("text");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [videoSource, setVideoSource] = useState<VideoSource>("upload");
+  const isEditing = Boolean(initialPost);
+  const [mediaType, setMediaType] = useState<CreatorPostMediaType>(initialPost?.mediaType ?? "text");
+  const [imageUrl, setImageUrl] = useState<string | null>(initialPost?.mediaType === "image" ? initialPost.mediaUrl : null);
+  const [videoSource, setVideoSource] = useState<VideoSource>(initialPost?.mediaType === "video" ? "link" : "upload");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [videoInputKey, setVideoInputKey] = useState(0);
-  const [videoUrl, setVideoUrl] = useState("");
-  const [caption, setCaption] = useState("");
+  const [videoUrl, setVideoUrl] = useState(initialPost?.mediaType === "video" ? initialPost.mediaUrl : "");
+  const [caption, setCaption] = useState(initialPost?.caption ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -107,11 +110,16 @@ export function CreatorPostComposer({
               ? videoUrl.trim()
               : await uploadVideo(token, videoFile!, setUploadProgress);
 
-      await createCreatorPost(token, {
+      const input = {
         mediaType,
         mediaUrl,
         caption: trimmedCaption || undefined,
-      });
+      };
+      if (initialPost) {
+        await updateCreatorPost(token, initialPost.id, input);
+      } else {
+        await createCreatorPost(token, input);
+      }
       setImageUrl(null);
       clearVideoFile();
       setVideoUrl("");
@@ -157,10 +165,12 @@ export function CreatorPostComposer({
               id="creator-post-composer-heading"
               className="mt-2 font-display text-2xl font-bold tracking-tight sm:text-3xl"
             >
-              Create a post
+              {isEditing ? "Edit your post" : "Create a post"}
             </h2>
             <p className="mt-2 max-w-lg text-sm leading-6 text-white/75">
-              Share a thought, real photo, or video with the LIBERIA360 community.
+              {isEditing
+                ? "Update your caption or media, then save the changes."
+                : "Share a thought, real photo, or video with the LIBERIA360 community."}
             </p>
           </div>
           <span className="hidden rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 sm:inline-flex">
@@ -348,7 +358,7 @@ export function CreatorPostComposer({
             role="status"
             className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
           >
-            Post published to the creator feed.
+            {isEditing ? "Post changes saved." : "Post published to the creator feed."}
           </p>
         )}
 
@@ -358,10 +368,14 @@ export function CreatorPostComposer({
           className="min-h-12 w-full rounded-2xl bg-brand-700 px-4 py-3 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-60"
         >
           {submitting
-            ? uploadProgress !== null
+            ? mediaType === "video" && videoSource === "upload"
               ? "Uploading…"
-              : "Publishing…"
-            : "Publish post"}
+              : isEditing
+                ? "Saving…"
+                : "Publishing…"
+            : isEditing
+              ? "Save changes"
+              : "Publish post"}
         </button>
       </form>
     </section>
