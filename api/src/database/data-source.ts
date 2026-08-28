@@ -20,6 +20,7 @@ import {
   CreatorPostSave,
 } from "../creators/entities/creator-post-interaction.entity";
 import { Event } from "../events/entities/event.entity";
+import { EventRsvp } from "../events/entities/event-rsvp.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
 import { TripInvitation } from "../itineraries/entities/trip-invitation.entity";
@@ -69,6 +70,7 @@ export const AppDataSource = new DataSource({
     CreatorPostSave,
     CreatorPostComment,
     Event,
+    EventRsvp,
     Itinerary,
     ItineraryCollaborator,
     TripInvitation,

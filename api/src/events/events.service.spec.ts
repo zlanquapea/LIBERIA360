@@ -3,7 +3,12 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { EventsService } from "./events.service";
 import { Event } from "./entities/event.entity";
-import { EventCategory, EventReviewStatus } from "./entities/event.enums";
+import { EventRsvp } from "./entities/event-rsvp.entity";
+import {
+  EventCategory,
+  EventReviewStatus,
+  EventRsvpStatus,
+} from "./entities/event.enums";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { PushService } from "../push/push.service";
 import { UsersService } from "../users/users.service";
@@ -40,6 +45,13 @@ describe("EventsService", () => {
     take: jest.Mock;
     getManyAndCount: jest.Mock;
     wheres: Array<{ sql: string; params: unknown }>;
+  };
+  let rsvpRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    find: jest.Mock;
+    remove: jest.Mock;
   };
   let businessesService: { findMine: jest.Mock };
   let creatorsService: { findMine: jest.Mock };
@@ -90,6 +102,13 @@ describe("EventsService", () => {
       merge: jest.fn((event, patch) => Object.assign(event, patch)),
       createQueryBuilder: jest.fn(() => queryBuilder),
     };
+    rsvpRepo = {
+      create: jest.fn((data) => data),
+      save: jest.fn((data) => data),
+      findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
+      remove: jest.fn(),
+    };
     businessesService = { findMine: jest.fn().mockResolvedValue([]) };
     creatorsService = { findMine: jest.fn().mockResolvedValue(null) };
     usersService = {
@@ -106,6 +125,7 @@ describe("EventsService", () => {
       providers: [
         EventsService,
         { provide: getRepositoryToken(Event), useValue: eventRepo },
+        { provide: getRepositoryToken(EventRsvp), useValue: rsvpRepo },
         { provide: PushService, useValue: pushService },
         { provide: UsersService, useValue: usersService },
         { provide: BusinessesService, useValue: businessesService },
@@ -312,6 +332,147 @@ describe("EventsService", () => {
       await expect(
         service.remove({ id: "user-1", isAdmin: false } as never, "missing"),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("RSVP", () => {
+    it("marks a first-time viewer Interested and increments the count", async () => {
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        interestedCount: 0,
+        goingCount: 0,
+      });
+      rsvpRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.setRsvp(
+        "user-1",
+        "event-1",
+        EventRsvpStatus.INTERESTED,
+      );
+
+      expect(rsvpRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventId: "event-1",
+          userId: "user-1",
+          status: EventRsvpStatus.INTERESTED,
+        }),
+      );
+      expect(result).toEqual({
+        status: EventRsvpStatus.INTERESTED,
+        interestedCount: 1,
+        goingCount: 0,
+      });
+    });
+
+    it("switches Interested to Going, moving the count across rather than accumulating both", async () => {
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        interestedCount: 1,
+        goingCount: 0,
+      });
+      const existing = { status: EventRsvpStatus.INTERESTED };
+      rsvpRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.setRsvp(
+        "user-1",
+        "event-1",
+        EventRsvpStatus.GOING,
+      );
+
+      expect(existing.status).toBe(EventRsvpStatus.GOING);
+      expect(rsvpRepo.save).toHaveBeenCalledWith(existing);
+      expect(result).toEqual({
+        status: EventRsvpStatus.GOING,
+        interestedCount: 0,
+        goingCount: 1,
+      });
+    });
+
+    it("setting the status the viewer already has is a no-op", async () => {
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        interestedCount: 1,
+        goingCount: 0,
+      });
+      rsvpRepo.findOne.mockResolvedValue({
+        status: EventRsvpStatus.INTERESTED,
+      });
+
+      const result = await service.setRsvp(
+        "user-1",
+        "event-1",
+        EventRsvpStatus.INTERESTED,
+      );
+
+      expect(rsvpRepo.save).not.toHaveBeenCalled();
+      expect(eventRepo.save).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        status: EventRsvpStatus.INTERESTED,
+        interestedCount: 1,
+        goingCount: 0,
+      });
+    });
+
+    it("removeRsvp clears the row and decrements the matching count", async () => {
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        interestedCount: 0,
+        goingCount: 1,
+      });
+      const existing = { status: EventRsvpStatus.GOING };
+      rsvpRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.removeRsvp("user-1", "event-1");
+
+      expect(rsvpRepo.remove).toHaveBeenCalledWith(existing);
+      expect(result).toEqual({ interestedCount: 0, goingCount: 0 });
+    });
+
+    it("removeRsvp is a no-op when the viewer never RSVP'd", async () => {
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        interestedCount: 0,
+        goingCount: 0,
+      });
+      rsvpRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.removeRsvp("user-1", "event-1");
+
+      expect(rsvpRepo.remove).not.toHaveBeenCalled();
+      expect(eventRepo.save).not.toHaveBeenCalled();
+      expect(result).toEqual({ interestedCount: 0, goingCount: 0 });
+    });
+
+    it("getViewerRsvp returns null when the viewer hasn't RSVP'd", async () => {
+      rsvpRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.getViewerRsvp("user-1", "event-1"),
+      ).resolves.toBeNull();
+    });
+
+    it("getViewerRsvp returns the stored status", async () => {
+      rsvpRepo.findOne.mockResolvedValue({ status: EventRsvpStatus.GOING });
+      await expect(service.getViewerRsvp("user-1", "event-1")).resolves.toBe(
+        EventRsvpStatus.GOING,
+      );
+    });
+
+    it("getGoingAttendees maps rows to plain id/name, newest first", async () => {
+      rsvpRepo.find.mockResolvedValue([
+        { user: { id: "u1", name: "Alice" } },
+        { user: { id: "u2", name: "Bob" } },
+      ]);
+
+      await expect(service.getGoingAttendees("event-1")).resolves.toEqual([
+        { id: "u1", name: "Alice" },
+        { id: "u2", name: "Bob" },
+      ]);
+      expect(rsvpRepo.find).toHaveBeenCalledWith({
+        where: { eventId: "event-1", status: EventRsvpStatus.GOING },
+        relations: ["user"],
+        order: { createdAt: "DESC" },
+        take: 6,
+      });
     });
   });
 });

@@ -104,6 +104,15 @@ export class Event {
   @Column({ name: "reviewed_by_user_id", type: "uuid", nullable: true })
   reviewedByUserId: string | null;
 
+  // Denormalized RSVP tallies, same pattern as CreatorPost.likeCount/
+  // saveCount — kept in sync by EventsService.setRsvp/removeRsvp rather
+  // than a COUNT(*) over event_rsvps on every read.
+  @Column({ name: "interested_count", type: "int", default: 0 })
+  interestedCount: number;
+
+  @Column({ name: "going_count", type: "int", default: 0 })
+  goingCount: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -7,6 +7,7 @@ import type {
   Creator,
   CreatorCategory,
   Event,
+  EventAttendee,
   EventCategory,
   PaginatedBusinessContent,
   PaginatedBusinesses,
@@ -278,6 +279,12 @@ export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
 
 export function getEvent(id: string): Promise<Event> {
   return apiFetch<Event>(`/events/${id}`);
+}
+
+// A handful of the people marked Going, for the event page's avatar strip
+// — see EventsService.getGoingAttendees.
+export function getEventAttendees(id: string): Promise<EventAttendee[]> {
+  return apiFetch<EventAttendee[]>(`/events/${id}/attendees`, undefined, []);
 }
 
 export { ApiError };

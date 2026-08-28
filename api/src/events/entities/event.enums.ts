@@ -25,3 +25,12 @@ export enum EventReviewStatus {
   APPROVED = "approved",
   REJECTED = "rejected",
 }
+
+/** A viewer's RSVP to an event — mutually exclusive: marking GOING while
+ * already INTERESTED (or vice versa) replaces the row rather than adding a
+ * second one (see EventsService.setRsvp), same as Facebook's own Interested/
+ * Going toggle. No row at all means the viewer hasn't RSVP'd. */
+export enum EventRsvpStatus {
+  INTERESTED = "interested",
+  GOING = "going",
+}

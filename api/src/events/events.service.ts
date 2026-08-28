@@ -7,7 +7,8 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Event } from "./entities/event.entity";
-import { EventReviewStatus } from "./entities/event.enums";
+import { EventRsvp } from "./entities/event-rsvp.entity";
+import { EventReviewStatus, EventRsvpStatus } from "./entities/event.enums";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { QueryEventsDto } from "./dto/query-events.dto";
@@ -34,6 +35,8 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
+    @InjectRepository(EventRsvp)
+    private readonly rsvpRepo: Repository<EventRsvp>,
     private readonly pushService: PushService,
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
@@ -282,5 +285,125 @@ export class EventsService {
       return event;
     }
     throw new ForbiddenException("Only the event's organizer can do this");
+  }
+
+  private countField(
+    status: EventRsvpStatus,
+  ): "interestedCount" | "goingCount" {
+    return status === EventRsvpStatus.INTERESTED
+      ? "interestedCount"
+      : "goingCount";
+  }
+
+  /** Marks the viewer Interested or Going — mutually exclusive, so setting
+   * one while the other is active moves the count across rather than
+   * accumulating both (see EventRsvpStatus's doc comment). Idempotent:
+   * setting the status the viewer already has is a no-op rather than an
+   * error, since the frontend's toggle button doesn't first check whether
+   * a tap is a genuine change. */
+  async setRsvp(
+    userId: string,
+    eventId: string,
+    status: EventRsvpStatus,
+  ): Promise<{
+    status: EventRsvpStatus;
+    interestedCount: number;
+    goingCount: number;
+  }> {
+    const event = await this.findOne(eventId);
+    const existing = await this.rsvpRepo.findOne({
+      where: { eventId, userId },
+    });
+
+    if (existing?.status === status) {
+      return {
+        status,
+        interestedCount: event.interestedCount,
+        goingCount: event.goingCount,
+      };
+    }
+
+    if (existing) {
+      event[this.countField(existing.status)] = Math.max(
+        0,
+        event[this.countField(existing.status)] - 1,
+      );
+      existing.status = status;
+      await this.rsvpRepo.save(existing);
+    } else {
+      await this.rsvpRepo.save(
+        this.rsvpRepo.create({ eventId, userId, status }),
+      );
+    }
+    event[this.countField(status)] += 1;
+    await this.eventRepo.save(event);
+
+    return {
+      status,
+      interestedCount: event.interestedCount,
+      goingCount: event.goingCount,
+    };
+  }
+
+  /** Clears the viewer's RSVP entirely — tapping an already-active
+   * Interested/Going button again, Facebook-style, un-marks it rather than
+   * switching to the other status. */
+  async removeRsvp(
+    userId: string,
+    eventId: string,
+  ): Promise<{ interestedCount: number; goingCount: number }> {
+    const event = await this.findOne(eventId);
+    const existing = await this.rsvpRepo.findOne({
+      where: { eventId, userId },
+    });
+    if (!existing) {
+      return {
+        interestedCount: event.interestedCount,
+        goingCount: event.goingCount,
+      };
+    }
+    event[this.countField(existing.status)] = Math.max(
+      0,
+      event[this.countField(existing.status)] - 1,
+    );
+    await this.rsvpRepo.remove(existing);
+    await this.eventRepo.save(event);
+    return {
+      interestedCount: event.interestedCount,
+      goingCount: event.goingCount,
+    };
+  }
+
+  /** The viewer's own RSVP status — fetched client-side on the event detail
+   * page (see events.controller.ts) rather than embedded in the public
+   * findOne/findAll responses, since those routes have no auth guard and
+   * so no reliable viewer identity to embed it against (same simplification
+   * CreatorFeedService's public discover feed already accepts for
+   * viewerLiked/viewerSaved). */
+  async getViewerRsvp(
+    userId: string,
+    eventId: string,
+  ): Promise<EventRsvpStatus | null> {
+    const existing = await this.rsvpRepo.findOne({
+      where: { eventId, userId },
+    });
+    return existing?.status ?? null;
+  }
+
+  /** A handful of the people marked Going, for the event page's "X people
+   * going" avatar strip — newest first, same as a real invite list reads
+   * top-down. Public (no auth) since attendee names are no more sensitive
+   * than a review author's name elsewhere on this platform. */
+  async getGoingAttendees(
+    eventId: string,
+    limit = 6,
+  ): Promise<Array<{ id: string; name: string }>> {
+    const rows = await this.rsvpRepo.find({
+      where: { eventId, status: EventRsvpStatus.GOING },
+      relations: ["user"],
+      order: { createdAt: "DESC" },
+      take: limit,
+    });
+    return rows.map((row) => ({ id: row.user.id, name: row.user.name }));
   }
 }
