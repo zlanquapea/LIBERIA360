@@ -18,3 +18,32 @@ html {
 html.dark {
   color-scheme: dark;
 }
+
+@keyframes sponsored-ad-shimmer {
+  0% {
+    transform: translate3d(-115%, 0, 0) skewX(-14deg);
+  }
+  55%,
+  100% {
+    transform: translate3d(215%, 0, 0) skewX(-14deg);
+  }
+}
+
+.sponsored-ad-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 32%,
+    rgb(255 255 255 / 0.08) 48%,
+    rgb(255 255 255 / 0.13) 52%,
+    transparent 68%
+  );
+  transform: translate3d(-115%, 0, 0) skewX(-14deg);
+  animation: sponsored-ad-shimmer 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sponsored-ad-shimmer {
+    animation: none;
+  }
+}

@@ -26,10 +26,14 @@ export function AdvertisementCard({
   ad,
   onDismiss,
   cardRef,
+  fillContainer = false,
+  shimmerActive = false,
 }: {
   ad: Advertisement;
   onDismiss: () => void;
   cardRef?: (el: HTMLDivElement | null) => void;
+  fillContainer?: boolean;
+  shimmerActive?: boolean;
 }) {
   const cover = ad.images[0] ? resolveImageUrl(ad.images[0]) : null;
   const hasContact = Boolean(ad.contactWhatsapp || ad.contactPhone);
@@ -37,7 +41,11 @@ export function AdvertisementCard({
   return (
     <div
       ref={cardRef}
-      className="group relative h-56 w-[85%] shrink-0 snap-center overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover sm:h-64 sm:w-96"
+      className={`group relative overflow-hidden rounded-2xl shadow-card ${
+        fillContainer
+          ? "h-full w-full"
+          : "h-56 w-[85%] shrink-0 snap-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover sm:h-64 sm:w-96"
+      }`}
     >
       <Link href={`/ads/${ad.id}`} className="absolute inset-0 block">
         <SafeImage
@@ -53,6 +61,12 @@ export function AdvertisementCard({
             </div>
           }
         />
+        {shimmerActive && (
+          <div
+            aria-hidden
+            className="sponsored-ad-shimmer pointer-events-none absolute inset-0"
+          />
+        )}
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/40" />
         <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4 pr-24 text-white">
           <span className="w-fit rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur-sm">

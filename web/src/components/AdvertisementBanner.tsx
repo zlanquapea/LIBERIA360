@@ -1,62 +1,50 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PauseIcon,
+  PlayIcon,
+} from "@heroicons/react/24/solid";
 import { MegaphoneIcon } from "@heroicons/react/24/outline";
 import { AdvertisementCard } from "./AdvertisementCard";
 import type { Advertisement } from "@/lib/types";
 
-// Strategic placement wrapper — a snap-scrolling carousel of full-bleed ad
-// slides (see AdvertisementCard), same shelf pattern as "Featured this
-// week" on this page, rather than a vertical stack of full-width banners:
-// with many advertisers running at once, a stack would make the page
-// increasingly long, while a carousel scales to any number of ads without
-// growing the page. Dropped between organic content sections rather than
-// above the fold, so it reads as a supplement to discovery rather than
-// competing with it.
-//
-// `snap-x snap-mandatory` on the track makes a drag/swipe settle on
-// exactly one slide instead of stopping at an arbitrary scroll offset —
-// what makes a horizontally-scrollable div actually feel like a carousel
-// rather than a viewport onto a long strip. The arrow buttons and dot
-// indicators are the same affordance for anyone not dragging (desktop
-// mouse users, screen-reader/keyboard users tabbing to a button instead of
-// a swipe gesture); both just point-and-click through the same scroll
-// container rather than keeping separate "which slide is showing" state,
-// so the two navigation methods can never disagree.
-//
-// Navigation is manual-only — arrows, dots, or a drag/swipe. This
-// previously auto-advanced on a timer via `scrollIntoView({ block:
-// "nearest" })`, which reads as "horizontal only" but isn't: whenever this
-// section sat only partially within the viewport's vertical bounds (any
-// mobile screen shorter than the page, which is most of them), the browser
-// also nudged the page's own vertical scroll to satisfy that same call —
-// reported as "the home page keeps scrolling down by itself" on a fixed
-// interval. Removed rather than patched (e.g. clamping to horizontal-only
-// via a lower-level scrollLeft assignment) — an unrequested background
-// scroll is the wrong default for a page a visitor is actively reading,
-// on top of being an unwelcome un-asked-for animation in the first place.
-//
-// Each card is dismissible for the current page view only — NOT persisted
-// across reloads/visits (previously written to localStorage, so a single
-// dismiss hid an ad from that visitor forever). Advertisers are paying for
-// impressions, and a dismissal permanently suppressing future ones for
-// that visitor undercuts what they're paying for; a dismiss here just
-// declutters the current view, and the ad is back the next time they load
-// the page. Renders nothing once every ad on this load has either never
-// existed or been dismissed (no empty "Sponsored" shelf).
+const AUTOPLAY_DELAY_MS = 6000;
+const TRANSITION_DURATION_MS = 260;
+const REDUCED_TRANSITION_DURATION_MS = 60;
+const SWIPE_THRESHOLD_PX = 42;
+
 export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeId, setActiveId] = useState<string | null>(ads[0]?.id ?? null);
+  const [outgoingId, setOutgoingId] = useState<string | null>(null);
+  const [incomingId, setIncomingId] = useState<string | null>(null);
+  const [transitionStarted, setTransitionStarted] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const cardEls = useRef<(HTMLDivElement | null)[]>([]);
+  const transitionTimerRef = useRef<number | null>(null);
+  const transitionFrameRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  function dismiss(id: string) {
-    setDismissed((prev) => [...prev, id]);
-  }
-
-  const visible = ads.filter((ad) => !dismissed.includes(ad.id));
+  const visible = useMemo(
+    () => ads.filter((ad) => !dismissed.includes(ad.id)),
+    [ads, dismissed],
+  );
+  const activeAd =
+    visible.find((ad) => ad.id === activeId) ?? visible[0] ?? null;
+  const outgoingAd = visible.find((ad) => ad.id === outgoingId) ?? null;
+  const incomingAd = visible.find((ad) => ad.id === incomingId) ?? null;
+  const selectedId = incomingAd?.id ?? activeAd?.id ?? null;
+  const activeIndex = Math.max(
+    0,
+    visible.findIndex((ad) => ad.id === selectedId),
+  );
+  const duration = reducedMotion
+    ? REDUCED_TRANSITION_DURATION_MS
+    : TRANSITION_DURATION_MS;
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -67,55 +55,93 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
     return () => media.removeEventListener?.("change", updatePreference);
   }, []);
 
-  // Tracks which slide is currently centered in the scroll container so
-  // the dot indicator stays in sync whether the visitor got there by
-  // dragging, an arrow click, or a dot click — all three just move the
-  // same scrollLeft, this just reads it back.
   useEffect(() => {
-    const track = trackRef.current;
-    if (!track || visible.length === 0) return;
+    if (activeAd || visible.length === 0) return;
+    setActiveId(visible[0].id);
+  }, [activeAd, visible]);
 
-    let raf = 0;
-    function updateActive() {
-      const trackEl = trackRef.current;
-      if (!trackEl) return;
-      const center = trackEl.scrollLeft + trackEl.clientWidth / 2;
-      let closest = 0;
-      let closestDistance = Infinity;
-      cardEls.current.forEach((el, i) => {
-        if (!el) return;
-        const distance = Math.abs(el.offsetLeft + el.offsetWidth / 2 - center);
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closest = i;
-        }
+  useEffect(
+    () => () => {
+      if (transitionTimerRef.current !== null)
+        window.clearTimeout(transitionTimerRef.current);
+      if (transitionFrameRef.current !== null)
+        window.cancelAnimationFrame(transitionFrameRef.current);
+    },
+    [],
+  );
+
+  const changeToIndex = useCallback(
+    (index: number) => {
+      if (transitioning || visible.length <= 1 || !activeAd) return;
+      const targetIndex =
+        ((index % visible.length) + visible.length) % visible.length;
+      const target = visible[targetIndex];
+      if (!target || target.id === activeAd.id) return;
+
+      setOutgoingId(activeAd.id);
+      setIncomingId(target.id);
+      setTransitionStarted(false);
+      setTransitioning(true);
+
+      transitionFrameRef.current = window.requestAnimationFrame(() => {
+        setTransitionStarted(true);
       });
-      setActiveIndex(closest);
-    }
-    function onScroll() {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(updateActive);
-    }
+      transitionTimerRef.current = window.setTimeout(() => {
+        setActiveId(target.id);
+        setOutgoingId(null);
+        setIncomingId(null);
+        setTransitionStarted(false);
+        setTransitioning(false);
+        transitionTimerRef.current = null;
+        transitionFrameRef.current = null;
+      }, duration);
+    },
+    [activeAd, duration, transitioning, visible],
+  );
 
-    track.addEventListener("scroll", onScroll, { passive: true });
-    updateActive();
-    return () => {
-      track.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, [visible.length]);
-
-  function scrollToIndex(index: number) {
-    const count = visible.length;
-    const target = ((index % count) + count) % count;
-    cardEls.current[target]?.scrollIntoView({
-      behavior: reducedMotion ? "auto" : "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+  function dismiss(id: string) {
+    if (transitioning) return;
+    const dismissedIndex = visible.findIndex((ad) => ad.id === id);
+    const remaining = visible.filter((ad) => ad.id !== id);
+    setDismissed((current) => [...current, id]);
+    if (id === activeAd?.id) {
+      setActiveId(
+        remaining.length > 0
+          ? remaining[Math.min(dismissedIndex, remaining.length - 1)].id
+          : null,
+      );
+    }
   }
 
-  if (visible.length === 0) return null;
+  useEffect(() => {
+    if (visible.length <= 1 || paused || transitioning || !activeAd) return;
+    const timer = window.setTimeout(() => {
+      if (document.visibilityState !== "visible") return;
+      changeToIndex(activeIndex + 1);
+    }, AUTOPLAY_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [activeAd, activeIndex, changeToIndex, paused, transitioning, visible.length]);
+
+  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const touch = event.touches[0];
+    touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch || transitioning) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY))
+      return;
+    changeToIndex(deltaX < 0 ? activeIndex + 1 : activeIndex - 1);
+  }
+
+  if (visible.length === 0 || !activeAd) return null;
+
+  const currentLayerAd = outgoingAd ?? activeAd;
 
   return (
     <section
@@ -134,40 +160,110 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
           />
           Sponsored
         </h2>
+        {visible.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setPaused((value) => !value)}
+            aria-label={
+              paused
+                ? "Resume sponsored advertisements"
+                : "Pause sponsored advertisements"
+            }
+            aria-pressed={paused}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          >
+            {paused ? (
+              <PlayIcon aria-hidden className="h-3.5 w-3.5" />
+            ) : (
+              <PauseIcon aria-hidden className="h-3.5 w-3.5" />
+            )}
+            {paused ? "Play" : "Pause"}
+          </button>
+        )}
       </div>
 
-      <div className="relative">
+      <div
+        className="relative"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocusCapture={() => setPaused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            setPaused(false);
+        }}
+      >
         <div
-          ref={trackRef}
-          className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          data-testid="sponsored-crossfade-container"
+          className="relative h-56 w-full touch-pan-y overflow-hidden rounded-2xl sm:h-64"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
-          {visible.map((ad, i) => (
+          <div
+            data-transition-layer="current"
+            aria-hidden={Boolean(incomingAd)}
+            className={`absolute inset-0 z-10 ${incomingAd ? "pointer-events-none" : "pointer-events-auto"}`}
+            style={{
+              opacity: transitionStarted && incomingAd ? 0 : 1,
+              transform: "translateZ(0)",
+              transitionProperty: "opacity",
+              transitionDuration: `${duration}ms`,
+              transitionTimingFunction: "ease-in-out",
+              willChange: "opacity",
+            }}
+          >
             <AdvertisementCard
-              key={ad.id}
-              ad={ad}
-              onDismiss={() => dismiss(ad.id)}
-              cardRef={(el) => {
-                cardEls.current[i] = el;
-              }}
+              ad={currentLayerAd}
+              onDismiss={() => dismiss(currentLayerAd.id)}
+              fillContainer
+              shimmerActive={!incomingAd}
             />
-          ))}
+          </div>
+
+          {incomingAd && (
+            <div
+              data-transition-layer="incoming"
+              className="pointer-events-auto absolute inset-0 z-20"
+              style={{
+                opacity: transitionStarted ? 1 : 0,
+                transform:
+                  reducedMotion || transitionStarted
+                    ? "translateZ(0) scale(1)"
+                    : "translateZ(0) scale(0.985)",
+                transitionProperty: reducedMotion
+                  ? "opacity"
+                  : "opacity, transform",
+                transitionDuration: `${duration}ms`,
+                transitionTimingFunction: "ease-in-out",
+                willChange: "opacity, transform",
+              }}
+            >
+              <AdvertisementCard
+                ad={incomingAd}
+                onDismiss={() => dismiss(incomingAd.id)}
+                fillContainer
+                shimmerActive
+              />
+            </div>
+          )}
         </div>
 
         {visible.length > 1 && (
           <>
             <button
               type="button"
-              onClick={() => scrollToIndex(activeIndex - 1)}
+              onClick={() => changeToIndex(activeIndex - 1)}
+              disabled={transitioning}
               aria-label="Previous ad"
-              className="absolute left-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
+              className="absolute left-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
             >
               <ChevronLeftIcon aria-hidden className="h-5 w-5" />
             </button>
             <button
               type="button"
-              onClick={() => scrollToIndex(activeIndex + 1)}
+              onClick={() => changeToIndex(activeIndex + 1)}
+              disabled={transitioning}
               aria-label="Next ad"
-              className="absolute right-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
+              className="absolute right-1 top-1/2 z-30 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
             >
               <ChevronRightIcon aria-hidden className="h-5 w-5" />
             </button>
@@ -177,15 +273,16 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
 
       {visible.length > 1 && (
         <div className="flex items-center justify-center gap-1.5">
-          {visible.map((ad, i) => (
+          {visible.map((ad, index) => (
             <button
               key={ad.id}
               type="button"
-              onClick={() => scrollToIndex(i)}
-              aria-label={`Go to ad ${i + 1}`}
-              aria-current={i === activeIndex}
-              className={`h-1.5 rounded-full transition-all ${
-                i === activeIndex
+              onClick={() => changeToIndex(index)}
+              disabled={transitioning}
+              aria-label={`Go to ad ${index + 1}`}
+              aria-current={ad.id === selectedId}
+              className={`h-1.5 rounded-full transition-all disabled:cursor-wait ${
+                ad.id === selectedId
                   ? "w-5 bg-brand-700 dark:bg-brand-400"
                   : "w-1.5 bg-slate-300 dark:bg-slate-700"
               }`}
