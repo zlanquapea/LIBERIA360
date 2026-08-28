@@ -131,7 +131,11 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
 
         {effectiveBusiness ? (
           <div className="min-w-0">
-            <BookingRequestSection business={effectiveBusiness} />
+            <BookingRequestSection
+              business={effectiveBusiness}
+              mode="link"
+              href={`/businesses/${effectiveBusiness.slug}/book`}
+            />
           </div>
         ) : (
           <Link

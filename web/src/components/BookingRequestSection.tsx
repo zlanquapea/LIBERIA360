@@ -24,10 +24,37 @@ export function BookingRequestSection({
   business,
   creator,
   prominent = false,
+  mode = "inline",
+  href,
+  returnTo,
+  startExpanded = false,
 }: {
   business?: Business;
   creator?: Creator;
   prominent?: boolean;
+  // "link" is for a space-constrained context that has nowhere reasonable
+  // for the full multi-field form to expand into (e.g. one cell of the
+  // Directions/Call/WhatsApp/Book action-tile grid on a place/business
+  // profile — the form used to expand in place there and rendered badly,
+  // fields wrapping and the whole grid going lopsided, since a grid cell
+  // is nowhere near wide enough). Every other state below (login prompt,
+  // "you manage this listing", sent confirmation) is short enough to stay
+  // inline either way — only the form itself becomes a real link, to the
+  // caller-supplied `href` (see /businesses/[slug]/book, which renders
+  // this same component in its default "inline" mode with room to spare).
+  mode?: "inline" | "link";
+  href?: string;
+  // Carried into the "log in to request a booking" link as `?next=`, so a
+  // guest who has to log in first lands back on the booking flow instead
+  // of the generic /account. Only meaningful with mode="link" (the inline
+  // form already keeps its own place in the page); omit to fall back to a
+  // plain /login.
+  returnTo?: string;
+  // The page this form itself lives on (i.e. mode="link"'s `href` target)
+  // has no "Request to book" button of its own to click through — showing
+  // one would just be a second click to reach the thing the visitor
+  // already navigated here for. Skips straight to the form.
+  startExpanded?: boolean;
 }) {
   const { user, token, ready } = useAuth();
   const targetId = business?.id ?? creator!.id;
@@ -35,7 +62,7 @@ export function BookingRequestSection({
     ? user?.id === business.owner?.id
     : user?.id === creator!.user?.id;
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(startExpanded);
   const [requestedDate, setRequestedDate] = useState("");
   const [requestedEndDate, setRequestedEndDate] = useState("");
   const [partySize, setPartySize] = useState("");
@@ -114,7 +141,7 @@ export function BookingRequestSection({
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         <Link
-          href="/login"
+          href={returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : "/login"}
           className={`inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${prominent ? "w-full text-base shadow-sm sm:text-lg" : "text-sm"}`}
         >
           Log in to request a booking
@@ -123,13 +150,19 @@ export function BookingRequestSection({
     );
   }
 
+  const requestToBookClass = `inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${prominent ? "text-base shadow-sm sm:text-lg" : "text-sm"}`;
+
+  if (mode === "link" && href) {
+    return (
+      <Link href={href} className={requestToBookClass}>
+        Request to book
+      </Link>
+    );
+  }
+
   if (!showForm) {
     return (
-      <button
-        type="button"
-        onClick={() => setShowForm(true)}
-        className={`inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${prominent ? "text-base shadow-sm sm:text-lg" : "text-sm"}`}
-      >
+      <button type="button" onClick={() => setShowForm(true)} className={requestToBookClass}>
         Request to book
       </button>
     );

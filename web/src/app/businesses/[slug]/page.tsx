@@ -220,7 +220,11 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
             </span>
           )}
           <div className="min-w-0">
-            <BookingRequestSection business={business} />
+            <BookingRequestSection
+              business={business}
+              mode="link"
+              href={`/businesses/${business.slug}/book`}
+            />
           </div>
           <ShareMenu placeName={business.name} variant="action" />
           <SaveButton
