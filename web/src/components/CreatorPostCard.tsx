@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
+  ArrowUturnLeftIcon,
   BookmarkIcon,
   ChatBubbleOvalLeftIcon,
   GlobeAltIcon,
@@ -20,6 +21,7 @@ import {
   getCreatorPostComments,
   recordCreatorPostShare,
   removeCreatorPostComment,
+  toggleCreatorPostCommentLike,
   toggleCreatorPostLike,
   toggleCreatorPostSave,
 } from "@/lib/creator-feed-api";
@@ -107,9 +109,11 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<CreatorPostComment[]>([]);
   const [commentBody, setCommentBody] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [busy, setBusy] = useState<"like" | "save" | null>(null);
+  const [commentLikeBusy, setCommentLikeBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const shareUrl =
@@ -167,7 +171,7 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
     setLoadingComments(true);
     setError(null);
     try {
-      setComments(await getCreatorPostComments(post.id));
+      setComments(await getCreatorPostComments(post.id, token ?? undefined));
     } catch (err) {
       setError(
         err instanceof HttpError
@@ -188,10 +192,12 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
         token,
         post.id,
         commentBody.trim(),
+        replyingTo ?? undefined,
       );
       setComments((current) => [...current, comment]);
       setCommentCount((current) => current + 1);
       setCommentBody("");
+      setReplyingTo(null);
       setCommentsOpen(true);
     } catch (err) {
       setError(
@@ -202,12 +208,42 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
     }
   }
 
+  async function toggleCommentLike(commentId: string) {
+    if (!token) return;
+    setCommentLikeBusy(commentId);
+    setError(null);
+    try {
+      const result = await toggleCreatorPostCommentLike(
+        token,
+        post.id,
+        commentId,
+      );
+      setComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, likeCount: result.likeCount, viewerLiked: result.liked }
+            : comment,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err instanceof HttpError
+          ? err.message
+          : "Comment like could not be updated.",
+      );
+    } finally {
+      setCommentLikeBusy(null);
+    }
+  }
+
   async function deleteComment(commentId: string) {
     if (!token) return;
     try {
       await removeCreatorPostComment(token, post.id, commentId);
       setComments((current) =>
-        current.filter((comment) => comment.id !== commentId),
+        current.filter(
+          (comment) => comment.id !== commentId && comment.parentId !== commentId,
+        ),
       );
       setCommentCount((current) => Math.max(0, current - 1));
     } catch (err) {
@@ -218,6 +254,88 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
       );
     }
   }
+
+  const renderComment = (
+    comment: CreatorPostComment,
+    depth = 0,
+  ): ReactNode => {
+    const replies = comments.filter((item) => item.parentId === comment.id);
+    const liked = Boolean(comment.viewerLiked);
+    return (
+      <div key={comment.id} className={depth > 0 ? "ml-6 sm:ml-8" : ""}>
+        <div className="flex items-start gap-2">
+          <span
+            aria-hidden
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+          >
+            {commentInitial(comment)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="rounded-2xl bg-slate-50 px-3 py-2 dark:bg-slate-800">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">
+                  {displayName(comment)}
+                </span>
+                <time
+                  dateTime={comment.createdAt}
+                  className="shrink-0 text-[11px] text-slate-400"
+                >
+                  {timeAgo(comment.createdAt)}
+                </time>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
+                {comment.body}
+              </p>
+            </div>
+            <div className="mt-1 flex items-center gap-3 px-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {token ? (
+                <button
+                  type="button"
+                  onClick={() => void toggleCommentLike(comment.id)}
+                  disabled={commentLikeBusy === comment.id}
+                  aria-pressed={liked}
+                  aria-label={liked ? "Unlike comment" : "Like comment"}
+                  className={liked ? "text-rose-600 dark:text-rose-400" : "hover:text-rose-600 dark:hover:text-rose-400"}
+                >
+                  {liked ? "Liked" : "Like"} · {comment.likeCount}
+                </button>
+              ) : (
+                <Link href="/login" className="hover:text-rose-600 dark:hover:text-rose-400">
+                  Like · {comment.likeCount}
+                </Link>
+              )}
+              {token && (
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(comment.id)}
+                  className="inline-flex items-center gap-1 hover:text-brand-700 dark:hover:text-brand-300"
+                >
+                  <ArrowUturnLeftIcon aria-hidden className="h-3.5 w-3.5" />
+                  Reply
+                </button>
+              )}
+              {token && comment.userId === user?.id && (
+                <button
+                  type="button"
+                  onClick={() => void deleteComment(comment.id)}
+                  className="ml-auto inline-flex items-center gap-1 hover:text-rose-600"
+                  aria-label="Delete comment"
+                >
+                  <TrashIcon aria-hidden className="h-3.5 w-3.5" />
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        {replies.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {replies.map((reply) => renderComment(reply, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const hasEngagement = likeCount > 0 || commentCount > 0 || shareCount > 0;
 
@@ -421,42 +539,9 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
               <p className="text-sm text-slate-500">Loading comments…</p>
             ) : comments.length > 0 ? (
               <div className="space-y-3">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="flex items-start gap-2">
-                    <span
-                      aria-hidden
-                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-                    >
-                      {commentInitial(comment)}
-                    </span>
-                    <div className="min-w-0 flex-1 rounded-2xl bg-slate-50 px-3 py-2 dark:bg-slate-800">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                          {displayName(comment)}
-                        </span>
-                        <time
-                          dateTime={comment.createdAt}
-                          className="text-[11px] text-slate-400"
-                        >
-                          {timeAgo(comment.createdAt)}
-                        </time>
-                      </div>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
-                        {comment.body}
-                      </p>
-                    </div>
-                    {token && comment.userId === user?.id && (
-                      <button
-                        type="button"
-                        onClick={() => deleteComment(comment.id)}
-                        className="mt-0.5 rounded-full p-1 text-slate-400 hover:text-rose-600"
-                        aria-label="Delete comment"
-                      >
-                        <TrashIcon aria-hidden className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {comments
+                  .filter((comment) => !comment.parentId)
+                  .map((comment) => renderComment(comment))}
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -477,17 +562,28 @@ export function CreatorPostCard({ post }: { post: CreatorPost }) {
                     onChange={(event) => setCommentBody(event.target.value)}
                     rows={1}
                     maxLength={1000}
-                    placeholder="Write a comment…"
+                    placeholder={replyingTo ? "Write a reply…" : "Write a comment…"}
                     className="min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-brand-950"
                   />
-                  <button
-                    type="button"
-                    onClick={submitComment}
-                    disabled={submittingComment || !commentBody.trim()}
-                    className="min-h-11 shrink-0 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
-                  >
-                    {submittingComment ? "Posting…" : "Post"}
-                  </button>
+                  <div className="flex shrink-0 flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={submitComment}
+                      disabled={submittingComment || !commentBody.trim()}
+                      className="min-h-11 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {submittingComment ? "Posting…" : replyingTo ? "Reply" : "Post"}
+                    </button>
+                    {replyingTo && (
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      >
+                        Cancel reply
+                      </button>
+                    )}
+                  </div>
                 </>
               ) : (
                 <Link

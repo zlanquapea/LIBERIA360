@@ -6,6 +6,7 @@ import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
 import {
   CreatorPostComment,
+  CreatorPostCommentLike,
   CreatorPostLike,
   CreatorPostSave,
 } from "./entities/creator-post-interaction.entity";
@@ -42,6 +43,7 @@ describe("CreatorFeedService followed feed", () => {
         { provide: getRepositoryToken(CreatorPostLike), useValue: {} },
         { provide: getRepositoryToken(CreatorPostSave), useValue: {} },
         { provide: getRepositoryToken(CreatorPostComment), useValue: {} },
+        { provide: getRepositoryToken(CreatorPostCommentLike), useValue: {} },
         { provide: getRepositoryToken(CreatorFollow), useValue: followRepo },
       ],
     }).compile();

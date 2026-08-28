@@ -11,6 +11,7 @@ import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
 import {
   CreatorPostComment,
+  CreatorPostCommentLike,
   CreatorPostLike,
   CreatorPostSave,
 } from "./entities/creator-post-interaction.entity";
@@ -36,6 +37,8 @@ export class CreatorFeedService {
     private readonly saveRepo: Repository<CreatorPostSave>,
     @InjectRepository(CreatorPostComment)
     private readonly commentRepo: Repository<CreatorPostComment>,
+    @InjectRepository(CreatorPostCommentLike)
+    private readonly commentLikeRepo: Repository<CreatorPostCommentLike>,
     @InjectRepository(CreatorFollow)
     private readonly followRepo: Repository<CreatorFollow>,
   ) {}
@@ -232,14 +235,26 @@ export class CreatorFeedService {
     return { shareCount: post.shareCount };
   }
 
-  async findComments(postId: string) {
+  async findComments(postId: string, userId?: string) {
     await this.getPublishedPost(postId);
     const comments = await this.commentRepo.find({
       where: { postId },
       relations: ["user"],
       order: { createdAt: "ASC" },
     });
-    return comments.map((comment) => this.serializeComment(comment));
+    const likedComments =
+      userId && comments.length > 0
+        ? await this.commentLikeRepo.find({
+            where: {
+              userId,
+              commentId: In(comments.map((comment) => comment.id)),
+            },
+          })
+        : [];
+    const likedIds = new Set(likedComments.map((like) => like.commentId));
+    return comments.map((comment) =>
+      this.serializeComment(comment, likedIds.has(comment.id)),
+    );
   }
 
   async addComment(
@@ -250,8 +265,19 @@ export class CreatorFeedService {
     const post = await this.getPublishedPost(postId);
     const body = dto.body.trim();
     if (!body) throw new ForbiddenException("Comment cannot be empty");
+    let parentId: string | null = null;
+    if (dto.parentId) {
+      const parent = await this.commentRepo.findOne({
+        where: { id: dto.parentId, postId },
+      });
+      if (!parent)
+        throw new NotFoundException(
+          `Parent comment "${dto.parentId}" not found`,
+        );
+      parentId = parent.id;
+    }
     const comment = await this.commentRepo.save(
-      this.commentRepo.create({ postId, userId, body }),
+      this.commentRepo.create({ postId, userId, body, parentId }),
     );
     post.commentCount += 1;
     await this.postRepo.save(post);
@@ -260,6 +286,30 @@ export class CreatorFeedService {
       relations: ["user"],
     });
     return this.serializeComment(saved);
+  }
+
+  async toggleCommentLike(userId: string, postId: string, commentId: string) {
+    await this.getPublishedPost(postId);
+    const comment = await this.commentRepo.findOne({
+      where: { id: commentId, postId },
+    });
+    if (!comment)
+      throw new NotFoundException(`Comment "${commentId}" not found`);
+    const existing = await this.commentLikeRepo.findOne({
+      where: { commentId, userId },
+    });
+    if (existing) {
+      await this.commentLikeRepo.remove(existing);
+      comment.likeCount = Math.max(0, comment.likeCount - 1);
+      await this.commentRepo.save(comment);
+      return { liked: false, likeCount: comment.likeCount };
+    }
+    await this.commentLikeRepo.save(
+      this.commentLikeRepo.create({ commentId, userId }),
+    );
+    comment.likeCount += 1;
+    await this.commentRepo.save(comment);
+    return { liked: true, likeCount: comment.likeCount };
   }
 
   async removeComment(
@@ -349,12 +399,15 @@ export class CreatorFeedService {
     };
   }
 
-  private serializeComment(comment: CreatorPostComment) {
+  private serializeComment(comment: CreatorPostComment, viewerLiked = false) {
     return {
       id: comment.id,
       postId: comment.postId,
       userId: comment.userId,
+      parentId: comment.parentId ?? null,
       body: comment.body,
+      likeCount: comment.likeCount,
+      viewerLiked,
       user: comment.user ? toPublicUser(comment.user) : null,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,

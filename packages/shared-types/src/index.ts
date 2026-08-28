@@ -414,7 +414,10 @@ export interface CreatorPostComment {
   id: string;
   postId: string;
   userId: string;
+  parentId: string | null;
   body: string;
+  likeCount: number;
+  viewerLiked?: boolean;
   user: AuthUser | null;
   createdAt: string;
   updatedAt: string;

@@ -114,8 +114,8 @@ export class CreatorFeedController {
   }
 
   @Get("posts/:postId/comments")
-  findComments(@Param("postId") postId: string) {
-    return this.feedService.findComments(postId);
+  findComments(@Param("postId") postId: string, @CurrentUser() user?: User) {
+    return this.feedService.findComments(postId, user?.id);
   }
 
   @Post("posts/:postId/comments")
@@ -127,6 +127,17 @@ export class CreatorFeedController {
     @Body() dto: CreateCreatorPostCommentDto,
   ) {
     return this.feedService.addComment(user.id, postId, dto);
+  }
+
+  @Post("posts/:postId/comments/:commentId/like")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  toggleCommentLike(
+    @CurrentUser() user: User,
+    @Param("postId") postId: string,
+    @Param("commentId") commentId: string,
+  ) {
+    return this.feedService.toggleCommentLike(user.id, postId, commentId);
   }
 
   @Delete("posts/:postId/comments/:commentId")

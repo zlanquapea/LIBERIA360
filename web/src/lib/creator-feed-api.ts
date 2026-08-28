@@ -130,20 +130,38 @@ export function recordCreatorPostShare(
 
 export function getCreatorPostComments(
   postId: string,
+  token?: string,
 ): Promise<CreatorPostComment[]> {
-  return apiRequest<CreatorPostComment[]>(`/creators/posts/${postId}/comments`);
+  return apiRequest<CreatorPostComment[]>(`/creators/posts/${postId}/comments`, {
+    headers: token ? authHeader(token) : undefined,
+  });
 }
 
 export function addCreatorPostComment(
   token: string,
   postId: string,
   body: string,
+  parentId?: string,
 ): Promise<CreatorPostComment> {
   return apiRequest<CreatorPostComment>(`/creators/posts/${postId}/comments`, {
     method: "POST",
     headers: authHeader(token),
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, ...(parentId ? { parentId } : {}) }),
   });
+}
+
+export function toggleCreatorPostCommentLike(
+  token: string,
+  postId: string,
+  commentId: string,
+): Promise<{ liked: boolean; likeCount: number }> {
+  return apiRequest<{ liked: boolean; likeCount: number }>(
+    `/creators/posts/${postId}/comments/${commentId}/like`,
+    {
+      method: "POST",
+      headers: authHeader(token),
+    },
+  );
 }
 
 export function removeCreatorPostComment(

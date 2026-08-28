@@ -7,6 +7,7 @@ import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
 import {
   CreatorPostComment,
+  CreatorPostCommentLike,
   CreatorPostLike,
   CreatorPostSave,
 } from "./entities/creator-post-interaction.entity";
@@ -26,6 +27,7 @@ import { CreatorFeedController } from "./creator-feed.controller";
       CreatorPostLike,
       CreatorPostSave,
       CreatorPostComment,
+      CreatorPostCommentLike,
     ]),
   ],
   controllers: [CreatorFeedController, CreatorsController],
