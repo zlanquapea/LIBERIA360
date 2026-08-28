@@ -104,12 +104,19 @@ describe('SafeImage', () => {
     // asserts is gone.
   });
 
-  it('shows a pulsing skeleton look on the <img> itself while loading, then sheds it once loaded', () => {
+  // Regression test: the loading placeholder used to also carry
+  // `animate-pulse` — a continuously looping opacity animation — which
+  // across a page with many photos read as every image perpetually fading
+  // in and out. It's a static background color now, shed once loaded, with
+  // no animation class at any point.
+  it('shows a static (non-animated) skeleton background on the <img> itself while loading, then sheds it once loaded', () => {
     const { container } = render(<SafeImage src="https://example.com/full.jpg" alt="" fallback={FALLBACK} />);
     const img = container.querySelector('img')!;
-    expect(img.className).toMatch(/animate-pulse/);
+    expect(img.className).toMatch(/bg-slate-200/);
+    expect(img.className).not.toMatch(/animate-pulse/);
 
     fireEvent.load(img);
+    expect(img.className).not.toMatch(/bg-slate-200/);
     expect(img.className).not.toMatch(/animate-pulse/);
   });
 });

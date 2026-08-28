@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
  *   broken-image icon, both when `src` is empty AND when the URL 404s/fails
  *   to load — previously every surface in the app only handled the first
  *   case (an absent field), never a load failure.
- * - A pulse skeleton look while the image is still loading, so photos
+ * - A static skeleton look while the image is still loading, so photos
  *   don't just pop in with no loading state — see the note below on *how*
  *   that's done, which matters more than it sounds like it should.
  * - Native lazy-loading by default (`loading="lazy"`) — pass `loading="eager"`
@@ -41,10 +41,18 @@ import { useEffect, useState } from 'react';
  * lazily-loaded photo in the app (i.e. every card/grid thumbnail — nothing
  * short of scrolling to force a relayout could ever make one appear) was
  * silently stuck behind its own skeleton forever. Instead, the *same* `img`
- * element carries the pulsing placeholder look (a background color plus
- * `animate-pulse`) while `status === 'loading'`, and just sheds those
- * classes once it loads — one element, always in real layout, so the
- * browser can always actually decide to fetch it.
+ * element carries the placeholder look (a flat background color) while
+ * `status === 'loading'`, and just sheds that class once it loads — one
+ * element, always in real layout, so the browser can always actually
+ * decide to fetch it.
+ *
+ * 2026-08-28: the placeholder used to also carry `animate-pulse` — a
+ * continuously looping opacity animation. Removed: across a page with many
+ * photos (any card grid/feed), that reads as every image on screen
+ * perpetually fading in and out rather than a one-time loading cue, which
+ * is exactly the "unprofessional, images keep fading" feedback this was
+ * cut for. The flat background color alone still communicates "loading"
+ * without animating.
  */
 export function SafeImage({
   src,
@@ -102,7 +110,7 @@ export function SafeImage({
       alt={alt}
       loading={loading}
       decoding="async"
-      className={`${className ?? ''} ${status === 'loading' ? 'animate-pulse bg-slate-200 dark:bg-slate-800' : ''}`}
+      className={`${className ?? ''} ${status === 'loading' ? 'bg-slate-200 dark:bg-slate-800' : ''}`}
       onLoad={() => setStatus('loaded')}
       onError={handleError}
     />
