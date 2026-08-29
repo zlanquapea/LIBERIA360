@@ -12,9 +12,20 @@ import {
   setAdvertisementReviewStatus,
   setBusinessContentReviewStatus,
   setBusinessVerification,
+  setCarListingReviewStatus,
   setEventReviewStatus,
 } from '@/lib/admin-api';
-import { formatAdvertisementReviewStatus, formatAdvertisementType, formatBusinessContentType, formatBusinessContentStatus, formatBusinessType, formatEventCategory } from '@/lib/format';
+import {
+  formatAdvertisementReviewStatus,
+  formatAdvertisementType,
+  formatBusinessContentType,
+  formatBusinessContentStatus,
+  formatBusinessType,
+  formatCarCategory,
+  formatCarListingReviewStatus,
+  formatCost,
+  formatEventCategory,
+} from '@/lib/format';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import type {
   Advertisement,
@@ -22,6 +33,8 @@ import type {
   BulkReviewResult,
   BusinessContent,
   BusinessContentStatus,
+  CarListing,
+  CarListingReviewStatus,
   Event,
   EventReviewStatus,
   FlaggedContent,
@@ -257,6 +270,45 @@ export default function ModerationPage() {
                 <p className="line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{ad.description}</p>
                 <AdvertisementFullDetails ad={ad} />
                 <AdvertisementReviewStatusControl ad={ad} onDone={reload} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
+          Pending car listings
+          {queue && queue.pendingCarListings.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+              {queue.pendingCarListings.length}
+            </span>
+          )}
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Fleet vehicles from car-rental businesses — invisible on the public /car-rentals directory until approved.{' '}
+          <Link href="/admin/content?tab=car-listings" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
+            See every listing, including approved ones you can suspend
+          </Link>
+          .
+        </p>
+        {!queue ? (
+          <LoadingState />
+        ) : queue.pendingCarListings.length === 0 ? (
+          <EmptyState title="Nothing pending — the queue is clear." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {queue.pendingCarListings.map((listing) => (
+              <li
+                key={listing.id}
+                className="flex flex-col gap-1 rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
+              >
+                <p className="font-medium text-slate-900 dark:text-slate-50">{listing.title}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {listing.year} {listing.make} {listing.model} · {formatCarCategory(listing.category)} ·{' '}
+                  {formatCost(listing.pricePerDay)}/day · {listing.business?.name ?? 'Unknown business'}
+                </p>
+                <CarListingReviewStatusControl listing={listing} onDone={reload} />
               </li>
             ))}
           </ul>
@@ -580,6 +632,68 @@ function AdvertisementReviewStatusControl({ ad, onDone }: { ad: Advertisement; o
           {ADVERTISEMENT_STATUSES.map((s) => (
             <option key={s} value={s}>
               {formatAdvertisementReviewStatus(s)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={apply}
+          className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {submitting ? 'Applying…' : 'Apply'}
+        </button>
+      </div>
+      {status === 'rejected' && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for rejection…"
+          maxLength={1000}
+          className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        />
+      )}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+    </div>
+  );
+}
+
+const CAR_LISTING_STATUSES: CarListingReviewStatus[] = ['approved', 'rejected'];
+
+// Mirrors AdvertisementReviewStatusControl exactly, for the car-listing
+// pending-queue equivalent.
+function CarListingReviewStatusControl({ listing, onDone }: { listing: CarListing; onDone: () => void }) {
+  const { token } = useAuth();
+  const [status, setStatus] = useState<CarListingReviewStatus>('approved');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function apply() {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await setCarListingReviewStatus(token, listing.id, status, reason.trim() || undefined);
+      onDone();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'set-car-listing-review-status', carListingId: listing.id } }));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as CarListingReviewStatus)}
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700"
+        >
+          {CAR_LISTING_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {formatCarListingReviewStatus(s)}
             </option>
           ))}
         </select>

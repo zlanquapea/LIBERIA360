@@ -1,7 +1,8 @@
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 
-// Exactly one of placeId/creatorId — enforced in ReviewsService.find.
+// Exactly one of placeId/creatorId/carListingId — enforced in
+// ReviewsService.find.
 export class QueryReviewsDto {
   @IsOptional()
   @IsUUID()
@@ -10,6 +11,10 @@ export class QueryReviewsDto {
   @IsOptional()
   @IsUUID()
   creatorId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  carListingId?: string;
 
   @IsOptional()
   @Type(() => Number)

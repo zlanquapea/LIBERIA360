@@ -2,6 +2,9 @@ import type {
   Advertisement,
   Business,
   BusinessType,
+  CarCategory,
+  CarListing,
+  CarTransmission,
   Category,
   County,
   Creator,
@@ -11,6 +14,7 @@ import type {
   EventCategory,
   PaginatedBusinessContent,
   PaginatedBusinesses,
+  PaginatedCarListings,
   PaginatedCreators,
   PaginatedCreatorPosts,
   PaginatedEvents,
@@ -161,6 +165,10 @@ export function getCreatorReviews(creatorId: string, query: { page?: number; lim
   return apiFetch<PaginatedReviews>('/reviews', { creatorId, ...query });
 }
 
+export function getCarListingReviews(carListingId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>('/reviews', { carListingId, ...query });
+}
+
 // GET /businesses?placeId=... returns `null` (200, not 404) when nothing's
 // been claimed yet — apiFetch's throw-on-!res.ok path never fires for it.
 // Only ever an APPROVED listing — see BusinessesService.findByPlace's doc
@@ -285,6 +293,35 @@ export function getEvent(id: string): Promise<Event> {
 // — see EventsService.getGoingAttendees.
 export function getEventAttendees(id: string): Promise<EventAttendee[]> {
   return apiFetch<EventAttendee[]>(`/events/${id}/attendees`, undefined, []);
+}
+
+export interface CarListingsQuery {
+  search?: string;
+  category?: CarCategory;
+  transmission?: CarTransmission;
+  countyId?: string;
+  minSeats?: number;
+  maxPricePerDay?: number;
+  withDriverAvailable?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+// The public /car-rentals directory — approved AND active listings only,
+// same "is this actually bookable right now" gate as getCarListingById.
+export function getCarListings(query: CarListingsQuery = {}): Promise<PaginatedCarListings> {
+  return apiFetch<PaginatedCarListings>(
+    '/car-listings',
+    { ...query, withDriverAvailable: query.withDriverAvailable ? 'true' : undefined },
+    emptyPage(query.limit),
+  );
+}
+
+// The /car-rentals/[id] detail page — a single approved, active vehicle.
+// No buildFallback (unlike the list above): a missing/not-yet-approved id
+// is a 404, not an empty state, same as getPlaceBySlug.
+export function getCarListingById(id: string): Promise<CarListing> {
+  return apiFetch<CarListing>(`/car-listings/${id}`);
 }
 
 export { ApiError };

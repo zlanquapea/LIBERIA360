@@ -12,6 +12,7 @@ import {
   BookmarkIcon,
   ChevronRightIcon,
   MegaphoneIcon,
+  TruckIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,6 +71,12 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: "My Ads",
     description: "Manage advertisements",
     icon: MegaphoneIcon,
+  },
+  {
+    href: "/account/my-car-listings",
+    label: "My Car Listings",
+    description: "Manage your rental fleet",
+    icon: TruckIcon,
   },
   {
     href: "/account/analytics",

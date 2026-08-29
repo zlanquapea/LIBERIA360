@@ -9,11 +9,13 @@ import { ReviewsService } from "./reviews.service";
 import { Review } from "./entities/review.entity";
 import { Place } from "../places/entities/place.entity";
 import { Creator } from "../creators/entities/creator.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { BookingStatus } from "../bookings/entities/booking.enums";
 
 const DTO = { placeId: "place-1", overallRating: 5 };
 const CREATOR_DTO = { creatorId: "creator-1", overallRating: 5 };
+const CAR_LISTING_DTO = { carListingId: "car-1", overallRating: 5 };
 
 describe("ReviewsService", () => {
   let service: ReviewsService;
@@ -24,9 +26,11 @@ describe("ReviewsService", () => {
     findOneOrFail: jest.Mock;
     createQueryBuilder: jest.Mock;
     delete: jest.Mock;
+    findAndCount: jest.Mock;
   };
   let placeRepo: { findOne: jest.Mock; update: jest.Mock };
   let creatorRepo: { findOne: jest.Mock; update: jest.Mock };
+  let carListingRepo: { findOne: jest.Mock; update: jest.Mock };
   let bookingQueryBuilder: {
     innerJoin: jest.Mock;
     where: jest.Mock;
@@ -52,6 +56,7 @@ describe("ReviewsService", () => {
         getRawOne: jest.fn().mockResolvedValue({ avg: "5", count: "1" }),
       }),
       delete: jest.fn(),
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
     };
     placeRepo = {
       findOne: jest.fn().mockResolvedValue({ id: "place-1" }),
@@ -59,6 +64,10 @@ describe("ReviewsService", () => {
     };
     creatorRepo = {
       findOne: jest.fn().mockResolvedValue({ id: "creator-1" }),
+      update: jest.fn(),
+    };
+    carListingRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: "car-1" }),
       update: jest.fn(),
     };
     bookingQueryBuilder = {
@@ -77,6 +86,7 @@ describe("ReviewsService", () => {
         { provide: getRepositoryToken(Review), useValue: reviewRepo },
         { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: getRepositoryToken(Creator), useValue: creatorRepo },
+        { provide: getRepositoryToken(CarListing), useValue: carListingRepo },
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },
       ],
     }).compile();
@@ -163,6 +173,43 @@ describe("ReviewsService", () => {
     });
   });
 
+  describe("car listing reviews", () => {
+    it("rejects a review for a car listing that doesn't exist", async () => {
+      carListingRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.create("user-1", CAR_LISTING_DTO),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects a duplicate review for the same car listing", async () => {
+      reviewRepo.findOne.mockResolvedValue({ id: "existing" });
+      await expect(
+        service.create("user-1", CAR_LISTING_DTO),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(reviewRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("marks verifiedVisit true when the reviewer has a confirmed booking for that car", async () => {
+      bookingQueryBuilder.getCount.mockResolvedValue(1);
+      const result = await service.create("user-1", CAR_LISTING_DTO);
+      expect(result.verifiedVisit).toBe(true);
+      expect(bookingQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "booking.carListingId = :matchValue",
+        { matchValue: "car-1" },
+      );
+    });
+
+    it("leaves verifiedVisit false and recalculates the listing's rating when there's no confirmed booking", async () => {
+      bookingQueryBuilder.getCount.mockResolvedValue(0);
+      const result = await service.create("user-1", CAR_LISTING_DTO);
+      expect(result.verifiedVisit).toBe(false);
+      expect(carListingRepo.update).toHaveBeenCalledWith(
+        "car-1",
+        expect.objectContaining({ rating: 5, reviewCount: 1 }),
+      );
+    });
+  });
+
   describe("remove", () => {
     it("rejects an unknown review", async () => {
       reviewRepo.findOne.mockResolvedValue(null);
@@ -199,6 +246,21 @@ describe("ReviewsService", () => {
         expect.objectContaining({ rating: 5, reviewCount: 1 }),
       );
     });
+
+    it("deletes a car listing review and recalculates the listing's rating", async () => {
+      reviewRepo.findOne.mockResolvedValue({
+        id: "review-1",
+        placeId: null,
+        creatorId: null,
+        carListingId: "car-1",
+      });
+      await service.remove("review-1");
+      expect(reviewRepo.delete).toHaveBeenCalledWith({ id: "review-1" });
+      expect(carListingRepo.update).toHaveBeenCalledWith(
+        "car-1",
+        expect.objectContaining({ rating: 5, reviewCount: 1 }),
+      );
+    });
   });
 
   describe("find", () => {
@@ -212,6 +274,19 @@ describe("ReviewsService", () => {
       await expect(
         service.find({ placeId: "place-1", creatorId: "creator-1" } as never),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects a query with both placeId and carListingId", async () => {
+      await expect(
+        service.find({ placeId: "place-1", carListingId: "car-1" } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("queries by carListingId alone", async () => {
+      await service.find({ carListingId: "car-1" } as never);
+      expect(reviewRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { carListingId: "car-1" } }),
+      );
     });
   });
 });

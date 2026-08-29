@@ -15,6 +15,7 @@ import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-repo
 import { ContentReport } from "../reports/entities/content-report.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { ReviewsModule } from "../reviews/reviews.module";
 import { AuthModule } from "../auth/auth.module";
 import { SecurityModule } from "../security/security.module";
@@ -60,6 +61,7 @@ import { AdminAssistantReviewController } from "./admin-assistant-review.control
       ContentReport,
       Booking,
       Advertisement,
+      CarListing,
       AssistantFeedback,
     ]),
     AdminAuditModule,

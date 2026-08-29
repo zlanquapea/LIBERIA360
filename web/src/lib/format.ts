@@ -7,6 +7,10 @@ import type {
   BusinessContentType,
   BusinessReviewStatus,
   BusinessType,
+  CarCategory,
+  CarFuelType,
+  CarListingReviewStatus,
+  CarTransmission,
   CreatorCategory,
   EventCategory,
   EventReviewStatus,
@@ -48,6 +52,7 @@ const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   shop: 'Shop',
   cultural_org: 'Cultural Organization',
   creative_business: 'Creative Business',
+  car_rental: 'Car Rental',
   other: 'Other',
 };
 
@@ -102,6 +107,54 @@ const ADVERTISEMENT_REVIEW_STATUS_LABELS: Record<AdvertisementReviewStatus, stri
 
 export function formatAdvertisementReviewStatus(status: AdvertisementReviewStatus): string {
   return ADVERTISEMENT_REVIEW_STATUS_LABELS[status] ?? status;
+}
+
+const CAR_CATEGORY_LABELS: Record<CarCategory, string> = {
+  economy: 'Economy',
+  compact: 'Compact',
+  sedan: 'Sedan',
+  suv: 'SUV',
+  van: 'Van',
+  minibus: 'Minibus',
+  pickup: 'Pickup',
+  luxury: 'Luxury',
+};
+
+export function formatCarCategory(category: CarCategory): string {
+  return CAR_CATEGORY_LABELS[category] ?? category;
+}
+
+const CAR_TRANSMISSION_LABELS: Record<CarTransmission, string> = {
+  automatic: 'Automatic',
+  manual: 'Manual',
+};
+
+export function formatCarTransmission(transmission: CarTransmission): string {
+  return CAR_TRANSMISSION_LABELS[transmission] ?? transmission;
+}
+
+const CAR_FUEL_TYPE_LABELS: Record<CarFuelType, string> = {
+  petrol: 'Petrol',
+  diesel: 'Diesel',
+  hybrid: 'Hybrid',
+  electric: 'Electric',
+};
+
+export function formatCarFuelType(fuelType: CarFuelType): string {
+  return CAR_FUEL_TYPE_LABELS[fuelType] ?? fuelType;
+}
+
+// Same shape as AdvertisementReviewStatus — no under_review value.
+const CAR_LISTING_REVIEW_STATUS_LABELS: Record<CarListingReviewStatus, string> = {
+  draft: 'Draft',
+  submitted_for_review: 'Submitted for review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  suspended: 'Suspended',
+};
+
+export function formatCarListingReviewStatus(status: CarListingReviewStatus): string {
+  return CAR_LISTING_REVIEW_STATUS_LABELS[status] ?? status;
 }
 
 const BUSINESS_CONTENT_TYPE_LABELS: Record<BusinessContentType, string> = {

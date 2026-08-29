@@ -13,6 +13,8 @@ import type {
   BusinessContentStatus,
   BusinessReviewStatus,
   BusinessType,
+  CarListing,
+  CarListingReviewStatus,
   County,
   Category,
   CreateActivityInput,
@@ -194,6 +196,29 @@ export function setAdvertisementReviewStatus(
   reason?: string,
 ): Promise<Advertisement> {
   return apiRequest<Advertisement>(`/admin/advertisements/${id}/review-status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status, reason }),
+  });
+}
+
+// Every car listing regardless of status (unlike the public GET
+// /car-listings, which is approved+active only). Distinct from
+// moderation-queue's pendingCarListings (SUBMITTED_FOR_REVIEW-only
+// slice). Mirrors getAllAdvertisements.
+export function getAllCarListings(token: string): Promise<CarListing[]> {
+  return apiRequest<CarListing[]>('/admin/car-listings', { headers: authHeader(token) });
+}
+
+// The publish/moderation lifecycle for a self-listed vehicle — approve/
+// reject/suspend — mirrors setAdvertisementReviewStatus.
+export function setCarListingReviewStatus(
+  token: string,
+  id: string,
+  status: CarListingReviewStatus,
+  reason?: string,
+): Promise<CarListing> {
+  return apiRequest<CarListing>(`/admin/car-listings/${id}/review-status`, {
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ status, reason }),

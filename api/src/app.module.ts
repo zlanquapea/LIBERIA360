@@ -55,6 +55,8 @@ import { Notification } from "./notifications/entities/notification.entity";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { Advertisement } from "./advertisements/entities/advertisement.entity";
 import { AdvertisementsModule } from "./advertisements/advertisements.module";
+import { CarListing } from "./car-listings/entities/car-listing.entity";
+import { CarListingsModule } from "./car-listings/car-listings.module";
 import { AssistantModule } from "./assistant/assistant.module";
 import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entity";
 
@@ -115,6 +117,7 @@ import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entit
             BookingMessage,
             Notification,
             Advertisement,
+            CarListing,
             AssistantFeedback,
           ],
           migrations: ["dist/database/migrations/*.js"],
@@ -148,6 +151,7 @@ import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entit
     ReportsModule,
     NotificationsModule,
     AdvertisementsModule,
+    CarListingsModule,
     AssistantModule,
   ],
   providers: [

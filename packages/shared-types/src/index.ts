@@ -180,12 +180,13 @@ export interface PlaceDataQualityIssue {
 }
 
 // api/src/reviews/entities/review.entity.ts (sanitized — user is the
-// public shape, never a passwordHash). Targets either a Place or a
-// Creator — exactly one of placeId/creatorId is non-null, never both.
+// public shape, never a passwordHash). Targets exactly one of a Place, a
+// Creator, or a CarListing — never more than one.
 export interface Review {
   id: string;
   placeId: string | null;
   creatorId: string | null;
+  carListingId: string | null;
   user: AuthUser | null;
   overallRating: number;
   experienceRating: number | null;
@@ -223,6 +224,7 @@ export type BusinessType =
   | "shop"
   | "cultural_org"
   | "creative_business"
+  | "car_rental"
   | "other";
 export type SubscriptionTier = "free" | "premium";
 export type BusinessReviewStatus =
@@ -466,22 +468,28 @@ export type BookingStatus = "pending" | "confirmed" | "declined" | "cancelled";
 export type PaymentProvider = "mtn_momo";
 export type PaymentStatus = "unpaid" | "pending" | "paid" | "refunded";
 
-// api/src/bookings/entities/booking.entity.ts (sanitized — guest and
-// business.owner are the public user shape). Request-to-book only —
-// paymentStatus stays 'unpaid' until a real MTN MoMo integration exists.
-// Targets either a Business or a Creator, never both — see the backend
-// entity's doc comment.
+// api/src/bookings/entities/booking.entity.ts (sanitized — guest,
+// business.owner, and carListing.business.owner are the public user
+// shape). Request-to-book only — paymentStatus stays 'unpaid' until a
+// real MTN MoMo integration exists. Targets exactly one of a Business, a
+// Creator, or a CarListing — see the backend entity's doc comment.
 export interface Booking {
   id: string;
   business: Business | null;
   businessId: string | null;
   creator: Creator | null;
   creatorId: string | null;
+  carListing: CarListing | null;
+  carListingId: string | null;
   guest: AuthUser | null;
   guestUserId: string;
   requestedDate: string;
   requestedEndDate: string | null;
   partySize: number | null;
+  // Car-listing-only fields — see the backend entity's doc comment.
+  withDriver: boolean;
+  pickupLocation: string | null;
+  estimatedTotal: number | null;
   notes: string | null;
   status: BookingStatus;
   businessResponse: string | null;
@@ -960,6 +968,7 @@ export interface ModerationQueue {
   pendingBusinessContent: BusinessContent[];
   pendingAdvertisements: Advertisement[];
   pendingEvents: Event[];
+  pendingCarListings: CarListing[];
 }
 
 // api/src/freshness/entities/place-freshness-report.enums.ts
@@ -1243,4 +1252,83 @@ export interface Advertisement {
   reviewedByUserId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// api/src/car-listings/entities/car-listing.enums.ts — "Car Rental": hire
+// a specific vehicle from a car-rental Business's fleet, booked through
+// the same Booking flow as everything else (see Booking.carListingId).
+export type CarCategory =
+  | "economy"
+  | "compact"
+  | "sedan"
+  | "suv"
+  | "van"
+  | "minibus"
+  | "pickup"
+  | "luxury";
+
+export type CarTransmission = "automatic" | "manual";
+
+export type CarFuelType = "petrol" | "diesel" | "hybrid" | "electric";
+
+export type CarListingReviewStatus =
+  "draft" | "submitted_for_review" | "approved" | "rejected" | "suspended";
+
+// api/src/car-listings/entities/car-listing.entity.ts (sanitized —
+// business.owner is the public user shape, same convention as
+// Advertisement.owner). One vehicle in a car-rental Business's fleet.
+export interface CarListing {
+  id: string;
+  business: Business | null;
+  businessId: string;
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+  category: CarCategory;
+  transmission: CarTransmission;
+  fuelType: CarFuelType;
+  seats: number;
+  pricePerDay: number;
+  withDriverAvailable: boolean;
+  driverFeePerDay: number | null;
+  minRentalDays: number;
+  securityDeposit: number | null;
+  features: string[];
+  images: string[];
+  description: string | null;
+  pickupLocation: string | null;
+  isActive: boolean;
+  reviewStatus: CarListingReviewStatus;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedByUserId: string | null;
+  rating: number;
+  reviewCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedCarListings {
+  data: CarListing[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+// GET /car-listings query params (CarListingsService.findAllApproved).
+export interface QueryCarListingsParams {
+  search?: string;
+  category?: CarCategory;
+  transmission?: CarTransmission;
+  countyId?: string;
+  minSeats?: number;
+  maxPricePerDay?: number;
+  withDriverAvailable?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface SetCarListingReviewStatusInput {
+  status: CarListingReviewStatus;
+  reason?: string;
 }

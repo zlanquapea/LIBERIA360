@@ -32,6 +32,8 @@ import { SettingsService } from "../settings/settings.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { AdvertisementReviewStatus } from "../advertisements/entities/advertisement.enums";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
+import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
 
 const NEW_USER_WINDOW_DAYS = 7;
 
@@ -48,7 +50,11 @@ const DECISION_STATUSES = new Set([
 ]);
 
 function isReviewDecision(
-  status: PlaceReviewStatus | BusinessReviewStatus | AdvertisementReviewStatus,
+  status:
+    | PlaceReviewStatus
+    | BusinessReviewStatus
+    | AdvertisementReviewStatus
+    | CarListingReviewStatus,
 ): boolean {
   return (DECISION_STATUSES as Set<string>).has(status);
 }
@@ -86,6 +92,7 @@ export interface ModerationQueue {
   pendingBusinessContent: BusinessContent[];
   pendingAdvertisements: Advertisement[];
   pendingEvents: Event[];
+  pendingCarListings: CarListing[];
 }
 
 // Real, honestly-computable numbers only — no revenue figure, since no
@@ -130,6 +137,8 @@ export class AdminService {
     private readonly businessContentRepo: Repository<BusinessContent>,
     @InjectRepository(Advertisement)
     private readonly advertisementRepo: Repository<Advertisement>,
+    @InjectRepository(CarListing)
+    private readonly carListingRepo: Repository<CarListing>,
     private readonly adminAuditService: AdminAuditService,
     private readonly settingsService: SettingsService,
     private readonly notificationsService: NotificationsService,
@@ -463,6 +472,62 @@ export class AdminService {
     return this.advertisementRepo.findOneOrFail({ where: { id } });
   }
 
+  findPendingCarListings(): Promise<CarListing[]> {
+    return this.carListingRepo.find({
+      where: { reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW },
+      order: { submittedAt: "DESC" },
+    });
+  }
+
+  /** Every car listing regardless of status — an admin's own management
+   * view, so an already-APPROVED listing can still be found and
+   * suspended. */
+  findAllCarListings(): Promise<CarListing[]> {
+    return this.carListingRepo.find({ order: { createdAt: "DESC" } });
+  }
+
+  /** The publish/moderation lifecycle transition for a self-listed
+   * vehicle — mirrors setAdvertisementReviewStatus exactly; see
+   * CarListingReviewStatus's doc comment for what each status means. */
+  async setCarListingReviewStatus(
+    adminUserId: string,
+    id: string,
+    status: CarListingReviewStatus,
+    reason?: string,
+    requestInfo?: RequestInfo,
+  ): Promise<CarListing> {
+    const listing = await this.carListingRepo.findOne({ where: { id } });
+    if (!listing) {
+      throw new NotFoundException(`Car listing "${id}" not found`);
+    }
+    const previousStatus = listing.reviewStatus;
+    listing.reviewStatus = status;
+    listing.rejectionReason =
+      status === CarListingReviewStatus.APPROVED ? null : (reason ?? null);
+    listing.reviewedByUserId = adminUserId;
+    listing.reviewedAt = new Date();
+    const saved = await this.carListingRepo.save(listing);
+    await this.adminAuditService.log(
+      adminUserId,
+      "car_listing.review_status_changed",
+      "car_listing",
+      id,
+      { from: previousStatus, to: status, reason: reason ?? null },
+      requestInfo,
+    );
+    if (isReviewDecision(status)) {
+      await this.notificationsService.create(saved.business.ownerUserId!, {
+        type: "car_listing.review_decided",
+        title: `Your car listing was ${status}`,
+        body: reason
+          ? `"${saved.title}" was ${status}: ${reason}`
+          : `"${saved.title}" was ${status}.`,
+        link: "/account/my-car-listings",
+      });
+    }
+    return this.carListingRepo.findOneOrFail({ where: { id } });
+  }
+
   findPendingEvents(): Promise<Event[]> {
     return this.eventRepo.find({
       where: { reviewStatus: EventReviewStatus.PENDING },
@@ -576,6 +641,7 @@ export class AdminService {
       pendingBusinessContent,
       pendingAdvertisements,
       pendingEvents,
+      pendingCarListings,
     ] = await Promise.all([
       // "Pending" now means "awaiting a review-lifecycle decision," not the
       // old "never been given a trust badge" (VerificationStatus stayed
@@ -614,6 +680,7 @@ export class AdminService {
       this.findPendingBusinessContent(),
       this.findPendingAdvertisements(),
       this.findPendingEvents(),
+      this.findPendingCarListings(),
     ]);
     return {
       pendingBusinessContent,
@@ -624,6 +691,7 @@ export class AdminService {
       flaggedContent,
       pendingAdvertisements,
       pendingEvents,
+      pendingCarListings,
     };
   }
 

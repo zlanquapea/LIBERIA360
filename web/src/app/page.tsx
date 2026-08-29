@@ -3,6 +3,7 @@ import {
   MagnifyingGlassIcon,
   BriefcaseIcon,
   MapIcon,
+  TruckIcon,
   VideoCameraIcon,
   ViewfinderCircleIcon,
   ArrowRightIcon,
@@ -420,6 +421,20 @@ export default async function Home() {
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">Videos, photos, and guides from local storytellers</p>
             </div>
             <VideoCameraIcon
+              aria-hidden
+              className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
+            />
+          </Link>
+
+          <Link
+            href="/car-rentals"
+            className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card sm:col-span-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Rent a car for your trip</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Hire a vehicle, with or without a driver, from a local operator</p>
+            </div>
+            <TruckIcon
               aria-hidden
               className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
             />

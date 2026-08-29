@@ -10,7 +10,7 @@ import {
 } from "@/lib/analytics-api";
 import { HttpError } from "@/lib/http";
 import { formatBookingStatus } from "@/lib/format";
-import type { Business, Creator, BookingStatus } from "@/lib/types";
+import type { Business, CarListing, Creator, BookingStatus } from "@/lib/types";
 
 // "Request to book" (Tech Spec §3.3). Request-to-book only — no real
 // payment capture yet (see Booking.paymentProvider: MTN MoMo is the
@@ -23,6 +23,7 @@ import type { Business, Creator, BookingStatus } from "@/lib/types";
 export function BookingRequestSection({
   business,
   creator,
+  carListing,
   prominent = false,
   mode = "inline",
   href,
@@ -31,6 +32,10 @@ export function BookingRequestSection({
 }: {
   business?: Business;
   creator?: Creator;
+  // Renting a specific vehicle — the third XOR target alongside
+  // business/creator. Needs its own return-date requirement, driver
+  // option, and pickup-location field the other two targets don't.
+  carListing?: CarListing;
   prominent?: boolean;
   // "link" is for a space-constrained context that has nowhere reasonable
   // for the full multi-field form to expand into (e.g. one cell of the
@@ -57,15 +62,19 @@ export function BookingRequestSection({
   startExpanded?: boolean;
 }) {
   const { user, token, ready } = useAuth();
-  const targetId = business?.id ?? creator!.id;
+  const targetId = business?.id ?? creator?.id ?? carListing!.id;
   const isOwner = business
     ? user?.id === business.owner?.id
-    : user?.id === creator!.user?.id;
+    : creator
+      ? user?.id === creator.user?.id
+      : user?.id === carListing!.business?.owner?.id;
 
   const [showForm, setShowForm] = useState(startExpanded);
   const [requestedDate, setRequestedDate] = useState("");
   const [requestedEndDate, setRequestedEndDate] = useState("");
   const [partySize, setPartySize] = useState("");
+  const [withDriver, setWithDriver] = useState(false);
+  const [pickupLocation, setPickupLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,18 +89,23 @@ export function BookingRequestSection({
       const booking = await createBooking(token, {
         businessId: business?.id,
         creatorId: creator?.id,
+        carListingId: carListing?.id,
         requestedDate,
         requestedEndDate: requestedEndDate || undefined,
         partySize: partySize ? Number(partySize) : undefined,
+        withDriver: carListing ? withDriver : undefined,
+        pickupLocation: carListing ? pickupLocation.trim() || undefined : undefined,
         notes: notes.trim() || undefined,
       });
       setSent({ status: booking.status });
       setShowForm(false);
       if (business) {
         recordAnalyticsEvent(business.linkedPlaceId, "booking_request");
-      } else {
+      } else if (creator) {
         recordCreatorAnalyticsEvent(targetId, "booking_request");
       }
+      // No AnalyticsEvent dimension exists for a car listing yet — skip
+      // rather than misusing one of the other target ids.
     } catch (err) {
       setError(
         err instanceof HttpError
@@ -180,7 +194,7 @@ export function BookingRequestSection({
           there's actually room. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Date
+          {carListing ? "Pickup date" : "Date"}
           <input
             type="date"
             required
@@ -190,9 +204,10 @@ export function BookingRequestSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Check-out (optional)
+          {carListing ? "Return date" : "Check-out (optional)"}
           <input
             type="date"
+            required={Boolean(carListing)}
             value={requestedEndDate}
             onChange={(e) => setRequestedEndDate(e.target.value)}
             className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
@@ -200,17 +215,47 @@ export function BookingRequestSection({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Party size (optional)
-        <input
-          type="number"
-          min={1}
-          max={50}
-          value={partySize}
-          onChange={(e) => setPartySize(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
+      {carListing ? (
+        <>
+          {carListing.withDriverAvailable && (
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+              <input
+                type="checkbox"
+                checked={withDriver}
+                onChange={(e) => setWithDriver(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
+              />
+              Add a driver
+              {carListing.driverFeePerDay != null && (
+                <span className="text-slate-500 dark:text-slate-400">(+${carListing.driverFeePerDay.toFixed(2)}/day)</span>
+              )}
+            </label>
+          )}
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Pickup location (optional)
+            <input
+              type="text"
+              maxLength={200}
+              placeholder={carListing.pickupLocation ?? "Where should the car be picked up?"}
+              value={pickupLocation}
+              onChange={(e) => setPickupLocation(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            />
+          </label>
+        </>
+      ) : (
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+          Party size (optional)
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={partySize}
+            onChange={(e) => setPartySize(e.target.value)}
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          />
+        </label>
+      )}
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Leave a message (optional)
