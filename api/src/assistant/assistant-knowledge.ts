@@ -103,6 +103,26 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     followUps: ["How do I save a place?", "How do reviews work?"],
   },
   {
+    id: "approval-time",
+    title: "Listing approval time and status",
+    keywords: [
+      "how long approval take",
+      "how long does approval take",
+      "approval time",
+      "waiting for approval",
+      "pending approval",
+      "when will my business be approved",
+      "listing review time",
+    ],
+    answer:
+      "LIBERIA360 does not currently publish a guaranteed approval time. Your business or place must be reviewed before it appears publicly. Check My Places in your account for its current status. Please do not submit the same listing repeatedly while it is being reviewed.",
+    actionIds: ["myPlaces", "account", "addPlace"],
+    followUps: [
+      "How do I add my business?",
+      "How can I advertise my business?",
+    ],
+  },
+  {
     id: "add-business",
     title: "Add and manage a business or place",
     keywords: [

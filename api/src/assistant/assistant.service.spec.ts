@@ -70,7 +70,9 @@ describe("AssistantService", () => {
     );
     const service = new AssistantService(config({ apiKey: "test-key" }));
 
-    const response = await service.ask({ message: "Can you explain the ad dashboard?" });
+    const response = await service.ask({
+      message: "Can you explain the ad dashboard?",
+    });
 
     expect(response.source).toBe("ai");
     expect(response.actions).toEqual([
@@ -87,6 +89,20 @@ describe("AssistantService", () => {
 
     expect(response.source).toBe("knowledge");
     expect(response.answer).toContain("booking");
+  });
+
+  it("answers approval-time questions honestly", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "How long does approval take?",
+    });
+
+    expect(response.answer).toContain(
+      "does not currently publish a guaranteed approval time",
+    );
+    expect(response.answer).toContain("My Places");
+    expect(response.answer).not.toContain("LIBERIA360 helps people discover");
   });
 
   it("routes creator-post saving questions to the save guidance", async () => {

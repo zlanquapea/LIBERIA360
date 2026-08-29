@@ -242,6 +242,10 @@ ${matchedEntry.answer}`;
         "advertising",
       ],
       [
+        /how long.*approval|approval.*time|waiting.*approval|pending.*approval|when.*business.*approved|listing.*review.*time/,
+        "approval-time",
+      ],
+      [
         /add.*(business|place)|list.*business|register.*business|claim.*business/,
         "add-business",
       ],
