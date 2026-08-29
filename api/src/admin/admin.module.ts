@@ -38,6 +38,9 @@ import { MailModule } from "../mail/mail.module";
 import { SettingsModule } from "../settings/settings.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { EventsModule } from "../events/events.module";
+import { AssistantFeedback } from "../assistant/entities/assistant-feedback.entity";
+import { AdminAssistantReviewService } from "./admin-assistant-review.service";
+import { AdminAssistantReviewController } from "./admin-assistant-review.controller";
 
 @Module({
   imports: [
@@ -57,6 +60,7 @@ import { EventsModule } from "../events/events.module";
       ContentReport,
       Booking,
       Advertisement,
+      AssistantFeedback,
     ]),
     AdminAuditModule,
     ReviewsModule,
@@ -77,6 +81,7 @@ import { EventsModule } from "../events/events.module";
     AdminUsersController,
     AdminSystemController,
     AdminSettingsController,
+    AdminAssistantReviewController,
   ],
   providers: [
     AdminService,
@@ -85,6 +90,7 @@ import { EventsModule } from "../events/events.module";
     AdminTeamService,
     AdminUsersService,
     AdminSystemService,
+    AdminAssistantReviewService,
   ],
 })
 export class AdminModule {}
