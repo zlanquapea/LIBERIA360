@@ -323,6 +323,22 @@ ${matchedEntry.answer}`;
         "booking-messages",
       ],
       [
+        /rent.*(car|vehicle).*hour|hour.*(rent|rental|car)|hourly.*(car|rental)|by.*hour/,
+        "car-rental-hourly",
+      ],
+      [
+        /rent.*(car|vehicle).*driver|driver.*(car|rental)|add.*driver|without.*driver/,
+        "car-rental-driver",
+      ],
+      [
+        /list.*(my )?(car|vehicle)|rent.*out.*(my )?(car|vehicle)|add.*(my )?(car|vehicle)/,
+        "car-rental-list",
+      ],
+      [
+        /how.*(rent|hire).*?(car|vehicle)|rent.*(a )?(car|vehicle)|rental.*car|car.*rental/,
+        "car-rental-rent",
+      ],
+      [
         /car.*(rental|rent|hire|listing)|rental.*car|rent.*(a )?(car|vehicle)|vehicle.*rental|renting.*car|hourly.*rental|daily.*rental|with.*driver|without.*driver|list.*(my )?car|rent.*out.*car/,
         "car-rentals",
       ],

@@ -248,6 +248,88 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     ],
   },
   {
+    id: "car-rental-rent",
+    title: "How to rent a car",
+    keywords: [
+      "how do i rent a car",
+      "how can i rent a car",
+      "how to rent a car",
+      "rent a car",
+      "renting a car",
+      "book a rental car",
+      "hire a car",
+    ],
+    answer:
+      "To rent a car, open Car Rentals and choose an approved vehicle that fits your county, category, transmission, seats, price, and driver needs. Open the listing to review its photos, specifications, price, deposit, pickup information, owner contact details, and reviews. Select Request to book, choose your rental date or supported hourly time range, add a driver if offered, and enter an optional pickup location and message. You must be signed in. This sends a request to the owner rather than creating an instant booking, and no payment is taken at the time of the request. The owner confirms or declines, and you can track the request in My Bookings.",
+    actionIds: ["carRentals", "bookings"],
+    followUps: [
+      "Can I rent a car by the hour?",
+      "Can I rent a car with a driver?",
+    ],
+  },
+  {
+    id: "car-rental-hourly",
+    title: "Hourly car rentals",
+    keywords: [
+      "rent a car by the hour",
+      "rent car by hour",
+      "hourly car rental",
+      "hourly rental",
+      "by the hour",
+      "by hour",
+      "hour rental",
+      "short rental",
+    ],
+    answer:
+      "Yes, hourly rental is available when a vehicle listing provides an hourly rate. On that listing, choose By hour, select a date, enter a start time and end time on the same day, and review the estimated total. The listing may also specify minimum rental hours and an additional hourly driver fee. Then send a request to the owner. It is a request rather than an instant booking, and no payment is taken at that time.",
+    actionIds: ["carRentals", "bookings"],
+    followUps: [
+      "How do I rent a car?",
+      "Can I rent a car with a driver?",
+    ],
+  },
+  {
+    id: "car-rental-driver",
+    title: "Renting with a driver",
+    keywords: [
+      "rent a car with a driver",
+      "car with driver",
+      "rental with driver",
+      "hire a driver",
+      "add a driver",
+      "rent without a driver",
+      "car without driver",
+    ],
+    answer:
+      "Some car listings offer a driver option. On a listing that supports it, select Add a driver when you request the rental. The listing may show an additional driver fee per day or per hour, depending on whether you rent by day or by hour. If the option is not shown, that vehicle does not currently advertise driver availability through LIBERIA360.",
+    actionIds: ["carRentals"],
+    followUps: [
+      "How do I rent a car?",
+      "Can I rent a car by the hour?",
+    ],
+  },
+  {
+    id: "car-rental-list",
+    title: "How to list a car",
+    keywords: [
+      "how do i list my car",
+      "how can i list my car",
+      "how to list a car",
+      "list my vehicle",
+      "list a vehicle",
+      "rent out my car",
+      "rent out my vehicle",
+      "add my car",
+    ],
+    answer:
+      "To list a car, sign in and open My Car Listings. Create a listing with the county, make, model, year, category, transmission, fuel type, seats, price, vehicle details, pickup location, contact information, and photos. You can also add driver fees, a security deposit, minimum rental days or hours, features, and an optional hourly rate. You do not need a business or claimed place. Submit the listing for review; it becomes publicly available only after approval.",
+    actionIds: ["myCarListings", "login"],
+    followUps: [
+      "Do I need a business to list a car?",
+      "How do car rentals work?",
+    ],
+  },
+  {
     id: "car-rentals",
     title: "Browse, list, and rent cars",
     keywords: [

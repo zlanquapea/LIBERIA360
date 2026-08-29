@@ -38,7 +38,7 @@ describe("AssistantService", () => {
     );
   });
 
-  it("answers car-rental questions from approved knowledge with rental actions", async () => {
+  it("routes general car-rental questions to the focused renting guidance", async () => {
     const service = new AssistantService(config());
 
     const response = await service.ask({
@@ -47,31 +47,51 @@ describe("AssistantService", () => {
     });
 
     expect(response.source).toBe("knowledge");
-    expect(response.answer).toContain("peer-to-peer marketplace");
-    expect(response.answer).toContain("by day or by hour");
+    expect(response.answer).toContain("To rent a car");
+    expect(response.answer).toContain("Select Request to book");
     expect(response.answer).toContain("no payment is taken");
     expect(response.actions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "carRentals", href: "/car-rentals" }),
         expect.objectContaining({ id: "bookings", href: "/account/bookings" }),
-        expect.objectContaining({
-          id: "myCarListings",
-          href: "/account/my-car-listings",
-        }),
       ]),
     );
   });
 
-  it("routes hourly car-rental questions to the car-rental guidance", async () => {
+  it("routes hourly car-rental questions to the focused hourly guidance", async () => {
     const service = new AssistantService(config());
 
     const response = await service.ask({
       message: "Can I rent a car by the hour with a driver?",
     });
 
-    expect(response.answer).toContain("by day or by hour");
-    expect(response.answer).toContain("add a driver");
-    expect(response.answer).not.toContain("Open a business or creator profile");
+    expect(response.answer).toContain("hourly rental is available");
+    expect(response.answer).toContain("choose By hour");
+    expect(response.answer).not.toContain("peer-to-peer marketplace");
+  });
+
+  it("routes car-listing questions to owner instructions", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "How do I list my car?",
+    });
+
+    expect(response.answer).toContain("open My Car Listings");
+    expect(response.answer).toContain("You do not need a business");
+    expect(response.answer).toContain("Submit the listing for review");
+  });
+
+  it("routes driver-option questions to driver guidance", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "Can I rent a car with a driver?",
+    });
+
+    expect(response.answer).toContain("Some car listings offer a driver option");
+    expect(response.answer).toContain("additional driver fee");
+    expect(response.answer).not.toContain("peer-to-peer marketplace");
   });
 
   it("returns safe guidance for password and sensitive-information questions", async () => {
