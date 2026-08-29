@@ -516,7 +516,7 @@ export class AdminService {
       requestInfo,
     );
     if (isReviewDecision(status)) {
-      await this.notificationsService.create(saved.business.ownerUserId!, {
+      await this.notificationsService.create(saved.ownerUserId, {
         type: "car_listing.review_decided",
         title: `Your car listing was ${status}`,
         body: reason

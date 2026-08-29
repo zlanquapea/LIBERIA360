@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -20,10 +21,11 @@ import {
 const CURRENT_YEAR = new Date().getFullYear();
 
 // No `businessId` — same reasoning as UpdateBusinessDto excluding
-// `placeId`/UpdateAdvertisementDto excluding `type`: which business a
-// listing belongs to isn't something an owner should be able to quietly
-// reassign themselves.
+// `placeId`/UpdateAdvertisementDto excluding `type`: which (optional)
+// business a listing links to isn't something an owner should be able
+// to quietly reassign themselves.
 export class UpdateCarListingDto {
+  @IsOptional() @IsUUID() countyId?: string;
   @IsOptional() @IsString() @MaxLength(150) title?: string;
   @IsOptional() @IsString() @MaxLength(60) make?: string;
   @IsOptional() @IsString() @MaxLength(60) model?: string;
@@ -52,5 +54,7 @@ export class UpdateCarListingDto {
 
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
   @IsOptional() @IsString() @MaxLength(200) pickupLocation?: string;
+  @IsOptional() @IsString() @MaxLength(40) contactPhone?: string;
+  @IsOptional() @IsString() @MaxLength(40) contactWhatsapp?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
 }

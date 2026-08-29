@@ -43,6 +43,9 @@ function sanitize(booking: Booking) {
     carListing: booking.carListing
       ? {
           ...booking.carListing,
+          owner: booking.carListing.owner
+            ? toPublicUser(booking.carListing.owner)
+            : null,
           business: booking.carListing.business
             ? {
                 ...booking.carListing.business,
@@ -95,6 +98,15 @@ export class BookingsController {
       user.id,
       creatorId,
     );
+    return bookings.map(sanitize);
+  }
+
+  // A car lister's own incoming requests across every car they've listed
+  // — no :id param, since ownership is now direct (see
+  // BookingsService.findForCarListingOwner).
+  @Get("car-listings/mine")
+  async findForCarListingOwner(@CurrentUser() user: User) {
+    const bookings = await this.bookingsService.findForCarListingOwner(user.id);
     return bookings.map(sanitize);
   }
 

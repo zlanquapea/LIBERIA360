@@ -893,7 +893,7 @@ describe("AdminService.setCarListingReviewStatus", () => {
       findOne: jest.fn().mockResolvedValue({
         id: CAR_LISTING_ID,
         title: "2022 Toyota RAV4",
-        business: { ownerUserId: "owner-1" },
+        ownerUserId: "owner-1",
         reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW,
       }),
       save: jest.fn((data) => Promise.resolve(data)),
@@ -993,7 +993,7 @@ describe("AdminService.setCarListingReviewStatus", () => {
     carListingRepo.findOne.mockResolvedValue({
       id: CAR_LISTING_ID,
       title: "2022 Toyota RAV4",
-      business: { ownerUserId: "owner-1" },
+      ownerUserId: "owner-1",
       reviewStatus: CarListingReviewStatus.APPROVED,
     });
     await service.setCarListingReviewStatus(

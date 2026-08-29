@@ -304,6 +304,28 @@ export class BookingsService {
     });
   }
 
+  /** A car-lister's own incoming requests across every car they've listed
+   * — the direct-ownership equivalent of findForBusiness/findForCreator,
+   * needed because a car listing is no longer necessarily attached to a
+   * Business a user manages. No ownership param to check against: the
+   * caller's own userId *is* the scope, same as findMine. */
+  async findForCarListingOwner(userId: string): Promise<Booking[]> {
+    const carListingIds = (
+      await this.carListingRepo.find({
+        where: { ownerUserId: userId },
+        select: ["id"],
+      })
+    ).map((listing) => listing.id);
+
+    if (carListingIds.length === 0) {
+      return [];
+    }
+    return this.bookingRepo.find({
+      where: { carListingId: In(carListingIds) },
+      order: { createdAt: "DESC" },
+    });
+  }
+
   private async findWithTarget(bookingId: string): Promise<Booking> {
     const booking = await this.bookingRepo.findOne({
       where: { id: bookingId },
@@ -316,14 +338,14 @@ export class BookingsService {
 }
 
 /** The user allowed to respond to/manage a booking — the business owner,
- * the creator, or the car listing's owning business's owner, whichever
- * this booking targets. Exported for BookingMessagesService, which needs
- * the identical "who's a participant" check for messaging. */
+ * the creator, or the car listing's own direct owner, whichever this
+ * booking targets. Exported for BookingMessagesService, which needs the
+ * identical "who's a participant" check for messaging. */
 export function getOwnerUserId(booking: Booking): string | null {
   return (
     booking.business?.ownerUserId ??
     booking.creator?.userId ??
-    booking.carListing?.business?.ownerUserId ??
+    booking.carListing?.ownerUserId ??
     null
   );
 }

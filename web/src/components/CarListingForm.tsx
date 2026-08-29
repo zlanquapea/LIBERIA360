@@ -6,7 +6,7 @@ import { createCarListing, updateCarListing } from '@/lib/car-rentals-api';
 import { HttpError } from '@/lib/http';
 import { formatCarCategory, formatCarFuelType, formatCarTransmission } from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
-import type { Business, CarCategory, CarFuelType, CarListing, CarTransmission } from '@/lib/types';
+import type { Business, CarCategory, CarFuelType, CarListing, County, CarTransmission } from '@/lib/types';
 
 const CAR_CATEGORIES: CarCategory[] = [
   'economy',
@@ -35,24 +35,28 @@ function splitList(value: string): string[] {
 
 // Dual-mode create/edit — same shape as AdvertisementForm/NewEventForm:
 // the `listing` prop switches it into edit mode and calls `onSaved`
-// instead of redirecting. Create mode needs a businessId to hang the
-// vehicle off — `businesses` is the caller's own approved car_rental
-// businesses (there's exactly one for almost every owner, but the
-// dropdown still exists for the rare fleet operator with more than one
-// approved rental business).
+// instead of redirecting. Anyone signed in can list a car here — no
+// Business or Place required (see CarListing's doc comment) — so the
+// only required location input is a county. `businesses` is purely an
+// optional convenience for the rare registered rental company that
+// already has an approved car_rental Business and wants this listing to
+// also show up there; leaving it unlinked is the normal case.
 export function CarListingForm({
   listing,
   businesses,
+  counties,
   onSaved,
   onCancel,
 }: {
   listing?: CarListing;
   businesses?: Business[];
+  counties: County[];
   onSaved: (listing: CarListing) => void;
   onCancel?: () => void;
 }) {
   const { token } = useAuth();
-  const [businessId, setBusinessId] = useState(businesses?.[0]?.id ?? '');
+  const [countyId, setCountyId] = useState(listing?.county?.id ?? counties[0]?.id ?? '');
+  const [businessId, setBusinessId] = useState(listing?.business?.id ?? '');
   const [title, setTitle] = useState(listing?.title ?? '');
   const [make, setMake] = useState(listing?.make ?? '');
   const [model, setModel] = useState(listing?.model ?? '');
@@ -74,20 +78,23 @@ export function CarListingForm({
   const [images, setImages] = useState<string[]>(listing?.images ?? []);
   const [description, setDescription] = useState(listing?.description ?? '');
   const [pickupLocation, setPickupLocation] = useState(listing?.pickupLocation ?? '');
+  const [contactPhone, setContactPhone] = useState(listing?.contactPhone ?? '');
+  const [contactWhatsapp, setContactWhatsapp] = useState(listing?.contactWhatsapp ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
-    if (!listing && !businessId) {
-      setError('You need an approved Car rental business before you can list a vehicle.');
+    if (!listing && !countyId) {
+      setError('Choose which county the car is in.');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
       const shared = {
+        countyId,
         title,
         make,
         model,
@@ -105,10 +112,12 @@ export function CarListingForm({
         images,
         description: description.trim() || undefined,
         pickupLocation: pickupLocation.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
+        contactWhatsapp: contactWhatsapp.trim() || undefined,
       };
       const saved = listing
         ? await updateCarListing(token, listing.id, shared)
-        : await createCarListing(token, { businessId, ...shared });
+        : await createCarListing(token, { businessId: businessId || undefined, ...shared });
       onSaved(saved);
       if (!listing) {
         setTitle('');
@@ -122,6 +131,8 @@ export function CarListingForm({
         setImages([]);
         setDescription('');
         setPickupLocation('');
+        setContactPhone('');
+        setContactWhatsapp('');
       }
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
@@ -134,10 +145,24 @@ export function CarListingForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-      {!listing && businesses && businesses.length > 1 && (
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium text-slate-700 dark:text-slate-200">County</span>
+        <select required value={countyId} onChange={(e) => setCountyId(e.target.value)} className={inputClass}>
+          {counties.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {businesses && businesses.length > 0 && (
         <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">Which business?</span>
+          <span className="font-medium text-slate-700 dark:text-slate-200">
+            Link to my registered rental business (optional)
+          </span>
           <select value={businessId} onChange={(e) => setBusinessId(e.target.value)} className={inputClass}>
+            <option value="">Don&apos;t link — list as an individual</option>
             {businesses.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -329,6 +354,29 @@ export function CarListingForm({
           className={inputClass}
         />
       </label>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">WhatsApp (optional)</span>
+          <input
+            maxLength={40}
+            value={contactWhatsapp}
+            onChange={(e) => setContactWhatsapp(e.target.value)}
+            placeholder="+231770000000"
+            className={inputClass}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Phone (optional)</span>
+          <input
+            maxLength={40}
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            placeholder="+231770000000"
+            className={inputClass}
+          />
+        </label>
+      </div>
 
       {error && (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">

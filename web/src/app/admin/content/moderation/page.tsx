@@ -306,7 +306,8 @@ export default function ModerationPage() {
                 <p className="font-medium text-slate-900 dark:text-slate-50">{listing.title}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {listing.year} {listing.make} {listing.model} · {formatCarCategory(listing.category)} ·{' '}
-                  {formatCost(listing.pricePerDay)}/day · {listing.business?.name ?? 'Unknown business'}
+                  {formatCost(listing.pricePerDay)}/day ·{' '}
+                  {listing.business?.name ?? listing.owner?.name ?? 'Unknown owner'}
                 </p>
                 <CarListingReviewStatusControl listing={listing} onDone={reload} />
               </li>

@@ -15,9 +15,12 @@ export function CarListingCard({ listing }: { listing: CarListing }) {
   const coverPath = listing.images[0] ?? null;
   const cover = coverPath ? resolveImageUrl(coverPath) : null;
   const coverThumb = coverPath ? resolveThumbUrl(coverPath) : null;
+  // Every listing has a direct county now (see CarListing's doc comment);
+  // the linked business's place, if any, is more specific and wins when
+  // present.
   const location = listing.business?.linkedPlace
     ? `${listing.business.linkedPlace.city}, ${listing.business.linkedPlace.county.name}`
-    : null;
+    : listing.county?.name ?? null;
 
   return (
     <Link

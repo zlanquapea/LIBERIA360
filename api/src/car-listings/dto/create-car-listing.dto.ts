@@ -22,7 +22,14 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 export class CreateCarListingDto {
   @IsUUID()
-  businessId: string;
+  countyId: string;
+
+  // Optional — only an actual registered rental company that already has
+  // a claimed Business (type CAR_RENTAL) sets this, to also surface the
+  // listing on that business's profile. See CarListing's doc comment.
+  @IsOptional()
+  @IsUUID()
+  businessId?: string;
 
   @IsString()
   @MaxLength(150)
@@ -86,4 +93,6 @@ export class CreateCarListingDto {
 
   @IsOptional() @IsString() @MaxLength(2000) description?: string;
   @IsOptional() @IsString() @MaxLength(200) pickupLocation?: string;
+  @IsOptional() @IsString() @MaxLength(40) contactPhone?: string;
+  @IsOptional() @IsString() @MaxLength(40) contactWhatsapp?: string;
 }

@@ -9,10 +9,7 @@ import { Repository } from "typeorm";
 import { CarListing } from "./entities/car-listing.entity";
 import { CarListingReviewStatus } from "./entities/car-listing.enums";
 import { Business } from "../businesses/entities/business.entity";
-import {
-  BusinessReviewStatus,
-  BusinessType,
-} from "../businesses/entities/business.enums";
+import { County } from "../counties/entities/county.entity";
 import { CreateCarListingDto } from "./dto/create-car-listing.dto";
 import { UpdateCarListingDto } from "./dto/update-car-listing.dto";
 import { QueryCarListingsDto } from "./dto/query-car-listings.dto";
@@ -36,6 +33,8 @@ export class CarListingsService {
     private readonly carListingRepo: Repository<CarListing>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(County)
+    private readonly countyRepo: Repository<County>,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
   ) {}
@@ -52,15 +51,15 @@ export class CarListingsService {
     });
   }
 
-  /** The Business a car listing hangs off must actually be this owner's
-   * own APPROVED car-rental operator — a fleet vehicle from a business
-   * that isn't itself a verified rental company (wrong type, not yet
-   * approved, or belonging to someone else) has no legitimate seller
-   * behind it to send booking requests to. */
-  private async getOwnedRentalBusiness(
+  /** The optional business link (see CarListing's doc comment) must
+   * actually belong to whoever is listing the car — there's no
+   * requirement it be type CAR_RENTAL or even approved, since linking it
+   * is just "also show this on my business's page," not a prerequisite
+   * to list at all. */
+  private async assertOwnsBusiness(
     userId: string,
     businessId: string,
-  ): Promise<Business> {
+  ): Promise<void> {
     const business = await this.businessRepo.findOne({
       where: { id: businessId },
     });
@@ -70,27 +69,30 @@ export class CarListingsService {
     if (business.ownerUserId !== userId) {
       throw new ForbiddenException("You don't manage this business");
     }
-    if (business.type !== BusinessType.CAR_RENTAL) {
-      throw new BadRequestException(
-        "Only a Car rental business can list vehicles — update the business's type first",
-      );
+  }
+
+  private async assertCountyExists(countyId: string): Promise<void> {
+    const exists = await this.countyRepo.exists({ where: { id: countyId } });
+    if (!exists) {
+      throw new BadRequestException(`County "${countyId}" not found`);
     }
-    if (business.reviewStatus !== BusinessReviewStatus.APPROVED) {
-      throw new BadRequestException(
-        "This business must be approved before it can list vehicles",
-      );
-    }
-    return business;
   }
 
   /** Self-service submission — single step, straight to
-   * SUBMITTED_FOR_REVIEW, mirroring AdvertisementsService.create: not
-   * publicly visible or bookable until an admin approves it. */
+   * SUBMITTED_FOR_REVIEW, mirroring AdvertisementsService.create: any
+   * signed-in user can list a car, same as advertising anything else on
+   * this platform — no Business or Place required first. Not publicly
+   * visible or bookable until an admin approves it. */
   async create(userId: string, dto: CreateCarListingDto): Promise<CarListing> {
-    await this.getOwnedRentalBusiness(userId, dto.businessId);
+    await this.assertCountyExists(dto.countyId);
+    if (dto.businessId) {
+      await this.assertOwnsBusiness(userId, dto.businessId);
+    }
 
     const listing = this.carListingRepo.create({
-      businessId: dto.businessId,
+      ownerUserId: userId,
+      businessId: dto.businessId ?? null,
+      countyId: dto.countyId,
       title: dto.title,
       make: dto.make,
       model: dto.model,
@@ -108,6 +110,8 @@ export class CarListingsService {
       images: dto.images ?? [],
       description: dto.description ?? null,
       pickupLocation: dto.pickupLocation ?? null,
+      contactPhone: dto.contactPhone ?? null,
+      contactWhatsapp: dto.contactWhatsapp ?? null,
       reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW,
       submittedAt: new Date(),
     });
@@ -124,7 +128,7 @@ export class CarListingsService {
     if (!listing) {
       throw new NotFoundException(`Car listing "${id}" not found`);
     }
-    if (listing.business.ownerUserId !== userId) {
+    if (listing.ownerUserId !== userId) {
       throw new ForbiddenException("You don't manage this car listing");
     }
     return listing;
@@ -132,14 +136,14 @@ export class CarListingsService {
 
   /** The owner's own fleet dashboard — every status, not just approved,
    * so a pending/rejected/suspended vehicle is still visible to whoever
-   * listed it. */
+   * listed it. Plain find(): owner/business/county are all `eager: true`
+   * so they auto-join here (unlike a query builder — see
+   * findAllApproved's doc comment). */
   findMine(userId: string): Promise<CarListing[]> {
-    return this.carListingRepo
-      .createQueryBuilder("listing")
-      .leftJoinAndSelect("listing.business", "business")
-      .where("business.ownerUserId = :userId", { userId })
-      .orderBy("listing.createdAt", "DESC")
-      .getMany();
+    return this.carListingRepo.find({
+      where: { ownerUserId: userId },
+      order: { createdAt: "DESC" },
+    });
   }
 
   findOne(userId: string, id: string): Promise<CarListing> {
@@ -158,6 +162,9 @@ export class CarListingsService {
     dto: UpdateCarListingDto,
   ): Promise<CarListing> {
     const listing = await this.findOwnedOrFail(userId, id);
+    if (dto.countyId) {
+      await this.assertCountyExists(dto.countyId);
+    }
     const isResubmission =
       listing.reviewStatus === CarListingReviewStatus.REJECTED;
 
@@ -181,11 +188,10 @@ export class CarListingsService {
 
   /** Public directory (GET /car-listings) — approved AND currently active
    * only, the same "is this actually visible/bookable right now" gate as
-   * findApprovedOne. Query builder, not find(): `business` is `eager:
-   * true` but eager relations only auto-join through find()/
+   * findApprovedOne. Query builder, not find(): owner/business/county are
+   * `eager: true` but eager relations only auto-join through find()/
    * findAndCount(), not a query builder (see BusinessesService.
-   * findAllApproved for the same pattern) — county filtering needs
-   * business.linkedPlace joined explicitly either way. */
+   * findAllApproved for the same pattern). */
   async findAllApproved(
     params: QueryCarListingsDto = {},
   ): Promise<PaginatedCarListings> {
@@ -194,9 +200,9 @@ export class CarListingsService {
 
     const qb = this.carListingRepo
       .createQueryBuilder("listing")
+      .leftJoinAndSelect("listing.owner", "owner")
       .leftJoinAndSelect("listing.business", "business")
-      .leftJoinAndSelect("business.linkedPlace", "linkedPlace")
-      .leftJoinAndSelect("linkedPlace.county", "county")
+      .leftJoinAndSelect("listing.county", "county")
       .where("listing.reviewStatus = :reviewStatus", {
         reviewStatus: CarListingReviewStatus.APPROVED,
       })
@@ -222,7 +228,7 @@ export class CarListingsService {
       });
     }
     if (params.countyId) {
-      qb.andWhere("linkedPlace.countyId = :countyId", {
+      qb.andWhere("listing.countyId = :countyId", {
         countyId: params.countyId,
       });
     }

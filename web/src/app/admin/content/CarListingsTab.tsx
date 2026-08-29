@@ -49,7 +49,8 @@ export function CarListingsTab({ token }: { token: string }) {
   const filtered = (listings ?? []).filter((listing) => {
     if (statusFilter !== 'all' && listing.reviewStatus !== statusFilter) return false;
     if (search) {
-      const haystack = `${listing.title} ${listing.make} ${listing.model} ${listing.business?.name ?? ''}`.toLowerCase();
+      const haystack =
+        `${listing.title} ${listing.make} ${listing.model} ${listing.business?.name ?? ''} ${listing.owner?.name ?? ''}`.toLowerCase();
       if (!haystack.includes(search.toLowerCase())) return false;
     }
     return true;
@@ -119,7 +120,8 @@ export function CarListingsTab({ token }: { token: string }) {
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {listing.year} {listing.make} {listing.model} · {formatCarCategory(listing.category)} ·{' '}
-                    {formatCost(listing.pricePerDay)}/day · {listing.business?.name ?? 'Unknown business'}
+                    {formatCost(listing.pricePerDay)}/day ·{' '}
+                    {listing.business?.name ?? listing.owner?.name ?? 'Unknown owner'}
                   </p>
                 </div>
               </div>

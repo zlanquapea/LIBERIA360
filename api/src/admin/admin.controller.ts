@@ -82,6 +82,7 @@ function sanitizeAdvertisement(ad: Advertisement) {
 function sanitizeCarListing(listing: CarListing) {
   return {
     ...listing,
+    owner: listing.owner ? toPublicUser(listing.owner) : null,
     business: listing.business ? sanitizeBusiness(listing.business) : null,
   };
 }
