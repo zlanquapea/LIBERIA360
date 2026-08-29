@@ -91,6 +91,18 @@ describe("AssistantService", () => {
     expect(response.answer).toContain("booking");
   });
 
+  it("answers ad-placement questions directly", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({ message: "Where will my ad appear?" });
+
+    expect(response.answer).toContain(
+      "Sponsored section on the LIBERIA360 homepage",
+    );
+    expect(response.answer).toContain("Account → My Ads");
+    expect(response.answer).not.toContain("choose New ad");
+  });
+
   it("answers approval-time questions honestly", async () => {
     const service = new AssistantService(config());
 

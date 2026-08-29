@@ -238,6 +238,10 @@ ${matchedEntry.answer}`;
         "save-creator-post",
       ],
       [
+        /where.*ad.*appear|where.*ads.*shown|ad.*placement|advertising.*placement|sponsored.*section/,
+        "ad-placement",
+      ],
+      [
         /advertis|sponsor|promot|reach customer|market.*business/,
         "advertising",
       ],

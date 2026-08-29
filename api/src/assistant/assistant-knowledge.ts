@@ -145,6 +145,25 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     ],
   },
   {
+    id: "ad-placement",
+    title: "Where advertisements appear",
+    keywords: [
+      "where will my ad appear",
+      "where does my ad appear",
+      "where are ads shown",
+      "ad placement",
+      "advertising placement",
+      "sponsored section",
+    ],
+    answer:
+      "Approved ads can appear in the Sponsored section on the LIBERIA360 homepage. Visibility depends on the ad being approved and available sponsored placement. You can manage your campaign from Account → My Ads.",
+    actionIds: ["ads", "home"],
+    followUps: [
+      "How can I advertise my business?",
+      "What information does an ad need?",
+    ],
+  },
+  {
     id: "advertising",
     title: "Advertise a business",
     keywords: [
