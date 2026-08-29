@@ -12,6 +12,7 @@ import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { Event } from "../events/entities/event.entity";
 import { CreateAnalyticsEventDto } from "./dto/create-analytics-event.dto";
 
 const BUSINESS_ANALYTICS_WINDOW_DAYS = 30;
@@ -45,6 +46,8 @@ export class AnalyticsService {
     private readonly creatorRepo: Repository<Creator>,
     @InjectRepository(Advertisement)
     private readonly advertisementRepo: Repository<Advertisement>,
+    @InjectRepository(Event)
+    private readonly eventsRepo: Repository<Event>,
   ) {}
 
   async record(dto: CreateAnalyticsEventDto): Promise<void> {
@@ -52,10 +55,11 @@ export class AnalyticsService {
       dto.placeId,
       dto.creatorId,
       dto.advertisementId,
+      dto.eventId,
     ].filter((id) => id !== undefined).length;
     if (targetCount !== 1) {
       throw new BadRequestException(
-        "Provide exactly one of placeId, creatorId, or advertisementId",
+        "Provide exactly one of placeId, creatorId, advertisementId, or eventId",
       );
     }
 
@@ -91,17 +95,33 @@ export class AnalyticsService {
       return;
     }
 
-    const adExists = await this.advertisementRepo.exists({
-      where: { id: dto.advertisementId },
-    });
-    if (!adExists) {
-      throw new NotFoundException(
-        `Advertisement "${dto.advertisementId}" not found`,
+    if (dto.advertisementId) {
+      const adExists = await this.advertisementRepo.exists({
+        where: { id: dto.advertisementId },
+      });
+      if (!adExists) {
+        throw new NotFoundException(
+          `Advertisement "${dto.advertisementId}" not found`,
+        );
+      }
+      await this.eventRepo.save(
+        this.eventRepo.create({
+          advertisementId: dto.advertisementId,
+          eventType: dto.eventType,
+        }),
       );
+      return;
+    }
+
+    const eventExists = await this.eventsRepo.exists({
+      where: { id: dto.eventId },
+    });
+    if (!eventExists) {
+      throw new NotFoundException(`Event "${dto.eventId}" not found`);
     }
     await this.eventRepo.save(
       this.eventRepo.create({
-        advertisementId: dto.advertisementId,
+        eventId: dto.eventId,
         eventType: dto.eventType,
       }),
     );
@@ -173,6 +193,28 @@ export class AnalyticsService {
     }
 
     return this.aggregate("event.advertisementId = :id", advertisementId);
+  }
+
+  /** Same shape as getBusinessAnalytics/getCreatorAnalytics/
+   * getAdvertisementAnalytics — the organizer's own "how is my event doing"
+   * view (views), alongside the interested/going counts already denormalized
+   * on Event itself (see Event.interestedCount/goingCount) which the
+   * frontend reads straight off the event record rather than from here. */
+  async getEventAnalytics(
+    userId: string,
+    eventId: string,
+  ): Promise<BusinessAnalytics> {
+    const event = await this.eventsRepo.findOne({ where: { id: eventId } });
+    if (!event) {
+      throw new NotFoundException(`Event "${eventId}" not found`);
+    }
+    if (event.createdByUserId !== userId) {
+      throw new ForbiddenException(
+        "Only the event's organizer can view its analytics",
+      );
+    }
+
+    return this.aggregate("event.eventId = :id", eventId);
   }
 
   private async aggregate(

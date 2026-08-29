@@ -60,4 +60,14 @@ export class AnalyticsController {
       advertisementId,
     );
   }
+
+  @Get("event/:eventId")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getEventAnalytics(
+    @CurrentUser() user: User,
+    @Param("eventId") eventId: string,
+  ) {
+    return this.analyticsService.getEventAnalytics(user.id, eventId);
+  }
 }

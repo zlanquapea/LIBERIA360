@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { ChartBarIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteEvent, getMyEvents } from '@/lib/event-api';
 import { getCounties } from '@/lib/api';
+import { getEventAnalytics } from '@/lib/analytics-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatEventCategory, formatEventDateRange, formatEventReviewStatus } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
@@ -12,7 +14,7 @@ import { NewEventForm } from '@/components/NewEventForm';
 import { SafeImage } from '@/components/SafeImage';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
-import type { County, Event, EventReviewStatus } from '@/lib/types';
+import type { BusinessAnalytics, County, Event, EventReviewStatus } from '@/lib/types';
 
 const STATUS_BADGE: Record<EventReviewStatus, string> = {
   pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
@@ -32,6 +34,9 @@ export default function MyEventsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [metricsId, setMetricsId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<BusinessAnalytics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
 
   const [pendingCancel, setPendingCancel] = useState<Event | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -62,6 +67,25 @@ export default function MyEventsPage() {
     const id = setTimeout(() => setSuccessMessage(null), 4000);
     return () => clearTimeout(id);
   }, [successMessage]);
+
+  async function toggleMetrics(event: Event) {
+    if (metricsId === event.id) {
+      setMetricsId(null);
+      setMetrics(null);
+      return;
+    }
+    if (!token) return;
+    setMetricsId(event.id);
+    setMetrics(null);
+    setMetricsLoading(true);
+    try {
+      setMetrics(await getEventAnalytics(token, event.id));
+    } catch {
+      setMetricsId(null);
+    } finally {
+      setMetricsLoading(false);
+    }
+  }
 
   async function confirmCancel() {
     if (!token || !pendingCancel) return;
@@ -190,7 +214,7 @@ export default function MyEventsPage() {
                     }}
                   />
                 ) : (
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <button
                       type="button"
                       onClick={() => setEditingId(event.id)}
@@ -200,11 +224,41 @@ export default function MyEventsPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => toggleMetrics(event)}
+                      className="flex items-center gap-1 self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                    >
+                      <ChartBarIcon aria-hidden className="h-3.5 w-3.5" />
+                      {metricsId === event.id ? 'Hide metrics' : 'View metrics'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setPendingCancel(event)}
                       className="self-start text-xs font-medium text-flag-700 dark:text-flag-300 hover:underline"
                     >
                       Cancel event
                     </button>
+                  </div>
+                )}
+
+                {metricsId === event.id && (
+                  <div className="flex flex-wrap gap-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                    {metricsLoading ? (
+                      <span>Loading metrics…</span>
+                    ) : metrics ? (
+                      <>
+                        <span>
+                          <strong className="text-slate-900 dark:text-slate-50">{metrics.totals.view}</strong> views
+                        </span>
+                        <span>
+                          <strong className="text-slate-900 dark:text-slate-50">{event.interestedCount}</strong> interested
+                        </span>
+                        <span>
+                          <strong className="text-slate-900 dark:text-slate-50">{event.goingCount}</strong> going
+                        </span>
+                      </>
+                    ) : (
+                      <span>Couldn&apos;t load metrics.</span>
+                    )}
                   </div>
                 )}
               </li>
