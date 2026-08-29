@@ -55,6 +55,8 @@ import { Notification } from "./notifications/entities/notification.entity";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { Advertisement } from "./advertisements/entities/advertisement.entity";
 import { AdvertisementsModule } from "./advertisements/advertisements.module";
+import { CarListing } from "./car-listings/entities/car-listing.entity";
+import { CarListingsModule } from "./car-listings/car-listings.module";
 
 @Module({
   imports: [
@@ -113,6 +115,7 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
             BookingMessage,
             Notification,
             Advertisement,
+            CarListing,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -145,6 +148,7 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
     ReportsModule,
     NotificationsModule,
     AdvertisementsModule,
+    CarListingsModule,
   ],
   providers: [
     {

@@ -34,6 +34,8 @@ import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { BusinessContent } from "../business-content/entities/business-content.entity";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
+import { SetCarListingReviewStatusDto } from "./dto/set-car-listing-review-status.dto";
 import { FlaggedContent } from "./admin.service";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
@@ -75,6 +77,13 @@ function sanitizeBusinessContent(content: BusinessContent) {
 
 function sanitizeAdvertisement(ad: Advertisement) {
   return { ...ad, owner: ad.owner ? toPublicUser(ad.owner) : null };
+}
+
+function sanitizeCarListing(listing: CarListing) {
+  return {
+    ...listing,
+    business: listing.business ? sanitizeBusiness(listing.business) : null,
+  };
 }
 
 function sanitizeFlaggedContent(flagged: FlaggedContent) {
@@ -257,6 +266,7 @@ export class AdminController {
         sanitizeAdvertisement,
       ),
       pendingEvents: queue.pendingEvents.map(sanitizeEvent),
+      pendingCarListings: queue.pendingCarListings.map(sanitizeCarListing),
     };
   }
 
@@ -305,6 +315,34 @@ export class AdminController {
   ) {
     return sanitizeAdvertisement(
       await this.adminService.setAdvertisementReviewStatus(
+        admin.id,
+        id,
+        dto.status,
+        dto.reason,
+        getRequestInfo(req),
+      ),
+    );
+  }
+
+  // Every car listing, any status — an admin's own dedicated queue
+  // (distinct from moderation-queue's "SUBMITTED_FOR_REVIEW only" slice)
+  // for reviewing/suspending an already-approved listing too. Mirrors
+  // GET /admin/advertisements.
+  @Get("car-listings")
+  async findAllCarListings() {
+    const listings = await this.adminService.findAllCarListings();
+    return listings.map(sanitizeCarListing);
+  }
+
+  @Patch("car-listings/:id/review-status")
+  async setCarListingReviewStatus(
+    @CurrentUser() admin: User,
+    @Param("id") id: string,
+    @Body() dto: SetCarListingReviewStatusDto,
+    @Req() req: Request,
+  ) {
+    return sanitizeCarListing(
+      await this.adminService.setCarListingReviewStatus(
         admin.id,
         id,
         dto.status,

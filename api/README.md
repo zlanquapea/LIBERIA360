@@ -125,10 +125,10 @@ Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any
 
 | Method & path | Description | Auth |
 |---|---|---|
-| `POST /reviews` | Create a review (one per user per place) | JWT, 10/min |
-| `GET /reviews?placeId=` | List reviews for a place | — |
+| `POST /reviews` | Create a review against exactly one of `placeId`/`creatorId`/`carListingId` (one per user per target) | JWT, 10/min |
+| `GET /reviews?placeId=` \| `?creatorId=` \| `?carListingId=` | List reviews for exactly one target | — |
 
-`Place.rating`/`reviewCount` are recomputed from the reviews table on every write. `verifiedVisit` is set automatically when the reviewer has a confirmed booking with a business linked to that place.
+`rating`/`reviewCount` on the target (Place/Creator/CarListing) are recomputed from the reviews table on every write. `verifiedVisit` is set automatically when the reviewer has a confirmed booking linked to that target — a business linked to the place, or the car listing itself — and always `false` for a creator review (no booking data links a reviewer to a creator).
 
 ### Businesses
 
@@ -240,13 +240,14 @@ Accepting an invitation creates an `ItineraryCollaborator` row (unchanged from b
 
 | Method & path | Description | Auth |
 |---|---|---|
-| `POST /bookings` | Request a booking | JWT |
+| `POST /bookings` | Request a booking against exactly one of `businessId`/`creatorId`/`carListingId` | JWT |
 | `GET /bookings/mine` | Own booking requests | JWT |
-| `GET /bookings/business/:businessId` | Incoming requests for a business | Owner |
+| `GET /bookings/business/:businessId` | Incoming requests for a business — also includes requests against any of that business's car listings, so a car-rental operator's fleet bookings surface in the same inbox as its direct bookings | Owner |
+| `GET /bookings/creator/:creatorId` | Incoming requests for a creator's own bookable services | Owner |
 | `PATCH /bookings/:id/respond` | Confirm or decline (`{action}`) | Owner |
 | `PATCH /bookings/:id/cancel` | Cancel while pending/confirmed | Guest |
 
-One `Booking` entity covers hotel/tour/restaurant/transport, distinguished by `Business.type`. Request-to-book only: `paymentProvider`/`paymentStatus`/`paymentReference` exist in the schema (`paymentProvider` defaults to `mtn_momo`) but are not wired to a live payment API.
+One `Booking` entity covers hotel/tour/restaurant/transport (distinguished by `Business.type`), a creator's own services, and renting a specific vehicle (`carListingId`) — same request/confirm/decline/cancel lifecycle for all of them. A car-rental request additionally requires `requestedEndDate` (the return date), accepts `withDriver`/`pickupLocation`, and gets a snapshotted `estimatedTotal` computed at creation time from whole rental days × the listing's `pricePerDay` (plus `driverFeePerDay` × days if `withDriver` and the listing offers one) — not re-derived later if the listing's price changes. A new car request is rejected (409) if it overlaps an existing *confirmed* booking for the same car. Request-to-book only: `paymentProvider`/`paymentStatus`/`paymentReference` exist in the schema (`paymentProvider` defaults to `mtn_momo`) but are not wired to a live payment API.
 
 ### Booking messages
 
@@ -307,7 +308,7 @@ Distinct from `Place.featured` (undated editorial curation).
 
 One shared in-app notification center for every account, regular users and admins alike — a `Notification.userId` scoped to whoever is signed in, not a separate "admin notifications" system (an admin sees admin-relevant rows for the same reason a traveler sees booking-relevant ones: both are just "this account's rows"). Creating a notification never fails the action that triggered it (same "never blocks the caller" contract as `AdminAuditService.log`/`LoginActivityService.record`); a broadcast to many recipients (e.g. every admin) writes one independent row per recipient so one person's read state never affects another's.
 
-Current triggers: a booking request/confirmation/decline, a new booking message, a place/business/advertisement entering admin review (all admins) and the decision on it (the submitter), and a failed-login threshold alert (every super admin, alongside the existing email). Trip invitations, business-content approval, and creator verification don't write a `Notification` yet — trip invitations still surface via the header bell (folded in from `GET /invitations/mine`, not the notifications table), and the others remain email/UI-only for now.
+Current triggers: a booking request/confirmation/decline, a new booking message, a place/business/advertisement/car-listing entering admin review (all admins) and the decision on it (the submitter), and a failed-login threshold alert (every super admin, alongside the existing email). Trip invitations, business-content approval, and creator verification don't write a `Notification` yet — trip invitations still surface via the header bell (folded in from `GET /invitations/mine`, not the notifications table), and the others remain email/UI-only for now.
 
 ### Advertisements
 
@@ -327,6 +328,24 @@ Metrics ("important metrics of their advertisement") reuse the existing `Analyti
 
 Admin: `GET /admin/advertisements` (every ad, any status) and `PATCH /admin/advertisements/:id/review-status` (approve/reject/suspend) — see Admin below. A pending ad also surfaces in the moderation queue's `pendingAdvertisements`.
 
+### Car Rentals
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /car-listings?category=&transmission=&countyId=&minSeats=&maxPricePerDay=&withDriverAvailable=&search=&page=&limit=` | Public directory of currently approved, active vehicles — the `/car-rentals` listing page | — |
+| `GET /car-listings/:id` | One approved, active vehicle — the public detail page a listing card links to | — |
+| `POST /car-listings` | List a new vehicle — straight to `submitted_for_review`, not a draft | JWT, owner of an approved `car_rental` business |
+| `GET /car-listings/mine` | Own fleet, every status (pending/approved/rejected/suspended) | JWT |
+| `GET /car-listings/mine/:id` | One own listing, any status | JWT, owner only |
+| `PATCH /car-listings/:id` | Edit — editing a rejected listing resubmits it automatically; toggling `isActive` alone never touches `reviewStatus` | JWT, owner only |
+| `DELETE /car-listings/:id` | Delete outright | JWT, owner only |
+
+A fleet operator is just a `Business` with `type: "car_rental"` — the same self-claim, verification, and review-gate flow every other business type already has (see Businesses above), so there's no separate "become a car rental operator" onboarding to build. A `CarListing` hangs off that business the same way a `CreatorOffering` hangs off a Creator, except each vehicle carries enough real-money and safety stakes (price, condition, photos) to warrant its own admin review gate rather than going live unmoderated — same `draft`/`submitted_for_review`/`approved`/`rejected`/`suspended` lifecycle as Business/Place/Advertisement (see `CarListingReviewStatus`'s doc comment). Only an approved, *already-approved* `car_rental` business can list vehicles at all (`BadRequestException` otherwise, pointing the owner at fixing the business first).
+
+Renting a car is just a `Booking` with `carListingId` set — see Bookings above for the pricing/conflict-check/messaging details it reuses rather than duplicates. Renter reviews of a specific car are just a `Review` with `carListingId` set — see Reviews above.
+
+Admin: `GET /admin/car-listings` (every listing, any status) and `PATCH /admin/car-listings/:id/review-status` (approve/reject/suspend) — see Admin below. A pending listing also surfaces in the moderation queue's `pendingCarListings`.
+
 ### Admin
 
 All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super Admin.
@@ -341,7 +360,7 @@ All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super A
 | `POST /admin/businesses/bulk-review-status` | Bulk sibling of the above (`{ids, status, reason?}`, same `{succeeded, failed}` shape) |
 | `POST /admin/business-content/bulk-review-status` | Bulk approve/reject for business-authored content (`{ids, status, reason?}`) |
 | `PATCH /admin/creators/:id/verification` | Set creator verification status (`unverified`/`verified`) |
-| `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), pending events (`pendingEvents`), recent reviews, possibly-closed places, flagged content |
+| `GET /admin/moderation-queue` | Pending businesses, pending places awaiting a review decision (`pendingPlaces` — the same submissions `GET /admin/places?reviewStatus=submitted_for_review` shows, surfaced here too so a self-submitted place doesn't sit invisible until an admin happens to filter for it), pending events (`pendingEvents`), pending advertisements (`pendingAdvertisements`), pending car listings (`pendingCarListings`), recent reviews, possibly-closed places, flagged content |
 | `GET /admin/places?page=&limit=&search=&reviewStatus=` | Every place regardless of review status (unlike the public `GET /places`), with the submitter (`owner`) populated — the review queue |
 | `GET /admin/places/data-quality` | Flags places with an editorial problem a review-status pass wouldn't catch: slug that no longer matches the current name (see `PATCH /admin/places`'s auto-re-slug below, which now closes off the main way this could happen — this stays as a safety net for anything the auto-derivation doesn't cover, e.g. a slug set by hand that no longer matches), missing/too-short/placeholder description, and no photos. Registered ahead of `GET /admin/places/:id` below since Nest matches routes in declaration order |
 | `GET /admin/places/:id` | Single place by id, any review status, with `owner`, `category`, `county`, `activities` — what the review panel loads |

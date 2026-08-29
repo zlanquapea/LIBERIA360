@@ -17,6 +17,12 @@ export enum BusinessType {
   SHOP = "shop",
   CULTURAL_ORG = "cultural_org",
   CREATIVE_BUSINESS = "creative_business",
+  // A fleet operator whose listings are individually bookable vehicles
+  // (see car-listings/entities/car-listing.entity.ts), not just a general
+  // TRANSPORT service (airport transfers, charters, no per-vehicle
+  // inventory) — distinct enough from TRANSPORT to be worth its own value
+  // rather than overloading that one.
+  CAR_RENTAL = "car_rental",
   OTHER = "other",
 }
 

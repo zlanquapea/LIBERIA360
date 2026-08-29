@@ -12,24 +12,27 @@ import {
 import { Place } from "../../places/entities/place.entity";
 import { User } from "../../users/entities/user.entity";
 import { Creator } from "../../creators/entities/creator.entity";
+import { CarListing } from "../../car-listings/entities/car-listing.entity";
 
 /**
  * Review sub-scores per Tech Spec §3.2 / Business Plan: experience,
  * accessibility, cleanliness, value, safety, service — all optional,
  * `overallRating` is the only required score.
  *
- * A review targets either a Place or a Creator, never both — enforced at
- * the service layer (ReviewsService.create), not a DB CHECK constraint.
- * Both FK columns are nullable so a single `reviews` table serves both; the two
- * @Unique constraints below still work as "one review per user per
- * target" because Postgres treats NULL as distinct from NULL — a
- * creator-targeted review (placeId NULL) never collides with another
- * creator-targeted review on the (userId, placeId) constraint, and vice
- * versa for (userId, creatorId).
+ * A review targets exactly one of a Place, a Creator, or a CarListing,
+ * never more than one — enforced at the service layer
+ * (ReviewsService.create), not a DB CHECK constraint. All three FK
+ * columns are nullable so a single `reviews` table serves all of them;
+ * the three @Unique constraints below still work as "one review per user
+ * per target" because Postgres treats NULL as distinct from NULL — a
+ * creator-targeted review (placeId/carListingId both NULL) never
+ * collides with another creator-targeted review on the (userId, placeId)
+ * constraint, and likewise for the other two.
  */
 @Entity("reviews")
 @Unique(["userId", "placeId"]) // one review per user per place — edit, don't spam
 @Unique(["userId", "creatorId"]) // same, for creator-targeted reviews
+@Unique(["userId", "carListingId"]) // same, for car-listing-targeted reviews
 export class Review {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -57,6 +60,14 @@ export class Review {
   @Index()
   @Column({ name: "creator_id", nullable: true })
   creatorId: string | null;
+
+  @ManyToOne(() => CarListing, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "car_listing_id" })
+  carListing: CarListing | null;
+
+  @Index()
+  @Column({ name: "car_listing_id", nullable: true })
+  carListingId: string | null;
 
   @Column({ name: "overall_rating", type: "smallint" })
   overallRating: number;

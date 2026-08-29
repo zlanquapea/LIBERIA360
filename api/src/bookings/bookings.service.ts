@@ -6,11 +6,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { Booking } from "./entities/booking.entity";
 import { BookingStatus } from "./entities/booking.enums";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
+import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
 import { CreateBookingDto } from "./dto/create-booking.dto";
 import { RespondBookingDto } from "./dto/respond-booking.dto";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -30,16 +32,24 @@ export class BookingsService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(Creator)
     private readonly creatorRepo: Repository<Creator>,
+    @InjectRepository(CarListing)
+    private readonly carListingRepo: Repository<CarListing>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(userId: string, dto: CreateBookingDto): Promise<Booking> {
-    if (!dto.businessId === !dto.creatorId) {
+    const targetCount = [
+      dto.businessId,
+      dto.creatorId,
+      dto.carListingId,
+    ].filter(Boolean).length;
+    if (targetCount !== 1) {
       throw new BadRequestException(
-        "Provide exactly one of businessId or creatorId",
+        "Provide exactly one of businessId, creatorId, or carListingId",
       );
     }
 
+    let carListing: CarListing | null = null;
     if (dto.businessId) {
       const exists = await this.businessRepo.exists({
         where: { id: dto.businessId },
@@ -47,12 +57,35 @@ export class BookingsService {
       if (!exists) {
         throw new NotFoundException(`Business "${dto.businessId}" not found`);
       }
-    } else {
+    } else if (dto.creatorId) {
       const exists = await this.creatorRepo.exists({
         where: { id: dto.creatorId },
       });
       if (!exists) {
         throw new NotFoundException(`Creator "${dto.creatorId}" not found`);
+      }
+    } else {
+      // A car can only be requested while it's actually live and
+      // bookable — same visibility gate as CarListingsService.
+      // findApprovedOne, checked directly here rather than through that
+      // service (BookingsService already talks to Business/Creator
+      // repos directly for the same reason).
+      carListing = await this.carListingRepo.findOne({
+        where: {
+          id: dto.carListingId,
+          reviewStatus: CarListingReviewStatus.APPROVED,
+          isActive: true,
+        },
+      });
+      if (!carListing) {
+        throw new NotFoundException(
+          `Car listing "${dto.carListingId}" not found`,
+        );
+      }
+      if (!dto.requestedEndDate) {
+        throw new BadRequestException(
+          "requestedEndDate (the return date) is required for a car rental",
+        );
       }
     }
 
@@ -68,14 +101,53 @@ export class BookingsService {
       );
     }
 
+    let estimatedTotal: number | null = null;
+    if (carListing) {
+      const days = rentalDays(dto.requestedDate, dto.requestedEndDate!);
+      if (days < carListing.minRentalDays) {
+        throw new BadRequestException(
+          `This car requires at least ${carListing.minRentalDays} rental day(s)`,
+        );
+      }
+      const withDriver =
+        Boolean(dto.withDriver) && carListing.withDriverAvailable;
+      estimatedTotal =
+        days * carListing.pricePerDay +
+        (withDriver ? days * (carListing.driverFeePerDay ?? 0) : 0);
+
+      // A car already CONFIRMED for an overlapping date range can't be
+      // handed to a second renter — PENDING requests don't block a new
+      // one (the owner is still free to decline whichever they don't
+      // confirm), only an actual, already-agreed booking does.
+      const overlapping = await this.bookingRepo.exists({
+        where: {
+          carListingId: carListing.id,
+          status: BookingStatus.CONFIRMED,
+          requestedDate: LessThanOrEqual(dto.requestedEndDate!),
+          requestedEndDate: MoreThanOrEqual(dto.requestedDate),
+        },
+      });
+      if (overlapping) {
+        throw new ConflictException(
+          "This car is already booked for part of the requested dates",
+        );
+      }
+    }
+
     const booking = await this.bookingRepo.save(
       this.bookingRepo.create({
         businessId: dto.businessId ?? null,
         creatorId: dto.creatorId ?? null,
+        carListingId: carListing?.id ?? null,
         guestUserId: userId,
         requestedDate: dto.requestedDate,
         requestedEndDate: dto.requestedEndDate ?? null,
         partySize: dto.partySize ?? null,
+        withDriver: carListing
+          ? Boolean(dto.withDriver) && carListing.withDriverAvailable
+          : false,
+        pickupLocation: carListing ? (dto.pickupLocation ?? null) : null,
+        estimatedTotal,
         notes: dto.notes ?? null,
       }),
     );
@@ -95,7 +167,8 @@ export class BookingsService {
     return saved;
   }
 
-  /** Business/creator owner confirms or declines a pending request. */
+  /** Business/creator/car-listing owner confirms or declines a pending
+   * request. */
   async respond(
     userId: string,
     bookingId: string,
@@ -104,7 +177,7 @@ export class BookingsService {
     const booking = await this.findWithTarget(bookingId);
     if (getOwnerUserId(booking) !== userId) {
       throw new ForbiddenException(
-        "Only the business/creator owner can respond to this booking",
+        "Only the listing owner can respond to this booking",
       );
     }
     if (booking.status !== BookingStatus.PENDING) {
@@ -122,7 +195,10 @@ export class BookingsService {
     await this.bookingRepo.save(booking);
 
     const listingName =
-      booking.business?.name ?? booking.creator?.name ?? "the listing";
+      booking.business?.name ??
+      booking.creator?.name ??
+      booking.carListing?.title ??
+      "the listing";
     await this.notificationsService.create(booking.guestUserId, {
       type: dto.action === "confirm" ? "booking.confirmed" : "booking.declined",
       title:
@@ -169,6 +245,13 @@ export class BookingsService {
     });
   }
 
+  /** A business's incoming requests — both bookings made directly against
+   * it (a hotel room, a tour) and bookings made against any of its car
+   * listings, since a car-rental business's fleet is what actually gets
+   * booked, not the business record itself. Two conditions in one query
+   * (TypeORM's array-where is an OR, not two separate calls) so the
+   * result stays a single, correctly createdAt-ordered list either
+   * way. */
   async findForBusiness(
     userId: string,
     businessId: string,
@@ -185,8 +268,18 @@ export class BookingsService {
       );
     }
 
+    const carListingIds = (
+      await this.carListingRepo.find({
+        where: { businessId },
+        select: ["id"],
+      })
+    ).map((listing) => listing.id);
+
     return this.bookingRepo.find({
-      where: { businessId },
+      where:
+        carListingIds.length > 0
+          ? [{ businessId }, { carListingId: In(carListingIds) }]
+          : { businessId },
       order: { createdAt: "DESC" },
     });
   }
@@ -222,15 +315,31 @@ export class BookingsService {
   }
 }
 
-/** The user allowed to respond to/manage a booking — the business owner
- * or the creator, whichever this booking targets. Exported for
- * BookingMessagesService, which needs the identical "who's a participant"
- * check for messaging. */
+/** The user allowed to respond to/manage a booking — the business owner,
+ * the creator, or the car listing's owning business's owner, whichever
+ * this booking targets. Exported for BookingMessagesService, which needs
+ * the identical "who's a participant" check for messaging. */
 export function getOwnerUserId(booking: Booking): string | null {
-  return booking.business?.ownerUserId ?? booking.creator?.userId ?? null;
+  return (
+    booking.business?.ownerUserId ??
+    booking.creator?.userId ??
+    booking.carListing?.business?.ownerUserId ??
+    null
+  );
 }
 
 function startOfToday(): Date {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/** Whole calendar days between a pickup and return date, floored to at
+ * least 1 — a same-day rental is still one rental day, not zero. */
+function rentalDays(requestedDate: string, requestedEndDate: string): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const days = Math.round(
+    (new Date(requestedEndDate).getTime() - new Date(requestedDate).getTime()) /
+      msPerDay,
+  );
+  return Math.max(1, days);
 }

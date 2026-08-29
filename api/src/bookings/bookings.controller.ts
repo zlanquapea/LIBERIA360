@@ -40,6 +40,19 @@ function sanitize(booking: Booking) {
             : null,
         }
       : null,
+    carListing: booking.carListing
+      ? {
+          ...booking.carListing,
+          business: booking.carListing.business
+            ? {
+                ...booking.carListing.business,
+                owner: booking.carListing.business.owner
+                  ? toPublicUser(booking.carListing.business.owner)
+                  : null,
+              }
+            : null,
+        }
+      : null,
   };
 }
 

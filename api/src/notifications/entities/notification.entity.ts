@@ -27,6 +27,8 @@ export type NotificationType =
   | "advertisement.review_decided"
   | "admin.event_pending_review"
   | "event.review_decided"
+  | "admin.car_listing_pending_review"
+  | "car_listing.review_decided"
   | "admin.failed_login_alert";
 
 /**

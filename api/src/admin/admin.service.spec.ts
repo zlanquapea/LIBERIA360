@@ -20,10 +20,13 @@ import { SettingsService } from "../settings/settings.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { AdvertisementReviewStatus } from "../advertisements/entities/advertisement.enums";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
+import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
 
 const ADMIN_ID = "admin-1";
 const PLACE_ID = "place-1";
 const AD_ID = "ad-1";
+const CAR_LISTING_ID = "car-listing-1";
 
 // DI-satisfying stand-in for describe blocks that don't exercise the
 // submitter-notification path.
@@ -97,6 +100,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: getRepositoryToken(Advertisement), useValue: {} },
+        { provide: getRepositoryToken(CarListing), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: notificationsService },
@@ -273,6 +277,7 @@ describe("AdminService.bulkSetPlaceReviewStatus", () => {
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: getRepositoryToken(Advertisement), useValue: {} },
+        { provide: getRepositoryToken(CarListing), useValue: {} },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: inertNotificationsService },
@@ -361,6 +366,7 @@ describe("AdminService bulk review-status: business and business-content", () =>
           useValue: businessContentRepo,
         },
         { provide: getRepositoryToken(Advertisement), useValue: {} },
+        { provide: getRepositoryToken(CarListing), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: inertNotificationsService },
@@ -409,6 +415,7 @@ describe("AdminService.getModerationQueue", () => {
   let freshnessQb: ReturnType<typeof emptyQueryBuilder>;
   let contentQb: ReturnType<typeof emptyQueryBuilder>;
   let advertisementRepo: { find: jest.Mock };
+  let carListingRepo: { find: jest.Mock };
   let eventRepo: { find: jest.Mock };
   let settingsService: ReturnType<typeof fakeSettingsService>;
 
@@ -422,6 +429,12 @@ describe("AdminService.getModerationQueue", () => {
     id: "ad-2",
     title: "Weekend photography course",
     reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW,
+  };
+
+  const PENDING_CAR_LISTING = {
+    id: "car-listing-2",
+    title: "2022 Toyota RAV4",
+    reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW,
   };
 
   const PENDING_EVENT = {
@@ -458,6 +471,9 @@ describe("AdminService.getModerationQueue", () => {
     freshnessQb = emptyQueryBuilder();
     contentQb = emptyQueryBuilder();
     advertisementRepo = { find: jest.fn().mockResolvedValue([PENDING_AD]) };
+    carListingRepo = {
+      find: jest.fn().mockResolvedValue([PENDING_CAR_LISTING]),
+    };
     eventRepo = { find: jest.fn().mockResolvedValue([PENDING_EVENT]) };
     settingsService = fakeSettingsService();
 
@@ -491,6 +507,10 @@ describe("AdminService.getModerationQueue", () => {
           provide: getRepositoryToken(Advertisement),
           useValue: advertisementRepo,
         },
+        {
+          provide: getRepositoryToken(CarListing),
+          useValue: carListingRepo,
+        },
         { provide: AdminAuditService, useValue: { log: jest.fn() } },
         { provide: SettingsService, useValue: settingsService },
         { provide: NotificationsService, useValue: inertNotificationsService },
@@ -510,6 +530,15 @@ describe("AdminService.getModerationQueue", () => {
     expect(queue.pendingAdvertisements).toEqual([PENDING_AD]);
     expect(advertisementRepo.find).toHaveBeenCalledWith({
       where: { reviewStatus: AdvertisementReviewStatus.SUBMITTED_FOR_REVIEW },
+      order: { submittedAt: "DESC" },
+    });
+  });
+
+  it("surfaces car listings awaiting a review decision", async () => {
+    const queue = await service.getModerationQueue();
+    expect(queue.pendingCarListings).toEqual([PENDING_CAR_LISTING]);
+    expect(carListingRepo.find).toHaveBeenCalledWith({
+      where: { reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW },
       order: { submittedAt: "DESC" },
     });
   });
@@ -601,6 +630,7 @@ describe("AdminService.setAdvertisementReviewStatus", () => {
           provide: getRepositoryToken(Advertisement),
           useValue: advertisementRepo,
         },
+        { provide: getRepositoryToken(CarListing), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: notificationsService },
@@ -759,6 +789,7 @@ describe("AdminService.setEventReviewStatus", () => {
         { provide: getRepositoryToken(Booking), useValue: {} },
         { provide: getRepositoryToken(BusinessContent), useValue: {} },
         { provide: getRepositoryToken(Advertisement), useValue: {} },
+        { provide: getRepositoryToken(CarListing), useValue: {} },
         { provide: AdminAuditService, useValue: adminAuditService },
         { provide: SettingsService, useValue: fakeSettingsService() },
         { provide: NotificationsService, useValue: notificationsService },
@@ -840,6 +871,162 @@ describe("AdminService.setEventReviewStatus", () => {
       {
         from: EventReviewStatus.PENDING,
         to: EventReviewStatus.APPROVED,
+        reason: null,
+      },
+      undefined,
+    );
+  });
+});
+
+describe("AdminService.setCarListingReviewStatus", () => {
+  let service: AdminService;
+  let carListingRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
+  let adminAuditService: { log: jest.Mock };
+  let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+
+  beforeEach(async () => {
+    carListingRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: CAR_LISTING_ID,
+        title: "2022 Toyota RAV4",
+        business: { ownerUserId: "owner-1" },
+        reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW,
+      }),
+      save: jest.fn((data) => Promise.resolve(data)),
+      findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
+    };
+    adminAuditService = { log: jest.fn() };
+    notificationsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+      createMany: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(Place), useValue: {} },
+        { provide: getRepositoryToken(Business), useValue: {} },
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        { provide: getRepositoryToken(Review), useValue: {} },
+        { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
+        { provide: getRepositoryToken(Event), useValue: {} },
+        { provide: EventsService, useValue: inertEventsService },
+        { provide: getRepositoryToken(ContentReport), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(Booking), useValue: {} },
+        { provide: getRepositoryToken(BusinessContent), useValue: {} },
+        { provide: getRepositoryToken(Advertisement), useValue: {} },
+        {
+          provide: getRepositoryToken(CarListing),
+          useValue: carListingRepo,
+        },
+        { provide: AdminAuditService, useValue: adminAuditService },
+        { provide: SettingsService, useValue: fakeSettingsService() },
+        { provide: NotificationsService, useValue: notificationsService },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it("404s an unknown car listing", async () => {
+    carListingRepo.findOne.mockResolvedValue(null);
+    await expect(
+      service.setCarListingReviewStatus(
+        ADMIN_ID,
+        CAR_LISTING_ID,
+        CarListingReviewStatus.APPROVED,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("approves a pending listing, clearing any rejection reason", async () => {
+    await service.setCarListingReviewStatus(
+      ADMIN_ID,
+      CAR_LISTING_ID,
+      CarListingReviewStatus.APPROVED,
+    );
+    expect(carListingRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: CarListingReviewStatus.APPROVED,
+        rejectionReason: null,
+        reviewedByUserId: ADMIN_ID,
+        reviewedAt: expect.any(Date),
+      }),
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({
+        type: "car_listing.review_decided",
+        body: expect.stringContaining("2022 Toyota RAV4"),
+      }),
+    );
+  });
+
+  it("rejects a listing with a reason and notifies the business owner of it", async () => {
+    await service.setCarListingReviewStatus(
+      ADMIN_ID,
+      CAR_LISTING_ID,
+      CarListingReviewStatus.REJECTED,
+      "Photos too blurry",
+    );
+    expect(carListingRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: CarListingReviewStatus.REJECTED,
+        rejectionReason: "Photos too blurry",
+      }),
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({
+        type: "car_listing.review_decided",
+        body: expect.stringContaining("Photos too blurry"),
+      }),
+    );
+  });
+
+  it("suspends a live listing", async () => {
+    carListingRepo.findOne.mockResolvedValue({
+      id: CAR_LISTING_ID,
+      title: "2022 Toyota RAV4",
+      business: { ownerUserId: "owner-1" },
+      reviewStatus: CarListingReviewStatus.APPROVED,
+    });
+    await service.setCarListingReviewStatus(
+      ADMIN_ID,
+      CAR_LISTING_ID,
+      CarListingReviewStatus.SUSPENDED,
+      "Reported as unsafe",
+    );
+    expect(carListingRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reviewStatus: CarListingReviewStatus.SUSPENDED,
+      }),
+    );
+    expect(notificationsService.create).toHaveBeenCalledWith(
+      "owner-1",
+      expect.objectContaining({ type: "car_listing.review_decided" }),
+    );
+  });
+
+  it("records the transition in the admin audit log", async () => {
+    await service.setCarListingReviewStatus(
+      ADMIN_ID,
+      CAR_LISTING_ID,
+      CarListingReviewStatus.APPROVED,
+    );
+    expect(adminAuditService.log).toHaveBeenCalledWith(
+      ADMIN_ID,
+      "car_listing.review_status_changed",
+      "car_listing",
+      CAR_LISTING_ID,
+      {
+        from: CarListingReviewStatus.SUBMITTED_FOR_REVIEW,
+        to: CarListingReviewStatus.APPROVED,
         reason: null,
       },
       undefined,
