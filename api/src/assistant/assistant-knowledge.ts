@@ -186,6 +186,38 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     ],
   },
   {
+    id: "creator-booking-receiving",
+    title: "How creators receive bookings",
+    keywords: [
+      "how do creators receive bookings",
+      "how do creator bookings work",
+      "how does a creator receive a booking",
+      "creator booking request",
+      "booking requests for creators",
+      "people book me",
+    ],
+    answer:
+      "When someone sends a booking request from your creator profile, you can review it in the Bookings area of your account. Open the request to review the customer’s details and respond. Keep checking your account for new requests and updates.",
+    actionIds: ["bookings", "creatorProfile", "account"],
+    followUps: ["Where are my booking messages?", "How do I become a creator?"],
+  },
+  {
+    id: "booking-messages",
+    title: "Find booking messages and requests",
+    keywords: [
+      "where are my booking messages",
+      "where is my booking message",
+      "find booking messages",
+      "see booking requests",
+      "booking inbox",
+      "booking notifications",
+    ],
+    answer:
+      "Open your account and go to Bookings to view your booking requests and related updates. If you are a creator, this is where you can review requests from people who want to book you.",
+    actionIds: ["bookings", "account"],
+    followUps: ["How do creators receive bookings?", "How do bookings work?"],
+  },
+  {
     id: "bookings",
     title: "Request and manage bookings",
     keywords: [

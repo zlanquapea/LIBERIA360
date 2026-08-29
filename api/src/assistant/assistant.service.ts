@@ -257,6 +257,14 @@ ${matchedEntry.answer}`;
         /become.*creator|join.*creator|creator.*account|start.*creator/,
         "become-creator",
       ],
+      [
+        /where.*booking.*(message|inbox|request)|find.*booking.*message|booking.*notifications|see.*booking.*request/,
+        "booking-messages",
+      ],
+      [
+        /how.*creator.*(receive|booking)|creator.*booking.*(work|request)|booking.*request.*creator|people.*book.*me/,
+        "creator-booking-receiving",
+      ],
       [/book(ing|ings)?|reservation|appointment/, "bookings"],
       [
         /create.*post|post.*(video|photo)|edit.*post|delete.*post|caption/,

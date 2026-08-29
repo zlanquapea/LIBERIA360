@@ -91,6 +91,32 @@ describe("AssistantService", () => {
     expect(response.answer).toContain("booking");
   });
 
+  it("answers creator booking receipt questions from the creator perspective", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "How do creators receive bookings?",
+    });
+
+    expect(response.answer).toContain(
+      "booking request from your creator profile",
+    );
+    expect(response.answer).toContain("Bookings area");
+    expect(response.answer).not.toContain("Open a business or creator profile");
+  });
+
+  it("answers booking-message location questions directly", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "Where are my booking messages?",
+    });
+
+    expect(response.answer).toContain("go to Bookings");
+    expect(response.answer).toContain("If you are a creator");
+    expect(response.answer).not.toContain("Open a business or creator profile");
+  });
+
   it("answers ad-placement questions directly", async () => {
     const service = new AssistantService(config());
 
