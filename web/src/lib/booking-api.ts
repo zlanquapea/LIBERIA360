@@ -36,6 +36,13 @@ export function getCreatorBookings(token: string, creatorId: string): Promise<Bo
   return apiRequest<Booking[]>(`/bookings/creator/${creatorId}`, { headers: authHeader(token) });
 }
 
+// A car lister's own incoming requests across every car they've listed —
+// no :id param since ownership is direct (Booking.carListing.ownerUserId),
+// not behind a business the way getBusinessBookings needs an id for.
+export function getCarListingOwnerBookings(token: string): Promise<Booking[]> {
+  return apiRequest<Booking[]>('/bookings/car-listings/mine', { headers: authHeader(token) });
+}
+
 export function respondToBooking(
   token: string,
   bookingId: string,
