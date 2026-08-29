@@ -39,6 +39,9 @@ export class UpdateCarListingDto {
   @IsOptional() @IsNumber() @Min(0) @Max(50000) driverFeePerDay?: number;
   @IsOptional() @IsInt() @Min(1) @Max(90) minRentalDays?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(500000) securityDeposit?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100000) pricePerHour?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(24) minRentalHours?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(50000) driverFeePerHour?: number;
 
   @IsOptional()
   @IsArray()

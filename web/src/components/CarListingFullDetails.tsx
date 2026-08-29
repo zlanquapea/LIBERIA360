@@ -77,6 +77,16 @@ export function CarListingFullDetails({ listing }: { listing: CarListing }) {
                 {listing.minRentalDays} day{listing.minRentalDays === 1 ? '' : 's'}
               </dd>
             </div>
+            {listing.pricePerHour != null && (
+              <div>
+                <dt className="inline font-semibold">Price per hour: </dt>
+                <dd className="inline">
+                  {formatCost(listing.pricePerHour)}
+                  {listing.minRentalHours != null &&
+                    ` (${listing.minRentalHours}h minimum)`}
+                </dd>
+              </div>
+            )}
             {listing.securityDeposit != null && (
               <div>
                 <dt className="inline font-semibold">Security deposit: </dt>
@@ -87,7 +97,7 @@ export function CarListingFullDetails({ listing }: { listing: CarListing }) {
               <dt className="inline font-semibold">Driver: </dt>
               <dd className="inline">
                 {listing.withDriverAvailable
-                  ? `Available${listing.driverFeePerDay != null ? ` (+${formatCost(listing.driverFeePerDay)}/day)` : ''}`
+                  ? `Available${listing.driverFeePerDay != null ? ` (+${formatCost(listing.driverFeePerDay)}/day)` : ''}${listing.driverFeePerHour != null ? ` (+${formatCost(listing.driverFeePerHour)}/hr)` : ''}`
                   : 'Self-drive only'}
               </dd>
             </div>

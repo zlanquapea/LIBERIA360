@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { Booking } from "./entities/booking.entity";
-import { BookingStatus } from "./entities/booking.enums";
+import { BookingRentalUnit, BookingStatus } from "./entities/booking.enums";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { CarListing } from "../car-listings/entities/car-listing.entity";
@@ -82,7 +82,18 @@ export class BookingsService {
           `Car listing "${dto.carListingId}" not found`,
         );
       }
-      if (!dto.requestedEndDate) {
+      if (dto.rentalUnit === BookingRentalUnit.HOUR) {
+        if (carListing.pricePerHour == null) {
+          throw new BadRequestException(
+            "This car does not support hourly rental",
+          );
+        }
+        if (!dto.requestedStartTime || !dto.requestedEndTime) {
+          throw new BadRequestException(
+            "requestedStartTime and requestedEndTime are required for an hourly rental",
+          );
+        }
+      } else if (!dto.requestedEndDate) {
         throw new BadRequestException(
           "requestedEndDate (the return date) is required for a car rental",
         );
@@ -101,8 +112,32 @@ export class BookingsService {
       );
     }
 
+    const isHourly =
+      carListing !== null && dto.rentalUnit === BookingRentalUnit.HOUR;
+
     let estimatedTotal: number | null = null;
-    if (carListing) {
+    if (carListing && isHourly) {
+      const hours = hoursBetween(
+        dto.requestedStartTime!,
+        dto.requestedEndTime!,
+      );
+      if (hours <= 0) {
+        throw new BadRequestException(
+          "requestedEndTime must be after requestedStartTime",
+        );
+      }
+      const minHours = carListing.minRentalHours ?? 1;
+      if (hours < minHours) {
+        throw new BadRequestException(
+          `This car requires at least ${minHours} rental hour(s)`,
+        );
+      }
+      const withDriver =
+        Boolean(dto.withDriver) && carListing.withDriverAvailable;
+      estimatedTotal =
+        hours * carListing.pricePerHour! +
+        (withDriver ? hours * (carListing.driverFeePerHour ?? 0) : 0);
+    } else if (carListing) {
       const days = rentalDays(dto.requestedDate, dto.requestedEndDate!);
       if (days < carListing.minRentalDays) {
         throw new BadRequestException(
@@ -114,19 +149,34 @@ export class BookingsService {
       estimatedTotal =
         days * carListing.pricePerDay +
         (withDriver ? days * (carListing.driverFeePerDay ?? 0) : 0);
+    }
 
-      // A car already CONFIRMED for an overlapping date range can't be
-      // handed to a second renter — PENDING requests don't block a new
-      // one (the owner is still free to decline whichever they don't
-      // confirm), only an actual, already-agreed booking does.
-      const overlapping = await this.bookingRepo.exists({
-        where: {
-          carListingId: carListing.id,
-          status: BookingStatus.CONFIRMED,
-          requestedDate: LessThanOrEqual(dto.requestedEndDate!),
-          requestedEndDate: MoreThanOrEqual(dto.requestedDate),
-        },
+    const candidateInterval: IntervalInput = {
+      requestedDate: dto.requestedDate,
+      requestedEndDate: isHourly ? null : (dto.requestedEndDate ?? null),
+      rentalUnit: isHourly ? BookingRentalUnit.HOUR : null,
+      requestedStartTime: isHourly ? (dto.requestedStartTime ?? null) : null,
+      requestedEndTime: isHourly ? (dto.requestedEndTime ?? null) : null,
+    };
+
+    if (carListing) {
+      // A car already CONFIRMED for an overlapping window can't be handed
+      // to a second renter — PENDING requests don't block a new one (the
+      // owner is still free to decline whichever they don't confirm),
+      // only an actual, already-agreed booking does. Fetched and compared
+      // in JS rather than a single SQL predicate (as the day-only version
+      // of this check used to do) because "overlapping" now means two
+      // different things depending on each row's own rentalUnit — a plain
+      // date-range comparison can't express both at once.
+      const confirmed = await this.bookingRepo.find({
+        where: { carListingId: carListing.id, status: BookingStatus.CONFIRMED },
       });
+      const overlapping = confirmed.some((existing) =>
+        intervalsOverlap(
+          bookingInterval(candidateInterval),
+          bookingInterval(existing),
+        ),
+      );
       if (overlapping) {
         throw new ConflictException(
           "This car is already booked for part of the requested dates",
@@ -141,7 +191,14 @@ export class BookingsService {
         carListingId: carListing?.id ?? null,
         guestUserId: userId,
         requestedDate: dto.requestedDate,
-        requestedEndDate: dto.requestedEndDate ?? null,
+        requestedEndDate: candidateInterval.requestedEndDate,
+        rentalUnit: carListing
+          ? isHourly
+            ? BookingRentalUnit.HOUR
+            : BookingRentalUnit.DAY
+          : null,
+        requestedStartTime: candidateInterval.requestedStartTime,
+        requestedEndTime: candidateInterval.requestedEndTime,
         partySize: dto.partySize ?? null,
         withDriver: carListing
           ? Boolean(dto.withDriver) && carListing.withDriverAvailable
@@ -160,7 +217,7 @@ export class BookingsService {
       await this.notificationsService.create(ownerUserId, {
         type: "booking.requested",
         title: "New booking request",
-        body: `${saved.guest.name} requested a booking for ${saved.requestedDate}.`,
+        body: `${saved.guest.name} requested a booking for ${describeRequestedWhen(saved)}.`,
         link: BOOKINGS_LINK,
       });
     }
@@ -205,8 +262,8 @@ export class BookingsService {
         dto.action === "confirm" ? "Booking confirmed" : "Booking declined",
       body:
         dto.action === "confirm"
-          ? `${listingName} confirmed your booking for ${booking.requestedDate}.`
-          : `${listingName} declined your booking for ${booking.requestedDate}.`,
+          ? `${listingName} confirmed your booking for ${describeRequestedWhen(booking)}.`
+          : `${listingName} declined your booking for ${describeRequestedWhen(booking)}.`,
       link: BOOKINGS_LINK,
     });
 
@@ -364,4 +421,78 @@ function rentalDays(requestedDate: string, requestedEndDate: string): number {
       msPerDay,
   );
   return Math.max(1, days);
+}
+
+/** Whole hours between two "HH:mm" times on the same calendar day, rounded
+ * up so a 90-minute rental is billed as 2 hours rather than 1.5 — never a
+ * partial hour. 0 (or negative) means end isn't after start; the caller
+ * rejects that rather than this function. */
+function hoursBetween(startTime: string, endTime: string): number {
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+  const minutes = endH * 60 + endM - (startH * 60 + startM);
+  return minutes <= 0 ? 0 : Math.ceil(minutes / 60);
+}
+
+/** The subset of Booking's date/time fields that determine what span of
+ * time it occupies — both the entity itself and the not-yet-saved
+ * candidate booking being created satisfy this shape, so bookingInterval
+ * accepts either. */
+type IntervalInput = {
+  requestedDate: string;
+  requestedEndDate: string | null;
+  rentalUnit: BookingRentalUnit | null;
+  requestedStartTime: string | null;
+  requestedEndTime: string | null;
+};
+
+/** The [start, end] Date span a booking occupies — generalizes the old
+ * day-only comparison so an HOUR car rental (a single day's time window)
+ * and a DAY/legacy-null booking (a whole-day-inclusive date range) can be
+ * compared against each other the same way. A day-mode span runs midnight
+ * to end-of-day so two single-day bookings on the same date still count
+ * as occupying the same day, matching the original SQL comparison's
+ * inclusive-date semantics. */
+function bookingInterval(booking: IntervalInput): { start: Date; end: Date } {
+  if (
+    booking.rentalUnit === BookingRentalUnit.HOUR &&
+    booking.requestedStartTime &&
+    booking.requestedEndTime
+  ) {
+    return {
+      start: new Date(
+        `${booking.requestedDate}T${booking.requestedStartTime}:00`,
+      ),
+      end: new Date(`${booking.requestedDate}T${booking.requestedEndTime}:00`),
+    };
+  }
+  return {
+    start: new Date(`${booking.requestedDate}T00:00:00`),
+    end: new Date(
+      `${booking.requestedEndDate ?? booking.requestedDate}T23:59:59.999`,
+    ),
+  };
+}
+
+function intervalsOverlap(
+  a: { start: Date; end: Date },
+  b: { start: Date; end: Date },
+): boolean {
+  return (
+    a.start.getTime() <= b.end.getTime() && a.end.getTime() >= b.start.getTime()
+  );
+}
+
+/** Human-readable "when" for a booking's own notifications — the plain
+ * date for a day-mode (or legacy-null) booking, or the date plus the
+ * HH:mm–HH:mm span for an hour-mode car rental. */
+function describeRequestedWhen(booking: Booking): string {
+  if (
+    booking.rentalUnit === BookingRentalUnit.HOUR &&
+    booking.requestedStartTime &&
+    booking.requestedEndTime
+  ) {
+    return `${booking.requestedDate} ${booking.requestedStartTime}–${booking.requestedEndTime}`;
+  }
+  return booking.requestedDate;
 }

@@ -467,6 +467,10 @@ export interface SponsoredPlacement {
 export type BookingStatus = "pending" | "confirmed" | "declined" | "cancelled";
 export type PaymentProvider = "mtn_momo";
 export type PaymentStatus = "unpaid" | "pending" | "paid" | "refunded";
+// Car-rental-only — see Booking.rentalUnit's doc comment. Absent/null means
+// DAY (every non-car booking, and every car booking made before this field
+// existed).
+export type BookingRentalUnit = "day" | "hour";
 
 // api/src/bookings/entities/booking.entity.ts (sanitized — guest,
 // business.owner, and carListing.business.owner are the public user
@@ -488,6 +492,9 @@ export interface Booking {
   partySize: number | null;
   // Car-listing-only fields — see the backend entity's doc comment.
   withDriver: boolean;
+  rentalUnit: BookingRentalUnit | null;
+  requestedStartTime: string | null;
+  requestedEndTime: string | null;
   pickupLocation: string | null;
   estimatedTotal: number | null;
   notes: string | null;
@@ -1301,6 +1308,11 @@ export interface CarListing {
   withDriverAvailable: boolean;
   driverFeePerDay: number | null;
   minRentalDays: number;
+  // Opt-in hourly rental — see the backend entity's doc comment. Null
+  // pricePerHour means this listing only supports day-based booking.
+  pricePerHour: number | null;
+  minRentalHours: number | null;
+  driverFeePerHour: number | null;
   securityDeposit: number | null;
   features: string[];
   images: string[];

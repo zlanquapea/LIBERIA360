@@ -249,6 +249,8 @@ Accepting an invitation creates an `ItineraryCollaborator` row (unchanged from b
 
 One `Booking` entity covers hotel/tour/restaurant/transport (distinguished by `Business.type`), a creator's own services, and renting a specific vehicle (`carListingId`) — same request/confirm/decline/cancel lifecycle for all of them. A car-rental request additionally requires `requestedEndDate` (the return date), accepts `withDriver`/`pickupLocation`, and gets a snapshotted `estimatedTotal` computed at creation time from whole rental days × the listing's `pricePerDay` (plus `driverFeePerDay` × days if `withDriver` and the listing offers one) — not re-derived later if the listing's price changes. A new car request is rejected (409) if it overlaps an existing *confirmed* booking for the same car. Request-to-book only: `paymentProvider`/`paymentStatus`/`paymentReference` exist in the schema (`paymentProvider` defaults to `mtn_momo`) but are not wired to a live payment API.
 
+A car listing can also opt into **hourly rental** by setting `pricePerHour` (plus optional `minRentalHours`, default 1, and `driverFeePerHour`) — leaving it unset keeps the listing day-only. A hourly booking sets `rentalUnit: 'hour'`, `requestedStartTime`/`requestedEndTime` ("HH:mm", same calendar day as `requestedDate`), and `requestedEndDate: null`; `estimatedTotal` is then hours (rounded up) × `pricePerHour` (plus driver fee if applicable). The overlap check generalizes to compare whichever kind of window each existing CONFIRMED booking for that car actually has (a whole day, or a specific hour range) against the new request, so a day-mode and an hour-mode booking on the same car correctly conflict when their spans overlap.
+
 ### Booking messages
 
 | Method & path | Description | Auth |

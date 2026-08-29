@@ -25,6 +25,12 @@ export interface CreateCarListingInput {
   withDriverAvailable?: boolean;
   driverFeePerDay?: number;
   minRentalDays?: number;
+  // Opt-in hourly rental — see CarListing.pricePerHour's doc comment on
+  // the backend entity. Leave pricePerHour unset to keep the listing
+  // day-only.
+  pricePerHour?: number;
+  minRentalHours?: number;
+  driverFeePerHour?: number;
   securityDeposit?: number;
   features?: string[];
   images?: string[];
