@@ -7,6 +7,7 @@ import { ErrorReportingInit } from "@/components/ErrorReportingInit";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Footer } from "@/components/Footer";
+import { Liberia360Assistant } from "@/components/Liberia360Assistant";
 
 export const metadata: Metadata = {
   title: "LIBERIA360 — Everything Liberia. One Place.",
@@ -70,6 +71,7 @@ export default function RootLayout({
           <Footer />
         </div>
         <BottomNav />
+        <Liberia360Assistant />
         <ServiceWorkerRegister />
         <AuthRefresher />
         <ErrorReportingInit />

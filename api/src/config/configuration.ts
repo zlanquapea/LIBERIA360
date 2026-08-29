@@ -70,6 +70,11 @@ export interface AppConfig {
     // tracking above.
     loginIpAllowlist: string[];
   };
+  assistant: {
+    apiKey: string;
+    apiBase: string;
+    model: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -136,5 +141,12 @@ export default (): AppConfig => ({
       .split(",")
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0),
+  },
+  assistant: {
+    apiKey: process.env.OPENAI_API_KEY ?? "",
+    apiBase: (
+      process.env.OPENAI_API_BASE ?? "https://api.openai.com/v1"
+    ).replace(/\/$/, ""),
+    model: process.env.CHATBOT_MODEL ?? "gpt-5-mini",
   },
 });

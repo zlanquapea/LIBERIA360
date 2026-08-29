@@ -55,6 +55,7 @@ import { Notification } from "./notifications/entities/notification.entity";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { Advertisement } from "./advertisements/entities/advertisement.entity";
 import { AdvertisementsModule } from "./advertisements/advertisements.module";
+import { AssistantModule } from "./assistant/assistant.module";
 
 @Module({
   imports: [
@@ -145,6 +146,7 @@ import { AdvertisementsModule } from "./advertisements/advertisements.module";
     ReportsModule,
     NotificationsModule,
     AdvertisementsModule,
+    AssistantModule,
   ],
   providers: [
     {
