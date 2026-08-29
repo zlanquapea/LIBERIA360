@@ -34,6 +34,7 @@ import { Notification } from "../notifications/entities/notification.entity";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { AssistantFeedback } from "../assistant/entities/assistant-feedback.entity";
+import { MenuItem } from "../menu-items/entities/menu-item.entity";
 
 config();
 
@@ -86,6 +87,7 @@ export const AppDataSource = new DataSource({
     Advertisement,
     CarListing,
     AssistantFeedback,
+    MenuItem,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

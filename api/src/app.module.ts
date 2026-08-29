@@ -21,6 +21,7 @@ import { UploadsModule } from "./uploads/uploads.module";
 import { Business } from "./businesses/entities/business.entity";
 import { BusinessesModule } from "./businesses/businesses.module";
 import { BusinessContentModule } from "./business-content/business-content.module";
+import { MenuItemsModule } from "./menu-items/menu-items.module";
 import { Creator } from "./creators/entities/creator.entity";
 import { CreatorFollow } from "./creators/entities/creator-follow.entity";
 import { CreatorPost } from "./creators/entities/creator-post.entity";
@@ -138,6 +139,7 @@ import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entit
     UploadsModule,
     BusinessesModule,
     BusinessContentModule,
+    MenuItemsModule,
     CreatorsModule,
     EventsModule,
     ItinerariesModule,

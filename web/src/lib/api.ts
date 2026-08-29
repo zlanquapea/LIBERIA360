@@ -12,6 +12,7 @@ import type {
   Event,
   EventAttendee,
   EventCategory,
+  MenuItem,
   PaginatedBusinessContent,
   PaginatedBusinesses,
   PaginatedCarListings,
@@ -205,6 +206,12 @@ export function getBusinessContent(
     { businessId, ...query },
     emptyPage(query.limit),
   );
+}
+
+// The full public menu for one business — see MenuItemsService's doc
+// comment for why there's no separate approved-only gate here.
+export function getMenuItems(businessId: string): Promise<MenuItem[]> {
+  return apiFetch<MenuItem[]>('/menu-items', { businessId }, []);
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
