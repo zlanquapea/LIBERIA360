@@ -6,6 +6,7 @@ import { formatCarCategory, formatCarListingReviewStatus, formatCost } from '@/l
 import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
 import { SafeImage } from '@/components/SafeImage';
+import { CarListingFullDetails } from '@/components/CarListingFullDetails';
 import { inputClass, TabListHeader } from './content-shared';
 import type { CarListing, CarListingReviewStatus } from '@/lib/types';
 
@@ -128,6 +129,7 @@ export function CarListingsTab({ token }: { token: string }) {
               {listing.rejectionReason && (
                 <p className="text-xs italic text-slate-500 dark:text-slate-400">Note: {listing.rejectionReason}</p>
               )}
+              <CarListingFullDetails listing={listing} />
               <ReviewStatusControl token={token} listing={listing} onUpdated={updateInList} />
             </li>
           ))}

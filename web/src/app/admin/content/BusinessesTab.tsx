@@ -7,6 +7,7 @@ import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
 import { inputClass, TabListHeader } from './content-shared';
 import { VerificationBadge } from '@/components/VerificationBadge';
+import { BusinessFullDetails } from '@/components/BusinessFullDetails';
 import type { Business, BusinessReviewStatus, VerificationStatus } from '@/lib/types';
 
 const PAGE_SIZE = 20;
@@ -142,6 +143,7 @@ export function BusinessesTab({ token }: { token: string }) {
               {business.rejectionReason && (
                 <p className="text-xs italic text-slate-500 dark:text-slate-400">Note: {business.rejectionReason}</p>
               )}
+              <BusinessFullDetails business={business} />
               <ReviewStatusControl token={token} business={business} onUpdated={updateInList} />
               <VerificationControl token={token} business={business} onUpdated={updateInList} />
             </li>

@@ -11,6 +11,7 @@ import {
   getModerationQueue,
   setAdvertisementReviewStatus,
   setBusinessContentReviewStatus,
+  setBusinessReviewStatus,
   setBusinessVerification,
   setCarListingReviewStatus,
   setEventReviewStatus,
@@ -20,6 +21,7 @@ import {
   formatAdvertisementType,
   formatBusinessContentType,
   formatBusinessContentStatus,
+  formatBusinessReviewStatus,
   formatBusinessType,
   formatCarCategory,
   formatCarListingReviewStatus,
@@ -30,9 +32,11 @@ import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import type {
   Advertisement,
   AdvertisementReviewStatus,
+  Business,
   BulkReviewResult,
   BusinessContent,
   BusinessContentStatus,
+  BusinessReviewStatus,
   CarListing,
   CarListingReviewStatus,
   Event,
@@ -45,6 +49,9 @@ import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui
 import { PlaceReviewPanel } from '../PlaceReviewPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { AdvertisementFullDetails } from '@/components/AdvertisementFullDetails';
+import { BusinessFullDetails } from '@/components/BusinessFullDetails';
+import { BusinessContentFullDetails } from '@/components/BusinessContentFullDetails';
+import { CarListingFullDetails } from '@/components/CarListingFullDetails';
 
 const VERIFICATION_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'verified', label: 'Verified' },
@@ -175,6 +182,9 @@ export default function ModerationPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {formatBusinessType(business.type)} · owner: {business.owner?.name ?? 'unclaimed'}
                 </p>
+                <BusinessFullDetails business={business} />
+                <BusinessReviewStatusControl business={business} onDone={reload} />
+                <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">Trust badge (optional, separate from the decision above):</p>
                 <VerifyBusinessControl businessId={business.id} onDone={reload} />
               </li>
             ))}
@@ -227,6 +237,7 @@ export default function ModerationPage() {
                       {formatBusinessContentType(item.type)} · {item.business?.name ?? 'Unknown business'}
                     </p>
                     <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">{item.body}</p>
+                    <BusinessContentFullDetails content={item} />
                     <ContentReviewStatusControl content={item} onDone={reload} />
                   </div>
                 </li>
@@ -309,6 +320,7 @@ export default function ModerationPage() {
                   {formatCost(listing.pricePerDay)}/day ·{' '}
                   {listing.business?.name ?? listing.owner?.name ?? 'Unknown owner'}
                 </p>
+                <CarListingFullDetails listing={listing} />
                 <CarListingReviewStatusControl listing={listing} onDone={reload} />
               </li>
             ))}
@@ -481,6 +493,72 @@ function BulkReviewBar<TStatus extends 'approved' | 'rejected'>({
         {action === 'reject' ? 'Rejecting…' : 'Reject selected'}
       </button>
       {error && <p className="w-full text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+    </div>
+  );
+}
+
+const BUSINESS_REVIEW_STATUSES: BusinessReviewStatus[] = ['approved', 'under_review', 'rejected', 'suspended'];
+
+// The actual review-lifecycle decision this queue exists for — approve,
+// reject, or request changes (under_review) — distinct from
+// VerifyBusinessControl below, which only grants a trust badge and never
+// touched reviewStatus. Mirrors BusinessesTab's own ReviewStatusControl.
+function BusinessReviewStatusControl({ business, onDone }: { business: Business; onDone: () => void }) {
+  const { token } = useAuth();
+  const [status, setStatus] = useState<BusinessReviewStatus>('approved');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const needsReason = status === 'rejected' || status === 'under_review' || status === 'suspended';
+
+  async function apply() {
+    if (!token) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await setBusinessReviewStatus(token, business.id, status, reason.trim() || undefined);
+      onDone();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'set-business-review-status', businessId: business.id } }));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as BusinessReviewStatus)}
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700"
+        >
+          {BUSINESS_REVIEW_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {formatBusinessReviewStatus(s)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={apply}
+          className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {submitting ? 'Applying…' : 'Apply'}
+        </button>
+      </div>
+      {needsReason && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason…"
+          maxLength={1000}
+          className="max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        />
+      )}
+      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
     </div>
   );
 }
