@@ -303,6 +303,20 @@ export function formatPriceFrom(amount: number | null): string | null {
   return `From $${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
 }
 
+// A "Happening now" status beats a plain date for an event already in
+// progress — the one thing worth leading with while it's actually
+// possible to go. Same "in progress" shape as PlaceKeyFacts' open-now
+// check: now falls inside [start, end], with end defaulting to a
+// generous same-day cutoff (6 hours after start) when the organizer
+// never set one, since most listed events run a few hours, not
+// indefinitely.
+export function isEventHappeningNow(startDate: string, endDate: string | null): boolean {
+  const now = Date.now();
+  const start = new Date(startDate).getTime();
+  const end = endDate ? new Date(endDate).getTime() : start + 6 * 60 * 60 * 1000;
+  return now >= start && now <= end;
+}
+
 export function formatEventDateRange(startDate: string, endDate: string | null): string {
   const start = new Date(startDate);
   const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
