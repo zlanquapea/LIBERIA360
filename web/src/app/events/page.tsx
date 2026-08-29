@@ -2,7 +2,14 @@ import Link from 'next/link';
 import { getCounties, getEvents } from '@/lib/api';
 import { EventFilters } from '@/components/EventFilters';
 import { EventFeedCard } from '@/components/EventFeedCard';
+import { EventCarousel } from '@/components/EventCarousel';
 import type { EventCategory } from '@/lib/types';
+
+// How many events the "Featured events" shelf shows — same shelf-size
+// reasoning as Home's own carousel (UPCOMING_EVENTS_LIMIT in page.tsx):
+// enough to make the horizontal scroll worthwhile without fetching more
+// than a discovery ribbon needs.
+const FEATURED_EVENTS_LIMIT = 8;
 
 export const metadata = { title: 'Events — LIBERIA360' };
 
@@ -24,9 +31,19 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   const dateTo = first(params.dateTo);
   const page = Number(first(params.page) ?? '1') || 1;
 
-  const [counties, result] = await Promise.all([
+  // The "Featured events" shelf is a discovery ribbon independent of
+  // whatever filter/page the visitor is looking at below it — same
+  // "top upcoming, unfiltered" set Home's own carousel shows — so it
+  // only needs fetching on an unfiltered first landing, not on every
+  // filtered/paginated request for the list beneath it.
+  const showFeatured = !category && !county && !dateFrom && !dateTo && page === 1;
+
+  const [counties, result, featured] = await Promise.all([
     getCounties(),
     getEvents({ category, county, dateFrom, dateTo, page, limit: 20 }),
+    showFeatured
+      ? getEvents({ dateFrom: new Date().toISOString(), limit: FEATURED_EVENTS_LIMIT })
+      : Promise.resolve(null),
   ]);
 
   function pageHref(targetPage: number) {
@@ -53,6 +70,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           + Post an event
         </Link>
       </div>
+
+      {featured && featured.data.length > 0 && (
+        <EventCarousel events={featured.data} title="Featured events" seeAllHref={null} />
+      )}
 
       <EventFilters counties={counties} />
 

@@ -18,7 +18,18 @@ import type { Event } from "@/lib/types";
 // section up to sit right after Trending Places: a co-equal discovery
 // surface instead of a footnote, with a real "See all" link since /events
 // (unlike ads) has a full listing page to send people to.
-export function EventCarousel({ events }: { events: Event[] }) {
+export function EventCarousel({
+  events,
+  title = "Happening soon",
+  seeAllHref = "/events",
+}: {
+  events: Event[];
+  // Lets the same carousel serve as the Events listing's own "Featured
+  // events" shelf (see events/page.tsx) without a redundant "See all"
+  // link back to the page it's already sitting on.
+  title?: string;
+  seeAllHref?: string | null;
+}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   const cardEls = useRef<(HTMLDivElement | null)[]>([]);
@@ -72,15 +83,17 @@ export function EventCarousel({ events }: { events: Event[] }) {
               aria-hidden
               className="h-5 w-5 text-accent-600 dark:text-accent-400"
             />
-            Happening soon
+            {title}
           </h2>
-          <Link
-            href="/events"
-            className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
-          >
-            See all
-            <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
-          </Link>
+          {seeAllHref && (
+            <Link
+              href={seeAllHref}
+              className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+            >
+              See all
+              <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+            </Link>
+          )}
         </div>
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center dark:border-slate-700 dark:bg-slate-900">
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
@@ -118,15 +131,17 @@ export function EventCarousel({ events }: { events: Event[] }) {
             aria-hidden
             className="h-5 w-5 text-accent-600 dark:text-accent-400"
           />
-          Happening soon
+          {title}
         </h2>
-        <Link
-          href="/events"
-          className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
-        >
-          See all
-          <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
-        </Link>
+        {seeAllHref && (
+          <Link
+            href={seeAllHref}
+            className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+          >
+            See all
+            <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
 
       <div className="relative">
