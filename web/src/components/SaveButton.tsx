@@ -25,12 +25,12 @@ export function SaveButton({ slug, placeId, className = '' }: { slug: string; pl
       type="button"
       onClick={handleClick}
       aria-pressed={saved}
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
         saved ? 'border-transparent bg-gold-500 text-white' : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
       } ${className}`}
     >
       {saved ? (
-        <BookmarkIconSolid aria-hidden className="h-4 w-4" />
+        <BookmarkIconSolid aria-hidden className="h-4 w-4 animate-pop" />
       ) : (
         <BookmarkIcon aria-hidden className="h-4 w-4" />
       )}

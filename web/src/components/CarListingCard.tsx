@@ -4,14 +4,16 @@ import type { CarListing } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { formatCarCategory, formatCarTransmission, formatCost } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { staggerDelay } from '@/lib/animation';
 import { SafeImage } from './SafeImage';
 
 // The discovery card for the /car-rentals directory — same visual
 // language as BusinessCard/PlaceCard/CreatorCard (cover image,
 // category-colored gradient fallback, hover lift). Only ever rendered for
 // an approved, active listing (the directory call site never fetches
-// anything else), so no review-status chrome here.
-export function CarListingCard({ listing }: { listing: CarListing }) {
+// anything else), so no review-status chrome here. `index` staggers the
+// entrance fade — see PlaceCard's own doc comment.
+export function CarListingCard({ listing, index }: { listing: CarListing; index?: number }) {
   const coverPath = listing.images[0] ?? null;
   const cover = coverPath ? resolveImageUrl(coverPath) : null;
   const coverThumb = coverPath ? resolveThumbUrl(coverPath) : null;
@@ -25,7 +27,8 @@ export function CarListingCard({ listing }: { listing: CarListing }) {
   return (
     <Link
       href={`/car-rentals/${listing.id}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
+      className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.98] ${index != null ? 'animate-fade-in-up' : ''}`}
+      style={index != null ? staggerDelay(index) : undefined}
     >
       <div className="h-32 overflow-hidden">
         <SafeImage

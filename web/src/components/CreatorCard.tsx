@@ -9,14 +9,16 @@ import { colorForCreator, gradientForCategory } from "@/lib/category-colors";
 import { formatCreatorCategory, formatRating } from "@/lib/format";
 import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import { whatsappLink } from "@/lib/contact";
+import { staggerDelay } from "@/lib/animation";
 import { ContactLink } from "./ContactLink";
 import { SafeImage } from "./SafeImage";
 import { ShareMenu } from "./ShareMenu";
 
 // Compact social-style creator preview for the public directory. The card uses
 // only data available on the paginated creator response; full portfolio media
-// and request booking remain on the creator profile.
-export function CreatorCard({ creator }: { creator: Creator }) {
+// and request booking remain on the creator profile. `index` staggers the
+// entrance fade — see PlaceCard's own doc comment.
+export function CreatorCard({ creator, index }: { creator: Creator; index?: number }) {
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
   const coverThumb = creator.coverImage
     ? resolveThumbUrl(creator.coverImage)
@@ -41,7 +43,8 @@ export function CreatorCard({ creator }: { creator: Creator }) {
         creator.featured
           ? "border-gold-400 dark:border-gold-500"
           : "border-slate-200 dark:border-slate-800"
-      }`}
+      } ${index != null ? 'animate-fade-in-up' : ''}`}
+      style={index != null ? staggerDelay(index) : undefined}
     >
       <div className="flex items-start gap-3 p-4 pb-3">
         <Link

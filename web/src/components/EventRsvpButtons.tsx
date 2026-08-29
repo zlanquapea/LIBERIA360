@@ -16,7 +16,7 @@ import { getEventRsvp, removeEventRsvp, setEventRsvp } from "@/lib/event-api";
 import type { EventRsvpStatus } from "@/lib/types";
 
 const BUTTON_CLASS =
-  "flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800";
+  "flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-transform active:scale-95 hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800";
 
 // Facebook's Interested/Going toggle — real backend RSVP tracking (see
 // EventsService.setRsvp) rather than Facebook's exact button chrome,
@@ -128,7 +128,7 @@ export function EventRsvpButtons({
           className={`${BUTTON_CLASS} ${interestedActive ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-300"}`}
         >
           {interestedActive ? (
-            <StarSolidIcon aria-hidden className="h-5 w-5" />
+            <StarSolidIcon aria-hidden className="h-5 w-5 animate-pop" />
           ) : (
             <StarIcon aria-hidden className="h-5 w-5" />
           )}
@@ -143,7 +143,7 @@ export function EventRsvpButtons({
             className={`${BUTTON_CLASS} ${goingActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-600 dark:text-slate-300"}`}
           >
             {goingActive ? (
-              <CheckCircleSolidIcon aria-hidden className="h-5 w-5" />
+              <CheckCircleSolidIcon aria-hidden className="h-5 w-5 animate-pop" />
             ) : (
               <CheckCircleIcon aria-hidden className="h-5 w-5" />
             )}

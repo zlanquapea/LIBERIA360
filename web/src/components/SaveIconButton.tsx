@@ -39,10 +39,10 @@ export function SaveIconButton({
       onClick={handleClick}
       aria-pressed={saved}
       aria-label={saved ? 'Remove from saved places' : 'Save this place'}
-      className={`flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900 ${className}`}
+      className={`flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm transition-colors active:scale-90 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900 ${className}`}
     >
       {saved ? (
-        <BookmarkIconSolid aria-hidden className="h-4 w-4 text-gold-500" />
+        <BookmarkIconSolid aria-hidden className="h-4 w-4 animate-pop text-gold-500" />
       ) : (
         <BookmarkIcon aria-hidden className="h-4 w-4" />
       )}

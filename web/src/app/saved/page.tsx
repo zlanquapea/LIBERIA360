@@ -83,14 +83,14 @@ export default function SavedPage() {
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {resolved.map(({ place, offline }) => (
+          {resolved.map(({ place, offline }, i) => (
             <div key={place.id} className="relative">
               {offline && (
                 <span className="absolute right-2 top-2 z-10 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-medium text-white">
                   Offline copy
                 </span>
               )}
-              <PlaceCard place={place} />
+              <PlaceCard place={place} index={i} />
             </div>
           ))}
         </div>

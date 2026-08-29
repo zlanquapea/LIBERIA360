@@ -147,12 +147,23 @@ const config: Config = {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(300%)' },
         },
+        // A brief "overshoot" pop for a toggle that just turned on (Save,
+        // Interested/Going, Like) — plays once on mount, since the outline
+        // icon and the solid icon are two different elements, so React
+        // swapping one in for the other is itself the animation trigger;
+        // no JS needed to detect the edge.
+        pop: {
+          '0%': { transform: 'scale(0.6)' },
+          '65%': { transform: 'scale(1.25)' },
+          '100%': { transform: 'scale(1)' },
+        },
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.5s ease-out both',
         'fade-in': 'fadeIn 0.6s ease-out both',
         float: 'float 3.5s ease-in-out infinite',
         'splash-bar': 'splashBar 1.1s ease-in-out infinite',
+        pop: 'pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both',
       },
     },
   },

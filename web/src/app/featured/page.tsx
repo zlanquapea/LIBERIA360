@@ -33,8 +33,8 @@ export default async function FeaturedPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {placements.map((placement) => (
-            <PlaceCard key={placement.id} place={placement.place} />
+          {placements.map((placement, i) => (
+            <PlaceCard key={placement.id} place={placement.place} index={i} />
           ))}
         </div>
       )}
