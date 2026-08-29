@@ -55,6 +55,22 @@ export class EventsService {
     if (dto.endDate && new Date(dto.endDate) < new Date(dto.startDate)) {
       throw new BadRequestException("endDate cannot be before startDate");
     }
+    const ticketPrice = dto.ticketPrice?.trim() || null;
+    const ticketCapacity = dto.ticketCapacity?.trim() || null;
+    if (
+      ticketPrice !== null &&
+      (!Number.isFinite(Number(ticketPrice)) || Number(ticketPrice) <= 0)
+    ) {
+      throw new BadRequestException("ticketPrice must be a positive number");
+    }
+    if (
+      ticketCapacity !== null &&
+      (!Number.isInteger(Number(ticketCapacity)) || Number(ticketCapacity) <= 0)
+    ) {
+      throw new BadRequestException(
+        "ticketCapacity must be a positive whole number",
+      );
+    }
 
     // Admin-created events skip the review gate — an admin reviewing
     // their own submission would be reviewing nothing, same reasoning as
@@ -74,6 +90,10 @@ export class EventsService {
       description: dto.description ?? null,
       images: dto.images ?? [],
       ticketInfo: dto.ticketInfo ?? null,
+      ticketPrice,
+      ticketCurrency: dto.ticketCurrency?.trim().toUpperCase() || "LRD",
+      ticketCapacity: ticketCapacity ? Number(ticketCapacity) : null,
+      paymentInstructions: dto.paymentInstructions?.trim() || null,
       createdByUserId: user.id,
       reviewStatus: isAdminSubmission
         ? EventReviewStatus.APPROVED
@@ -254,6 +274,22 @@ export class EventsService {
     if (nextEnd && new Date(nextEnd) < new Date(nextStart)) {
       throw new BadRequestException("endDate cannot be before startDate");
     }
+    if (
+      dto.ticketPrice !== undefined &&
+      (!Number.isFinite(Number(dto.ticketPrice)) ||
+        Number(dto.ticketPrice) <= 0)
+    ) {
+      throw new BadRequestException("ticketPrice must be a positive number");
+    }
+    if (
+      dto.ticketCapacity !== undefined &&
+      (!Number.isInteger(Number(dto.ticketCapacity)) ||
+        Number(dto.ticketCapacity) <= 0)
+    ) {
+      throw new BadRequestException(
+        "ticketCapacity must be a positive whole number",
+      );
+    }
 
     // `place`/`county` are both `eager: true` — see clearStaleRelation's
     // doc comment; without this, reassigning placeId/countyId silently
@@ -263,6 +299,12 @@ export class EventsService {
 
     this.eventRepo.merge(event, {
       ...dto,
+      ticketPrice: dto.ticketPrice?.trim(),
+      ticketCurrency: dto.ticketCurrency?.trim().toUpperCase(),
+      ticketCapacity: dto.ticketCapacity
+        ? Number(dto.ticketCapacity)
+        : undefined,
+      paymentInstructions: dto.paymentInstructions?.trim(),
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
     });

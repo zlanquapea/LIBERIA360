@@ -17,6 +17,7 @@ import { EventRsvpButtons } from "@/components/EventRsvpButtons";
 import { SafeImage } from "@/components/SafeImage";
 import { EventViewTracker } from "@/components/EventViewTracker";
 import { ShareMenu } from "@/components/ShareMenu";
+import { EventTicketPurchase } from "@/components/EventTicketPurchase";
 
 export async function generateMetadata({
   params,
@@ -88,7 +89,10 @@ export default async function EventDetailPage({
               className="flex h-full w-full items-center justify-center"
               style={{ backgroundImage: gradientForCategory(event.category) }}
             >
-              <CalendarDaysIcon aria-hidden className="h-16 w-16 text-white/70" />
+              <CalendarDaysIcon
+                aria-hidden
+                className="h-16 w-16 text-white/70"
+              />
             </div>
           }
         />
@@ -207,6 +211,8 @@ export default async function EventDetailPage({
           </p>
         </section>
       )}
+
+      <EventTicketPurchase event={event} />
 
       <div className="flex items-center justify-between gap-2">
         {event.createdBy ? (

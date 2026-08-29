@@ -13,6 +13,7 @@ import {
   ChevronRightIcon,
   MegaphoneIcon,
   TruckIcon,
+  TicketIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +66,12 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: "My Events",
     description: "Manage your events",
     icon: CalendarDaysIcon,
+  },
+  {
+    href: "/account/my-tickets",
+    label: "My Tickets",
+    description: "View event ticket orders",
+    icon: TicketIcon,
   },
   {
     href: "/account/my-ads",

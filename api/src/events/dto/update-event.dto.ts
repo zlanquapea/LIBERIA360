@@ -31,4 +31,8 @@ export class UpdateEventDto {
   images?: string[];
 
   @IsOptional() @IsString() @MaxLength(500) ticketInfo?: string;
+  @IsOptional() @IsString() @MaxLength(20) ticketPrice?: string;
+  @IsOptional() @IsString() @MaxLength(3) ticketCurrency?: string;
+  @IsOptional() @IsString() @MaxLength(20) ticketCapacity?: string;
+  @IsOptional() @IsString() @MaxLength(1000) paymentInstructions?: string;
 }

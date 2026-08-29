@@ -563,12 +563,38 @@ export interface Event {
   description: string | null;
   images: string[];
   ticketInfo: string | null;
+  ticketPrice: string | null;
+  ticketCurrency: string;
+  ticketCapacity: number | null;
+  paymentInstructions: string | null;
   createdBy: AuthUser | null;
   reviewStatus: EventReviewStatus;
   rejectionReason: string | null;
   interestedCount: number;
   goingCount: number;
   createdAt: string;
+}
+
+export type EventTicketOrderStatus =
+  "pending_payment_review" | "approved" | "rejected" | "cancelled";
+
+export interface EventTicketOrder {
+  id: string;
+  event: Event;
+  eventId: string;
+  buyer: AuthUser | null;
+  buyerUserId: string;
+  quantity: number;
+  unitPrice: string;
+  currency: string;
+  totalAmount: string;
+  paymentReference: string;
+  paymentNote: string | null;
+  status: EventTicketOrderStatus;
+  ticketCode: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // GET /events/:id/rsvp response.

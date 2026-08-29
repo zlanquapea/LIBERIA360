@@ -3,8 +3,8 @@ import type {
   EventCategory,
   EventRsvpState,
   EventRsvpStatus,
-} from './types';
-import { apiRequest, authHeader } from './http';
+} from "./types";
+import { apiRequest, authHeader } from "./http";
 
 export interface CreateEventInput {
   name: string;
@@ -17,11 +17,18 @@ export interface CreateEventInput {
   description?: string;
   images?: string[];
   ticketInfo?: string;
+  ticketPrice?: string;
+  ticketCurrency?: string;
+  ticketCapacity?: string;
+  paymentInstructions?: string;
 }
 
-export function createEvent(token: string, input: CreateEventInput): Promise<Event> {
-  return apiRequest<Event>('/events', {
-    method: 'POST',
+export function createEvent(
+  token: string,
+  input: CreateEventInput,
+): Promise<Event> {
+  return apiRequest<Event>("/events", {
+    method: "POST",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
@@ -31,16 +38,20 @@ export function createEvent(token: string, input: CreateEventInput): Promise<Eve
 // page, unlike the public listing, needs to include ones that already
 // happened so someone can see what they've already run.
 export function getMyEvents(token: string): Promise<Event[]> {
-  return apiRequest<Event[]>('/events/mine', { headers: authHeader(token) });
+  return apiRequest<Event[]>("/events/mine", { headers: authHeader(token) });
 }
 
 export type UpdateEventInput = Partial<CreateEventInput>;
 
 // Self-service edit for the organizer who posted it (or an admin) — see
 // EventsService.update. Only the fields being changed need to be sent.
-export function updateEvent(token: string, id: string, input: UpdateEventInput): Promise<Event> {
+export function updateEvent(
+  token: string,
+  id: string,
+  input: UpdateEventInput,
+): Promise<Event> {
   return apiRequest<Event>(`/events/${id}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: authHeader(token),
     body: JSON.stringify(input),
   });
@@ -48,7 +59,10 @@ export function updateEvent(token: string, id: string, input: UpdateEventInput):
 
 // Self-service cancel/remove — same ownership rule as updateEvent.
 export function deleteEvent(token: string, id: string): Promise<void> {
-  return apiRequest<void>(`/events/${id}`, { method: 'DELETE', headers: authHeader(token) });
+  return apiRequest<void>(`/events/${id}`, {
+    method: "DELETE",
+    headers: authHeader(token),
+  });
 }
 
 export interface EventRsvpResult {
@@ -66,7 +80,7 @@ export function setEventRsvp(
   status: EventRsvpStatus,
 ): Promise<EventRsvpResult> {
   return apiRequest<EventRsvpResult>(`/events/${eventId}/rsvp`, {
-    method: 'PUT',
+    method: "PUT",
     headers: authHeader(token),
     body: JSON.stringify({ status }),
   });
@@ -79,7 +93,7 @@ export function removeEventRsvp(
   eventId: string,
 ): Promise<{ interestedCount: number; goingCount: number }> {
   return apiRequest(`/events/${eventId}/rsvp`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: authHeader(token),
   });
 }
@@ -87,7 +101,10 @@ export function removeEventRsvp(
 // The viewer's own RSVP status. A separate authenticated fetch rather than
 // a field on the public Event shape — see EventRsvpState's doc comment in
 // shared-types. Called client-side once a token is available.
-export function getEventRsvp(token: string, eventId: string): Promise<EventRsvpState> {
+export function getEventRsvp(
+  token: string,
+  eventId: string,
+): Promise<EventRsvpState> {
   return apiRequest<EventRsvpState>(`/events/${eventId}/rsvp`, {
     headers: authHeader(token),
   });

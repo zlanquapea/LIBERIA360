@@ -77,6 +77,29 @@ export class Event {
   @Column({ name: "ticket_info", type: "text", nullable: true })
   ticketInfo: string | null;
 
+  @Column({
+    name: "ticket_price",
+    type: "numeric",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  ticketPrice: string | null;
+
+  @Column({
+    name: "ticket_currency",
+    type: "varchar",
+    length: 3,
+    default: "LRD",
+  })
+  ticketCurrency: string;
+
+  @Column({ name: "ticket_capacity", type: "int", nullable: true })
+  ticketCapacity: number | null;
+
+  @Column({ name: "payment_instructions", type: "text", nullable: true })
+  paymentInstructions: string | null;
+
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: "created_by_user_id" })
   createdBy: User;

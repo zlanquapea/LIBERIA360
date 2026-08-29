@@ -60,6 +60,8 @@ import { CarListing } from "./car-listings/entities/car-listing.entity";
 import { CarListingsModule } from "./car-listings/car-listings.module";
 import { AssistantModule } from "./assistant/assistant.module";
 import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entity";
+import { EventTicketOrder } from "./event-tickets/entities/event-ticket-order.entity";
+import { EventTicketsModule } from "./event-tickets/event-tickets.module";
 
 @Module({
   imports: [
@@ -120,6 +122,7 @@ import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entit
             Advertisement,
             CarListing,
             AssistantFeedback,
+            EventTicketOrder,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -155,6 +158,7 @@ import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entit
     AdvertisementsModule,
     CarListingsModule,
     AssistantModule,
+    EventTicketsModule,
   ],
   providers: [
     {

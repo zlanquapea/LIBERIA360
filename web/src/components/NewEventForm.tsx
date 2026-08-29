@@ -52,6 +52,10 @@ export function NewEventForm({
   const [description, setDescription] = useState(event?.description ?? '');
   const [images, setImages] = useState<string[]>(event?.images ?? []);
   const [ticketInfo, setTicketInfo] = useState(event?.ticketInfo ?? '');
+  const [ticketPrice, setTicketPrice] = useState(event?.ticketPrice ?? '');
+  const [ticketCurrency, setTicketCurrency] = useState(event?.ticketCurrency ?? 'LRD');
+  const [ticketCapacity, setTicketCapacity] = useState(event?.ticketCapacity?.toString() ?? '');
+  const [paymentInstructions, setPaymentInstructions] = useState(event?.paymentInstructions ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,6 +96,10 @@ export function NewEventForm({
         description: description.trim() || undefined,
         images,
         ticketInfo: ticketInfo.trim() || undefined,
+        ticketPrice: ticketPrice.trim() || undefined,
+        ticketCurrency: ticketCurrency.trim().toUpperCase() || undefined,
+        ticketCapacity: ticketCapacity.trim() || undefined,
+        paymentInstructions: paymentInstructions.trim() || undefined,
       };
       const saved = event ? await updateEvent(token, event.id, input) : await createEvent(token, input);
       if (onSaved) {
@@ -246,6 +254,32 @@ export function NewEventForm({
           className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
+
+      <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900/60 dark:bg-brand-950/30">
+        <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Paid tickets (manual payment)</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Price per ticket
+            <input type="number" min="0.01" step="0.01" placeholder="e.g. 500" value={ticketPrice} onChange={(e) => setTicketPrice(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Currency
+            <select value={ticketCurrency} onChange={(e) => setTicketCurrency(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+              <option value="LRD">LRD</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Ticket capacity
+            <input type="number" min="1" step="1" placeholder="Optional" value={ticketCapacity} onChange={(e) => setTicketCapacity(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm" />
+          </label>
+        </div>
+        <label className="mt-3 flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+          Payment instructions
+          <textarea maxLength={1000} rows={2} placeholder="e.g. Send payment to Lonestar Mobile Money 0777 000 000 and enter the transaction reference below." value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm" />
+        </label>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Buyers submit their payment reference. You verify it before tickets are issued.</p>
+      </div>
 
       {error && (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
