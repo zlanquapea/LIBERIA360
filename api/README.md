@@ -262,10 +262,11 @@ Plain text only; no attachments, read receipts, or editing.
 
 | Method & path | Description | Auth |
 |---|---|---|
-| `POST /analytics/events` | Log an event (`view`/`save`/`contact_click`/`booking_request`) against exactly one of `placeId`/`creatorId`/`advertisementId` | — |
+| `POST /analytics/events` | Log an event (`view`/`save`/`contact_click`/`booking_request`) against exactly one of `placeId`/`creatorId`/`advertisementId`/`eventId` | — |
 | `GET /analytics/business/:businessId` | Totals + 30-day daily breakdown | Owner |
 | `GET /analytics/creator/:creatorId` | Same shape, for a creator profile | Owner |
 | `GET /analytics/advertisement/:advertisementId` | Same shape, for an advertisement | Owner |
+| `GET /analytics/event/:eventId` | Same shape, for an event — its organizer pairs the `view` total with `Event.interestedCount`/`goingCount` (already denormalized on the event) for a "how is my event doing" view | Organizer |
 
 Append-only anonymous event log; no per-visitor data.
 

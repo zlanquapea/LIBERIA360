@@ -5,6 +5,7 @@ import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { Event } from "../events/entities/event.entity";
 import { AnalyticsService } from "./analytics.service";
 import { AnalyticsController } from "./analytics.controller";
 
@@ -16,6 +17,7 @@ import { AnalyticsController } from "./analytics.controller";
       Business,
       Creator,
       Advertisement,
+      Event,
     ]),
   ],
   controllers: [AnalyticsController],

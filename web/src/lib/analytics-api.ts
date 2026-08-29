@@ -48,3 +48,20 @@ export function getAdvertisementAnalytics(token: string, advertisementId: string
     headers: authHeader(token),
   });
 }
+
+// Same fire-and-forget shape, for the event detail page (see
+// EventViewTracker) — the organizer's "how is my event doing" metrics
+// pair views recorded here with the interested/going counts already
+// denormalized on Event itself.
+export function recordEventAnalyticsEvent(eventId: string, eventType: AnalyticsEventType): void {
+  apiRequest('/analytics/events', {
+    method: 'POST',
+    body: JSON.stringify({ eventId, eventType }),
+  }).catch(() => {
+    /* best-effort — nothing for the UI to react to */
+  });
+}
+
+export function getEventAnalytics(token: string, eventId: string): Promise<BusinessAnalytics> {
+  return apiRequest<BusinessAnalytics>(`/analytics/event/${eventId}`, { headers: authHeader(token) });
+}
