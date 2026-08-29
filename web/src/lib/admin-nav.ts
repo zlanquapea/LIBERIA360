@@ -56,6 +56,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: 'Engagement', href: '/admin/analytics/engagement' },
       { label: 'Growth & Retention', href: '/admin/analytics/growth' },
       { label: 'Reports', href: '/admin/analytics/reports' },
+      { label: 'Assistant Reviews', href: '/admin/assistant-review' },
     ],
   },
   {

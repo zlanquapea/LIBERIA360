@@ -933,6 +933,24 @@ export interface BulkReviewResult {
 }
 
 // api/src/admin/admin.service.ts's ModerationQueue (sanitized).
+export interface AssistantReviewRecord {
+  id: string;
+  type: "helpful" | "not_helpful" | "incorrect" | "unanswered";
+  question: string;
+  answer: string;
+  source: "ai" | "knowledge";
+  currentPath: string | null;
+  details: string | null;
+  createdAt: string;
+}
+
+export interface AssistantReviewQueue {
+  data: AssistantReviewRecord[];
+  counts: Record<AssistantReviewRecord["type"], number>;
+  topQuestions: Array<{ question: string; count: number; latestAt: string }>;
+  meta: { limit: number; returned: number };
+}
+
 export interface ModerationQueue {
   pendingBusinesses: Business[];
   pendingPlaces: Place[];
