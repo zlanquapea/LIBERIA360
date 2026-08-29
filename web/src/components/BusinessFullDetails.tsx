@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { resolveImageUrl } from '@/lib/images';
 import { formatBusinessType, formatCost } from '@/lib/format';
+import { Collapse } from './Collapse';
 import { SafeImage } from './SafeImage';
 import type { Business } from '@/lib/types';
 
@@ -31,7 +32,7 @@ export function BusinessFullDetails({ business }: { business: Business }) {
       >
         {open ? 'Hide full details' : 'Read full profile before deciding →'}
       </button>
-      {open && (
+      <Collapse open={open}>
         <div className="mt-2 flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
           {(business.logoImage || business.images.length > 0) && (
             <div className="flex flex-wrap gap-2">
@@ -130,7 +131,7 @@ export function BusinessFullDetails({ business }: { business: Business }) {
             </div>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

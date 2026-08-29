@@ -216,8 +216,8 @@ export default async function CreatorsPage({
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {result.data.map((creator) => (
-                    <CreatorCard key={creator.id} creator={creator} />
+                  {result.data.map((creator, i) => (
+                    <CreatorCard key={creator.id} creator={creator} index={i} />
                   ))}
                 </div>
               )}

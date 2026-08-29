@@ -5,14 +5,27 @@ import { gradientForCategory } from '@/lib/category-colors';
 import { formatCost, formatDistance, formatPlaceType, formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon } from '@/lib/icons';
+import { staggerDelay } from '@/lib/animation';
 import { VerificationBadge } from './VerificationBadge';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
 
 // `distanceOverride` lets a caller show a more relevant distance than the
 // catalog's fixed distanceFromMonroviaKm — e.g. Near Me results show
-// distance from the searched point instead.
-export function PlaceCard({ place, distanceOverride }: { place: Place; distanceOverride?: string | null }) {
+// distance from the searched point instead. `index` is this card's
+// position in its list — when a caller passes it, the card fades/lifts
+// into place with a small stagger instead of appearing instantly (see
+// lib/animation.ts); omit it for a lone card (e.g. a single related-place
+// callout) where there's no list rhythm to be part of.
+export function PlaceCard({
+  place,
+  distanceOverride,
+  index,
+}: {
+  place: Place;
+  distanceOverride?: string | null;
+  index?: number;
+}) {
   const distance = distanceOverride ?? formatDistance(place.distanceFromMonroviaKm);
   // Cards only have Place.images, not the linked Business's own photos —
   // fetching a business per card would mean an extra request per list
@@ -23,7 +36,10 @@ export function PlaceCard({ place, distanceOverride }: { place: Place; distanceO
   const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover">
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.98] ${index != null ? 'animate-fade-in-up' : ''}`}
+      style={index != null ? staggerDelay(index) : undefined}
+    >
       <SaveIconButton slug={place.slug} placeId={place.id} className="absolute right-2 top-2 z-10" />
       <Link href={`/places/${place.slug}`} className="flex flex-col">
         <div className="h-32 overflow-hidden">

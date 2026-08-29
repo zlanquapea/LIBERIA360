@@ -21,8 +21,8 @@ function ExplorePlaceListFallback({ places }: { places: Place[] }) {
         The map couldn&apos;t load — here&apos;s the list instead.
       </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {places.map((place) => (
-          <PlaceCard key={place.id} place={place} />
+        {places.map((place, i) => (
+          <PlaceCard key={place.id} place={place} index={i} />
         ))}
       </div>
     </div>

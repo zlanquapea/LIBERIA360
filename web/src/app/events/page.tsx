@@ -83,8 +83,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
         </p>
       ) : (
         <div className="flex flex-col gap-4">
-          {result.data.map((event) => (
-            <EventFeedCard key={event.id} event={event} />
+          {result.data.map((event, i) => (
+            <EventFeedCard key={event.id} event={event} index={i} />
           ))}
         </div>
       )}

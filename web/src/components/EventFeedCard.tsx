@@ -5,6 +5,7 @@ import { CalendarDaysIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { resolveImageUrl } from "@/lib/images";
 import { gradientForCategory } from "@/lib/category-colors";
 import { formatEventDateRange } from "@/lib/format";
+import { staggerDelay } from "@/lib/animation";
 import { SafeImage } from "./SafeImage";
 import { EventRsvpButtons } from "./EventRsvpButtons";
 import { ShareMenu } from "./ShareMenu";
@@ -15,14 +16,18 @@ import type { Event } from "@/lib/types";
 // an RSVP/Share action row) in place of the previous compact list row —
 // adapted to this app's own data (a real interestedCount/goingCount pair
 // backed by EventsService.setRsvp, this app's own ShareMenu) rather than
-// copying Facebook's exact chrome.
-export function EventFeedCard({ event }: { event: Event }) {
+// copying Facebook's exact chrome. `index` staggers the entrance fade —
+// see PlaceCard's own doc comment.
+export function EventFeedCard({ event, index }: { event: Event; index?: number }) {
   const cover = event.images[0] ? resolveImageUrl(event.images[0]) : null;
   const locationLabel = event.place?.name ?? event.locationText ?? event.county.name;
   const hasStats = event.interestedCount > 0 || event.goingCount > 0;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <article
+      className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900 ${index != null ? 'animate-fade-in-up' : ''}`}
+      style={index != null ? staggerDelay(index) : undefined}
+    >
       <Link href={`/events/${event.id}`} className="block">
         <div className="relative aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800">
           <SafeImage

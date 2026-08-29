@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { resolveImageUrl } from '@/lib/images';
+import { Collapse } from './Collapse';
 import { SafeImage } from './SafeImage';
 import type { BusinessContent } from '@/lib/types';
 
@@ -29,7 +30,7 @@ export function BusinessContentFullDetails({ content }: { content: BusinessConte
       >
         {open ? 'Hide full details' : 'Read full content before deciding →'}
       </button>
-      {open && (
+      <Collapse open={open}>
         <div className="mt-2 flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3">
           {content.images.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -68,7 +69,7 @@ export function BusinessContentFullDetails({ content }: { content: BusinessConte
             </dl>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

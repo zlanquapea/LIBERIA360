@@ -624,10 +624,10 @@ export function CreatorPostCard({
               onClick={handleLike}
               disabled={busy === "like"}
               aria-pressed={liked}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${liked ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"}`}
+              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-transform active:scale-95 hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${liked ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"}`}
             >
               {liked ? (
-                <HeartSolidIcon aria-hidden className="h-5 w-5" />
+                <HeartSolidIcon aria-hidden className="h-5 w-5 animate-pop" />
               ) : (
                 <HeartIcon aria-hidden className="h-5 w-5" />
               )}

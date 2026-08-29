@@ -4,6 +4,7 @@ import type { Business } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { formatBusinessType } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { staggerDelay } from '@/lib/animation';
 import { VerificationBadge } from './VerificationBadge';
 import { SafeImage } from './SafeImage';
 
@@ -14,7 +15,8 @@ import { SafeImage } from './SafeImage';
 // type. Only ever rendered for an APPROVED business (the directory/card
 // call sites never fetch anything else), so no review-status chrome here —
 // that belongs to the owner-facing claim/edit views, not a public card.
-export function BusinessCard({ business }: { business: Business }) {
+// `index` staggers the entrance fade — see PlaceCard's own doc comment.
+export function BusinessCard({ business, index }: { business: Business; index?: number }) {
   const coverPath = business.logoImage ?? business.images[0] ?? null;
   const cover = coverPath ? resolveImageUrl(coverPath) : null;
   const coverThumb = coverPath ? resolveThumbUrl(coverPath) : null;
@@ -23,7 +25,8 @@ export function BusinessCard({ business }: { business: Business }) {
   return (
     <Link
       href={`/businesses/${business.slug}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
+      className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.98] ${index != null ? 'animate-fade-in-up' : ''}`}
+      style={index != null ? staggerDelay(index) : undefined}
     >
       <div className="h-32 overflow-hidden">
         <SafeImage

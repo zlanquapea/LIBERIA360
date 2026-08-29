@@ -65,8 +65,8 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {placesResult.data.map((place) => (
-            <PlaceCard key={place.id} place={place} />
+          {placesResult.data.map((place, i) => (
+            <PlaceCard key={place.id} place={place} index={i} />
           ))}
         </div>
       )}

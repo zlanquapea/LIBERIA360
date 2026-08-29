@@ -5,6 +5,7 @@ import { gradientForCategory } from '@/lib/category-colors';
 import { formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon } from '@/lib/icons';
+import { staggerDelay } from '@/lib/animation';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
 import { VerificationBadge } from './VerificationBadge';
@@ -15,13 +16,25 @@ import { VerificationBadge } from './VerificationBadge';
 // (description, price, distance, verification badge) stays in use on
 // search/category/county listing pages, where that extra context is worth
 // the space; this one is deliberately terser so two can sit side by side
-// even on a narrow phone screen.
-export function PlaceCardCompact({ place, verificationStatus }: { place: Place; verificationStatus?: VerificationStatus }) {
+// even on a narrow phone screen. `index` staggers the entrance fade — see
+// PlaceCard's own doc comment.
+export function PlaceCardCompact({
+  place,
+  verificationStatus,
+  index,
+}: {
+  place: Place;
+  verificationStatus?: VerificationStatus;
+  index?: number;
+}) {
   const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
   const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900">
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900 ${index != null ? 'animate-fade-in-up' : ''}`}
+      style={index != null ? staggerDelay(index) : undefined}
+    >
       <SaveIconButton slug={place.slug} placeId={place.id} className="absolute right-1.5 top-1.5 z-10" />
       <Link href={`/places/${place.slug}`} className="flex flex-col">
         <div className="h-32 overflow-hidden">

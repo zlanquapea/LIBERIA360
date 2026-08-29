@@ -342,11 +342,12 @@ export default async function Home() {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {trending.data.map((place) => (
+            {trending.data.map((place, i) => (
               <PlaceCardCompact
                 key={place.id}
                 place={place}
                 verificationStatus={businessVerificationByPlaceId.get(place.id)}
+                index={i}
               />
             ))}
           </div>

@@ -46,4 +46,24 @@ html.dark {
   .sponsored-ad-shimmer {
     animation: none;
   }
+
+  /* `fade-in-up`/`pop` now run on every card grid (entrance stagger) and
+     every Save/RSVP toggle app-wide (see PlaceCard.tsx and friends,
+     SaveIconButton.tsx, EventRsvpButtons.tsx) — fine as one-shot motion
+     for most visitors, but a wall of simultaneously-fading-in cards is
+     exactly the kind of motion prefers-reduced-motion asks apps to skip.
+     Content still renders (these classes only ever animate opacity/
+     transform, never toggle visibility), just instantly in its resting
+     state instead of animating into it. */
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-pop {
+    animation: none !important;
+  }
+
+  /* Collapse.tsx's expand/collapse — content still opens/closes instantly
+     instead of over 300ms. */
+  .collapse-panel {
+    transition: none !important;
+  }
 }
