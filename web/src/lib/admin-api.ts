@@ -1,6 +1,7 @@
 import type {
   Activity,
   Advertisement,
+  AssistantReviewQueue,
   AdvertisementReviewStatus,
   AggregateAnalytics,
   AnalyticsOverview,
@@ -47,6 +48,12 @@ import type {
   VerificationStatus,
 } from './types';
 import { apiRequest, authHeader } from './http';
+
+export function getAssistantReviewQueue(token: string): Promise<AssistantReviewQueue> {
+  return apiRequest<AssistantReviewQueue>('/admin/assistant-review?limit=250', {
+    headers: authHeader(token),
+  });
+}
 
 // Moderation (Tech Spec §7/§8)
 export function getModerationQueue(token: string): Promise<ModerationQueue> {
