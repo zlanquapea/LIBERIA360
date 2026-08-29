@@ -19,7 +19,9 @@ import {
 } from "react";
 import {
   askAssistant,
+  recordAssistantFeedback,
   type AssistantAction,
+  type AssistantFeedbackType,
   type AssistantHistoryMessage,
 } from "@/lib/assistant-api";
 import { HttpError } from "@/lib/http";
@@ -42,6 +44,9 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  question?: string;
+  source?: "ai" | "knowledge";
+  feedback?: AssistantFeedbackType;
   actions?: AssistantAction[];
   followUps?: string[];
 }
@@ -108,11 +113,22 @@ function safeStoredMessages(value: string | null): ChatMessage[] {
               .filter((question) => question.length >= 4)
               .slice(0, 3)
           : undefined;
+        const source = candidate.source === "ai" || candidate.source === "knowledge"
+          ? candidate.source
+          : undefined;
+        const feedback = ["helpful", "not_helpful", "incorrect", "unanswered"].includes(
+          candidate.feedback as string,
+        )
+          ? candidate.feedback
+          : undefined;
         return [
           {
             id: item.id.slice(0, 100),
             role: item.role,
             content: item.content.slice(0, 1600),
+            question: typeof candidate.question === "string" ? candidate.question.slice(0, 600) : undefined,
+            source,
+            feedback,
             actions,
             followUps,
           },
@@ -280,6 +296,8 @@ export function Liberia360Assistant() {
           id: `assistant-${Date.now()}`,
           role: "assistant",
           content: reply.answer,
+          question: text,
+          source: reply.source,
           actions: reply.actions,
           followUps: reply.followUps,
         },
@@ -295,6 +313,8 @@ export function Liberia360Assistant() {
           id: `assistant-error-${Date.now()}`,
           role: "assistant",
           content,
+          question: text,
+          source: "knowledge",
           actions: [
             { id: "search", label: "Search Liberia", href: "/search" },
             { id: "account", label: "Open account", href: "/account" },
@@ -310,6 +330,30 @@ export function Liberia360Assistant() {
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     void sendMessage(input);
+  }
+
+  async function submitFeedback(message: ChatMessage, type: AssistantFeedbackType) {
+    if (!message.question || !message.source || message.feedback) return;
+    setMessages((current) =>
+      current.map((item) =>
+        item.id === message.id ? { ...item, feedback: type } : item,
+      ),
+    );
+    try {
+      await recordAssistantFeedback({
+        type,
+        question: message.question,
+        answer: message.content,
+        source: message.source,
+        currentPath: pathname,
+      });
+    } catch {
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === message.id ? { ...item, feedback: undefined } : item,
+        ),
+      );
+    }
   }
 
   if (pathname.startsWith("/admin")) return null;
@@ -393,6 +437,44 @@ export function Liberia360Assistant() {
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.role === "assistant" && message.id !== "welcome" && (
+                    <div className="mt-2.5 border-t border-slate-100 pt-2 dark:border-slate-700">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-medium text-slate-400">
+                          {message.source === "knowledge" ? "LIBERIA360 Guide" : "LIBERIA360 Assistant"}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => void submitFeedback(message, "helpful")}
+                            disabled={Boolean(message.feedback)}
+                            className={`min-h-8 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${message.feedback === "helpful" ? "bg-green-100 text-green-800" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                            aria-label="Mark this answer helpful"
+                          >
+                            {message.feedback === "helpful" ? "Helpful ✓" : "Helpful"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void submitFeedback(message, "not_helpful")}
+                            disabled={Boolean(message.feedback)}
+                            className={`min-h-8 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${message.feedback === "not_helpful" ? "bg-amber-100 text-amber-800" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                            aria-label="Mark this answer not helpful"
+                          >
+                            {message.feedback === "not_helpful" ? "Not helpful ✓" : "Not helpful"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void submitFeedback(message, "incorrect")}
+                            disabled={Boolean(message.feedback)}
+                            className="min-h-8 rounded-lg px-2 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-slate-800"
+                            aria-label="Report incorrect answer"
+                          >
+                            {message.feedback === "incorrect" ? "Reported ✓" : "Report incorrect"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {message.actions && message.actions.length > 0 && (
                     <div className="mt-2.5 flex flex-wrap gap-2">
                       {message.actions.map((action) => (

@@ -1,6 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import type { AppConfig } from "../config/configuration";
+import {
+  AssistantFeedback,
+  AssistantFeedbackType,
+} from "./entities/assistant-feedback.entity";
 import type { AskAssistantDto } from "./dto/ask-assistant.dto";
 import {
   ASSISTANT_ACTIONS,
@@ -57,13 +63,22 @@ const STOP_WORDS = new Set([
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name);
 
-  constructor(private readonly configService: ConfigService<AppConfig, true>) {}
+  constructor(
+    private readonly configService: ConfigService<AppConfig, true>,
+    @Optional()
+    @InjectRepository(AssistantFeedback)
+    private readonly feedbackRepo?: Repository<AssistantFeedback>,
+  ) {}
 
   async ask(input: AskAssistantDto): Promise<AssistantResponse> {
     const match = this.findBestKnowledge(input.message);
     const assistant = this.configService.get("assistant", { infer: true });
 
-    if (!match) return this.buildFallback(input.message, null);
+    if (!match) {
+      const response = this.buildFallback(input.message, null);
+      await this.recordUnanswered(input, response);
+      return response;
+    }
     if (match.score >= 20 || !assistant.apiKey) {
       return this.buildFallback(input.message, match.entry);
     }
@@ -83,6 +98,48 @@ export class AssistantService {
         }`,
       );
       return this.buildFallback(input.message, match.entry);
+    }
+  }
+
+  async recordFeedback(input: {
+    type: AssistantFeedbackType;
+    question: string;
+    answer: string;
+    source: "ai" | "knowledge";
+    currentPath?: string;
+    details?: string;
+  }) {
+    if (!this.feedbackRepo) return { recorded: false };
+    const feedback = this.feedbackRepo.create({
+      type: input.type,
+      question: input.question.trim().slice(0, 600),
+      answer: input.answer.trim().slice(0, 1600),
+      source: input.source,
+      currentPath: input.currentPath?.trim().slice(0, 160) || null,
+      details: input.details?.trim().slice(0, 600) || null,
+    });
+    await this.feedbackRepo.save(feedback);
+    return { recorded: true };
+  }
+
+  private async recordUnanswered(
+    input: AskAssistantDto,
+    response: AssistantResponse,
+  ) {
+    try {
+      await this.recordFeedback({
+        type: AssistantFeedbackType.UNANSWERED,
+        question: input.message,
+        answer: response.answer,
+        source: response.source,
+        currentPath: input.currentPath,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Could not record unanswered assistant question: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
     }
   }
 
