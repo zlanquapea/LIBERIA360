@@ -349,6 +349,17 @@ Renting a car is just a `Booking` with `carListingId` set — see Bookings above
 
 Admin: `GET /admin/car-listings` (every listing, any status) and `PATCH /admin/car-listings/:id/review-status` (approve/reject/suspend) — see Admin below. A pending listing also surfaces in the moderation queue's `pendingCarListings`. A review decision notifies the listing's own `ownerUserId` directly, not a business owner.
 
+### Menu Items
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /menu-items?businessId=` | The full menu for one business — a picture, name, and price per item, grouped by `category` then `sortOrder` | — |
+| `POST /menu-items` | Add a dish/drink to a business's menu | JWT, business owner |
+| `PATCH /menu-items/:id` | Edit a menu item | JWT, business owner |
+| `DELETE /menu-items/:id` | Remove a menu item | JWT, business owner |
+
+A restaurant (or any other food-and-dining business — cafe, bar, food stand) can list what it serves: a photo (`image`, optional), the item's `name`, its `price`, and an optional `description`/freeform `category` ("Appetizers", "Mains", "Drinks", "Desserts" — a business names its own sections, no fixed enum) to group items on the public menu. Unlike Advertisement/CarListing/BusinessContent, a menu item never goes through admin review — same reasoning as `CreatorOffering`: a $6 jollof rice listing carries none of the real-money/safety stakes a car rental or ad placement does, so an owner can add and edit their menu instantly. `GET /menu-items` is both the public menu (shown on the business profile) and the owner's own manage view — there's no separate "mine" endpoint since there's no draft/review state to hide. `isAvailable` is the owner's quick "sold out today" toggle; an unavailable item still comes back from the API and still renders on the public menu, just tagged "Sold out", so a diner planning a visit still sees the whole menu and its prices rather than an item silently vanishing.
+
 ### Admin
 
 All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super Admin.

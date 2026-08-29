@@ -15,6 +15,7 @@ import { AmenitiesPicker } from './AmenitiesPicker';
 import { PhotoManager } from './PhotoManager';
 import { SingleImageUploader } from './SingleImageUploader';
 import { BusinessContentManager } from './BusinessContentManager';
+import { MenuItemsManager } from './MenuItemsManager';
 import type { Business, BusinessType } from '@/lib/types';
 
 function splitList(value: string): string[] {
@@ -162,6 +163,9 @@ export function BusinessClaimSection({
             onCancel={() => setEditing(false)}
           />
           <BusinessContentManager token={token} businessId={business.id} />
+          {business.type === 'restaurant' && (
+            <MenuItemsManager token={token} businessId={business.id} />
+          )}
         </div>
       );
     }

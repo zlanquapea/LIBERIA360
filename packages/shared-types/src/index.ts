@@ -939,6 +939,40 @@ export interface SetBusinessContentReviewStatusInput {
   reason?: string;
 }
 
+// api/src/menu-items/entities/menu-item.entity.ts — one dish/drink on a
+// business's menu. No review status: unlike BusinessContent this never
+// goes through admin moderation (see the entity's doc comment), so the
+// shape is display-only fields plus the two owner-editable knobs
+// (isAvailable, sortOrder).
+export interface MenuItem {
+  id: string;
+  businessId: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image: string | null;
+  category: string | null;
+  isAvailable: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMenuItemInput {
+  businessId: string;
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+  category?: string;
+  isAvailable?: boolean;
+  sortOrder?: number;
+}
+
+export type UpdateMenuItemInput = Partial<
+  Omit<CreateMenuItemInput, "businessId">
+>;
+
 // api/src/admin/admin.service.ts's runBulk() — the shape every bulk
 // moderation endpoint (places/businesses/business-content review-status)
 // returns, so one bad id in a multi-select batch doesn't abort the rest.

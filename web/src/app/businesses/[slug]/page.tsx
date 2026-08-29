@@ -10,7 +10,7 @@ import {
   PaperAirplaneIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
-import { ApiError, getBusinessBySlug, getBusinessContent, getReviews } from '@/lib/api';
+import { ApiError, getBusinessBySlug, getBusinessContent, getMenuItems, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
 import { formatBusinessContentType, formatBusinessType, formatCost, formatRating } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
@@ -27,7 +27,7 @@ import { SaveButton } from '@/components/SaveButton';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { JsonLd } from '@/components/JsonLd';
 import { businessJsonLd } from '@/lib/structured-data';
-import type { BusinessContent } from '@/lib/types';
+import type { BusinessContent, MenuItem } from '@/lib/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -100,6 +100,56 @@ function UpdateCard({ item }: { item: BusinessContent }) {
   );
 }
 
+// Groups a business's menu into its sections in the order the backend
+// already returns them (category ASC, then sortOrder — see
+// MenuItemsService.findForBusiness), with uncategorized items collected
+// under "Menu" at the end rather than scattered by their null category.
+function groupMenuByCategory(items: MenuItem[]): { category: string; items: MenuItem[] }[] {
+  const groups: { category: string; items: MenuItem[] }[] = [];
+  for (const item of items) {
+    const category = item.category ?? 'Menu';
+    const group = groups.find((g) => g.category === category);
+    if (group) {
+      group.items.push(item);
+    } else {
+      groups.push({ category, items: [item] });
+    }
+  }
+  return groups;
+}
+
+function MenuItemRow({ item }: { item: MenuItem }) {
+  const image = item.image ? resolveImageUrl(item.image) : null;
+  return (
+    <li className={`flex items-start gap-3 py-3 ${!item.isAvailable ? 'opacity-60' : ''}`}>
+      <SafeImage
+        src={image}
+        alt=""
+        className="h-14 w-14 shrink-0 rounded-xl object-cover"
+        fallback={
+          <div aria-hidden className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg dark:bg-slate-800">
+            🍽️
+          </div>
+        }
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-semibold text-slate-900 dark:text-slate-50">{item.name}</p>
+          <span className="shrink-0 font-semibold text-slate-900 dark:text-slate-50">{formatCost(item.price)}</span>
+        </div>
+        {item.description && (
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{item.description}</p>
+        )}
+        {!item.isAvailable && (
+          <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            Sold out
+          </span>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export default async function BusinessProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -113,6 +163,12 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
 
   const reviewsResult = await getReviews(business.linkedPlaceId, { limit: 20 });
   const contentResult = await getBusinessContent(business.id, { limit: 20 });
+  // Only restaurants (and other food-and-dining types) get a Menu section
+  // on the public profile — see MenuItemsManager's gate in
+  // BusinessClaimSection for the owner-side counterpart. Skipping the
+  // fetch entirely for every other business type avoids a pointless
+  // network round-trip that would always come back empty.
+  const menuItems = business.type === 'restaurant' ? await getMenuItems(business.id) : [];
   const linkedPlace = business.linkedPlace;
   const gallery = (business.images.length > 0 ? business.images : linkedPlace.images).map(resolveImageUrl);
   const location = `${linkedPlace.city}, ${linkedPlace.county.name} County`;
@@ -298,6 +354,25 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
       <Section eyebrow="Discover the business" title="About this business">
         <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
       </Section>
+
+      {menuItems.length > 0 && (
+        <Section eyebrow="What's on offer" title="Menu">
+          <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+            {groupMenuByCategory(menuItems).map((group) => (
+              <div key={group.category} className="min-w-0">
+                <h3 className="border-b border-slate-100 pb-2 font-display text-sm font-bold uppercase tracking-wide text-brand-700 dark:border-slate-800 dark:text-brand-300">
+                  {group.category}
+                </h3>
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {group.items.map((item) => (
+                    <MenuItemRow key={item.id} item={item} />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section eyebrow="Find your way" title="Location">
         <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
