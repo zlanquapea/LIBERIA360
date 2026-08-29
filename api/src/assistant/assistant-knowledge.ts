@@ -254,6 +254,62 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     followUps: ["Where can I find creators?", "How do I follow a creator?"],
   },
   {
+    id: "comment-interactions",
+    title: "Comment likes and replies",
+    keywords: [
+      "like comment",
+      "comment like",
+      "reply to comment",
+      "reply comment",
+      "respond to comment",
+      "comment reply",
+      "comments and replies",
+    ],
+    answer:
+      "On a creator post, sign in and open the comments. Tap Like on a comment to add or remove your like. Tap Reply to write a response under that comment. Your reply appears nested under the original comment. You can like comments and replies, but you must be signed in to interact.",
+    actionIds: ["creators", "login"],
+    followUps: [
+      "How do I create a creator post?",
+      "How do I follow a creator?",
+    ],
+  },
+  {
+    id: "save-creator-post",
+    title: "Save a creator post",
+    keywords: [
+      "save creator post",
+      "save a post",
+      "bookmark creator post",
+      "saved creator post",
+      "where are saved posts",
+      "unsave creator post",
+    ],
+    answer:
+      "Tap Save at the bottom of a creator post to keep a private bookmark. The button changes to Unsave when it is active. Tap Unsave to remove it. You must be signed in. Saved creator posts are stored, but the current Saved page mainly shows saved places; a dedicated saved-creator-posts list is planned.",
+    actionIds: ["creators", "saved", "login"],
+    followUps: [
+      "How do I like or reply to a comment?",
+      "How do I follow a creator?",
+    ],
+  },
+  {
+    id: "assistant-help",
+    title: "What the assistant can do",
+    keywords: [
+      "chatbot",
+      "assistant",
+      "ai",
+      "ask question",
+      "what can you do",
+      "can you help",
+      "how do you work",
+    ],
+    answer:
+      "I am the LIBERIA360 Assistant. I explain how the app works and can guide you to search, add a business, advertise, book, plan a trip, use creator features, and manage your account. I cannot approve, verify, publish, delete, pay, or submit forms for you. Never share passwords, codes, or payment details in chat.",
+    actionIds: ["home", "search", "account"],
+    followUps: ["How do I add my business?", "How does advertising work?"],
+  },
+  {
     id: "events",
     title: "Find and add events",
     keywords: [

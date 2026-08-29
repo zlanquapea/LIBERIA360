@@ -70,7 +70,7 @@ describe("AssistantService", () => {
     );
     const service = new AssistantService(config({ apiKey: "test-key" }));
 
-    const response = await service.ask({ message: "Help me advertise" });
+    const response = await service.ask({ message: "Can you explain the ad dashboard?" });
 
     expect(response.source).toBe("ai");
     expect(response.actions).toEqual([
@@ -87,5 +87,39 @@ describe("AssistantService", () => {
 
     expect(response.source).toBe("knowledge");
     expect(response.answer).toContain("booking");
+  });
+
+  it("routes creator-post saving questions to the save guidance", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "How do I save a creator post?",
+    });
+
+    expect(response.answer).toContain("private bookmark");
+    expect(response.answer).toContain("Unsave");
+  });
+
+  it("routes comment reply questions to the comment guidance", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "Can people like and reply to comments?",
+    });
+
+    expect(response.answer).toContain("Tap Reply");
+    expect(response.answer).toContain("nested");
+  });
+
+  it("does not pretend to know unrelated questions", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "What is the weather on Mars?",
+    });
+
+    expect(response.source).toBe("knowledge");
+    expect(response.answer).toContain("not sure");
+    expect(response.answer).not.toContain("15 counties");
   });
 });

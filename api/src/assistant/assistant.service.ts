@@ -24,6 +24,11 @@ interface AiResponsePayload {
   followUps: string[];
 }
 
+interface KnowledgeMatch {
+  entry: AssistantKnowledgeEntry;
+  score: number;
+}
+
 const STOP_WORDS = new Set([
   "a",
   "an",
@@ -58,14 +63,17 @@ export class AssistantService {
     const match = this.findBestKnowledge(input.message);
     const assistant = this.configService.get("assistant", { infer: true });
 
-    if (!assistant.apiKey) return this.buildFallback(input.message, match);
+    if (!match) return this.buildFallback(input.message, null);
+    if (match.score >= 20 || !assistant.apiKey) {
+      return this.buildFallback(input.message, match.entry);
+    }
 
     try {
-      const ai = await this.askModel(input, assistant);
+      const ai = await this.askModel(input, assistant, match.entry);
       return {
         answer: ai.answer.trim().slice(0, 1600),
         actions: this.resolveActions(ai.actionIds),
-        followUps: this.cleanFollowUps(ai.followUps, match),
+        followUps: this.cleanFollowUps(ai.followUps, match.entry),
         source: "ai",
       };
     } catch (error) {
@@ -74,7 +82,7 @@ export class AssistantService {
           error instanceof Error ? error.message : "Unknown error"
         }`,
       );
-      return this.buildFallback(input.message, match);
+      return this.buildFallback(input.message, match.entry);
     }
   }
 
@@ -85,6 +93,7 @@ export class AssistantService {
   private async askModel(
     input: AskAssistantDto,
     assistant: AppConfig["assistant"],
+    matchedEntry: AssistantKnowledgeEntry,
   ): Promise<AiResponsePayload> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -100,7 +109,11 @@ Return JSON only. Select zero to three action IDs from the allowed list. Follow-
 
 APPROVED KNOWLEDGE:\n${ASSISTANT_KNOWLEDGE_TEXT}
 
-ALLOWED ACTIONS:\n${allowedActions}`;
+ALLOWED ACTIONS:\n${allowedActions}
+
+PRIORITY MATCH FOR THIS QUESTION:
+${matchedEntry.title}
+${matchedEntry.answer}`;
 
     const messages = [
       { role: "system", content: system },
@@ -191,7 +204,7 @@ ALLOWED ACTIONS:\n${allowedActions}`;
 
   private buildFallback(
     message: string,
-    match: AssistantKnowledgeEntry,
+    match: AssistantKnowledgeEntry | null,
   ): AssistantResponse {
     const normalized = this.normalize(message);
     const greeting =
@@ -200,19 +213,72 @@ ALLOWED ACTIONS:\n${allowedActions}`;
       );
     const answer = greeting
       ? `Hello! I’m the LIBERIA360 Assistant. ${ASSISTANT_KNOWLEDGE[0].answer}`
-      : match.answer;
+      : (match?.answer ??
+        "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, advertising, bookings, creators, events, trips, reviews, or your account.");
+    const fallbackEntry =
+      match ??
+      ASSISTANT_KNOWLEDGE.find((entry) => entry.id === "assistant-help");
     return {
       answer,
-      actions: this.resolveActions(match.actionIds),
-      followUps: match.followUps.slice(0, 3),
+      actions: this.resolveActions(fallbackEntry?.actionIds ?? ["home"]),
+      followUps: (fallbackEntry?.followUps ?? []).slice(0, 3),
       source: "knowledge",
     };
   }
 
-  private findBestKnowledge(message: string): AssistantKnowledgeEntry {
+  private findBestKnowledge(message: string): KnowledgeMatch | null {
     const normalized = this.normalize(message);
+    const directRules: Array<[RegExp, string]> = [
+      [
+        /like.*comment|comment.*like|reply.*comment|comment.*reply|respond.*comment/,
+        "comment-interactions",
+      ],
+      [
+        /save.*(post|creator)|bookmark.*(post|creator)|unsave.*(post|creator)/,
+        "save-creator-post",
+      ],
+      [
+        /advertis|sponsor|promot|reach customer|market.*business/,
+        "advertising",
+      ],
+      [
+        /add.*(business|place)|list.*business|register.*business|claim.*business/,
+        "add-business",
+      ],
+      [
+        /become.*creator|join.*creator|creator.*account|start.*creator/,
+        "become-creator",
+      ],
+      [/book(ing|ings)?|reservation|appointment/, "bookings"],
+      [
+        /create.*post|post.*(video|photo)|edit.*post|delete.*post|caption/,
+        "creator-posts",
+      ],
+      [
+        /profile.*photo|cover.*photo|crop.*photo|creator.*picture/,
+        "creator-profile-photos",
+      ],
+      [
+        /review|rating|verified|verification|recommended|badge/,
+        "reviews-verification",
+      ],
+      [/event|rsvp|happening/, "events"],
+      [/trip|itinerary|travel plan|weekend|vacation/, "trips"],
+      [/chatbot|assistant|what can you do|how do you work/, "assistant-help"],
+      [
+        /what is liberia360|about.*(app|platform|website)|what.*(app|platform).*do/,
+        "overview",
+      ],
+    ];
+    for (const [pattern, entryId] of directRules) {
+      if (pattern.test(normalized)) {
+        const entry = ASSISTANT_KNOWLEDGE.find((item) => item.id === entryId);
+        if (entry) return { entry, score: 20 };
+      }
+    }
+
     const messageTokens = this.tokens(normalized);
-    let best = ASSISTANT_KNOWLEDGE[0];
+    let best: AssistantKnowledgeEntry | null = null;
     let bestScore = 0;
 
     for (const entry of ASSISTANT_KNOWLEDGE) {
@@ -233,15 +299,15 @@ ALLOWED ACTIONS:\n${allowedActions}`;
     }
 
     if (
-      bestScore === 0 &&
-      /password|code|card|payment|unsafe|report/.test(normalized)
+      /password|verification code|card|payment|unsafe|report/.test(normalized)
     ) {
-      return (
-        ASSISTANT_KNOWLEDGE.find((entry) => entry.id === "support-safety") ??
-        ASSISTANT_KNOWLEDGE[0]
+      const safety = ASSISTANT_KNOWLEDGE.find(
+        (entry) => entry.id === "support-safety",
       );
+      return safety ? { entry: safety, score: 10 } : null;
     }
-    return best;
+
+    return best && bestScore >= 4 ? { entry: best, score: bestScore } : null;
   }
 
   private resolveActions(actionIds: string[]): AssistantAction[] {
@@ -253,16 +319,15 @@ ALLOWED ACTIONS:\n${allowedActions}`;
 
   private cleanFollowUps(
     followUps: string[],
-    match: AssistantKnowledgeEntry,
+    match: AssistantKnowledgeEntry | null,
   ): string[] {
     const valid = followUps
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim().replace(/\s+/g, " ").slice(0, 100))
       .filter((item) => item.length >= 4 && item.length <= 100);
-    return (valid.length > 0 ? [...new Set(valid)] : match.followUps).slice(
-      0,
-      3,
-    );
+    return (
+      valid.length > 0 ? [...new Set(valid)] : (match?.followUps ?? [])
+    ).slice(0, 3);
   }
 
   private normalize(value: string) {
