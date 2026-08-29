@@ -161,7 +161,7 @@ export default async function CreatorsPage({
                           backgroundColor: colorForCreator(creator.username),
                         }}
                       >
-                        <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white text-lg font-semibold text-white dark:bg-slate-900">
+                        <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white text-lg font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-100">
                           <SafeImage
                             src={avatar}
                             thumbSrc={avatarThumb}
