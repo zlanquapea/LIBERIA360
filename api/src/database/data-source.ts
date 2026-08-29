@@ -32,6 +32,7 @@ import { PlaceFreshnessReport } from "../freshness/entities/place-freshness-repo
 import { BookingMessage } from "../booking-messages/entities/booking-message.entity";
 import { Notification } from "../notifications/entities/notification.entity";
 import { Advertisement } from "../advertisements/entities/advertisement.entity";
+import { AssistantFeedback } from "../assistant/entities/assistant-feedback.entity";
 
 config();
 
@@ -82,6 +83,7 @@ export const AppDataSource = new DataSource({
     BookingMessage,
     Notification,
     Advertisement,
+    AssistantFeedback,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

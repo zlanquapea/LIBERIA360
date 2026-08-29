@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Liberia360Assistant } from "./Liberia360Assistant";
-import { askAssistant } from "../lib/assistant-api";
+import { askAssistant, recordAssistantFeedback } from "../lib/assistant-api";
 
 let mockPathname = "/";
 
@@ -11,13 +11,18 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("../lib/assistant-api", () => ({
   askAssistant: jest.fn(),
+  recordAssistantFeedback: jest.fn(),
 }));
 
 const mockAskAssistant = askAssistant as jest.MockedFunction<typeof askAssistant>;
+const mockRecordAssistantFeedback = recordAssistantFeedback as jest.MockedFunction<
+  typeof recordAssistantFeedback
+>;
 
 describe("Liberia360Assistant", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRecordAssistantFeedback.mockResolvedValue({ recorded: true });
     mockPathname = "/";
     class MockPointerEvent extends MouseEvent {
       pointerId: number;
@@ -94,6 +99,19 @@ describe("Liberia360Assistant", () => {
         currentPath: "/",
       }),
     );
+    expect(screen.getByText("LIBERIA360 Guide")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Mark this answer helpful" }));
+    expect(mockRecordAssistantFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "helpful",
+        question: "How does advertising work?",
+        answer: "Open My Ads and choose New ad to submit your advertisement.",
+        source: "knowledge",
+        currentPath: "/",
+      }),
+    );
+    expect(screen.getByText("Helpful ✓")).toBeInTheDocument();
   });
 
   it("submits a typed question and exposes a clear loading state", async () => {

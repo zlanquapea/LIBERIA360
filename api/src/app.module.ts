@@ -56,6 +56,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { Advertisement } from "./advertisements/entities/advertisement.entity";
 import { AdvertisementsModule } from "./advertisements/advertisements.module";
 import { AssistantModule } from "./assistant/assistant.module";
+import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entity";
 
 @Module({
   imports: [
@@ -114,6 +115,7 @@ import { AssistantModule } from "./assistant/assistant.module";
             BookingMessage,
             Notification,
             Advertisement,
+            AssistantFeedback,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API

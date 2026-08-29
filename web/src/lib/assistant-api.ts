@@ -18,6 +18,26 @@ export interface AssistantReply {
   source: "ai" | "knowledge";
 }
 
+export type AssistantFeedbackType =
+  | "helpful"
+  | "not_helpful"
+  | "incorrect"
+  | "unanswered";
+
+export function recordAssistantFeedback(input: {
+  type: AssistantFeedbackType;
+  question: string;
+  answer: string;
+  source: "ai" | "knowledge";
+  currentPath?: string;
+  details?: string;
+}): Promise<{ recorded: boolean }> {
+  return apiRequest<{ recorded: boolean }>("/assistant/feedback", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function askAssistant(input: {
   message: string;
   history?: AssistantHistoryMessage[];
