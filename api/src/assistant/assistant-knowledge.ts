@@ -283,10 +283,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "Yes, hourly rental is available when a vehicle listing provides an hourly rate. On that listing, choose By hour, select a date, enter a start time and end time on the same day, and review the estimated total. The listing may also specify minimum rental hours and an additional hourly driver fee. Then send a request to the owner. It is a request rather than an instant booking, and no payment is taken at that time.",
     actionIds: ["carRentals", "bookings"],
-    followUps: [
-      "How do I rent a car?",
-      "Can I rent a car with a driver?",
-    ],
+    followUps: ["How do I rent a car?", "Can I rent a car with a driver?"],
   },
   {
     id: "car-rental-driver",
@@ -303,10 +300,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "Some car listings offer a driver option. On a listing that supports it, select Add a driver when you request the rental. The listing may show an additional driver fee per day or per hour, depending on whether you rent by day or by hour. If the option is not shown, that vehicle does not currently advertise driver availability through LIBERIA360.",
     actionIds: ["carRentals"],
-    followUps: [
-      "How do I rent a car?",
-      "Can I rent a car by the hour?",
-    ],
+    followUps: ["How do I rent a car?", "Can I rent a car by the hour?"],
   },
   {
     id: "car-rental-list",

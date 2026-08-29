@@ -89,7 +89,9 @@ describe("AssistantService", () => {
       message: "Can I rent a car with a driver?",
     });
 
-    expect(response.answer).toContain("Some car listings offer a driver option");
+    expect(response.answer).toContain(
+      "Some car listings offer a driver option",
+    );
     expect(response.answer).toContain("additional driver fee");
     expect(response.answer).not.toContain("peer-to-peer marketplace");
   });
