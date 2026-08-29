@@ -296,6 +296,13 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     keywords: [
       "profile photo",
       "cover photo",
+      "profile picture",
+      "cover image",
+      "creator photo",
+      "change creator photo",
+      "change profile picture",
+      "update creator photo",
+      "replace creator image",
       "upload creator photo",
       "delete photo",
       "crop photo",

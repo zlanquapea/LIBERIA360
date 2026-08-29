@@ -91,6 +91,20 @@ describe("AssistantService", () => {
     expect(response.answer).toContain("booking");
   });
 
+  it("answers creator-photo change questions directly", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "How do I change my creator photo?",
+    });
+
+    expect(response.answer).toContain("photo action menu");
+    expect(response.answer).toContain("adjust zoom and position");
+    expect(response.answer).not.toContain(
+      "The Creators area helps people discover",
+    );
+  });
+
   it("answers creator booking receipt questions from the creator perspective", async () => {
     const service = new AssistantService(config());
 

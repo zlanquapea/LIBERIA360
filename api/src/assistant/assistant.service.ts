@@ -271,7 +271,7 @@ ${matchedEntry.answer}`;
         "creator-posts",
       ],
       [
-        /profile.*photo|cover.*photo|crop.*photo|creator.*picture/,
+        /profile.*photo|cover.*photo|profile.*picture|cover.*image|creator.*photo|creator.*picture|change.*(profile|cover|creator).*(photo|picture|image)|update.*(profile|cover|creator).*(photo|picture|image)|replace.*(profile|cover|creator).*(photo|picture|image)/,
         "creator-profile-photos",
       ],
       [
