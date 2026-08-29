@@ -1,13 +1,18 @@
 import type { Booking } from './types';
 import { apiRequest, authHeader } from './http';
 
-// Exactly one of businessId/creatorId — see the Booking type's doc comment.
+// Exactly one of businessId/creatorId/carListingId — see the Booking
+// type's doc comment. withDriver/pickupLocation only mean anything
+// alongside carListingId.
 export interface CreateBookingInput {
   businessId?: string;
   creatorId?: string;
+  carListingId?: string;
   requestedDate: string;
   requestedEndDate?: string;
   partySize?: number;
+  withDriver?: boolean;
+  pickupLocation?: string;
   notes?: string;
 }
 

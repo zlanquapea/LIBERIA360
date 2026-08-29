@@ -1,10 +1,12 @@
 import type { Review } from './types';
 import { apiRequest, authHeader } from './http';
 
-// Exactly one of placeId/creatorId — see the Review type's doc comment.
+// Exactly one of placeId/creatorId/carListingId — see the Review type's
+// doc comment.
 export interface CreateReviewInput {
   placeId?: string;
   creatorId?: string;
+  carListingId?: string;
   overallRating: number;
   comment?: string;
 }

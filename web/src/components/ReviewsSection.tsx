@@ -37,22 +37,24 @@ function VerifiedVisitBadge() {
   );
 }
 
-// Reviews section — used on both the Destination Profile screen (Tech
-// Spec §3.2 / Business Plan) and the Creator public profile, so it takes
-// either a placeId or a creatorId (never both — same XOR as
-// CreateReviewInput). Read-only list plus, for logged-in users who
-// haven't reviewed this target yet, a form to post one. The API enforces
-// one review per user per target (409 on a second attempt) —
-// `alreadyReviewed` below is a best-effort local check against whatever's
-// loaded, so a stale/duplicate submit still gets a clean error message via
-// the 409 branch, not a crash.
+// Reviews section — used on the Destination Profile screen (Tech Spec
+// §3.2 / Business Plan), the Creator public profile, and a car listing's
+// detail page, so it takes exactly one of placeId/creatorId/carListingId
+// (never more than one — same XOR as CreateReviewInput). Read-only list
+// plus, for logged-in users who haven't reviewed this target yet, a form
+// to post one. The API enforces one review per user per target (409 on a
+// second attempt) — `alreadyReviewed` below is a best-effort local check
+// against whatever's loaded, so a stale/duplicate submit still gets a
+// clean error message via the 409 branch, not a crash.
 export function ReviewsSection({
   placeId,
   creatorId,
+  carListingId,
   initialReviews,
 }: {
   placeId?: string;
   creatorId?: string;
+  carListingId?: string;
   initialReviews: Review[];
 }) {
   const { user, token, ready } = useAuth();
@@ -74,6 +76,7 @@ export function ReviewsSection({
       const review = await createReview(token, {
         placeId,
         creatorId,
+        carListingId,
         overallRating: rating,
         comment: comment.trim() || undefined,
       });
@@ -129,7 +132,7 @@ export function ReviewsSection({
         </p>
       ) : alreadyReviewed || posted ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          You&apos;ve already reviewed this {creatorId ? 'creator' : 'place'}. Thanks for sharing!
+          You&apos;ve already reviewed this {creatorId ? 'creator' : carListingId ? 'car' : 'place'}. Thanks for sharing!
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
