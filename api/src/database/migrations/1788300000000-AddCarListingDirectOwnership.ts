@@ -14,9 +14,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  * fleet to its claimed Business, but it's no longer a prerequisite to
  * list a car at all.
  */
-export class AddCarListingDirectOwnership1788300000000
-  implements MigrationInterface
-{
+export class AddCarListingDirectOwnership1788300000000 implements MigrationInterface {
   name = "AddCarListingDirectOwnership1788300000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
