@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { TruckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
+import { getCounties } from '@/lib/api';
 import { getMyBusinesses } from '@/lib/business-api';
 import { deleteCarListing, getMyCarListings, updateCarListing } from '@/lib/car-rentals-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
@@ -13,7 +14,7 @@ import { CarListingForm } from '@/components/CarListingForm';
 import { SafeImage } from '@/components/SafeImage';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
-import type { Business, CarListing } from '@/lib/types';
+import type { Business, County, CarListing } from '@/lib/types';
 
 const STATUS_BADGE: Record<CarListing['reviewStatus'], string> = {
   draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
@@ -29,12 +30,16 @@ const STATUS_MESSAGE: Partial<Record<CarListing['reviewStatus'], string>> = {
   suspended: 'This listing has been suspended by an admin and is not publicly visible.',
 };
 
-// "My Car Listings" — a car-rental Business's fleet, every status (unlike
-// the public /car-rentals directory, which is approved+active only) —
-// mirrors "My Ads" exactly.
+// "My Car Listings" — anyone signed in can list a car here, the same way
+// anyone can sign up to drive on Uber or host on Airbnb — no Business or
+// Place required (see CarListing's doc comment). `eligibleBusinesses` is
+// now purely an optional convenience: a registered rental company that
+// already has an approved car_rental Business can link a listing to it,
+// but the fleet dashboard itself never gates on having one.
 export default function MyCarListingsPage() {
   const { user, token, ready } = useAuth();
   const [eligibleBusinesses, setEligibleBusinesses] = useState<Business[]>([]);
+  const [counties, setCounties] = useState<County[]>([]);
   const [listings, setListings] = useState<CarListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -48,12 +53,13 @@ export default function MyCarListingsPage() {
 
   const reload = useCallback(() => {
     if (!token) return;
-    Promise.all([getMyCarListings(token), getMyBusinesses(token)])
-      .then(([myListings, myBusinesses]) => {
+    Promise.all([getMyCarListings(token), getMyBusinesses(token), getCounties()])
+      .then(([myListings, myBusinesses, allCounties]) => {
         setListings(myListings);
         setEligibleBusinesses(
           myBusinesses.filter((b) => b.type === 'car_rental' && b.reviewStatus === 'approved'),
         );
+        setCounties(allCounties);
       })
       .catch((err) => setLoadError(getFriendlyErrorMessage(err, { context: { action: 'load-my-car-listings' } })))
       .finally(() => setLoading(false));
@@ -138,7 +144,7 @@ export default function MyCarListingsPage() {
             Your fleet — each vehicle is reviewed by our team before it&apos;s bookable.
           </p>
         </div>
-        {!creating && eligibleBusinesses.length > 0 && (
+        {!creating && (
           <button
             type="button"
             onClick={() => setCreating(true)}
@@ -157,21 +163,17 @@ export default function MyCarListingsPage() {
         </p>
       )}
 
-      {eligibleBusinesses.length === 0 && listings.length === 0 && (
+      {!creating && listings.length === 0 && (
         <p className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
           <TruckIcon aria-hidden className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-          You need an approved Car rental business before you can list a vehicle. Claim a business
-          with the &quot;Car rental&quot; type from its destination page — or{' '}
-          <Link href="/places/submit" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
-            submit a new place
-          </Link>{' '}
-          for your rental office first.
+          Got a car? List it here — anyone can rent out a vehicle, no rental company required.
         </p>
       )}
 
       {creating && (
         <CarListingForm
           businesses={eligibleBusinesses}
+          counties={counties}
           onSaved={(listing) => {
             setListings((prev) => [listing, ...prev]);
             setCreating(false);
@@ -222,6 +224,8 @@ export default function MyCarListingsPage() {
               {editingId === listing.id ? (
                 <CarListingForm
                   listing={listing}
+                  businesses={eligibleBusinesses}
+                  counties={counties}
                   onSaved={(updated) => {
                     setListings((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
                     setEditingId(null);

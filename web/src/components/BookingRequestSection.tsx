@@ -67,7 +67,7 @@ export function BookingRequestSection({
     ? user?.id === business.owner?.id
     : creator
       ? user?.id === creator.user?.id
-      : user?.id === carListing!.business?.owner?.id;
+      : user?.id === carListing!.owner?.id;
 
   const [showForm, setShowForm] = useState(startExpanded);
   const [requestedDate, setRequestedDate] = useState("");

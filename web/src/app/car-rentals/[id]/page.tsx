@@ -54,7 +54,14 @@ export default async function CarListingDetailPage({ params }: { params: Promise
   const images = listing.images.map(resolveImageUrl);
   const cover = images[0] ?? null;
   const business = listing.business;
-  const location = business?.linkedPlace ? `${business.linkedPlace.city}, ${business.linkedPlace.county.name} County` : null;
+  // Every listing has a direct county now (see CarListing's doc comment);
+  // the linked business's place, if any, is more specific and wins when
+  // present.
+  const location = business?.linkedPlace
+    ? `${business.linkedPlace.city}, ${business.linkedPlace.county.name} County`
+    : listing.county
+      ? `${listing.county.name} County`
+      : null;
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 dark:bg-slate-950/20">
@@ -188,7 +195,7 @@ export default async function CarListingDetailPage({ params }: { params: Promise
         </Section>
       )}
 
-      {business && (
+      {business ? (
         <Section title="Rented out by">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -224,6 +231,43 @@ export default async function CarListingDetailPage({ params }: { params: Promise
             </div>
           </div>
         </Section>
+      ) : (
+        // The common case: an individual lister with no claimed Business
+        // (see CarListing's doc comment) — same "Rented out by" section,
+        // but the owner's name and their own direct contact fields
+        // instead of a business profile link.
+        (listing.owner || listing.contactWhatsapp || listing.contactPhone) && (
+          <Section title="Rented out by">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-slate-950 dark:text-slate-50">{listing.owner?.name ?? 'Vehicle owner'}</p>
+                {location && <p className="text-sm text-slate-500 dark:text-slate-400">{location}</p>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {listing.contactWhatsapp && (
+                  <a
+                    href={whatsappLink(listing.contactWhatsapp)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+                  >
+                    <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
+                    WhatsApp
+                  </a>
+                )}
+                {listing.contactPhone && (
+                  <a
+                    href={`tel:${listing.contactPhone}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30"
+                  >
+                    <PhoneIcon aria-hidden className="h-4 w-4" />
+                    Call
+                  </a>
+                )}
+              </div>
+            </div>
+          </Section>
+        )
       )}
 
       <Section title="Reviews">

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { CarListing } from "./entities/car-listing.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { County } from "../counties/entities/county.entity";
 import { CarListingsService } from "./car-listings.service";
 import { CarListingsController } from "./car-listings.controller";
 import { NotificationsModule } from "../notifications/notifications.module";
@@ -9,7 +10,7 @@ import { UsersModule } from "../users/users.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CarListing, Business]),
+    TypeOrmModule.forFeature([CarListing, Business, County]),
     NotificationsModule,
     UsersModule,
   ],

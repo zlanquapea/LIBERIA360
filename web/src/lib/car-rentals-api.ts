@@ -8,7 +8,11 @@ import { apiRequest, authHeader } from './http';
 // here.
 
 export interface CreateCarListingInput {
-  businessId: string;
+  countyId: string;
+  // Optional — only set by an actual registered rental company that
+  // already has a claimed Business (type car_rental) and wants its fleet
+  // to also show up there. Never required to list a car.
+  businessId?: string;
   title: string;
   make: string;
   model: string;
@@ -26,6 +30,8 @@ export interface CreateCarListingInput {
   images?: string[];
   description?: string;
   pickupLocation?: string;
+  contactPhone?: string;
+  contactWhatsapp?: string;
 }
 
 export type UpdateCarListingInput = Partial<Omit<CreateCarListingInput, 'businessId'>> & {

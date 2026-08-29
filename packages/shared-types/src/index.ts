@@ -1274,13 +1274,21 @@ export type CarFuelType = "petrol" | "diesel" | "hybrid" | "electric";
 export type CarListingReviewStatus =
   "draft" | "submitted_for_review" | "approved" | "rejected" | "suspended";
 
-// api/src/car-listings/entities/car-listing.entity.ts (sanitized —
-// business.owner is the public user shape, same convention as
-// Advertisement.owner). One vehicle in a car-rental Business's fleet.
+// api/src/car-listings/entities/car-listing.entity.ts (sanitized — owner
+// and business.owner are the public user shape, same convention as
+// Advertisement.owner). A peer-to-peer vehicle listing: `owner` is the
+// direct lister (anyone with a car, no Business/Place required — see the
+// entity's doc comment), `business` is an optional link for the rare
+// registered rental company that wants its fleet on its claimed
+// Business's profile too.
 export interface CarListing {
   id: string;
+  owner: AuthUser | null;
+  ownerUserId: string;
   business: Business | null;
-  businessId: string;
+  businessId: string | null;
+  county: County | null;
+  countyId: string;
   title: string;
   make: string;
   model: string;
@@ -1298,6 +1306,8 @@ export interface CarListing {
   images: string[];
   description: string | null;
   pickupLocation: string | null;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
   isActive: boolean;
   reviewStatus: CarListingReviewStatus;
   rejectionReason: string | null;

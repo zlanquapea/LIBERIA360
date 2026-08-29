@@ -42,7 +42,9 @@ export default async function BookCarListingPage({
   const business = listing.business;
   const location = business?.linkedPlace
     ? `${business.linkedPlace.city}, ${business.linkedPlace.county.name} County`
-    : null;
+    : listing.county
+      ? `${listing.county.name} County`
+      : null;
   const coverPath = listing.images[0] ?? null;
   const cover = coverPath ? resolveImageUrl(coverPath) : null;
   const coverThumb = coverPath ? resolveThumbUrl(coverPath) : null;
@@ -92,8 +94,8 @@ export default async function BookCarListingPage({
               Request to rent
             </h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Send your pickup and return dates — {business?.name ?? "the operator"} will confirm or
-              decline.
+              Send your pickup and return dates — {business?.name ?? listing.owner?.name ?? "the owner"} will
+              confirm or decline.
             </p>
           </div>
           <BookingRequestSection

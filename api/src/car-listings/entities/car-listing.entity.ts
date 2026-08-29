@@ -9,6 +9,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { Business } from "../../businesses/entities/business.entity";
+import { County } from "../../counties/entities/county.entity";
+import { User } from "../../users/entities/user.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
 import {
   CarCategory,
@@ -18,34 +20,69 @@ import {
 } from "./car-listing.enums";
 
 /**
- * One vehicle in a car-rental Business's fleet ("Car Rental" — hire a car
- * to get around or for a trip, Business.type CAR_RENTAL). Deliberately
- * owned by a Business rather than standing alone: a rental company is a
- * real operator with a real pickup location, contact info, and trust
- * history, all of which Business/Place already model — this only needs
- * to add what's specific to one bookable vehicle (make/model, pricing,
- * features), the same "child list owned by an already-vetted profile"
- * shape as CreatorOffering, except a specific car's condition/price/
- * photos carry enough real-money and safety stakes to warrant its own
- * review gate (see CarListingReviewStatus) rather than going live
- * unmoderated the way a CreatorOffering display card does.
+ * One vehicle listed for rent ("Car Rental" — hire a car to get around or
+ * for a trip). Liberia has very few formal car-rental companies, so this
+ * is deliberately a peer-to-peer marketplace listing (same shape as
+ * Advertisement: `ownerUserId` is the direct lister, no Business or Place
+ * required to get started) rather than something bolted onto the
+ * Business/Place claim flow the way a hotel or restaurant listing is —
+ * anyone with a car can sign up and list it, the same way a driver signs
+ * up on Uber or a host signs up on Airbnb, not the way a business claims
+ * an existing catalog entry.
  *
- * Booked through the same Booking entity every other listing type uses
- * (see Booking.carListingId) — a renter "requests to book" a car exactly
- * like a hotel room or a tour, and the owner confirms/declines.
+ * `businessId` stays as an *optional* link for the rare case of an actual
+ * registered rental company that already has a claimed Business (type
+ * CAR_RENTAL) and wants its fleet to also show up on that business's
+ * profile page — never a prerequisite for listing a car.
+ *
+ * `county` is required, same reasoning as Event.county: a listing needs
+ * to be filterable/discoverable by location even though it has no
+ * Business/Place to inherit one from; `pickupLocation` (free text) covers
+ * the specific spot within that county.
+ *
+ * Goes through the same review-gate as Advertisement/Place/Business — a
+ * specific car's condition/price/photos carry enough real-money and
+ * safety stakes to warrant admin review rather than going live
+ * unmoderated (see CarListingReviewStatus). Booked through the same
+ * Booking entity every other listing type uses (see Booking.carListingId)
+ * — a renter "requests to book" a car exactly like a hotel room or a
+ * tour, and the owner confirms/declines.
  */
 @Entity("car_listings")
 export class CarListing {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(() => Business, { eager: true, onDelete: "CASCADE" })
-  @JoinColumn({ name: "business_id" })
-  business: Business;
+  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "owner_user_id" })
+  owner: User;
 
   @Index()
-  @Column({ name: "business_id" })
-  businessId: string;
+  @Column({ name: "owner_user_id", type: "uuid" })
+  ownerUserId: string;
+
+  // Optional — see class doc comment. A car-rental company that already
+  // has a claimed Business can link its listings here; almost every
+  // individual lister leaves this null.
+  @ManyToOne(() => Business, {
+    eager: true,
+    nullable: true,
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({ name: "business_id" })
+  business: Business | null;
+
+  @Index()
+  @Column({ name: "business_id", nullable: true })
+  businessId: string | null;
+
+  @ManyToOne(() => County, { eager: true })
+  @JoinColumn({ name: "county_id" })
+  county: County;
+
+  @Index()
+  @Column({ name: "county_id" })
+  countyId: string;
 
   // Owner-authored display name ("Toyota RAV4 2022") — make/model/year
   // below are structured for filtering, this is what actually renders as
@@ -128,10 +165,10 @@ export class CarListing {
   @Column({ type: "text", nullable: true })
   description: string | null;
 
-  // Defaults to the owning business's linked-place city/name for display
-  // when left unset (computed at read time, not stored) — only needs a
-  // value here when a specific car actually picks up somewhere other
-  // than the business's main location (e.g. an airport counter).
+  // Where the car actually gets picked up — free text since it's rarely
+  // as clean as a catalog Place (an owner's home, a taxi stand, an
+  // airport arrivals curb). Only needs a value when it's more specific
+  // than "somewhere in the county" above.
   @Column({
     name: "pickup_location",
     type: "varchar",
@@ -139,6 +176,26 @@ export class CarListing {
     nullable: true,
   })
   pickupLocation: string | null;
+
+  // Direct contact for a renter to reach the lister — same fields as
+  // Advertisement.contactPhone/contactWhatsapp, needed here for the same
+  // reason: there's no Business record to pull contact info from for the
+  // common case of an individual lister.
+  @Column({
+    name: "contact_phone",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  contactPhone: string | null;
+
+  @Column({
+    name: "contact_whatsapp",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  contactWhatsapp: string | null;
 
   // Owner-controlled pause (the car's in for service, already rented
   // out this week and not through this platform, etc.) — deliberately

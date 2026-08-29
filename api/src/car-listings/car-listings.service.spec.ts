@@ -9,33 +9,22 @@ import { CarListingsService } from "./car-listings.service";
 import { CarListing } from "./entities/car-listing.entity";
 import { CarListingReviewStatus } from "./entities/car-listing.enums";
 import { Business } from "../businesses/entities/business.entity";
-import {
-  BusinessReviewStatus,
-  BusinessType,
-} from "../businesses/entities/business.enums";
+import { County } from "../counties/entities/county.entity";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 
 const OWNER_ID = "owner-1";
 const STRANGER_ID = "stranger-1";
 const BUSINESS_ID = "biz-1";
+const COUNTY_ID = "county-1";
 const LISTING_ID = "listing-1";
-
-function approvedRentalBusiness(overrides: Partial<Business> = {}): Business {
-  return {
-    id: BUSINESS_ID,
-    ownerUserId: OWNER_ID,
-    type: BusinessType.CAR_RENTAL,
-    reviewStatus: BusinessReviewStatus.APPROVED,
-    ...overrides,
-  } as Business;
-}
 
 describe("CarListingsService", () => {
   let service: CarListingsService;
   let carListingRepo: {
     create: jest.Mock;
     save: jest.Mock;
+    find: jest.Mock;
     findOne: jest.Mock;
     findOneOrFail: jest.Mock;
     delete: jest.Mock;
@@ -53,6 +42,7 @@ describe("CarListingsService", () => {
     wheres: Array<{ sql: string; params: unknown }>;
   };
   let businessRepo: { findOne: jest.Mock };
+  let countyRepo: { exists: jest.Mock };
   let notificationsService: { createMany: jest.Mock };
   let usersService: { findAdminIds: jest.Mock };
 
@@ -80,12 +70,14 @@ describe("CarListingsService", () => {
     carListingRepo = {
       create: jest.fn((data) => data),
       save: jest.fn((data) => ({ id: LISTING_ID, ...data })),
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue(null),
       findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn(() => queryBuilder),
     };
     businessRepo = { findOne: jest.fn() };
+    countyRepo = { exists: jest.fn().mockResolvedValue(true) };
     notificationsService = {
       createMany: jest.fn().mockResolvedValue(undefined),
     };
@@ -98,6 +90,7 @@ describe("CarListingsService", () => {
         CarListingsService,
         { provide: getRepositoryToken(CarListing), useValue: carListingRepo },
         { provide: getRepositoryToken(Business), useValue: businessRepo },
+        { provide: getRepositoryToken(County), useValue: countyRepo },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: UsersService, useValue: usersService },
       ],
@@ -107,7 +100,7 @@ describe("CarListingsService", () => {
   });
 
   const CREATE_DTO = {
-    businessId: BUSINESS_ID,
+    countyId: COUNTY_ID,
     title: "2022 Toyota RAV4",
     make: "Toyota",
     model: "RAV4",
@@ -117,24 +110,25 @@ describe("CarListingsService", () => {
     fuelType: "petrol",
     seats: 5,
     pricePerDay: 50,
-  } as never;
+  };
 
   describe("create", () => {
-    it("submits straight to SUBMITTED_FOR_REVIEW, not DRAFT", async () => {
-      businessRepo.findOne.mockResolvedValue(approvedRentalBusiness());
-      await service.create(OWNER_ID, CREATE_DTO);
+    it("submits straight to SUBMITTED_FOR_REVIEW, not DRAFT, owned directly by the caller", async () => {
+      await service.create(OWNER_ID, CREATE_DTO as never);
       expect(carListingRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          businessId: BUSINESS_ID,
+          ownerUserId: OWNER_ID,
+          businessId: null,
+          countyId: COUNTY_ID,
           reviewStatus: CarListingReviewStatus.SUBMITTED_FOR_REVIEW,
           submittedAt: expect.any(Date),
         }),
       );
+      expect(businessRepo.findOne).not.toHaveBeenCalled();
     });
 
     it("notifies every admin that a listing is pending review", async () => {
-      businessRepo.findOne.mockResolvedValue(approvedRentalBusiness());
-      await service.create(OWNER_ID, CREATE_DTO);
+      await service.create(OWNER_ID, CREATE_DTO as never);
       expect(notificationsService.createMany).toHaveBeenCalledWith(
         ["admin-1", "admin-2"],
         expect.objectContaining({
@@ -145,8 +139,7 @@ describe("CarListingsService", () => {
     });
 
     it("defaults optional fields to empty/null", async () => {
-      businessRepo.findOne.mockResolvedValue(approvedRentalBusiness());
-      await service.create(OWNER_ID, CREATE_DTO);
+      await service.create(OWNER_ID, CREATE_DTO as never);
       expect(carListingRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           withDriverAvailable: false,
@@ -157,65 +150,67 @@ describe("CarListingsService", () => {
           images: [],
           description: null,
           pickupLocation: null,
+          contactPhone: null,
+          contactWhatsapp: null,
         }),
       );
     });
 
-    it("404s a business that doesn't exist", async () => {
-      businessRepo.findOne.mockResolvedValue(null);
-      await expect(service.create(OWNER_ID, CREATE_DTO)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
-      expect(carListingRepo.save).not.toHaveBeenCalled();
-    });
-
-    it("403s a user who doesn't own the business", async () => {
-      businessRepo.findOne.mockResolvedValue(approvedRentalBusiness());
+    it("400s a county that doesn't exist", async () => {
+      countyRepo.exists.mockResolvedValue(false);
       await expect(
-        service.create(STRANGER_ID, CREATE_DTO),
+        service.create(OWNER_ID, CREATE_DTO as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(carListingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("links an optional business the caller owns", async () => {
+      businessRepo.findOne.mockResolvedValue({
+        id: BUSINESS_ID,
+        ownerUserId: OWNER_ID,
+      });
+      await service.create(OWNER_ID, {
+        ...CREATE_DTO,
+        businessId: BUSINESS_ID,
+      } as never);
+      expect(carListingRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ businessId: BUSINESS_ID }),
+      );
+    });
+
+    it("404s an optional business that doesn't exist", async () => {
+      businessRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.create(OWNER_ID, {
+          ...CREATE_DTO,
+          businessId: BUSINESS_ID,
+        } as never),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(carListingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("403s a caller trying to link a business they don't own", async () => {
+      businessRepo.findOne.mockResolvedValue({
+        id: BUSINESS_ID,
+        ownerUserId: STRANGER_ID,
+      });
+      await expect(
+        service.create(OWNER_ID, {
+          ...CREATE_DTO,
+          businessId: BUSINESS_ID,
+        } as never),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(carListingRepo.save).not.toHaveBeenCalled();
-    });
-
-    it("rejects a business that isn't a Car rental type", async () => {
-      businessRepo.findOne.mockResolvedValue(
-        approvedRentalBusiness({ type: BusinessType.TRANSPORT }),
-      );
-      await expect(service.create(OWNER_ID, CREATE_DTO)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
-      expect(carListingRepo.save).not.toHaveBeenCalled();
-    });
-
-    it("rejects a Car rental business that isn't yet approved", async () => {
-      businessRepo.findOne.mockResolvedValue(
-        approvedRentalBusiness({
-          reviewStatus: BusinessReviewStatus.SUBMITTED_FOR_REVIEW,
-        }),
-      );
-      await expect(service.create(OWNER_ID, CREATE_DTO)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
       expect(carListingRepo.save).not.toHaveBeenCalled();
     });
   });
 
   describe("findMine / findOne", () => {
-    it("queries the owner's own fleet across every review status, newest first", async () => {
+    it("queries the caller's own fleet directly by ownerUserId, across every review status, newest first", async () => {
       await service.findMine(OWNER_ID);
-      expect(carListingRepo.createQueryBuilder).toHaveBeenCalledWith("listing");
-      expect(queryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
-        "listing.business",
-        "business",
-      );
-      expect(queryBuilder.where).toHaveBeenCalledWith(
-        "business.ownerUserId = :userId",
-        { userId: OWNER_ID },
-      );
-      expect(queryBuilder.orderBy).toHaveBeenCalledWith(
-        "listing.createdAt",
-        "DESC",
-      );
+      expect(carListingRepo.find).toHaveBeenCalledWith({
+        where: { ownerUserId: OWNER_ID },
+        order: { createdAt: "DESC" },
+      });
     });
 
     it("404s an unknown listing", async () => {
@@ -224,10 +219,10 @@ describe("CarListingsService", () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it("403s a user who doesn't own the listing's business", async () => {
+    it("403s a user who doesn't own the listing", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
       });
       await expect(
         service.findOne(STRANGER_ID, LISTING_ID),
@@ -237,7 +232,7 @@ describe("CarListingsService", () => {
     it("returns the listing for its owner", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
       });
       await expect(
         service.findOne(OWNER_ID, LISTING_ID),
@@ -249,7 +244,7 @@ describe("CarListingsService", () => {
     it("resubmits a REJECTED listing for review, clearing the rejection reason", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
         reviewStatus: CarListingReviewStatus.REJECTED,
         rejectionReason: "Photos too blurry",
       });
@@ -272,7 +267,7 @@ describe("CarListingsService", () => {
     it("does NOT auto-resubmit a SUSPENDED listing on edit", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
         reviewStatus: CarListingReviewStatus.SUSPENDED,
       });
       await service.update(OWNER_ID, LISTING_ID, {
@@ -289,7 +284,7 @@ describe("CarListingsService", () => {
     it("leaves an APPROVED listing's status alone on a plain edit", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
         reviewStatus: CarListingReviewStatus.APPROVED,
       });
       await service.update(OWNER_ID, LISTING_ID, { isActive: false } as never);
@@ -301,10 +296,23 @@ describe("CarListingsService", () => {
       expect(notificationsService.createMany).not.toHaveBeenCalled();
     });
 
+    it("validates a new countyId when one is provided", async () => {
+      carListingRepo.findOne.mockResolvedValue({
+        id: LISTING_ID,
+        ownerUserId: OWNER_ID,
+        reviewStatus: CarListingReviewStatus.APPROVED,
+      });
+      countyRepo.exists.mockResolvedValue(false);
+      await expect(
+        service.update(OWNER_ID, LISTING_ID, { countyId: "bogus" } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(carListingRepo.save).not.toHaveBeenCalled();
+    });
+
     it("403s a stranger trying to edit someone else's listing", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
       });
       await expect(
         service.update(STRANGER_ID, LISTING_ID, { title: "Hijacked" } as never),
@@ -317,7 +325,7 @@ describe("CarListingsService", () => {
     it("deletes the caller's own listing", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
       });
       await service.remove(OWNER_ID, LISTING_ID);
       expect(carListingRepo.delete).toHaveBeenCalledWith({ id: LISTING_ID });
@@ -326,7 +334,7 @@ describe("CarListingsService", () => {
     it("403s a stranger trying to delete someone else's listing", async () => {
       carListingRepo.findOne.mockResolvedValue({
         id: LISTING_ID,
-        business: { ownerUserId: OWNER_ID },
+        ownerUserId: OWNER_ID,
       });
       await expect(
         service.remove(STRANGER_ID, LISTING_ID),
@@ -363,10 +371,11 @@ describe("CarListingsService", () => {
       });
     });
 
-    it("applies category/transmission/seats/price/driver filters when provided", async () => {
+    it("applies category/transmission/county/seats/price/driver filters when provided", async () => {
       await service.findAllApproved({
         category: "suv",
         transmission: "automatic",
+        countyId: COUNTY_ID,
         minSeats: 4,
         maxPricePerDay: 100,
         withDriverAvailable: true,
@@ -378,6 +387,10 @@ describe("CarListingsService", () => {
       expect(queryBuilder.andWhere).toHaveBeenCalledWith(
         "listing.transmission = :transmission",
         { transmission: "automatic" },
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        "listing.countyId = :countyId",
+        { countyId: COUNTY_ID },
       );
       expect(queryBuilder.andWhere).toHaveBeenCalledWith(
         "listing.seats >= :minSeats",

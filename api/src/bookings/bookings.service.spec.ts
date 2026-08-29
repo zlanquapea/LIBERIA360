@@ -70,8 +70,9 @@ describe("BookingsService", () => {
   function approvedCarListing(overrides: Partial<CarListing> = {}): CarListing {
     return {
       id: "car-1",
-      businessId: "biz-1",
-      business: { id: "biz-1", ownerUserId: "owner-1" },
+      ownerUserId: "owner-1",
+      businessId: null,
+      business: null,
       pricePerDay: 50,
       withDriverAvailable: true,
       driverFeePerDay: 20,
@@ -220,7 +221,7 @@ describe("BookingsService", () => {
         id: "booking-1",
         guest: { name: "Ada" },
         requestedDate: "2099-01-01",
-        carListing: { business: { ownerUserId: "owner-1" }, title: "RAV4" },
+        carListing: { ownerUserId: "owner-1", title: "RAV4" },
       });
 
       await service.create("guest-1", {
@@ -245,7 +246,7 @@ describe("BookingsService", () => {
         id: "booking-1",
         guest: { name: "Ada" },
         requestedDate: "2099-01-01",
-        carListing: { business: { ownerUserId: "owner-1" }, title: "RAV4" },
+        carListing: { ownerUserId: "owner-1", title: "RAV4" },
       });
 
       await service.create("guest-1", {
@@ -272,7 +273,7 @@ describe("BookingsService", () => {
         id: "booking-1",
         guest: { name: "Ada" },
         requestedDate: "2099-01-01",
-        carListing: { business: { ownerUserId: "owner-1" }, title: "RAV4" },
+        carListing: { ownerUserId: "owner-1", title: "RAV4" },
       });
 
       await service.create("guest-1", {
@@ -480,6 +481,33 @@ describe("BookingsService", () => {
       expect(bookingRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
           where: [{ businessId: "biz-1" }, { carListingId: expect.anything() }],
+        }),
+      );
+      expect(result).toBe(bookings);
+    });
+  });
+
+  describe("findForCarListingOwner", () => {
+    it("returns an empty list when the caller has listed no cars", async () => {
+      carListingRepo.find.mockResolvedValue([]);
+      const result = await service.findForCarListingOwner("owner-1");
+      expect(result).toEqual([]);
+      expect(bookingRepo.find).not.toHaveBeenCalled();
+    });
+
+    it("queries bookings across every car the caller owns directly, no business involved", async () => {
+      carListingRepo.find.mockResolvedValue([{ id: "car-1" }, { id: "car-2" }]);
+      const bookings = [{ id: "booking-1" }];
+      bookingRepo.find.mockResolvedValue(bookings);
+
+      const result = await service.findForCarListingOwner("owner-1");
+
+      expect(carListingRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { ownerUserId: "owner-1" } }),
+      );
+      expect(bookingRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { carListingId: expect.anything() },
         }),
       );
       expect(result).toBe(bookings);

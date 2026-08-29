@@ -22,13 +22,14 @@ import { User } from "../users/entities/user.entity";
 import { toPublicUser } from "../users/user.serializer";
 import { CarListing } from "./entities/car-listing.entity";
 
-// `business.owner` is `eager: true` on Business — every response has to
-// strip it down to the public shape or a raw passwordHash leaks straight
-// into the API response, same pattern as BusinessesController/
-// AdvertisementsController's own `sanitize`.
+// `owner` (the direct lister) and `business.owner` (eager on Business, for
+// the rare linked-business case) both carry a raw passwordHash — every
+// response has to strip both down to the public shape, same pattern as
+// BusinessesController/AdvertisementsController's own `sanitize`.
 function sanitize(listing: CarListing) {
   return {
     ...listing,
+    owner: listing.owner ? toPublicUser(listing.owner) : null,
     business: listing.business
       ? {
           ...listing.business,
