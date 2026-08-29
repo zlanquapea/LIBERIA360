@@ -25,3 +25,13 @@ export enum PaymentStatus {
   PAID = "paid",
   REFUNDED = "refunded",
 }
+
+/** Car-rental-only: whether a request is for whole day(s) (the original
+ * model — requestedDate/requestedEndDate) or a single day's time window
+ * (requestedStartTime/requestedEndTime). Null on every non-car booking and
+ * on a car booking made before this field existed, which BookingsService
+ * treats identically to DAY. */
+export enum BookingRentalUnit {
+  DAY = "day",
+  HOUR = "hour",
+}

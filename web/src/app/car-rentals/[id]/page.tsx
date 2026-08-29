@@ -132,6 +132,20 @@ export default async function CarListingDetailPage({ params }: { params: Promise
           )}
         </div>
 
+        {listing.pricePerHour != null && (
+          <div className="flex flex-wrap items-baseline gap-3">
+            <span className="font-display text-xl font-semibold text-slate-900 dark:text-slate-100">
+              {formatCost(listing.pricePerHour)}
+            </span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">per hour</span>
+            {listing.minRentalHours != null && listing.minRentalHours > 1 && (
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                · {listing.minRentalHours}-hour minimum
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-4">
           <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <UserGroupIcon aria-hidden className="h-5 w-5 text-sky-500" />
@@ -145,6 +159,7 @@ export default async function CarListingDetailPage({ params }: { params: Promise
           {listing.withDriverAvailable && (
             <div className="text-sm text-slate-700 dark:text-slate-200">
               Driver +{formatCost(listing.driverFeePerDay)}/day
+              {listing.driverFeePerHour != null && ` (+${formatCost(listing.driverFeePerHour)}/hr)`}
             </div>
           )}
         </div>

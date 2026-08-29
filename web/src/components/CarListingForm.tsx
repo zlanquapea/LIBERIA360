@@ -71,6 +71,15 @@ export function CarListingForm({
     listing?.driverFeePerDay != null ? String(listing.driverFeePerDay) : '',
   );
   const [minRentalDays, setMinRentalDays] = useState(String(listing?.minRentalDays ?? 1));
+  // Opt-in hourly rental — leaving pricePerHour blank keeps the listing
+  // day-only, same as the backend's own opt-in convention.
+  const [pricePerHour, setPricePerHour] = useState(
+    listing?.pricePerHour != null ? String(listing.pricePerHour) : '',
+  );
+  const [minRentalHours, setMinRentalHours] = useState(String(listing?.minRentalHours ?? 1));
+  const [driverFeePerHour, setDriverFeePerHour] = useState(
+    listing?.driverFeePerHour != null ? String(listing.driverFeePerHour) : '',
+  );
   const [securityDeposit, setSecurityDeposit] = useState(
     listing?.securityDeposit != null ? String(listing.securityDeposit) : '',
   );
@@ -107,6 +116,10 @@ export function CarListingForm({
         withDriverAvailable,
         driverFeePerDay: withDriverAvailable && driverFeePerDay ? Number(driverFeePerDay) : undefined,
         minRentalDays: Number(minRentalDays),
+        pricePerHour: pricePerHour ? Number(pricePerHour) : undefined,
+        minRentalHours: pricePerHour ? Number(minRentalHours) : undefined,
+        driverFeePerHour:
+          withDriverAvailable && pricePerHour && driverFeePerHour ? Number(driverFeePerHour) : undefined,
         securityDeposit: securityDeposit ? Number(securityDeposit) : undefined,
         features: splitList(features),
         images,
@@ -126,6 +139,9 @@ export function CarListingForm({
         setYear(String(CURRENT_YEAR));
         setPricePerDay('');
         setDriverFeePerDay('');
+        setPricePerHour('');
+        setMinRentalHours('1');
+        setDriverFeePerHour('');
         setSecurityDeposit('');
         setFeatures('');
         setImages([]);
@@ -283,6 +299,40 @@ export function CarListingForm({
         </label>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Price per hour ($, optional)</span>
+          <input
+            type="number"
+            min={0}
+            max={100000}
+            step="0.01"
+            value={pricePerHour}
+            onChange={(e) => setPricePerHour(e.target.value)}
+            placeholder="Leave blank to only rent by the day"
+            className={inputClass}
+          />
+        </label>
+        {pricePerHour && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">Minimum rental hours</span>
+            <input
+              type="number"
+              min={1}
+              max={24}
+              value={minRentalHours}
+              onChange={(e) => setMinRentalHours(e.target.value)}
+              className={inputClass}
+            />
+          </label>
+        )}
+      </div>
+      {pricePerHour && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Renters will be able to book this car by the hour as well as by the day.
+        </p>
+      )}
+
       <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
         <input
           type="checkbox"
@@ -294,18 +344,34 @@ export function CarListingForm({
       </label>
 
       {withDriverAvailable && (
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">Driver fee per day ($, optional)</span>
-          <input
-            type="number"
-            min={0}
-            max={50000}
-            step="0.01"
-            value={driverFeePerDay}
-            onChange={(e) => setDriverFeePerDay(e.target.value)}
-            className={inputClass}
-          />
-        </label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">Driver fee per day ($, optional)</span>
+            <input
+              type="number"
+              min={0}
+              max={50000}
+              step="0.01"
+              value={driverFeePerDay}
+              onChange={(e) => setDriverFeePerDay(e.target.value)}
+              className={inputClass}
+            />
+          </label>
+          {pricePerHour && (
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">Driver fee per hour ($, optional)</span>
+              <input
+                type="number"
+                min={0}
+                max={50000}
+                step="0.01"
+                value={driverFeePerHour}
+                onChange={(e) => setDriverFeePerHour(e.target.value)}
+                className={inputClass}
+              />
+            </label>
+          )}
+        </div>
       )}
 
       <label className="flex flex-col gap-1 text-sm">

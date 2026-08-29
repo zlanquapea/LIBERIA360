@@ -60,10 +60,17 @@ export function CarListingCard({ listing, index }: { listing: CarListing; index?
           {listing.seats} seats
           {listing.withDriverAvailable && ' · Driver available'}
         </p>
-        <div className="mt-auto flex items-center justify-between pt-1">
-          <span className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
-            {formatCost(listing.pricePerDay)}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-400"> /day</span>
+        <div className="mt-auto flex items-end justify-between pt-1">
+          <span className="flex flex-col">
+            <span className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
+              {formatCost(listing.pricePerDay)}
+              <span className="text-xs font-normal text-slate-500 dark:text-slate-400"> /day</span>
+            </span>
+            {listing.pricePerHour != null && (
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                or {formatCost(listing.pricePerHour)}/hr
+              </span>
+            )}
           </span>
           <span className="text-xs font-medium text-brand-700 dark:text-brand-300">View →</span>
         </div>

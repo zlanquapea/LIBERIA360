@@ -145,6 +145,9 @@ describe("CarListingsService", () => {
           withDriverAvailable: false,
           driverFeePerDay: null,
           minRentalDays: 1,
+          pricePerHour: null,
+          minRentalHours: null,
+          driverFeePerHour: null,
           securityDeposit: null,
           features: [],
           images: [],
@@ -152,6 +155,32 @@ describe("CarListingsService", () => {
           pickupLocation: null,
           contactPhone: null,
           contactWhatsapp: null,
+        }),
+      );
+    });
+
+    it("defaults minRentalHours to 1 once pricePerHour opts the listing into hourly rental", async () => {
+      await service.create(OWNER_ID, {
+        ...CREATE_DTO,
+        pricePerHour: 8,
+      } as never);
+      expect(carListingRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ pricePerHour: 8, minRentalHours: 1 }),
+      );
+    });
+
+    it("honors an explicit minRentalHours/driverFeePerHour", async () => {
+      await service.create(OWNER_ID, {
+        ...CREATE_DTO,
+        pricePerHour: 8,
+        minRentalHours: 3,
+        driverFeePerHour: 4,
+      } as never);
+      expect(carListingRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pricePerHour: 8,
+          minRentalHours: 3,
+          driverFeePerHour: 4,
         }),
       );
     });

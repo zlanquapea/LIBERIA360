@@ -141,6 +141,36 @@ export class CarListing {
   @Column({ name: "min_rental_days", type: "smallint", default: 1 })
   minRentalDays: number;
 
+  // Hourly rental is opt-in: a listing with pricePerHour left null only
+  // supports day-based booking (the original model). Setting it turns on
+  // the "by hour" mode in BookingRequestSection for this car — for a
+  // quick errand or an airport run, a renter shouldn't have to pay for
+  // (and the owner shouldn't have to block out) a whole day.
+  // minRentalHours/driverFeePerHour mirror minRentalDays/driverFeePerDay
+  // exactly, just for the hourly path.
+  @Column({
+    name: "price_per_hour",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  pricePerHour: number | null;
+
+  @Column({ name: "min_rental_hours", type: "smallint", nullable: true })
+  minRentalHours: number | null;
+
+  @Column({
+    name: "driver_fee_per_hour",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  driverFeePerHour: number | null;
+
   @Column({
     name: "security_deposit",
     type: "numeric",

@@ -13,7 +13,12 @@ import { Creator } from "../../creators/entities/creator.entity";
 import { CarListing } from "../../car-listings/entities/car-listing.entity";
 import { User } from "../../users/entities/user.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
-import { BookingStatus, PaymentProvider, PaymentStatus } from "./booking.enums";
+import {
+  BookingRentalUnit,
+  BookingStatus,
+  PaymentProvider,
+  PaymentStatus,
+} from "./booking.enums";
 
 /**
  * A guest's request to reserve something from a Business, a Creator, or a
@@ -27,7 +32,10 @@ import { BookingStatus, PaymentProvider, PaymentStatus } from "./booking.enums";
  * `pickupLocation`, a computed `estimatedTotal`) on top of the same
  * request/respond/cancel lifecycle everything else already has, rather
  * than a parallel booking system that would need its own messaging,
- * notifications, and "My Bookings" surface rebuilt from scratch.
+ * notifications, and "My Bookings" surface rebuilt from scratch. Car
+ * rental also has an hourly mode (`rentalUnit`/`requestedStartTime`/
+ * `requestedEndTime`) for a listing that opts into hourly pricing, for a
+ * renter who only needs the car for part of a day.
  *
  * Targets exactly one of a Business, a Creator, or a CarListing, never
  * more than one — same XOR-at-the-service-layer / nullable-FK convention
@@ -101,14 +109,48 @@ export class Booking {
   // whether the option exists at all). `pickupLocation` overrides the
   // car's own default pickup spot for this specific request (an airport
   // drop-off instead of the lot, say) — null means "wherever the listing
-  // says". `estimatedTotal` is computed once at creation time from
-  // `requestedEndDate - requestedDate` days × the listing's pricePerDay
-  // (plus driverFeePerDay × days if `withDriver`) — see
-  // BookingsService.create — so both sides see a real number on the
-  // request without doing the math themselves; it's a snapshot, not
-  // re-derived if the listing's price changes later.
+  // says". `estimatedTotal` is computed once at creation time — for a DAY
+  // (or unset-rentalUnit) booking, `requestedEndDate - requestedDate` days
+  // × the listing's pricePerDay (plus driverFeePerDay × days if
+  // `withDriver`); for an HOUR booking, the requestedStartTime…
+  // requestedEndTime span in hours × pricePerHour (plus driverFeePerHour ×
+  // hours if `withDriver`) — see BookingsService.create — so both sides
+  // see a real number on the request without doing the math themselves;
+  // it's a snapshot, not re-derived if the listing's price changes later.
   @Column({ name: "with_driver", type: "boolean", default: false })
   withDriver: boolean;
+
+  // Car-rental-only: HOUR narrows the request to a single day's time
+  // window (requestedStartTime/requestedEndTime) instead of the whole
+  // requestedDate…requestedEndDate span above — a renter booking a car for
+  // an afternoon errand rather than the whole day. Null means DAY (every
+  // non-car booking, and every car booking made before this field
+  // existed) — see BookingsService.create/rentalDurationLabel.
+  @Column({
+    name: "rental_unit",
+    type: "enum",
+    enum: BookingRentalUnit,
+    nullable: true,
+  })
+  rentalUnit: BookingRentalUnit | null;
+
+  // "HH:mm", both required together when rentalUnit is HOUR, both always
+  // null otherwise. requestedDate above still carries the calendar day.
+  @Column({
+    name: "requested_start_time",
+    type: "varchar",
+    length: 5,
+    nullable: true,
+  })
+  requestedStartTime: string | null;
+
+  @Column({
+    name: "requested_end_time",
+    type: "varchar",
+    length: 5,
+    nullable: true,
+  })
+  requestedEndTime: string | null;
 
   @Column({
     name: "pickup_location",

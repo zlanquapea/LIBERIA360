@@ -9,7 +9,7 @@ import {
   recordCreatorAnalyticsEvent,
 } from "@/lib/analytics-api";
 import { HttpError } from "@/lib/http";
-import { formatBookingStatus } from "@/lib/format";
+import { formatBookingStatus, formatCost } from "@/lib/format";
 import type { Business, CarListing, Creator, BookingStatus } from "@/lib/types";
 
 // "Request to book" (Tech Spec §3.3). Request-to-book only — no real
@@ -72,6 +72,13 @@ export function BookingRequestSection({
   const [showForm, setShowForm] = useState(startExpanded);
   const [requestedDate, setRequestedDate] = useState("");
   const [requestedEndDate, setRequestedEndDate] = useState("");
+  // By-day vs by-hour — only ever relevant for a carListing that opted
+  // into hourly rental (pricePerHour set); every other target, and a car
+  // listing without pricePerHour, stays on "day" and never shows the
+  // toggle at all.
+  const [rentalUnit, setRentalUnit] = useState<"day" | "hour">("day");
+  const [requestedStartTime, setRequestedStartTime] = useState("");
+  const [requestedEndTime, setRequestedEndTime] = useState("");
   const [partySize, setPartySize] = useState("");
   const [withDriver, setWithDriver] = useState(false);
   const [pickupLocation, setPickupLocation] = useState("");
@@ -79,6 +86,28 @@ export function BookingRequestSection({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ status: BookingStatus } | null>(null);
+
+  const isHourly = Boolean(carListing?.pricePerHour != null && rentalUnit === "hour");
+
+  // Live estimate shown under the time inputs — mirrors
+  // BookingsService.create's own hoursBetween/estimatedTotal math so a
+  // renter sees roughly what they'll be asked to pay before sending the
+  // request; null (nothing shown) until both times are filled in and
+  // valid, same as the server would reject an empty/backwards range.
+  let estimatedHourlyTotal: number | null = null;
+  if (isHourly && carListing?.pricePerHour != null && requestedStartTime && requestedEndTime) {
+    const [startH, startM] = requestedStartTime.split(":").map(Number);
+    const [endH, endM] = requestedEndTime.split(":").map(Number);
+    const minutes = endH * 60 + endM - (startH * 60 + startM);
+    if (minutes > 0) {
+      const hours = Math.ceil(minutes / 60);
+      const driverFee =
+        withDriver && carListing.withDriverAvailable && carListing.driverFeePerHour != null
+          ? hours * carListing.driverFeePerHour
+          : 0;
+      estimatedHourlyTotal = hours * carListing.pricePerHour + driverFee;
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -91,7 +120,10 @@ export function BookingRequestSection({
         creatorId: creator?.id,
         carListingId: carListing?.id,
         requestedDate,
-        requestedEndDate: requestedEndDate || undefined,
+        requestedEndDate: isHourly ? undefined : requestedEndDate || undefined,
+        rentalUnit: isHourly ? "hour" : undefined,
+        requestedStartTime: isHourly ? requestedStartTime : undefined,
+        requestedEndTime: isHourly ? requestedEndTime : undefined,
         partySize: partySize ? Number(partySize) : undefined,
         withDriver: carListing ? withDriver : undefined,
         pickupLocation: carListing ? pickupLocation.trim() || undefined : undefined,
@@ -187,6 +219,33 @@ export function BookingRequestSection({
       onSubmit={handleSubmit}
       className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
     >
+      {carListing?.pricePerHour != null && (
+        <div className="flex gap-1 self-start rounded-full bg-slate-100 p-1 text-sm font-medium dark:bg-slate-800">
+          <button
+            type="button"
+            onClick={() => setRentalUnit("day")}
+            className={`rounded-full px-3 py-1 transition-colors ${
+              rentalUnit === "day"
+                ? "bg-white text-brand-700 shadow-sm dark:bg-slate-900 dark:text-brand-300"
+                : "text-slate-600 dark:text-slate-300"
+            }`}
+          >
+            By day
+          </button>
+          <button
+            type="button"
+            onClick={() => setRentalUnit("hour")}
+            className={`rounded-full px-3 py-1 transition-colors ${
+              rentalUnit === "hour"
+                ? "bg-white text-brand-700 shadow-sm dark:bg-slate-900 dark:text-brand-300"
+                : "text-slate-600 dark:text-slate-300"
+            }`}
+          >
+            By hour
+          </button>
+        </div>
+      )}
+
       {/* Stacked below `sm` — a native date input's own chrome
           (mm/dd/yyyy plus the calendar icon) doesn't shrink past a
           point, so two side by side in a `grid-cols-2` had nowhere to
@@ -194,7 +253,7 @@ export function BookingRequestSection({
           there's actually room. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          {carListing ? "Pickup date" : "Date"}
+          {carListing ? (isHourly ? "Date" : "Pickup date") : "Date"}
           <input
             type="date"
             required
@@ -203,17 +262,50 @@ export function BookingRequestSection({
             className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          {carListing ? "Return date" : "Check-out (optional)"}
-          <input
-            type="date"
-            required={Boolean(carListing)}
-            value={requestedEndDate}
-            onChange={(e) => setRequestedEndDate(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
+        {!isHourly && (
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            {carListing ? "Return date" : "Check-out (optional)"}
+            <input
+              type="date"
+              required={Boolean(carListing)}
+              value={requestedEndDate}
+              onChange={(e) => setRequestedEndDate(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            />
+          </label>
+        )}
       </div>
+
+      {isHourly && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Start time
+            <input
+              type="time"
+              required
+              value={requestedStartTime}
+              onChange={(e) => setRequestedStartTime(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            End time
+            <input
+              type="time"
+              required
+              value={requestedEndTime}
+              onChange={(e) => setRequestedEndTime(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            />
+          </label>
+        </div>
+      )}
+
+      {estimatedHourlyTotal != null && (
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          Estimated total: {formatCost(estimatedHourlyTotal)}
+        </p>
+      )}
 
       {carListing ? (
         <>
@@ -226,9 +318,13 @@ export function BookingRequestSection({
                 className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
               />
               Add a driver
-              {carListing.driverFeePerDay != null && (
-                <span className="text-slate-500 dark:text-slate-400">(+${carListing.driverFeePerDay.toFixed(2)}/day)</span>
-              )}
+              {isHourly
+                ? carListing.driverFeePerHour != null && (
+                    <span className="text-slate-500 dark:text-slate-400">(+${carListing.driverFeePerHour.toFixed(2)}/hr)</span>
+                  )
+                : carListing.driverFeePerDay != null && (
+                    <span className="text-slate-500 dark:text-slate-400">(+${carListing.driverFeePerDay.toFixed(2)}/day)</span>
+                  )}
             </label>
           )}
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">

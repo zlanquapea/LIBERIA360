@@ -12,6 +12,13 @@ export interface CreateBookingInput {
   requestedEndDate?: string;
   partySize?: number;
   withDriver?: boolean;
+  // Car-listing bookings only, and only for a listing with pricePerHour
+  // set — see Booking.rentalUnit's doc comment on the backend entity.
+  // Omit (or 'day') to keep booking by day; 'hour' requires both time
+  // fields and requestedEndDate is ignored.
+  rentalUnit?: 'day' | 'hour';
+  requestedStartTime?: string;
+  requestedEndTime?: string;
   pickupLocation?: string;
   notes?: string;
 }

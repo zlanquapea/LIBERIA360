@@ -36,7 +36,7 @@ describe("BookingsService", () => {
       findOneOrFail: jest.fn(),
       save: jest.fn(),
       create: jest.fn((x) => x),
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       exists: jest.fn().mockResolvedValue(false),
     };
     businessRepo = {
@@ -77,6 +77,9 @@ describe("BookingsService", () => {
       withDriverAvailable: true,
       driverFeePerDay: 20,
       minRentalDays: 1,
+      pricePerHour: null,
+      minRentalHours: null,
+      driverFeePerHour: null,
       reviewStatus: CarListingReviewStatus.APPROVED,
       isActive: true,
       ...overrides,
@@ -203,7 +206,15 @@ describe("BookingsService", () => {
 
     it("rejects a car request overlapping an existing confirmed booking", async () => {
       carListingRepo.findOne.mockResolvedValue(approvedCarListing());
-      bookingRepo.exists.mockResolvedValue(true);
+      bookingRepo.find.mockResolvedValue([
+        {
+          requestedDate: "2099-01-02",
+          requestedEndDate: "2099-01-05",
+          rentalUnit: null,
+          requestedStartTime: null,
+          requestedEndTime: null,
+        },
+      ]);
       await expect(
         service.create("guest-1", {
           carListingId: "car-1",
@@ -212,6 +223,218 @@ describe("BookingsService", () => {
         }),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(bookingRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("allows a day-mode car request that doesn't overlap an existing confirmed booking", async () => {
+      carListingRepo.findOne.mockResolvedValue(approvedCarListing());
+      bookingRepo.find.mockResolvedValue([
+        {
+          requestedDate: "2099-02-01",
+          requestedEndDate: "2099-02-03",
+          rentalUnit: null,
+          requestedStartTime: null,
+          requestedEndTime: null,
+        },
+      ]);
+      bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        id: "booking-1",
+        guest: { name: "Ada" },
+        requestedDate: "2099-01-01",
+        carListing: { ownerUserId: "owner-1", title: "RAV4" },
+      });
+
+      await service.create("guest-1", {
+        carListingId: "car-1",
+        requestedDate: "2099-01-01",
+        requestedEndDate: "2099-01-03",
+      });
+
+      expect(bookingRepo.save).toHaveBeenCalled();
+    });
+
+    describe("hourly car rental", () => {
+      it("rejects hour-mode on a listing without pricePerHour", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: null }),
+        );
+        await expect(
+          service.create("guest-1", {
+            carListingId: "car-1",
+            requestedDate: "2099-01-01",
+            rentalUnit: "hour" as never,
+            requestedStartTime: "09:00",
+            requestedEndTime: "11:00",
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(bookingRepo.save).not.toHaveBeenCalled();
+      });
+
+      it("rejects hour-mode missing requestedStartTime/requestedEndTime", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10 }),
+        );
+        await expect(
+          service.create("guest-1", {
+            carListingId: "car-1",
+            requestedDate: "2099-01-01",
+            rentalUnit: "hour" as never,
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(bookingRepo.save).not.toHaveBeenCalled();
+      });
+
+      it("rejects requestedEndTime not after requestedStartTime", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10 }),
+        );
+        await expect(
+          service.create("guest-1", {
+            carListingId: "car-1",
+            requestedDate: "2099-01-01",
+            rentalUnit: "hour" as never,
+            requestedStartTime: "11:00",
+            requestedEndTime: "09:00",
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(bookingRepo.save).not.toHaveBeenCalled();
+      });
+
+      it("rejects a rental shorter than the listing's minRentalHours", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10, minRentalHours: 3 }),
+        );
+        await expect(
+          service.create("guest-1", {
+            carListingId: "car-1",
+            requestedDate: "2099-01-01",
+            rentalUnit: "hour" as never,
+            requestedStartTime: "09:00",
+            requestedEndTime: "10:00",
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(bookingRepo.save).not.toHaveBeenCalled();
+      });
+
+      it("computes estimatedTotal for an hourly rental, rounding up a partial hour", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10 }),
+        );
+        bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+        bookingRepo.findOneOrFail.mockResolvedValue({
+          id: "booking-1",
+          guest: { name: "Ada" },
+          requestedDate: "2099-01-01",
+          rentalUnit: "hour",
+          requestedStartTime: "09:00",
+          requestedEndTime: "10:30",
+          carListing: { ownerUserId: "owner-1", title: "RAV4" },
+        });
+
+        await service.create("guest-1", {
+          carListingId: "car-1",
+          requestedDate: "2099-01-01",
+          rentalUnit: "hour" as never,
+          requestedStartTime: "09:00",
+          requestedEndTime: "10:30", // 1.5h -> rounds up to 2h
+        });
+
+        expect(bookingRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            rentalUnit: "hour",
+            requestedStartTime: "09:00",
+            requestedEndTime: "10:30",
+            requestedEndDate: null,
+            estimatedTotal: 20, // 2h * $10
+          }),
+        );
+      });
+
+      it("adds the hourly driver fee when withDriver is requested and available", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10, driverFeePerHour: 5 }),
+        );
+        bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+        bookingRepo.findOneOrFail.mockResolvedValue({
+          id: "booking-1",
+          guest: { name: "Ada" },
+          requestedDate: "2099-01-01",
+          rentalUnit: "hour",
+          requestedStartTime: "09:00",
+          requestedEndTime: "11:00",
+          carListing: { ownerUserId: "owner-1", title: "RAV4" },
+        });
+
+        await service.create("guest-1", {
+          carListingId: "car-1",
+          requestedDate: "2099-01-01",
+          rentalUnit: "hour" as never,
+          requestedStartTime: "09:00",
+          requestedEndTime: "11:00", // 2h
+          withDriver: true,
+        });
+
+        expect(bookingRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ estimatedTotal: 30 }), // 2h * ($10 + $5)
+        );
+      });
+
+      it("rejects an hourly request overlapping an existing confirmed hourly booking", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10 }),
+        );
+        bookingRepo.find.mockResolvedValue([
+          {
+            requestedDate: "2099-01-01",
+            requestedEndDate: null,
+            rentalUnit: "hour",
+            requestedStartTime: "09:30",
+            requestedEndTime: "11:00",
+          },
+        ]);
+        await expect(
+          service.create("guest-1", {
+            carListingId: "car-1",
+            requestedDate: "2099-01-01",
+            rentalUnit: "hour" as never,
+            requestedStartTime: "10:00",
+            requestedEndTime: "12:00",
+          }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(bookingRepo.save).not.toHaveBeenCalled();
+      });
+
+      it("allows a non-overlapping hourly request on the same day as a confirmed booking", async () => {
+        carListingRepo.findOne.mockResolvedValue(
+          approvedCarListing({ pricePerHour: 10 }),
+        );
+        bookingRepo.find.mockResolvedValue([
+          {
+            requestedDate: "2099-01-01",
+            requestedEndDate: null,
+            rentalUnit: "hour",
+            requestedStartTime: "08:00",
+            requestedEndTime: "09:00",
+          },
+        ]);
+        bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+        bookingRepo.findOneOrFail.mockResolvedValue({
+          id: "booking-1",
+          guest: { name: "Ada" },
+          requestedDate: "2099-01-01",
+          carListing: { ownerUserId: "owner-1", title: "RAV4" },
+        });
+
+        await service.create("guest-1", {
+          carListingId: "car-1",
+          requestedDate: "2099-01-01",
+          rentalUnit: "hour" as never,
+          requestedStartTime: "10:00",
+          requestedEndTime: "12:00",
+        });
+
+        expect(bookingRepo.save).toHaveBeenCalled();
+      });
     });
 
     it("computes estimatedTotal for a car rental without a driver", async () => {

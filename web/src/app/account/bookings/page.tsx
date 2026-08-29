@@ -16,7 +16,7 @@ import {
 import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
 import { getMyCarListings } from '@/lib/car-rentals-api';
-import { formatBookingDateRange, formatBookingStatus } from '@/lib/format';
+import { formatBookingWhen, formatBookingStatus, formatCost } from '@/lib/format';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Booking, Business, CarListing, Creator } from '@/lib/types';
@@ -312,7 +312,13 @@ function BookingRow({ booking, showGuest, onOpen }: { booking: Booking; showGues
             <StatusBadge status={booking.status} />
           </span>
           <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
-            {formatBookingDateRange(booking.requestedDate, booking.requestedEndDate)}
+            {formatBookingWhen(
+              booking.requestedDate,
+              booking.requestedEndDate,
+              booking.rentalUnit,
+              booking.requestedStartTime,
+              booking.requestedEndTime,
+            )}
             {booking.partySize && ` · Party of ${booking.partySize}`}
           </span>
         </span>
@@ -383,9 +389,20 @@ function BookingDetailModal({
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
           <div className="flex flex-col gap-1.5 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
             <p className="text-slate-700 dark:text-slate-200">
-              {formatBookingDateRange(booking.requestedDate, booking.requestedEndDate)}
+              {formatBookingWhen(
+                booking.requestedDate,
+                booking.requestedEndDate,
+                booking.rentalUnit,
+                booking.requestedStartTime,
+                booking.requestedEndTime,
+              )}
               {booking.partySize && ` · Party of ${booking.partySize}`}
             </p>
+            {booking.estimatedTotal != null && (
+              <p className="font-medium text-slate-900 dark:text-slate-50">
+                Estimated total: {formatCost(booking.estimatedTotal)}
+              </p>
+            )}
             {booking.notes && <p className="text-slate-500 dark:text-slate-400">&ldquo;{booking.notes}&rdquo;</p>}
             {booking.businessResponse && (
               <p className="mt-1 rounded-lg bg-white px-2.5 py-1.5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">

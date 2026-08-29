@@ -280,6 +280,32 @@ export function formatBookingDateRange(requestedDate: string, requestedEndDate: 
   return `${startLabel} – ${endLabel}`;
 }
 
+function formatTimeLabel(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+  return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
+// Same "when" as formatBookingDateRange, but for an hour-mode car-rental
+// booking (Booking.rentalUnit — see the backend entity's doc comment)
+// shows the single day plus the HH:mm–HH:mm time span instead of a date
+// range. Falls back to formatBookingDateRange for every other booking
+// (rentalUnit null/'day', or no time fields set).
+export function formatBookingWhen(
+  requestedDate: string,
+  requestedEndDate: string | null,
+  rentalUnit: 'day' | 'hour' | null,
+  requestedStartTime: string | null,
+  requestedEndTime: string | null,
+): string {
+  if (rentalUnit === 'hour' && requestedStartTime && requestedEndTime) {
+    const dateLabel = new Date(requestedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${dateLabel}, ${formatTimeLabel(requestedStartTime)}–${formatTimeLabel(requestedEndTime)}`;
+  }
+  return formatBookingDateRange(requestedDate, requestedEndDate);
+}
+
 const CREATOR_CATEGORY_LABELS: Record<CreatorCategory, string> = {
   photographer: 'Photographer',
   videographer: 'Videographer',
