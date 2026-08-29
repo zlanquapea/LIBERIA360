@@ -5,13 +5,21 @@ import Link from 'next/link';
 import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import BookingMessageThread from '@/components/BookingMessageThread';
-import { cancelBooking, getBusinessBookings, getCreatorBookings, getMyBookings, respondToBooking } from '@/lib/booking-api';
+import {
+  cancelBooking,
+  getBusinessBookings,
+  getCarListingOwnerBookings,
+  getCreatorBookings,
+  getMyBookings,
+  respondToBooking,
+} from '@/lib/booking-api';
 import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
+import { getMyCarListings } from '@/lib/car-rentals-api';
 import { formatBookingDateRange, formatBookingStatus } from '@/lib/format';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import type { Booking, Business, Creator } from '@/lib/types';
+import type { Booking, Business, CarListing, Creator } from '@/lib/types';
 
 // "My Bookings" (Tech Spec §3.3) — client-only, same reasoning as
 // /trips: JWT auth lives in localStorage, so a server component can't
@@ -31,8 +39,10 @@ export default function BookingsPage() {
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [creator, setCreator] = useState<Creator | null>(null);
+  const [carListings, setCarListings] = useState<CarListing[]>([]);
   const [incoming, setIncoming] = useState<Record<string, Booking[]>>({});
   const [incomingCreator, setIncomingCreator] = useState<Booking[]>([]);
+  const [incomingCarListings, setIncomingCarListings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<SelectedBooking | null>(null);
 
@@ -56,29 +66,40 @@ export default function BookingsPage() {
     getCreatorBookings(token, creator.id).then(setIncomingCreator);
   }, [token, creator]);
 
+  const reloadIncomingCarListings = useCallback(() => {
+    if (!token) return;
+    getCarListingOwnerBookings(token).then(setIncomingCarListings);
+  }, [token]);
+
   useEffect(() => {
     if (!ready || !token) {
       if (ready) setLoading(false);
       return;
     }
     let cancelled = false;
-    Promise.all([getMyBookings(token), getMyBusinesses(token), getMyCreatorProfile(token)]).then(
-      async ([bookings, myBusinesses, myCreator]) => {
-        if (cancelled) return;
-        setMyBookings(bookings);
-        setBusinesses(myBusinesses);
-        setCreator(myCreator);
-        const entries = await Promise.all(
-          myBusinesses.map(async (b) => [b.id, await getBusinessBookings(token, b.id)] as const),
-        );
-        const creatorBookings = myCreator ? await getCreatorBookings(token, myCreator.id) : [];
-        if (!cancelled) {
-          setIncoming(Object.fromEntries(entries));
-          setIncomingCreator(creatorBookings);
-          setLoading(false);
-        }
-      },
-    );
+    Promise.all([
+      getMyBookings(token),
+      getMyBusinesses(token),
+      getMyCreatorProfile(token),
+      getMyCarListings(token),
+    ]).then(async ([bookings, myBusinesses, myCreator, myCarListings]) => {
+      if (cancelled) return;
+      setMyBookings(bookings);
+      setBusinesses(myBusinesses);
+      setCreator(myCreator);
+      setCarListings(myCarListings);
+      const entries = await Promise.all(
+        myBusinesses.map(async (b) => [b.id, await getBusinessBookings(token, b.id)] as const),
+      );
+      const creatorBookings = myCreator ? await getCreatorBookings(token, myCreator.id) : [];
+      const carListingBookings = myCarListings.length > 0 ? await getCarListingOwnerBookings(token) : [];
+      if (!cancelled) {
+        setIncoming(Object.fromEntries(entries));
+        setIncomingCreator(creatorBookings);
+        setIncomingCarListings(carListingBookings);
+        setLoading(false);
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -202,6 +223,36 @@ export default function BookingsPage() {
         </section>
       )}
 
+      {carListings.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my car listings</h2>
+          {incomingCarListings.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {incomingCarListings.map((booking) => (
+                <BookingRow
+                  key={booking.id}
+                  booking={booking}
+                  showGuest
+                  onOpen={() =>
+                    setSelected({
+                      booking,
+                      showGuest: true,
+                      canRespond: booking.status === 'pending',
+                      onResponded: () => {
+                        reloadIncomingCarListings();
+                        setSelected(null);
+                      },
+                    })
+                  }
+                />
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {selected && token && (
         <BookingDetailModal selected={selected} token={token} onClose={() => setSelected(null)} />
       )}
@@ -222,7 +273,9 @@ interface SelectedBooking {
 // name when viewing incoming requests for a listing, the listing's name
 // when viewing a guest's own requests.
 function counterpartName(booking: Booking, showGuest?: boolean): string {
-  return showGuest ? booking.guest?.name ?? 'A guest' : booking.business?.name ?? booking.creator?.name ?? 'Listing';
+  return showGuest
+    ? booking.guest?.name ?? 'A guest'
+    : booking.business?.name ?? booking.creator?.name ?? booking.carListing?.title ?? 'Listing';
 }
 
 // A small colored initial badge — cheap stand-in for an avatar that gives
