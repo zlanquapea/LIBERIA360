@@ -238,6 +238,10 @@ ${matchedEntry.answer}`;
         "save-creator-post",
       ],
       [
+        /saved.*(place|places)|favorite.*place|bookmark.*place|where.*saved.*places/,
+        "saved-account",
+      ],
+      [
         /where.*ad.*appear|where.*ads.*shown|ad.*placement|advertising.*placement|sponsored.*section/,
         "ad-placement",
       ],
@@ -246,7 +250,7 @@ ${matchedEntry.answer}`;
         "advertising",
       ],
       [
-        /how long.*approval|approval.*time|waiting.*approval|pending.*approval|when.*business.*approved|listing.*review.*time/,
+        /how long.*approval|approval.*time|waiting.*approval|pending.*approval|pending.*listing|listing.*pending|when.*business.*approved|listing.*review.*time/,
         "approval-time",
       ],
       [
