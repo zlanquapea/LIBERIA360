@@ -32,6 +32,16 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
     label: "View bookings",
     href: "/account/bookings",
   },
+  carRentals: {
+    id: "carRentals",
+    label: "Browse car rentals",
+    href: "/car-rentals",
+  },
+  myCarListings: {
+    id: "myCarListings",
+    label: "Manage my car listings",
+    href: "/account/my-car-listings",
+  },
   creators: { id: "creators", label: "Explore creators", href: "/creators" },
   creatorProfile: {
     id: "creatorProfile",
@@ -235,6 +245,43 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     followUps: [
       "How do creators receive bookings?",
       "Where are my booking messages?",
+    ],
+  },
+  {
+    id: "car-rentals",
+    title: "Browse, list, and rent cars",
+    keywords: [
+      "car rental",
+      "car rentals",
+      "rent a car",
+      "rental car",
+      "rent vehicle",
+      "vehicle rental",
+      "hire a car",
+      "car hire",
+      "renting a car",
+      "rental vehicle",
+      "car listing",
+      "list my car",
+      "list a car",
+      "rent out my car",
+      "car owner",
+      "with driver",
+      "without driver",
+      "by day",
+      "by hour",
+      "hourly rental",
+      "daily rental",
+      "pickup location",
+      "security deposit",
+    ],
+    answer:
+      "LIBERIA360 Car Rentals is a peer-to-peer marketplace where signed-in users can list vehicles and travelers can browse approved, active cars by county, category, transmission, seats, price, and driver availability. You do not need a business or claimed place to list a car. Open Car Rentals to view a vehicle’s photos, specifications, pricing, deposit, pickup information, owner contact details, and reviews. When a listing supports it, you can request a rental by day or by hour, choose whether to add a driver, and provide a pickup location. A rental sends a request to the owner rather than creating an instant booking, and no payment is taken at the time of the request. The owner confirms or declines, and you can track the request in My Bookings.",
+    actionIds: ["carRentals", "bookings", "myCarListings"],
+    followUps: [
+      "How do I rent a car?",
+      "How do I list my car?",
+      "Can I rent a car by the hour?",
     ],
   },
   {
@@ -486,6 +533,7 @@ export const ASSISTANT_QUICK_PROMPTS = [
   "How do I add my business?",
   "How does advertising work?",
   "How do bookings work?",
+  "How do car rentals work?",
   "How do I become a creator?",
 ];
 

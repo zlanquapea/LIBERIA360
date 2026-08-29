@@ -271,7 +271,7 @@ ${matchedEntry.answer}`;
     const answer = greeting
       ? `Hello! I’m the LIBERIA360 Assistant. ${ASSISTANT_KNOWLEDGE[0].answer}`
       : (match?.answer ??
-        "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, advertising, bookings, creators, events, trips, reviews, or your account.");
+        "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, car rentals, advertising, bookings, creators, events, trips, reviews, or your account.");
     const fallbackEntry =
       match ??
       ASSISTANT_KNOWLEDGE.find((entry) => entry.id === "assistant-help");
@@ -321,6 +321,10 @@ ${matchedEntry.answer}`;
       [
         /where.*booking.*(message|inbox|request)|find.*booking.*message|booking.*notifications|see.*booking.*request/,
         "booking-messages",
+      ],
+      [
+        /car.*(rental|rent|hire|listing)|rental.*car|rent.*(a )?(car|vehicle)|vehicle.*rental|renting.*car|hourly.*rental|daily.*rental|with.*driver|without.*driver|list.*(my )?car|rent.*out.*car/,
+        "car-rentals",
       ],
       [
         /how.*creator.*(receive|booking)|creator.*booking.*(work|request)|booking.*request.*creator|people.*book.*me/,

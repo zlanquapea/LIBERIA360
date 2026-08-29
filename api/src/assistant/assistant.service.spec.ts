@@ -38,6 +38,42 @@ describe("AssistantService", () => {
     );
   });
 
+  it("answers car-rental questions from approved knowledge with rental actions", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "How do car rentals work?",
+      currentPath: "/car-rentals",
+    });
+
+    expect(response.source).toBe("knowledge");
+    expect(response.answer).toContain("peer-to-peer marketplace");
+    expect(response.answer).toContain("by day or by hour");
+    expect(response.answer).toContain("no payment is taken");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "carRentals", href: "/car-rentals" }),
+        expect.objectContaining({ id: "bookings", href: "/account/bookings" }),
+        expect.objectContaining({
+          id: "myCarListings",
+          href: "/account/my-car-listings",
+        }),
+      ]),
+    );
+  });
+
+  it("routes hourly car-rental questions to the car-rental guidance", async () => {
+    const service = new AssistantService(config());
+
+    const response = await service.ask({
+      message: "Can I rent a car by the hour with a driver?",
+    });
+
+    expect(response.answer).toContain("by day or by hour");
+    expect(response.answer).toContain("add a driver");
+    expect(response.answer).not.toContain("Open a business or creator profile");
+  });
+
   it("returns safe guidance for password and sensitive-information questions", async () => {
     const service = new AssistantService(config());
 
