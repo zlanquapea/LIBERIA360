@@ -110,6 +110,12 @@ export function EventTicketPurchase({ event }: { event: Event }) {
               />
             </label>
           </div>
+          {error && <p role="alert" className="ticket-form-message ticket-form-error">{error}</p>}
+          <button type="button" disabled={submitting || !paymentReference.trim()} onClick={submit} className="ticket-submit-button">
+            {submitting ? "Submitting…" : "Submit payment reference"}
+            <ArrowRightIcon aria-hidden className="h-4 w-4" />
+          </button>
+          {message && <p className="ticket-form-message ticket-form-success">{message} <Link href="/account/my-tickets">View My Tickets</Link></p>}
           <label className="ticket-note-field">
             <span>Note <em>optional</em></span>
             <textarea
@@ -119,12 +125,6 @@ export function EventTicketPurchase({ event }: { event: Event }) {
               rows={2}
             />
           </label>
-          {error && <p role="alert" className="ticket-form-message ticket-form-error">{error}</p>}
-          {message && <p className="ticket-form-message ticket-form-success">{message} <Link href="/account/my-tickets">View My Tickets</Link></p>}
-          <button type="button" disabled={submitting || !paymentReference.trim()} onClick={submit} className="ticket-submit-button">
-            {submitting ? "Submitting…" : "Submit payment reference"}
-            <ArrowRightIcon aria-hidden className="h-4 w-4" />
-          </button>
         </div>
       )}
 
