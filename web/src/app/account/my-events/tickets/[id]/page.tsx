@@ -10,7 +10,6 @@ import {
 } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
 import type { EventTicketOrder } from "@/lib/types";
-import { EventTicketScanner } from "@/components/EventTicketScanner";
 
 export default function EventTicketOrdersPage() {
   const params = useParams<{ id: string }>();
@@ -82,10 +81,19 @@ export default function EventTicketOrdersPage() {
           Ticket orders
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Verify payment references before issuing tickets, then scan each pass at the entrance.
+          Review payment references and issue tickets from this page.
         </p>
       </div>
-      {token && <EventTicketScanner eventId={params.id} token={token} />}
+      <Link
+        href={`/account/my-events/tickets/${params.id}/scan`}
+        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-brand-950 hover:border-brand-400 hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-900/60 dark:bg-brand-950/25 dark:text-brand-50 dark:hover:bg-brand-950/45"
+      >
+        <span>
+          <span className="block text-sm font-bold">Open ticket scanner</span>
+          <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-300">Scan and validate passes at the entrance on a separate page.</span>
+        </span>
+        <span aria-hidden className="text-xl">→</span>
+      </Link>
       {error && (
         <p
           role="alert"
