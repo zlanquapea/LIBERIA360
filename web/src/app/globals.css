@@ -476,6 +476,13 @@ html[data-splash-seen='1'] .splash-screen {
 .issued-pass-card { background: var(--ticket-sea); border: 1px solid rgb(8 26 80 / .08); padding: 1rem; }
 .issued-pass-head { align-items: center; color: var(--ticket-ink); display: flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .72rem; font-weight: 700; justify-content: space-between; }
 .issued-pass-head > span:first-child { align-items: center; display: inline-flex; gap: .4rem; }
+.issued-pass-id { background: rgb(255 198 61 / .17); border: 1px solid rgb(160 115 17 / .45); margin-top: .9rem; padding: .72rem .8rem; }
+.issued-pass-id-label { align-items: center; color: #7f5a0e; display: inline-flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .62rem; font-weight: 800; gap: .35rem; letter-spacing: .08em; text-transform: uppercase; }
+.issued-pass-id code { color: var(--ticket-ink); display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92rem; font-weight: 800; letter-spacing: .04em; margin-top: .32rem; overflow-wrap: anywhere; }
+.issued-pass-id p { color: var(--ticket-slate); font-size: .67rem; line-height: 1.4; margin: .34rem 0 0; }
+.dark .issued-pass-id { background: rgb(255 198 61 / .13); border-color: rgb(255 198 61 / .5); }
+.dark .issued-pass-id-label { color: #ffe08a; }
+.dark .issued-pass-id code { color: #f4f5ed; }
 .issued-pass-used { align-items: center; color: #b45342; display: inline-flex; font-size: .68rem; gap: .25rem; }
 .issued-pass-valid { color: #397e6e; font-size: .68rem; }
 .issued-pass-qr { background: white; display: block; height: 11.5rem; margin: 1rem auto 0; object-fit: contain; padding: .5rem; width: 11.5rem; }

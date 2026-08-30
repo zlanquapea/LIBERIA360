@@ -107,6 +107,13 @@ export default function MyTicketsPage() {
                   {order.tickets.map((ticket) => (
                     <div key={ticket.id} className="issued-pass-card">
                       <div className="issued-pass-head"><span><QrCodeIcon aria-hidden className="h-4 w-4" /> Pass {ticket.sequence}</span>{ticket.status === "redeemed" ? <span className="issued-pass-used"><CheckBadgeIcon aria-hidden className="h-4 w-4" /> Used</span> : <span className="issued-pass-valid">Valid</span>}</div>
+                      {order.ticketCode && (
+                        <div className="issued-pass-id" aria-label={`Ticket ID ${order.ticketCode}`}>
+                          <div className="issued-pass-id-label"><TicketIcon aria-hidden className="h-4 w-4" /> Ticket ID</div>
+                          <code>{order.ticketCode}</code>
+                          <p>Use this ID if scanning fails or when reporting an issue.</p>
+                        </div>
+                      )}
                       {ticket.qrDataUrl && <img src={ticket.qrDataUrl} alt={`QR code for ${order.event.name}, pass ${ticket.sequence}`} className={`issued-pass-qr ${ticket.status === "redeemed" ? "issued-pass-qr-used" : ""}`} />}
                       {ticket.status === "redeemed" ? (
                         <p className="issued-pass-note">Scanned on {ticket.redeemedAt ? new Date(ticket.redeemedAt).toLocaleString() : "event day"}.</p>
