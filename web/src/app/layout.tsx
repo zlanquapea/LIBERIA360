@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Footer } from "@/components/Footer";
 import { Liberia360Assistant } from "@/components/Liberia360Assistant";
+import { SplashScreen } from "@/components/SplashScreen";
 
 export const metadata: Metadata = {
   title: "LIBERIA360 — Everything Liberia. One Place.",
@@ -65,6 +66,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="flex min-h-screen flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-50">
+        <SplashScreen />
         <Header />
         <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
           {children}
