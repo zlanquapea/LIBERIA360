@@ -1,7 +1,14 @@
+/* Atlantic Signal ticketing: ocean-ink framing, warm ticket stock, signal-yellow waypoints, tactile pass details, visual-only refinement. */
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
+import {
+  ArrowRightIcon,
+  BanknotesIcon,
+  InformationCircleIcon,
+  TicketIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { createEventTicketOrder } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
@@ -17,6 +24,9 @@ export function EventTicketPurchase({ event }: { event: Event }) {
   const [error, setError] = useState<string | null>(null);
 
   if (!event.ticketPrice || Number(event.ticketPrice) <= 0) return null;
+
+  const unitPrice = Number(event.ticketPrice);
+  const total = unitPrice * quantity;
 
   async function submit() {
     if (!token) return;
@@ -46,105 +56,79 @@ export function EventTicketPurchase({ event }: { event: Event }) {
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-brand-200 bg-brand-50/60 p-5 dark:border-brand-900/60 dark:bg-brand-950/30">
-      <div className="flex items-start justify-between gap-3">
+    <section className="ticket-purchase-shell" aria-labelledby="ticket-purchase-title">
+      <div className="ticket-purchase-header">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">
-            Get tickets
-          </h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            {event.ticketCurrency} {Number(event.ticketPrice).toFixed(2)} per
-            ticket
-            {event.ticketCapacity
-              ? ` · ${event.ticketCapacity} total available`
-              : ""}
-          </p>
+          <p className="ticket-purchase-eyebrow"><TicketIcon aria-hidden className="h-4 w-4" /> LIBERIA360 EVENT PASS</p>
+          <h2 id="ticket-purchase-title">Get tickets for this event.</h2>
+          <p className="ticket-purchase-subtitle">Secure your place, then keep the issued QR pass in My Tickets.</p>
         </div>
-        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
-          Manual payment
-        </span>
+        <span className="ticket-manual-badge"><BanknotesIcon aria-hidden className="h-4 w-4" /> Manual payment</span>
       </div>
+
+      <div className="ticket-purchase-summary">
+        <div>
+          <span className="ticket-summary-label">Price per ticket</span>
+          <strong>{event.ticketCurrency} {unitPrice.toFixed(2)}</strong>
+        </div>
+        {event.ticketCapacity && <div><span className="ticket-summary-label">Available</span><strong>{event.ticketCapacity} spots</strong></div>}
+        <div><span className="ticket-summary-label">Your total</span><strong>{event.ticketCurrency} {total.toFixed(2)}</strong></div>
+      </div>
+
       {event.paymentInstructions && (
-        <div className="mt-4 rounded-xl bg-white p-3 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-          <p className="font-semibold">Payment instructions</p>
-          <p className="mt-1 whitespace-pre-wrap">
-            {event.paymentInstructions}
-          </p>
+        <div className="ticket-instructions">
+          <div className="ticket-instructions-icon"><InformationCircleIcon aria-hidden className="h-5 w-5" /></div>
+          <div><p>Payment instructions</p><p>{event.paymentInstructions}</p></div>
         </div>
       )}
+
       {!user ? (
-        <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-          <Link
-            href="/login"
-            className="font-semibold text-brand-700 hover:underline dark:text-brand-300"
-          >
-            Log in
-          </Link>{" "}
-          to submit your payment reference.
-        </p>
+        <div className="ticket-login-prompt">
+          <p>Log in to submit your payment reference and request a ticket.</p>
+          <Link href="/login" className="ticket-action-link">Log in to continue <ArrowRightIcon aria-hidden className="h-4 w-4" /></Link>
+        </div>
       ) : (
-        <div className="mt-4 grid gap-3">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Quantity
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={quantity}
-              onChange={(e) =>
-                setQuantity(
-                  Math.max(1, Math.min(20, Number(e.target.value) || 1)),
-                )
-              }
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-950"
-            />
-          </label>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Payment reference
-            <input
-              required
-              value={paymentReference}
-              onChange={(e) => setPaymentReference(e.target.value)}
-              placeholder="Transaction/reference number"
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-950"
-            />
-          </label>
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Note (optional)
+        <div className="ticket-purchase-form">
+          <div className="ticket-form-grid">
+            <label>
+              <span>Quantity</span>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              />
+            </label>
+            <label>
+              <span>Payment reference</span>
+              <input
+                required
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+                placeholder="Transaction/reference number"
+              />
+            </label>
+          </div>
+          <label className="ticket-note-field">
+            <span>Note <em>optional</em></span>
             <textarea
               value={paymentNote}
               onChange={(e) => setPaymentNote(e.target.value)}
               placeholder="Any helpful payment detail"
               rows={2}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-950"
             />
           </label>
-          {error && (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
-              {error}
-            </p>
-          )}
-          {message && (
-            <p className="text-sm text-emerald-700 dark:text-emerald-300">
-              {message}{" "}
-              <Link
-                href="/account/my-tickets"
-                className="font-semibold underline"
-              >
-                View My Tickets
-              </Link>
-            </p>
-          )}
-          <button
-            type="button"
-            disabled={submitting || !paymentReference.trim()}
-            onClick={submit}
-            className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-          >
+          {error && <p role="alert" className="ticket-form-message ticket-form-error">{error}</p>}
+          {message && <p className="ticket-form-message ticket-form-success">{message} <Link href="/account/my-tickets">View My Tickets</Link></p>}
+          <button type="button" disabled={submitting || !paymentReference.trim()} onClick={submit} className="ticket-submit-button">
             {submitting ? "Submitting…" : "Submit payment reference"}
+            <ArrowRightIcon aria-hidden className="h-4 w-4" />
           </button>
         </div>
       )}
+
+      <div className="ticket-purchase-footnote"><span className="ticket-footnote-dot" /> Payment is verified by the event organizer before a QR ticket is issued.</div>
     </section>
   );
 }
