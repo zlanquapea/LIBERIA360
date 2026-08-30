@@ -82,7 +82,7 @@ export const updateSupportTicket = (
   input: {
     status?: SupportTicketStatus;
     priority?: SupportTicketPriority;
-    assignedAgentUserId?: string;
+    assignedAgentUserId?: string | null;
   },
 ) =>
   apiRequest<SupportTicket>(`/admin/support/tickets/${id}`, {

@@ -36,6 +36,9 @@ export default function AdminSupportDetail() {
   const [history, setHistory] = useState<SupportTicket[]>([]);
   const [agents, setAgents] = useState<AuthUser[]>([]);
   const [body, setBody] = useState("");
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const load = () => {
     if (token)
       Promise.all([
@@ -52,14 +55,32 @@ export default function AdminSupportDetail() {
   };
   useEffect(load, [token, id]);
   async function patch(input: Parameters<typeof updateSupportTicket>[2]) {
-    if (token) setTicket(await updateSupportTicket(token, id, input));
+    if (!token || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      setTicket(await updateSupportTicket(token, id, input));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to update ticket.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function reply(e: FormEvent) {
     e.preventDefault();
     if (token && body.trim()) {
-      const m = await sendSupportMessage(token, id, body.trim());
-      setMessages((x) => [...x, m]);
-      setBody("");
+      setBusy(true);
+      setError("");
+      try {
+        const m = await sendSupportMessage(token, id, body.trim(), attachments);
+        setMessages((x) => [...x, m]);
+        setBody("");
+        setAttachments([]);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Unable to send reply.");
+      } finally {
+        setBusy(false);
+      }
     }
   }
   if (!ticket) return <div>Loading ticket…</div>;
@@ -78,6 +99,7 @@ export default function AdminSupportDetail() {
           {label(ticket.category)}
         </p>
       </header>
+      {error && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
         <div className="space-y-4">
           <section className="rounded-2xl border p-4 dark:border-slate-800">
@@ -109,6 +131,11 @@ export default function AdminSupportDetail() {
                   className={`max-w-[80%] rounded-2xl p-3 text-sm ${m.senderUserId === ticket.customerUserId ? "bg-slate-100 dark:bg-slate-800" : "bg-brand-700 text-white"}`}
                 >
                   <p>{m.body}</p>
+                  {m.attachments?.map((attachment) => (
+                    <a key={attachment} href={attachment} target="_blank" className="mt-2 block">
+                      <img src={attachment} alt="Reply attachment" className="h-20 w-20 rounded-lg object-cover" />
+                    </a>
+                  ))}
                   <p className="mt-1 text-[10px] opacity-70">
                     {m.sender.name} · {new Date(m.createdAt).toLocaleString()}
                   </p>
@@ -117,7 +144,9 @@ export default function AdminSupportDetail() {
             ))}
           </section>
           {ticket.status !== "closed" && (
-            <form onSubmit={reply} className="flex gap-2">
+            <form onSubmit={reply} className="space-y-2">
+              {attachments.length > 0 && <div className="flex flex-wrap gap-2">{attachments.map((attachment) => <div key={attachment} className="relative"><img src={attachment} alt="Attachment preview" className="h-20 w-20 rounded-lg object-cover" /><button type="button" aria-label="Remove attachment" onClick={() => setAttachments((items) => items.filter((item) => item !== attachment))} className="absolute -right-2 -top-2 rounded-full bg-slate-900 px-2 text-white">×</button></div>)}</div>}
+              <div className="flex gap-2">
               <textarea
                 required
                 value={body}
@@ -125,9 +154,11 @@ export default function AdminSupportDetail() {
                 placeholder="Reply to customer…"
                 className="min-w-0 flex-1 rounded-xl border p-3 dark:bg-slate-900"
               />
-              <button className="rounded-xl bg-brand-700 px-5 font-semibold text-white">
-                Reply
+              <button disabled={busy} className="rounded-xl bg-brand-700 px-5 font-semibold text-white disabled:opacity-50">
+                {busy ? "Sending…" : "Reply"}
               </button>
+              </div>
+              <input aria-label="Image attachment URLs" value={attachments.join(", ")} onChange={(event) => setAttachments(event.target.value.split(",").map((value) => value.trim()).filter(Boolean).slice(0, 5))} placeholder="Optional image URL(s), separated by commas" className="w-full rounded-xl border p-2 text-sm dark:bg-slate-900" />
             </form>
           )}
         </div>
@@ -172,12 +203,11 @@ export default function AdminSupportDetail() {
               <select
                 value={ticket.assignedAgentUserId ?? ""}
                 onChange={(e) =>
-                  e.target.value &&
-                  void patch({ assignedAgentUserId: e.target.value })
+                  void patch({ assignedAgentUserId: e.target.value || null })
                 }
                 className="mt-1 w-full rounded-lg border p-2 dark:bg-slate-900"
               >
-                <option value="" disabled>
+                <option value="">
                   Unassigned
                 </option>
                 {agents.map((agent) => (
@@ -189,7 +219,7 @@ export default function AdminSupportDetail() {
               </select>
             </label>
             <button
-              disabled={ticket.assignedAgentUserId === user?.id}
+              disabled={busy || ticket.assignedAgentUserId === user?.id}
               onClick={() =>
                 user && void patch({ assignedAgentUserId: user.id })
               }
