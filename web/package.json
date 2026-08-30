@@ -16,6 +16,7 @@
     "@heroicons/react": "^2.2.0",
     "@liberia360/shared-types": "0.1.0",
     "@sentry/browser": "^10.70.0",
+    "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "next": "^16.3.1",
     "react": "^19.0.0",

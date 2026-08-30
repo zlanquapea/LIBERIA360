@@ -2,44 +2,50 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CameraIcon, CheckCircleIcon, ExclamationTriangleIcon, StopIcon } from "@heroicons/react/24/outline";
+import { Html5Qrcode } from "html5-qrcode";
 import { redeemEventTicket } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
 
-interface BarcodeDetectorLike {
-  detect(source: HTMLVideoElement): Promise<Array<{ rawValue?: string }>>;
-}
-
-type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
-
-function getDetector(): BarcodeDetectorLike | null {
-  if (typeof window === "undefined") return null;
-  const Detector = (window as Window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
-  return Detector ? new Detector({ formats: ["qr_code"] }) : null;
-}
-
 export function EventTicketScanner({ eventId, token }: { eventId: string; token: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationRef = useRef<number | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const processingRef = useRef(false);
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [cameraSupported, setCameraSupported] = useState(true);
   const [manualPayload, setManualPayload] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
 
-  function stopCamera() {
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    animationRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
+  async function stopCamera() {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (scanner) {
+      try {
+        if (scanner.isScanning) await scanner.stop();
+      } catch {
+        // The camera may already have been stopped by the browser.
+      }
+      try {
+        scanner.clear();
+      } catch {
+        // Clearing an already-removed reader is safe to ignore.
+      }
+    }
     setCameraOpen(false);
     setScanning(false);
   }
 
-  useEffect(() => () => stopCamera(), []);
+  useEffect(() => {
+    return () => {
+      const scanner = scannerRef.current;
+      if (!scanner) return;
+      if (scanner.isScanning) void scanner.stop().catch(() => undefined);
+      try {
+        scanner.clear();
+      } catch {
+        // Cleanup is best effort during unmount.
+      }
+    };
+  }, []);
 
   async function redeem(payload: string) {
     if (processingRef.current || !payload.trim()) return;
@@ -57,44 +63,29 @@ export function EventTicketScanner({ eventId, token }: { eventId: string; token:
     }
   }
 
-  async function scanLoop(detector: BarcodeDetectorLike) {
-    if (!cameraOpen || !videoRef.current || processingRef.current) {
-      if (cameraOpen) animationRef.current = requestAnimationFrame(() => void scanLoop(detector));
-      return;
-    }
-    try {
-      const codes = await detector.detect(videoRef.current);
-      const value = codes[0]?.rawValue;
-      if (value) await redeem(value);
-    } catch {
-      // Camera frames can be unavailable briefly while a phone changes focus.
-    }
-    if (cameraOpen) animationRef.current = requestAnimationFrame(() => void scanLoop(detector));
-  }
-
   async function startCamera() {
     setError(null);
     setMessage(null);
-    const detector = getDetector();
-    if (!detector) {
-      setCameraSupported(false);
-      setError("Camera QR scanning is not supported in this browser. Use the secure manual payload fallback below or open this page in Chrome on Android.");
-      return;
-    }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Camera access is unavailable. Use the manual payload fallback below.");
-      return;
-    }
+    setCameraOpen(true);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const scanner = new Html5Qrcode("ticket-qr-reader");
+    scannerRef.current = scanner;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-      streamRef.current = stream;
-      if (!videoRef.current) return;
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-      setCameraOpen(true);
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1 },
+        async (decodedText) => {
+          if (processingRef.current) return;
+          await stopCamera();
+          await redeem(decodedText);
+        },
+        () => {
+          // Decode misses are expected while the camera is moving or focusing.
+        },
+      );
       setScanning(true);
-      animationRef.current = requestAnimationFrame(() => void scanLoop(detector));
     } catch {
+      await stopCamera();
       setError("Camera permission was denied or unavailable. You can still validate by pasting the QR payload below.");
     }
   }
@@ -106,10 +97,9 @@ export function EventTicketScanner({ eventId, token }: { eventId: string; token:
           <p className="flex items-center gap-2 text-sm font-bold text-brand-950 dark:text-brand-50"><CameraIcon className="h-5 w-5" aria-hidden /> Scan event tickets</p>
           <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Each valid ticket is accepted once. Keep the attendee’s QR code private and scan it at the entrance.</p>
         </div>
-        {cameraOpen ? <button type="button" onClick={stopCamera} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><StopIcon className="h-4 w-4" aria-hidden /> Stop</button> : <button type="button" onClick={() => void startCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"><CameraIcon className="h-4 w-4" aria-hidden /> Open camera</button>}
+        {cameraOpen ? <button type="button" onClick={() => void stopCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><StopIcon className="h-4 w-4" aria-hidden /> Stop</button> : <button type="button" onClick={() => void startCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"><CameraIcon className="h-4 w-4" aria-hidden /> Open camera</button>}
       </div>
-      {cameraOpen && <div className="relative mt-4 overflow-hidden rounded-xl bg-slate-950"><video ref={videoRef} muted playsInline className="aspect-video w-full object-cover" aria-label="Camera preview for scanning tickets" /><div className="pointer-events-none absolute inset-8 rounded-xl border-2 border-gold-300/90" /><p className="absolute bottom-2 left-0 right-0 text-center text-xs font-medium text-white">{scanning ? "Point the camera at a QR code" : "Starting camera…"}</p></div>}
-      {!cameraSupported && <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Native QR scanning is unavailable on this browser.</p>}
+      {cameraOpen && <div className="relative mt-4 overflow-hidden rounded-xl bg-slate-950"><div id="ticket-qr-reader" className="min-h-64 w-full" aria-label="Camera preview for scanning tickets" /><div className="pointer-events-none absolute inset-8 rounded-xl border-2 border-gold-300/90" /><p className="absolute bottom-2 left-0 right-0 text-center text-xs font-medium text-white">{scanning ? "Point the camera at a QR code" : "Starting camera…"}</p></div>}
       {message && <p role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"><CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />{message}</p>}
       {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200"><ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />{error}</p>}
       <form onSubmit={(event) => { event.preventDefault(); void redeem(manualPayload); }} className="mt-4 flex flex-col gap-2 sm:flex-row">
