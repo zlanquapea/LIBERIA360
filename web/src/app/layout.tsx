@@ -71,10 +71,17 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: splashInitScript }} />
       </head>
-      <body className="flex min-h-screen flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-50">
+      <body className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <SplashScreen />
         <Header />
-        <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0"
+        >
           {children}
           <Footer />
         </div>
