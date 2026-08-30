@@ -44,6 +44,11 @@ const displayFont = Plus_Jakarta_Sans({
 // because it has to block, not defer.
 const themeInitScript = `(function(){try{var t=localStorage.getItem('liberia360:theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
 
+// Hide the SSR splash before the first paint on repeat visits. First visits
+// deliberately keep the splash visible in the server HTML so page content
+// cannot flash before the branded reveal begins.
+const splashInitScript = `(function(){try{if(sessionStorage.getItem('liberia360:splash-seen')==='1')document.documentElement.dataset.splashSeen='1';}catch(e){}})();`;
+
 // Splash screen removed (Aug 27, 2026): product feedback — "remove the
 // fade in and out... causing the page to fade in color off and on...
 // it looks playful, not professional." The old <SplashScreen /> covered
@@ -64,6 +69,7 @@ export default function RootLayout({
     <html lang="en" className={displayFont.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: splashInitScript }} />
       </head>
       <body className="flex min-h-screen flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-50 dark:bg-slate-950 dark:text-slate-50">
         <SplashScreen />

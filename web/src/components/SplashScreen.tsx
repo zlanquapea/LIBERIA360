@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 const SPLASH_SESSION_KEY = 'liberia360:splash-seen';
 
 export function SplashScreen() {
-  const [visible, setVisible] = useState(false);
+  // Render the splash during SSR so it is already covering the page at first paint.
+  // The document-level session gate hides it before paint on repeat visits.
+  const [visible, setVisible] = useState(true);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
@@ -17,7 +19,10 @@ export function SplashScreen() {
       // Private browsing and storage-disabled contexts still get the splash.
     }
 
-    if (!shouldShow) return;
+    if (!shouldShow) {
+      setVisible(false);
+      return;
+    }
 
     setVisible(true);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

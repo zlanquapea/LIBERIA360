@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { SplashScreen } from './SplashScreen';
 
 describe('SplashScreen', () => {
@@ -36,12 +36,14 @@ describe('SplashScreen', () => {
     expect(screen.queryByRole('status', { name: 'Loading LIBERIA360' })).not.toBeInTheDocument();
   });
 
-  it('does not show again during the same session', () => {
+  it('does not show again during the same session', async () => {
     sessionStorage.setItem('liberia360:splash-seen', '1');
 
     render(<SplashScreen />);
 
-    expect(screen.queryByRole('status', { name: 'Loading LIBERIA360' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: 'Loading LIBERIA360' })).not.toBeInTheDocument();
+    });
   });
 
   it('uses the shorter reduced-motion handoff', () => {

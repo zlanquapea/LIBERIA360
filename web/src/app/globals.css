@@ -315,3 +315,9 @@ html.dark {
   .splash-screen__eyebrow { margin-bottom: 30px; font-size: 0.78rem; }
   .splash-screen__tagline { font-size: 0.88rem; }
 }
+
+/* The inline root-layout script sets this before paint for repeat sessions.
+   First visits leave the server-rendered splash visible with no content flash. */
+html[data-splash-seen='1'] .splash-screen {
+  display: none;
+}
