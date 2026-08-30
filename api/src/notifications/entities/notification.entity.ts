@@ -29,6 +29,10 @@ export type NotificationType =
   | "event.review_decided"
   | "admin.car_listing_pending_review"
   | "car_listing.review_decided"
+  | "support.agent_replied"
+  | "support.status_changed"
+  | "admin.support_ticket_created"
+  | "admin.support_customer_replied"
   | "admin.failed_login_alert";
 
 /**

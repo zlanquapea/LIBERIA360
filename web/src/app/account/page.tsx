@@ -14,6 +14,7 @@ import {
   MegaphoneIcon,
   TruckIcon,
   TicketIcon,
+  LifebuoyIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +44,12 @@ type QuickAction = {
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
+  {
+    href: "/account/support",
+    label: "Customer Support",
+    description: "Get help and track requests",
+    icon: LifebuoyIcon,
+  },
   {
     href: "/trips",
     label: "My Trips",

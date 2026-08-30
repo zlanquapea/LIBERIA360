@@ -141,7 +141,8 @@ export class EventTicketsService {
   private async serializeBuyerOrder(
     order: EventTicketOrder,
   ): Promise<BuyerEventTicketOrder> {
-    if (!this.instanceRepo) throw new Error("Ticket instance repository is unavailable");
+    if (!this.instanceRepo)
+      throw new Error("Ticket instance repository is unavailable");
     const instances = await this.instanceRepo.find({
       where: { orderId: order.id },
       order: { sequence: "ASC" },
@@ -273,7 +274,10 @@ export class EventTicketsService {
       instanceRepository: Repository<EventTicketInstance>,
     ) => {
       const saved = await orderRepository.save(order);
-      if (dto.status === EventTicketOrderStatus.APPROVED && instanceRepository) {
+      if (
+        dto.status === EventTicketOrderStatus.APPROVED &&
+        instanceRepository
+      ) {
         const instances = Array.from({ length: order.quantity }, (_, index) => {
           const token = randomBytes(32).toString("base64url");
           return instanceRepository.create({
@@ -306,7 +310,10 @@ export class EventTicketsService {
         ),
       );
     }
-    return saveApproved(this.orderRepo, this.instanceRepo as Repository<EventTicketInstance>);
+    return saveApproved(
+      this.orderRepo,
+      this.instanceRepo as Repository<EventTicketInstance>,
+    );
   }
 
   async redeemTicket(
@@ -324,7 +331,8 @@ export class EventTicketsService {
     if (event.createdByUserId !== user.id) {
       throw new ForbiddenException("Only the event organizer can scan tickets");
     }
-    if (!this.instanceRepo) throw new Error("Ticket instance repository is unavailable");
+    if (!this.instanceRepo)
+      throw new Error("Ticket instance repository is unavailable");
     const { instanceId, token } = this.parseTicketPayload(dto.payload);
     const instance = await this.instanceRepo.findOne({
       where: { id: instanceId, order: { eventId } },

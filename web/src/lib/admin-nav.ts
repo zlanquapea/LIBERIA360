@@ -7,6 +7,7 @@ import {
   ShieldCheckIcon,
   Squares2X2Icon,
   UsersIcon,
+  LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 import { hasCapability, type Capability, type CapabilityUser } from './capabilities';
 
@@ -38,6 +39,12 @@ export interface AdminNavGroup {
 // Roles editor) render an honest "not built yet" placeholder rather than
 // fake data; see each page for which.
 export const ADMIN_NAV: AdminNavGroup[] = [
+  {
+    id: 'support',
+    label: 'Customer Support',
+    icon: LifebuoyIcon,
+    href: '/admin/support',
+  },
   {
     id: 'dashboard',
     label: 'Dashboard',
