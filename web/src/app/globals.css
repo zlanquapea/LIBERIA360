@@ -569,3 +569,17 @@ html[data-splash-seen='1'] .splash-screen {
   .ticket-login-prompt p { margin-bottom: 1rem; }
   .issued-pass-grid { grid-template-columns: 1fr; padding: 1rem; }
 }
+
+/* Mobile reachability patch: keep the existing payment submit action above BottomNav while the form is being reviewed. */
+@media (max-width: 640px) {
+  .ticket-purchase-shell { overflow: visible; }
+  .ticket-purchase-form { padding-bottom: calc(5.7rem + env(safe-area-inset-bottom)); }
+  .ticket-submit-button {
+    bottom: calc(5.45rem + env(safe-area-inset-bottom));
+    box-shadow: 0 8px 24px rgb(8 26 80 / .22);
+    justify-content: center;
+    position: sticky;
+    width: 100%;
+    z-index: 4;
+  }
+}
