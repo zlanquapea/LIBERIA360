@@ -218,6 +218,10 @@ Takes effect on that user's very next request — no re-login needed (see
   the configured number, since each instance counts independently. Fine at
   single-instance or small scale; revisit with a shared store (Redis) if
   you scale out and the limits need to hold precisely.
+- **Reverse proxies**: set `TRUST_PROXY_HOPS` to the exact number of known
+  proxies in front of the API. This makes audit, login-security, and
+  rate-limit IPs reflect the originating client without blindly trusting
+  caller-supplied forwarding headers. Leave it at `0` for direct traffic.
 - **PostGIS**: "Near Me" uses a Haversine SQL expression instead of a real
   geospatial index — fine at the current catalog size, worth revisiting if
   the catalog grows a lot. Documented technical debt, not a launch blocker.

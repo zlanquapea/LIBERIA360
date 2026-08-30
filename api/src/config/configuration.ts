@@ -2,6 +2,7 @@ export interface AppConfig {
   port: number;
   nodeEnv: string;
   corsOrigin: string;
+  trustProxyHops: number;
   database: {
     host: string;
     port: number;
@@ -77,10 +78,16 @@ export interface AppConfig {
   };
 }
 
+function nonNegativeInteger(value: string | undefined, fallback = 0): number {
+  const parsed = Number.parseInt(value ?? String(fallback), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export default (): AppConfig => ({
   port: parseInt(process.env.PORT ?? "3001", 10),
   nodeEnv: process.env.NODE_ENV ?? "development",
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
+  trustProxyHops: nonNegativeInteger(process.env.TRUST_PROXY_HOPS),
   database: {
     host: process.env.DB_HOST ?? "localhost",
     port: parseInt(process.env.DB_PORT ?? "5432", 10),

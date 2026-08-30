@@ -48,6 +48,13 @@ export class SupportService {
     ).map((u) => u.id);
   }
 
+  async findAgents() {
+    return this.users.find({
+      where: { isAdmin: true },
+      order: { name: "ASC" },
+    });
+  }
+
   async create(customer: User, dto: CreateSupportTicketDto) {
     let ticket = await this.tickets.save(
       this.tickets.create({
@@ -176,6 +183,7 @@ export class SupportService {
   }
   async update(agent: User, id: string, dto: UpdateSupportTicketDto) {
     const ticket = await this.get(id);
+    const previousAssigneeId = ticket.assignedAgentUserId;
     if (dto.assignedAgentUserId) {
       const assignee = await this.users.findOne({
         where: { id: dto.assignedAgentUserId },
@@ -200,6 +208,18 @@ export class SupportService {
       ticket.closedAt = null;
     }
     const saved = await this.tickets.save(ticket);
+    if (
+      dto.assignedAgentUserId &&
+      dto.assignedAgentUserId !== agent.id &&
+      dto.assignedAgentUserId !== previousAssigneeId
+    ) {
+      await this.notifications.create(dto.assignedAgentUserId, {
+        type: "admin.support_ticket_assigned",
+        title: `Support ticket ${ticket.reference} was assigned to you`,
+        body: ticket.subject,
+        link: `/admin/support/${id}`,
+      });
+    }
     if (statusChanged)
       await this.notifications.create(ticket.customerUserId, {
         type: "support.status_changed",
@@ -207,15 +227,28 @@ export class SupportService {
         body: "Your support request status has changed.",
         link: `/account/support/${id}`,
       });
+    if (
+      previousAssigneeId &&
+      previousAssigneeId !== dto.assignedAgentUserId &&
+      previousAssigneeId !== agent.id
+    )
+      await this.notifications.create(previousAssigneeId, {
+        type: "admin.support_ticket_unassigned",
+        title: `Support ticket ${ticket.reference} was reassigned`,
+        body: ticket.subject,
+        link: `/admin/support/${id}`,
+      });
     return saved;
   }
-  async confirmResolved(user: User, id: string) {
+  async confirmResolved(user: User, id: string, dto: RateSupportTicketDto) {
     const ticket = await this.get(id);
     if (ticket.customerUserId !== user.id) throw new ForbiddenException();
     if (ticket.status !== SupportTicketStatus.RESOLVED)
       throw new BadRequestException("Only resolved tickets can be confirmed");
     ticket.status = SupportTicketStatus.CLOSED;
     ticket.closedAt = new Date();
+    ticket.rating = dto.rating;
+    ticket.ratingComment = dto.comment;
     return this.tickets.save(ticket);
   }
   async rate(user: User, id: string, dto: RateSupportTicketDto) {
@@ -227,8 +260,12 @@ export class SupportService {
       )
     )
       throw new BadRequestException("Resolve the ticket before rating support");
+    if (ticket.rating !== null)
+      throw new BadRequestException(
+        "Support feedback has already been submitted",
+      );
     ticket.rating = dto.rating;
-    ticket.ratingComment = dto.comment ?? null;
+    ticket.ratingComment = dto.comment;
     return this.tickets.save(ticket);
   }
 }

@@ -12,6 +12,7 @@ import {
   Length,
   Max,
   Min,
+  ValidateIf,
 } from "class-validator";
 import {
   SupportTicketCategory,
@@ -39,12 +40,15 @@ export class CreateSupportMessageDto {
 }
 export class RateSupportTicketDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(5) rating: number;
-  @IsOptional() @IsString() @Length(0, 2000) comment?: string;
+  @IsString() @Length(3, 2000) comment: string;
 }
 export class UpdateSupportTicketDto {
   @IsOptional() @IsEnum(SupportTicketStatus) status?: SupportTicketStatus;
   @IsOptional() @IsEnum(SupportTicketPriority) priority?: SupportTicketPriority;
-  @IsOptional() @IsUUID() assignedAgentUserId?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsUUID()
+  assignedAgentUserId?: string | null;
 }
 export class QuerySupportTicketsDto {
   @IsOptional() @IsEnum(SupportTicketStatus) status?: SupportTicketStatus;

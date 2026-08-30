@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { AuthRefresher } from "@/components/AuthRefresher";
@@ -25,16 +24,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
 };
-
-// Self-hosted at build time by next/font (no runtime request to Google
-// Fonts, no font-swap flash) — used for headings only, see
-// tailwind.config.ts's `fontFamily.display`.
-const displayFont = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-display",
-  display: "swap",
-});
 
 // Runs before hydration, before first paint — reads the stored theme (or
 // falls back to OS preference) and applies the `dark` class synchronously.
@@ -66,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={displayFont.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: splashInitScript }} />

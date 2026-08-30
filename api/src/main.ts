@@ -27,6 +27,9 @@ async function bootstrap() {
 
   validateProductionConfig(configService);
 
+  const trustProxyHops = configService.get("trustProxyHops", { infer: true });
+  if (trustProxyHops > 0) app.set("trust proxy", trustProxyHops);
+
   initErrorTracking(
     configService.get("errorTracking", { infer: true }).dsn,
     configService.get("nodeEnv", { infer: true }),
