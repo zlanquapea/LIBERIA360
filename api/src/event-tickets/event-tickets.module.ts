@@ -5,9 +5,17 @@ import { User } from "../users/entities/user.entity";
 import { EventTicketsController } from "./event-tickets.controller";
 import { EventTicketsService } from "./event-tickets.service";
 import { EventTicketOrder } from "./entities/event-ticket-order.entity";
+import { EventTicketInstance } from "./entities/event-ticket-instance.entity";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Event, User, EventTicketOrder])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Event,
+      User,
+      EventTicketOrder,
+      EventTicketInstance,
+    ]),
+  ],
   controllers: [EventTicketsController],
   providers: [EventTicketsService],
 })

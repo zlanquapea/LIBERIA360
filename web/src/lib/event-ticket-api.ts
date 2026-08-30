@@ -37,3 +37,23 @@ export function reviewEventTicketOrder(
     body: JSON.stringify({ status, reviewNote }),
   });
 }
+
+export interface RedeemedEventTicket {
+  valid: true;
+  ticketId: string;
+  eventName: string;
+  ticketNumber: number;
+  redeemedAt: string;
+}
+
+export function redeemEventTicket(
+  token: string,
+  eventId: string,
+  payload: string,
+): Promise<RedeemedEventTicket> {
+  return apiRequest<RedeemedEventTicket>(`/events/${eventId}/ticket-scan`, {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ payload }),
+  });
+}

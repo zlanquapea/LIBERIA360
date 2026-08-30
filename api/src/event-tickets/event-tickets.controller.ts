@@ -13,6 +13,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 import { CreateEventTicketOrderDto } from "./dto/create-event-ticket-order.dto";
 import { ReviewEventTicketOrderDto } from "./dto/review-event-ticket-order.dto";
+import { RedeemEventTicketDto } from "./dto/redeem-event-ticket.dto";
 import { EventTicketsService } from "./event-tickets.service";
 
 @ApiTags("Event Tickets")
@@ -42,6 +43,15 @@ export class EventTicketsController {
     @CurrentUser() user: User,
   ) {
     return this.ticketsService.findForOrganizer(eventId, user);
+  }
+
+  @Post("events/:eventId/ticket-scan")
+  redeemTicket(
+    @Param("eventId") eventId: string,
+    @CurrentUser() user: User,
+    @Body() dto: RedeemEventTicketDto,
+  ) {
+    return this.ticketsService.redeemTicket(eventId, user, dto);
   }
 
   @Patch("ticket-orders/:id/review")

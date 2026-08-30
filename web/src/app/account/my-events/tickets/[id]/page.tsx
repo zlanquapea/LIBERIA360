@@ -10,6 +10,7 @@ import {
 } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
 import type { EventTicketOrder } from "@/lib/types";
+import { EventTicketScanner } from "@/components/EventTicketScanner";
 
 export default function EventTicketOrdersPage() {
   const params = useParams<{ id: string }>();
@@ -81,9 +82,10 @@ export default function EventTicketOrdersPage() {
           Ticket orders
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Verify payment references before issuing tickets.
+          Verify payment references before issuing tickets, then scan each pass at the entrance.
         </p>
       </div>
+      {token && <EventTicketScanner eventId={params.id} token={token} />}
       {error && (
         <p
           role="alert"

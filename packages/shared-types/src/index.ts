@@ -578,6 +578,16 @@ export interface Event {
 export type EventTicketOrderStatus =
   "pending_payment_review" | "approved" | "rejected" | "cancelled";
 
+export type EventTicketInstanceStatus = "issued" | "redeemed" | "void";
+
+export interface EventTicketInstance {
+  id: string;
+  sequence: number;
+  status: EventTicketInstanceStatus;
+  qrDataUrl: string;
+  redeemedAt: string | null;
+}
+
 export interface EventTicketOrder {
   id: string;
   event: Event;
@@ -593,6 +603,7 @@ export interface EventTicketOrder {
   status: EventTicketOrderStatus;
   ticketCode: string | null;
   reviewNote: string | null;
+  tickets?: EventTicketInstance[];
   createdAt: string;
   updatedAt: string;
 }
