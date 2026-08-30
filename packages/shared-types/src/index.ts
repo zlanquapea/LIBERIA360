@@ -1425,3 +1425,16 @@ export interface SetCarListingReviewStatusInput {
   status: CarListingReviewStatus;
   reason?: string;
 }
+
+export type SupportTicketStatus = "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
+export type SupportTicketPriority = "low" | "medium" | "high" | "urgent";
+export type SupportTicketCategory = "account" | "booking" | "payment" | "listing" | "technical" | "safety" | "feedback" | "other";
+export interface SupportTicket {
+  id: string; reference: string; customer: AuthUser; customerUserId: string;
+  assignedAgent: AuthUser | null; assignedAgentUserId: string | null;
+  category: SupportTicketCategory; subject: string; description: string; attachments: string[];
+  status: SupportTicketStatus; priority: SupportTicketPriority; rating: number | null; ratingComment: string | null;
+  resolvedAt: string | null; closedAt: string | null; createdAt: string; updatedAt: string;
+}
+export interface SupportMessage { id: string; ticketId: string; sender: AuthUser; senderUserId: string; body: string; attachments: string[]; createdAt: string; }
+export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
