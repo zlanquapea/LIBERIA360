@@ -32,6 +32,7 @@ export type NotificationType =
   | "support.agent_replied"
   | "support.status_changed"
   | "admin.support_ticket_created"
+  | "admin.support_ticket_assigned"
   | "admin.support_customer_replied"
   | "admin.failed_login_alert";
 
