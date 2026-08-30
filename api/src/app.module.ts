@@ -62,6 +62,9 @@ import { AssistantModule } from "./assistant/assistant.module";
 import { AssistantFeedback } from "./assistant/entities/assistant-feedback.entity";
 import { EventTicketOrder } from "./event-tickets/entities/event-ticket-order.entity";
 import { EventTicketsModule } from "./event-tickets/event-tickets.module";
+import { SupportTicket } from "./support/entities/support-ticket.entity";
+import { SupportMessage } from "./support/entities/support-message.entity";
+import { SupportModule } from "./support/support.module";
 
 @Module({
   imports: [
@@ -123,6 +126,8 @@ import { EventTicketsModule } from "./event-tickets/event-tickets.module";
             CarListing,
             AssistantFeedback,
             EventTicketOrder,
+            SupportTicket,
+            SupportMessage,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -159,6 +164,7 @@ import { EventTicketsModule } from "./event-tickets/event-tickets.module";
     CarListingsModule,
     AssistantModule,
     EventTicketsModule,
+    SupportModule,
   ],
   providers: [
     {
