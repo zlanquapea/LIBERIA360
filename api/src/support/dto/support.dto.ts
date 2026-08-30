@@ -39,7 +39,7 @@ export class CreateSupportMessageDto {
 }
 export class RateSupportTicketDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(5) rating: number;
-  @IsOptional() @IsString() @Length(0, 2000) comment?: string;
+  @IsString() @Length(3, 2000) comment: string;
 }
 export class UpdateSupportTicketDto {
   @IsOptional() @IsEnum(SupportTicketStatus) status?: SupportTicketStatus;

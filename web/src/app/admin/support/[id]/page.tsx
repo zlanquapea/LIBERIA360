@@ -1,5 +1,230 @@
-'use client';
-import Link from 'next/link';import {useParams} from 'next/navigation';import {useEffect,useState,type FormEvent} from 'react';import {useAuth} from '@/hooks/useAuth';import {getCustomerSupportHistory,getSupportMessages,getSupportTicket,sendSupportMessage,updateSupportTicket} from '@/lib/support-api';import type{SupportMessage,SupportTicket,SupportTicketPriority,SupportTicketStatus}from '@/lib/types';
-const label=(v:string)=>v.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()); const statuses:SupportTicketStatus[]=['open','in_progress','waiting_for_customer','resolved','closed'];const priorities:SupportTicketPriority[]=['low','medium','high','urgent'];
-export default function AdminSupportDetail(){const{id}=useParams<{id:string}>();const{token,user}=useAuth();const[ticket,setTicket]=useState<SupportTicket|null>(null);const[messages,setMessages]=useState<SupportMessage[]>([]);const[history,setHistory]=useState<SupportTicket[]>([]);const[body,setBody]=useState('');const load=()=>{if(token)Promise.all([getSupportTicket(token,id),getSupportMessages(token,id),getCustomerSupportHistory(token,id)]).then(([t,m,h])=>{setTicket(t);setMessages(m);setHistory(h)})};useEffect(load,[token,id]);async function patch(input:Parameters<typeof updateSupportTicket>[2]){if(token)setTicket(await updateSupportTicket(token,id,input))}async function reply(e:FormEvent){e.preventDefault();if(token&&body.trim()){const m=await sendSupportMessage(token,id,body.trim());setMessages(x=>[...x,m]);setBody('')}}if(!ticket)return <div>Loading ticket…</div>;
-return <div className="space-y-5"><Link href="/admin/support" className="text-sm text-brand-700">← Support queue</Link><header><p className="text-xs font-bold uppercase text-brand-700">{ticket.reference}</p><h1 className="text-2xl font-bold">{ticket.subject}</h1><p className="text-sm text-slate-500">From {ticket.customer.name} · {ticket.customer.email} · {label(ticket.category)}</p></header><div className="grid gap-5 lg:grid-cols-[1fr_18rem]"><div className="space-y-4"><section className="rounded-2xl border p-4 dark:border-slate-800"><h2 className="font-bold">Customer&apos;s issue</h2><p className="mt-2 whitespace-pre-wrap text-sm">{ticket.description}</p>{ticket.attachments.length>0&&<div className="mt-3 flex gap-2">{ticket.attachments.map(x=><a href={x} target="_blank" key={x}><img src={x} alt="Attachment" className="h-20 w-20 rounded-lg object-cover"/></a>)}</div>}</section><section className="min-h-64 space-y-3 rounded-2xl border p-4 dark:border-slate-800">{messages.map(m=><div key={m.id} className={`flex ${m.senderUserId===user?.id?'justify-end':'justify-start'}`}><div className={`max-w-[80%] rounded-2xl p-3 text-sm ${m.senderUserId===ticket.customerUserId?'bg-slate-100 dark:bg-slate-800':'bg-brand-700 text-white'}`}><p>{m.body}</p><p className="mt-1 text-[10px] opacity-70">{m.sender.name} · {new Date(m.createdAt).toLocaleString()}</p></div></div>)}</section>{ticket.status!=='closed'&&<form onSubmit={reply} className="flex gap-2"><textarea required value={body} onChange={e=>setBody(e.target.value)} placeholder="Reply to customer…" className="min-w-0 flex-1 rounded-xl border p-3 dark:bg-slate-900"/><button className="rounded-xl bg-brand-700 px-5 font-semibold text-white">Reply</button></form>}</div><aside className="space-y-4"><div className="space-y-3 rounded-2xl border p-4 dark:border-slate-800"><label className="block text-xs font-bold uppercase">Status<select value={ticket.status} onChange={e=>void patch({status:e.target.value as SupportTicketStatus})} className="mt-1 w-full rounded-lg border p-2 dark:bg-slate-900">{statuses.map(x=><option key={x} value={x}>{label(x)}</option>)}</select></label><label className="block text-xs font-bold uppercase">Priority<select value={ticket.priority} onChange={e=>void patch({priority:e.target.value as SupportTicketPriority})} className="mt-1 w-full rounded-lg border p-2 dark:bg-slate-900">{priorities.map(x=><option key={x} value={x}>{label(x)}</option>)}</select></label><button disabled={ticket.assignedAgentUserId===user?.id} onClick={()=>user&&void patch({assignedAgentUserId:user.id})} className="w-full rounded-full border border-brand-600 px-3 py-2 text-sm font-semibold text-brand-700 disabled:opacity-50">{ticket.assignedAgentUserId===user?.id?'Assigned to you':'Assign to me'}</button>{ticket.assignedAgent&&<p className="text-xs text-slate-500">Owner: {ticket.assignedAgent.name}</p>}</div><div className="rounded-2xl border p-4 dark:border-slate-800"><h2 className="font-bold">Previous requests</h2>{history.length===0?<p className="mt-2 text-xs text-slate-500">No previous requests.</p>:history.map(t=><Link key={t.id} href={`/admin/support/${t.id}`} className="mt-2 block text-sm text-brand-700">{t.reference} · {t.subject}</Link>)}</div></aside></div></div>}
+"use client";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  getCustomerSupportHistory,
+  getSupportAgents,
+  getSupportMessages,
+  getSupportTicket,
+  sendSupportMessage,
+  updateSupportTicket,
+} from "@/lib/support-api";
+import type {
+  AuthUser,
+  SupportMessage,
+  SupportTicket,
+  SupportTicketPriority,
+  SupportTicketStatus,
+} from "@/lib/types";
+const label = (v: string) =>
+  v.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const statuses: SupportTicketStatus[] = [
+  "open",
+  "in_progress",
+  "waiting_for_customer",
+  "resolved",
+  "closed",
+];
+const priorities: SupportTicketPriority[] = ["low", "medium", "high", "urgent"];
+export default function AdminSupportDetail() {
+  const { id } = useParams<{ id: string }>();
+  const { token, user } = useAuth();
+  const [ticket, setTicket] = useState<SupportTicket | null>(null);
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [history, setHistory] = useState<SupportTicket[]>([]);
+  const [agents, setAgents] = useState<AuthUser[]>([]);
+  const [body, setBody] = useState("");
+  const load = () => {
+    if (token)
+      Promise.all([
+        getSupportTicket(token, id),
+        getSupportMessages(token, id),
+        getCustomerSupportHistory(token, id),
+        getSupportAgents(token),
+      ]).then(([t, m, h, a]) => {
+        setTicket(t);
+        setMessages(m);
+        setHistory(h);
+        setAgents(a);
+      });
+  };
+  useEffect(load, [token, id]);
+  async function patch(input: Parameters<typeof updateSupportTicket>[2]) {
+    if (token) setTicket(await updateSupportTicket(token, id, input));
+  }
+  async function reply(e: FormEvent) {
+    e.preventDefault();
+    if (token && body.trim()) {
+      const m = await sendSupportMessage(token, id, body.trim());
+      setMessages((x) => [...x, m]);
+      setBody("");
+    }
+  }
+  if (!ticket) return <div>Loading ticket…</div>;
+  return (
+    <div className="space-y-5">
+      <Link href="/admin/support" className="text-sm text-brand-700">
+        ← Support queue
+      </Link>
+      <header>
+        <p className="text-xs font-bold uppercase text-brand-700">
+          {ticket.reference}
+        </p>
+        <h1 className="text-2xl font-bold">{ticket.subject}</h1>
+        <p className="text-sm text-slate-500">
+          From {ticket.customer.name} · {ticket.customer.email} ·{" "}
+          {label(ticket.category)}
+        </p>
+      </header>
+      <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
+        <div className="space-y-4">
+          <section className="rounded-2xl border p-4 dark:border-slate-800">
+            <h2 className="font-bold">Customer&apos;s issue</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm">
+              {ticket.description}
+            </p>
+            {ticket.attachments.length > 0 && (
+              <div className="mt-3 flex gap-2">
+                {ticket.attachments.map((x) => (
+                  <a href={x} target="_blank" key={x}>
+                    <img
+                      src={x}
+                      alt="Attachment"
+                      className="h-20 w-20 rounded-lg object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+          <section className="min-h-64 space-y-3 rounded-2xl border p-4 dark:border-slate-800">
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`flex ${m.senderUserId === user?.id ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl p-3 text-sm ${m.senderUserId === ticket.customerUserId ? "bg-slate-100 dark:bg-slate-800" : "bg-brand-700 text-white"}`}
+                >
+                  <p>{m.body}</p>
+                  <p className="mt-1 text-[10px] opacity-70">
+                    {m.sender.name} · {new Date(m.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </section>
+          {ticket.status !== "closed" && (
+            <form onSubmit={reply} className="flex gap-2">
+              <textarea
+                required
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Reply to customer…"
+                className="min-w-0 flex-1 rounded-xl border p-3 dark:bg-slate-900"
+              />
+              <button className="rounded-xl bg-brand-700 px-5 font-semibold text-white">
+                Reply
+              </button>
+            </form>
+          )}
+        </div>
+        <aside className="space-y-4">
+          <div className="space-y-3 rounded-2xl border p-4 dark:border-slate-800">
+            <label className="block text-xs font-bold uppercase">
+              Status
+              <select
+                value={ticket.status}
+                onChange={(e) =>
+                  void patch({ status: e.target.value as SupportTicketStatus })
+                }
+                className="mt-1 w-full rounded-lg border p-2 dark:bg-slate-900"
+              >
+                {statuses.map((x) => (
+                  <option key={x} value={x}>
+                    {label(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-bold uppercase">
+              Priority
+              <select
+                value={ticket.priority}
+                onChange={(e) =>
+                  void patch({
+                    priority: e.target.value as SupportTicketPriority,
+                  })
+                }
+                className="mt-1 w-full rounded-lg border p-2 dark:bg-slate-900"
+              >
+                {priorities.map((x) => (
+                  <option key={x} value={x}>
+                    {label(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-bold uppercase">
+              Assigned administrator
+              <select
+                value={ticket.assignedAgentUserId ?? ""}
+                onChange={(e) =>
+                  e.target.value &&
+                  void patch({ assignedAgentUserId: e.target.value })
+                }
+                className="mt-1 w-full rounded-lg border p-2 dark:bg-slate-900"
+              >
+                <option value="" disabled>
+                  Unassigned
+                </option>
+                {agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                    {agent.id === user?.id ? " (you)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              disabled={ticket.assignedAgentUserId === user?.id}
+              onClick={() =>
+                user && void patch({ assignedAgentUserId: user.id })
+              }
+              className="w-full rounded-full border border-brand-600 px-3 py-2 text-sm font-semibold text-brand-700 disabled:opacity-50"
+            >
+              {ticket.assignedAgentUserId === user?.id
+                ? "Assigned to you"
+                : "Assign to me"}
+            </button>
+            {ticket.assignedAgent && (
+              <p className="text-xs text-slate-500">
+                Owner: {ticket.assignedAgent.name}
+              </p>
+            )}
+          </div>
+          <div className="rounded-2xl border p-4 dark:border-slate-800">
+            <h2 className="font-bold">Previous requests</h2>
+            {history.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-500">
+                No previous requests.
+              </p>
+            ) : (
+              history.map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/admin/support/${t.id}`}
+                  className="mt-2 block text-sm text-brand-700"
+                >
+                  {t.reference} · {t.subject}
+                </Link>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}

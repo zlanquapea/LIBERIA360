@@ -70,8 +70,9 @@ export class SupportController {
   @Post("tickets/:id/confirm-resolved") confirm(
     @CurrentUser() user: User,
     @Param("id") id: string,
+    @Body() dto: RateSupportTicketDto,
   ) {
-    return this.support.confirmResolved(user, id).then(sanitize);
+    return this.support.confirmResolved(user, id, dto).then(sanitize);
   }
   @Post("tickets/:id/rating") rate(
     @CurrentUser() user: User,
@@ -87,6 +88,9 @@ export class SupportController {
 @Controller("admin/support")
 export class AdminSupportController {
   constructor(private readonly support: SupportService) {}
+  @Get("agents") async agents() {
+    return (await this.support.findAgents()).map(toPublicUser);
+  }
   @Get("tickets") all(@Query() query: QuerySupportTicketsDto) {
     return this.support.findAll(query).then(sanitize);
   }
