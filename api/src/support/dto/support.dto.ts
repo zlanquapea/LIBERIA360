@@ -44,7 +44,7 @@ export class RateSupportTicketDto {
 export class UpdateSupportTicketDto {
   @IsOptional() @IsEnum(SupportTicketStatus) status?: SupportTicketStatus;
   @IsOptional() @IsEnum(SupportTicketPriority) priority?: SupportTicketPriority;
-  @IsOptional() @IsUUID() assignedAgentUserId?: string;
+  @IsOptional() @IsUUID() assignedAgentUserId?: string | null;
 }
 export class QuerySupportTicketsDto {
   @IsOptional() @IsEnum(SupportTicketStatus) status?: SupportTicketStatus;

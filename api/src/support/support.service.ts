@@ -208,15 +208,28 @@ export class SupportService {
       ticket.closedAt = null;
     }
     const saved = await this.tickets.save(ticket);
-    if (
-      dto.assignedAgentUserId &&
-      dto.assignedAgentUserId !== agent.id &&
-      dto.assignedAgentUserId !== previousAssigneeId
-    ) {
+    const assignmentChanged =
+      Object.prototype.hasOwnProperty.call(dto, "assignedAgentUserId") &&
+      dto.assignedAgentUserId !== previousAssigneeId;
+    if (assignmentChanged && dto.assignedAgentUserId) {
       await this.notifications.create(dto.assignedAgentUserId, {
         type: "admin.support_ticket_assigned",
         title: `Support ticket ${ticket.reference} was assigned to you`,
         body: ticket.subject,
+        link: `/admin/support/${id}`,
+      });
+    }
+    if (
+      assignmentChanged &&
+      previousAssigneeId &&
+      previousAssigneeId !== dto.assignedAgentUserId
+    ) {
+      await this.notifications.create(previousAssigneeId, {
+        type: "admin.support_ticket_unassigned",
+        title: `Support ticket ${ticket.reference} was reassigned`,
+        body: dto.assignedAgentUserId
+          ? "Another administrator now owns this ticket."
+          : "This ticket was returned to the unassigned queue.",
         link: `/admin/support/${id}`,
       });
     }
@@ -234,6 +247,8 @@ export class SupportService {
     if (ticket.customerUserId !== user.id) throw new ForbiddenException();
     if (ticket.status !== SupportTicketStatus.RESOLVED)
       throw new BadRequestException("Only resolved tickets can be confirmed");
+    if (ticket.rating !== null || ticket.ratingComment !== null)
+      throw new BadRequestException("Feedback has already been submitted");
     ticket.status = SupportTicketStatus.CLOSED;
     ticket.closedAt = new Date();
     ticket.rating = dto.rating;
@@ -249,6 +264,8 @@ export class SupportService {
       )
     )
       throw new BadRequestException("Resolve the ticket before rating support");
+    if (ticket.rating !== null || ticket.ratingComment !== null)
+      throw new BadRequestException("Feedback has already been submitted");
     ticket.rating = dto.rating;
     ticket.ratingComment = dto.comment;
     return this.tickets.save(ticket);

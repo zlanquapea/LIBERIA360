@@ -103,5 +103,63 @@ describe("SupportService", () => {
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
+
+    it("supports self-assignment", async () => {
+      const { service, users } = setup({ status: SupportTicketStatus.OPEN });
+      users.findOne.mockResolvedValue(agent);
+      await expect(
+        service.update(agent, "ticket-1", { assignedAgentUserId: agent.id }),
+      ).resolves.toMatchObject({ assignedAgentUserId: agent.id });
+    });
+
+    it("notifies both new and previous owners when reassigned", async () => {
+      const { service, users, notifications } = setup({
+        status: SupportTicketStatus.OPEN,
+        assignedAgentUserId: "agent-old",
+      });
+      users.findOne.mockResolvedValue({ id: "agent-new", isAdmin: true });
+      await service.update(agent, "ticket-1", {
+        assignedAgentUserId: "agent-new",
+      });
+      expect(notifications.create).toHaveBeenCalledWith(
+        "agent-new",
+        expect.objectContaining({ type: "admin.support_ticket_assigned" }),
+      );
+      expect(notifications.create).toHaveBeenCalledWith(
+        "agent-old",
+        expect.objectContaining({ type: "admin.support_ticket_unassigned" }),
+      );
+    });
+
+    it("returns a ticket to the unassigned queue and notifies its previous owner", async () => {
+      const { service, notifications } = setup({
+        status: SupportTicketStatus.OPEN,
+        assignedAgentUserId: "agent-old",
+      });
+      const result = await service.update(agent, "ticket-1", {
+        assignedAgentUserId: null,
+      });
+      expect(result.assignedAgentUserId).toBeNull();
+      expect(notifications.create).toHaveBeenCalledWith(
+        "agent-old",
+        expect.objectContaining({
+          body: expect.stringContaining("unassigned queue"),
+        }),
+      );
+    });
+  });
+
+  it("prevents submitted feedback from being overwritten", async () => {
+    const { service } = setup({
+      status: SupportTicketStatus.CLOSED,
+      rating: 5,
+      ratingComment: "Already submitted",
+    });
+    await expect(
+      service.rate(customer, "ticket-1", {
+        rating: 1,
+        comment: "Changed feedback",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
