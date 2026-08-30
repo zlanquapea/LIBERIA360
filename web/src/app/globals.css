@@ -534,8 +534,9 @@ html[data-splash-seen='1'] .splash-screen {
 .dark .ticket-purchase-form label { color: #eef3f1; }
 .ticket-purchase-form label > span { display: flex; gap: .35rem; }
 .ticket-purchase-form label em { color: var(--ticket-slate); font-style: normal; font-weight: 400; }
-.ticket-purchase-form input, .ticket-purchase-form textarea { background: transparent; border: 1px solid var(--ticket-line); color: inherit; display: block; font: inherit; font-size: .82rem; font-weight: 400; margin-top: .45rem; outline: none; padding: .75rem .8rem; width: 100%; }
-.ticket-purchase-form textarea { resize: vertical; }
+.ticket-purchase-form input, .ticket-purchase-form textarea { background: #f8fbfa; border: 1px solid #8aa4ad; border-radius: .8rem; color: var(--ticket-ink); display: block; font: inherit; font-size: .82rem; font-weight: 400; margin-top: .45rem; min-height: 3.15rem; outline: none; padding: .82rem .9rem; width: 100%; }
+.ticket-purchase-form textarea { min-height: 5rem; resize: vertical; }
+.dark .ticket-purchase-form input, .dark .ticket-purchase-form textarea { background: #102a3b; border-color: #567783; color: #f4f5ed; }
 .ticket-purchase-form input:focus, .ticket-purchase-form textarea:focus { border-color: #a07311; box-shadow: 0 0 0 3px rgb(255 198 61 / .2); }
 .ticket-purchase-form input::placeholder, .ticket-purchase-form textarea::placeholder { color: #97a6aa; }
 .ticket-note-field { margin-top: 1rem; }
@@ -570,16 +571,14 @@ html[data-splash-seen='1'] .splash-screen {
   .issued-pass-grid { grid-template-columns: 1fr; padding: 1rem; }
 }
 
-/* Mobile reachability patch: keep the existing payment submit action above BottomNav while the form is being reviewed. */
+/* Mobile form flow: keep the payment fields readable and the submit action in normal document order. */
 @media (max-width: 640px) {
   .ticket-purchase-shell { overflow: visible; }
-  .ticket-purchase-form { padding-bottom: calc(5.7rem + env(safe-area-inset-bottom)); }
+  .ticket-purchase-form { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
   .ticket-submit-button {
-    bottom: calc(5.45rem + env(safe-area-inset-bottom));
-    box-shadow: 0 8px 24px rgb(8 26 80 / .22);
+    box-shadow: 0 6px 16px rgb(8 26 80 / .16);
     justify-content: center;
-    position: sticky;
+    margin-top: 1.15rem;
     width: 100%;
-    z-index: 4;
   }
 }
