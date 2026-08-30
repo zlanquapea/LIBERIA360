@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 // Sits at the bottom of the scrollable content area, above BottomNav's
 // sticky tab bar (see app/layout.tsx) — the one place in this mobile-first
@@ -6,16 +6,48 @@ import Link from 'next/link';
 // traditional desktop-style footer elsewhere in the design.
 export function Footer() {
   return (
-    <footer className="mt-8 border-t border-slate-200 dark:border-slate-800 px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-400">
-      <p>© {new Date().getFullYear()} LIBERIA360 — Everything Liberia. One Place.</p>
-      <p className="mt-1 flex items-center justify-center gap-3">
-        <Link href="/privacy" className="hover:text-slate-600 dark:hover:text-slate-300 hover:underline">
-          Privacy Policy
-        </Link>
-        <Link href="/terms" className="hover:text-slate-600 dark:hover:text-slate-300 hover:underline">
-          Terms of Service
-        </Link>
-      </p>
+    <footer className="mt-12 border-t border-slate-200 bg-white px-4 py-8 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 sm:px-2 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-md">
+          <Link
+            href="/"
+            className="font-display text-base font-extrabold tracking-tight text-brand-900 dark:text-white"
+          >
+            LIBERIA
+            <span className="text-accent-600 dark:text-accent-400">360</span>
+          </Link>
+          <p className="mt-2 leading-6">
+            Discover trusted places, experiences, businesses, and stories across
+            Liberia.
+          </p>
+        </div>
+        <nav
+          aria-label="Footer navigation"
+          className="flex flex-wrap gap-x-5 gap-y-3 font-medium"
+        >
+          <Link
+            href="/places/submit"
+            className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
+          >
+            Add a place
+          </Link>
+          <Link
+            href="/privacy"
+            className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
+          >
+            Privacy
+          </Link>
+          <Link
+            href="/terms"
+            className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
+          >
+            Terms
+          </Link>
+        </nav>
+      </div>
+      <div className="mx-auto mt-6 max-w-7xl border-t border-slate-200 pt-5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:px-2">
+        © {new Date().getFullYear()} LIBERIA360. Everything Liberia. One place.
+      </div>
     </footer>
   );
 }

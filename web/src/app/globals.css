@@ -7,6 +7,75 @@ body {
   @apply antialiased;
 }
 
+html {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-width: 320px;
+}
+
+::selection {
+  color: #081a50;
+  background: #ffdc8a;
+}
+
+/* A keyboard-first escape hatch for the persistent global navigation. */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 4000;
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem;
+  color: #081a50;
+  background: #fff;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.24);
+  font-weight: 800;
+  transform: translateY(calc(-100% - 1rem));
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  outline: 3px solid #ffc63d;
+  outline-offset: 2px;
+  transform: translateY(0);
+}
+
+/* Shared interaction defaults keep every feature usable even when an
+   individual screen has not supplied its own focus or disabled styling. */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #3355ad;
+  outline-offset: 2px;
+}
+
+:where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
+  touch-action: manipulation;
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
+}
+
+:where(input, select, textarea)::placeholder {
+  color: rgb(100 116 139 / 0.9);
+  opacity: 1;
+}
+
+.dark :where(input, select, textarea)::placeholder {
+  color: rgb(148 163 184 / 0.9);
+}
+
+:where(button, input, select, textarea):disabled,
+:where([aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+:where(h1, h2, h3, [id]) {
+  scroll-margin-top: 6rem;
+}
+
 /* Native form controls (date pickers, scrollbars, etc.) pick a light or
    dark rendering from this — without it they stay light-styled even once
    the `dark` class flips everything else, which reads as broken instead
@@ -43,6 +112,10 @@ html.dark {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .sponsored-ad-shimmer {
     animation: none;
   }
