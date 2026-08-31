@@ -21,7 +21,11 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
   map: { id: "map", label: "Open map", href: "/explore" },
   addPlace: { id: "addPlace", label: "Add a place", href: "/places/submit" },
   account: { id: "account", label: "Open account", href: "/account" },
-  support: { id: "support", label: "Contact customer support", href: "/account/support" },
+  support: {
+    id: "support",
+    label: "Contact customer support",
+    href: "/account/support",
+  },
   myPlaces: {
     id: "myPlaces",
     label: "Manage my places",
@@ -562,7 +566,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "ticket fraud",
     ],
     answer:
-      "An event organizer opens the event’s Ticket orders area and chooses Open ticket scanner. The dedicated scanner page works with the phone camera, including iPhone Safari and Android browsers. A valid pass is accepted once. The scanner distinguishes valid, already used, cancelled, wrong-event, and invalid tickets. Organizers should only scan passes for their own event and should not accept copied or previously redeemed codes.",
+      "An event organizer opens My Events → the event → Manage Event and chooses Open ticket scanner. The dedicated scanner page works with the phone camera, including iPhone Safari and Android browsers. Each scan briefly shows Verifying Ticket… before the result, and a valid pass is accepted once. The scanner distinguishes valid, already used, cancelled, wrong-event, and invalid tickets. Organizers should only scan passes for their own event and should not accept copied or previously redeemed codes.",
     actionIds: ["myEvents", "events"],
     followUps: [
       "Where can attendees download their QR ticket?",
@@ -582,7 +586,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "reject ticket order",
     ],
     answer:
-      "Event organizers review incoming ticket orders from My Events → the event → Ticket orders. Check the payment reference and either approve the order to issue individual QR passes, including the selected ticket types when applicable, or reject it with a note. Approved tickets can be cancelled individually if needed. Scanning is handled separately on the dedicated Open ticket scanner page.",
+      "Event organizers review incoming ticket orders from My Events → the event → Manage Event. Check the payment reference and either approve the order to issue individual QR passes, including the selected ticket types when applicable, or reject it with a note. Approved tickets can be cancelled individually if needed. Sales performance and revenue live separately on the event's Insights page.",
     actionIds: ["myEvents", "events"],
     followUps: [
       "How do I scan a ticket?",

@@ -48,12 +48,34 @@ const OUTCOME_STYLE: Record<
   },
 };
 
+// A short branded "checking" state between the scan and the result — long
+// enough to read, never so long it feels like lag. Held open for at least
+// MIN_VERIFY_MS even when the server answers instantly, so the transition
+// never flickers, and disappears the moment the real result is ready.
+const MIN_VERIFY_MS = 550;
+
+function VerifyingCard() {
+  return (
+    <div
+      className="mt-3 flex flex-col items-center gap-2 rounded-2xl border-2 border-brand-200 bg-brand-50 p-6 text-center animate-fade-in dark:border-brand-900/60 dark:bg-brand-950/30"
+      role="status"
+      aria-live="polite"
+    >
+      <p className="text-[11px] font-bold uppercase tracking-wider text-brand-500 dark:text-brand-300">Scanning Complete</p>
+      <span className="relative mt-1 flex h-9 w-9 items-center justify-center" aria-hidden>
+        <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-brand-200 border-t-brand-700 dark:border-brand-800 dark:border-t-gold-300" />
+      </span>
+      <p className="text-sm font-black uppercase tracking-wide text-brand-950 dark:text-brand-50">Verifying Ticket…</p>
+    </div>
+  );
+}
+
 function ScanResultCard({ result }: { result: EventTicketScanResult }) {
   const style = OUTCOME_STYLE[result.outcome];
   const Icon = style.icon;
   return (
     <div
-      className={`mt-3 rounded-2xl border-2 p-4 ${style.shell}`}
+      className={`mt-3 animate-fade-in rounded-2xl border-2 p-4 ${style.shell}`}
       role={result.outcome === "valid" ? "status" : "alert"}
     >
       <div className="flex items-center gap-2">
@@ -101,6 +123,7 @@ export function EventTicketScanner({ eventId, token }: { eventId: string; token:
   const [result, setResult] = useState<EventTicketScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   async function stopCamera() {
     const scanner = scannerRef.current;
@@ -139,13 +162,27 @@ export function EventTicketScanner({ eventId, token }: { eventId: string; token:
     processingRef.current = true;
     setError(null);
     setResult(null);
+    setVerifying(true);
+    const startedAt = Date.now();
+    // Scan → Verifying Ticket… → Result: never skip straight from the
+    // camera view to a final answer, and never let a fast server reply
+    // make the verifying state flash by too quickly to read.
+    const holdForMinimumDisplay = async () => {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_VERIFY_MS) {
+        await new Promise((resolve) => setTimeout(resolve, MIN_VERIFY_MS - elapsed));
+      }
+    };
     try {
       const scanResult = await redeemEventTicket(token, eventId, payload.trim());
+      await holdForMinimumDisplay();
       setResult(scanResult);
       setManualPayload("");
     } catch (err) {
+      await holdForMinimumDisplay();
       setError(err instanceof HttpError ? err.message : "This QR code could not be validated.");
     } finally {
+      setVerifying(false);
       processingRef.current = false;
     }
   }
@@ -184,10 +221,10 @@ export function EventTicketScanner({ eventId, token }: { eventId: string; token:
           <p className="flex items-center gap-2 text-sm font-bold text-brand-950 dark:text-brand-50"><CameraIcon className="h-5 w-5" aria-hidden /> Scan event tickets</p>
           <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Each valid ticket is accepted once. Keep the attendee’s QR code private and scan it at the entrance.</p>
         </div>
-        {cameraOpen ? <button type="button" onClick={() => void stopCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><StopIcon className="h-4 w-4" aria-hidden /> Stop</button> : <button type="button" onClick={() => void startCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"><CameraIcon className="h-4 w-4" aria-hidden /> Open camera</button>}
+        {cameraOpen ? <button type="button" onClick={() => void stopCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><StopIcon className="h-4 w-4" aria-hidden /> Stop</button> : <button type="button" disabled={verifying} onClick={() => void startCamera()} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"><CameraIcon className="h-4 w-4" aria-hidden /> Open camera</button>}
       </div>
       {cameraOpen && <div className="relative mt-4 overflow-hidden rounded-xl bg-slate-950"><div id="ticket-qr-reader" className="min-h-64 w-full" aria-label="Camera preview for scanning tickets" /><div className="pointer-events-none absolute inset-8 rounded-xl border-2 border-gold-300/90" /><p className="absolute bottom-2 left-0 right-0 text-center text-xs font-medium text-white">{scanning ? "Point the camera at a QR code" : "Starting camera…"}</p></div>}
-      {result && <ScanResultCard result={result} />}
+      {verifying ? <VerifyingCard /> : result && <ScanResultCard key={result.ticket?.id ?? result.outcome} result={result} />}
       {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200"><ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />{error}</p>}
       <form onSubmit={(event) => { event.preventDefault(); void redeem(manualPayload); }} className="mt-4 flex flex-col gap-2 sm:flex-row">
         <label className="sr-only" htmlFor="ticket-payload">Ticket QR payload</label>

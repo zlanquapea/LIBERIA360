@@ -28,7 +28,7 @@ export default function EventTicketScanPage() {
     <main className="mx-auto flex max-w-xl flex-col gap-5 px-4 py-8">
       <div>
         <Link href={`/account/my-events/tickets/${params.id}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">
-          <ArrowLeftIcon className="h-4 w-4" aria-hidden /> Ticket orders
+          <ArrowLeftIcon className="h-4 w-4" aria-hidden /> Manage Event
         </Link>
         <div className="mt-4 flex items-start gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-100 text-brand-800 dark:bg-brand-950/60 dark:text-brand-200"><TicketIcon className="h-6 w-6" aria-hidden /></span>

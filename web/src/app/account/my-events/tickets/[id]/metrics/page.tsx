@@ -13,6 +13,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { getEvent } from "@/lib/api";
+import { getEventAnalytics } from "@/lib/analytics-api";
 import { getEventTicketMetrics } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
 import type { Event, EventTicketMetrics, TicketTypeMetrics } from "@/lib/types";
@@ -158,6 +159,7 @@ export default function EventTicketMetricsPage() {
   const { token, ready, user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [metrics, setMetrics] = useState<EventTicketMetrics | null>(null);
+  const [pageViews, setPageViews] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -166,15 +168,21 @@ export default function EventTicketMetricsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [eventData, metricsData] = await Promise.all([
+      const [eventData, metricsData, analytics] = await Promise.all([
         getEvent(params.id),
         getEventTicketMetrics(token, params.id),
+        // Page views/interested/going aren't part of the ticket-metrics
+        // payload (that's sales performance, not discovery) — pulled in
+        // here so this one Insights page still answers "is anyone finding
+        // this event?" without a second destination to visit.
+        getEventAnalytics(token, params.id).catch(() => null),
       ]);
       setEvent(eventData);
       setMetrics(metricsData);
+      setPageViews(analytics?.totals.view ?? null);
     } catch (err) {
       setError(
-        err instanceof HttpError ? err.message : "Unable to load metrics.",
+        err instanceof HttpError ? err.message : "Unable to load insights.",
       );
     } finally {
       setLoading(false);
@@ -194,7 +202,7 @@ export default function EventTicketMetricsPage() {
   if (!user)
     return (
       <main className="mx-auto max-w-2xl px-4 py-10 text-center">
-        <h1 className="text-xl font-bold">Event metrics</h1>
+        <h1 className="text-xl font-bold">Insights</h1>
         <p className="mt-2 text-sm text-slate-500">Log in to continue.</p>
         <Link
           href="/login"
@@ -212,11 +220,11 @@ export default function EventTicketMetricsPage() {
           href={`/account/my-events/tickets/${params.id}`}
           className="text-sm text-brand-700 hover:underline dark:text-brand-300"
         >
-          ← Ticket orders
+          ← Manage Event
         </Link>
         <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-50">
           <ChartBarIcon aria-hidden className="h-6 w-6 text-brand-700 dark:text-brand-300" />
-          Metrics
+          Insights
         </h1>
         {event && (
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -224,6 +232,22 @@ export default function EventTicketMetricsPage() {
           </p>
         )}
       </div>
+
+      {event && (pageViews != null || event.interestedCount != null) && (
+        <div className="flex flex-wrap gap-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+          {pageViews != null && (
+            <span>
+              <strong className="text-slate-900 dark:text-slate-50">{pageViews}</strong> views
+            </span>
+          )}
+          <span>
+            <strong className="text-slate-900 dark:text-slate-50">{event.interestedCount}</strong> interested
+          </span>
+          <span>
+            <strong className="text-slate-900 dark:text-slate-50">{event.goingCount}</strong> going
+          </span>
+        </div>
+      )}
 
       {error && (
         <p
@@ -236,7 +260,7 @@ export default function EventTicketMetricsPage() {
 
       {loading ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Loading metrics…
+          Loading insights…
         </p>
       ) : metrics ? (
         <>
@@ -245,7 +269,7 @@ export default function EventTicketMetricsPage() {
               most important numbers (Overview) are already the first
               thing on screen without clicking anything. */}
           <nav
-            aria-label="Metrics sections"
+            aria-label="Insights sections"
             className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
           >
             {NAV_SECTIONS.map((section) => (
