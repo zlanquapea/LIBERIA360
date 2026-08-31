@@ -19,6 +19,7 @@ export function CreatorVideoThumbnail({
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const isVisibleRef = useRef(false);
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -64,16 +65,21 @@ export function CreatorVideoThumbnail({
     const video = videoRef.current;
     if (!container || !video) return;
     video.muted = true;
+    const tryPlay = () => {
+      if (!isVisibleRef.current || reducedMotion) return;
+      void video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    };
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-          void video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-        } else {
+        const visible = entry.isIntersecting && entry.intersectionRatio >= 0.6;
+        isVisibleRef.current = visible;
+        if (visible) tryPlay();
+        else {
           video.pause();
           setPlaying(false);
         }
       },
-      { threshold: [0, 0.6, 1] },
+      { threshold: [0, 0.25, 0.6, 1], rootMargin: '0px 0px -8% 0px' },
     );
     observer.observe(container);
     return () => {
@@ -88,12 +94,18 @@ export function CreatorVideoThumbnail({
       <video
         ref={videoRef}
         src={src}
-        preload="metadata"
+        preload={autoplayOnView ? 'auto' : 'metadata'}
         poster={poster ?? undefined}
         muted
         loop
         playsInline
+        autoPlay={autoplayOnView && !reducedMotion}
         aria-label={label}
+        onCanPlay={() => {
+          if (autoplayOnView && isVisibleRef.current && !reducedMotion) {
+            void videoRef.current?.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+          }
+        }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         className={`h-full w-full object-cover transition-opacity duration-200 ${ready ? 'opacity-100' : 'opacity-0'}`}
