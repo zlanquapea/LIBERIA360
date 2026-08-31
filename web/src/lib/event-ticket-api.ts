@@ -4,7 +4,7 @@ import { apiRequest, authHeader } from './http';
 export function createEventTicketOrder(
   token: string,
   eventId: string,
-  input: { quantity: number; paymentReference: string; paymentNote?: string },
+  input: { quantity?: number; selections?: Array<{ ticketTypeId: string; quantity: number }>; paymentReference: string; paymentNote?: string },
 ): Promise<EventTicketOrder> {
   return apiRequest<EventTicketOrder>(`/events/${eventId}/ticket-orders`, {
     method: 'POST',

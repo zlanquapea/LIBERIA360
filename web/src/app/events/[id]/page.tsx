@@ -98,9 +98,7 @@ export default async function EventDetailPage({
         />
       </div>
 
-      <span className="w-fit rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-        {formatEventCategory(event.category)}
-      </span>
+      <div className="flex items-center gap-2"><span className="w-fit rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">{formatEventCategory(event.category)}</span><span className={`rounded-full px-3 py-1 text-xs font-black tracking-wide ${event.ticketTypes?.length || event.ticketPrice ? 'bg-brand-700 text-white' : 'bg-emerald-100 text-emerald-800'}`}>{event.ticketTypes?.length || event.ticketPrice ? 'PAID EVENT' : 'FREE'}</span></div>
 
       <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-50">
         {event.name}
@@ -134,6 +132,7 @@ export default async function EventDetailPage({
       </div>
 
       <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+        {!event.ticketTypes?.length && !event.ticketPrice && <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/30"><div><p className="font-bold text-emerald-900 dark:text-emerald-100">Free admission</p><p className="text-xs text-emerald-700 dark:text-emerald-300">Reserve your spot—no payment required.</p></div><span className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Register Free</span></div>}
         {hasStats && (
           <p className="pb-2 text-sm text-slate-500 dark:text-slate-400">
             {event.interestedCount > 0 && `${event.interestedCount} interested`}

@@ -70,6 +70,25 @@ describe("EventTicketsService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("requires selections for an event with ticket types", async () => {
+    const { service, eventRepo, orderRepo } = setup();
+    eventRepo.findOne.mockResolvedValue({
+      id: "event-1",
+      createdByUserId: organizer.id,
+      reviewStatus: EventReviewStatus.APPROVED,
+      ticketPrice: null,
+      ticketTypes: [{ id: "vip", name: "VIP", price: "1000", quantity: 5 }],
+    });
+
+    await expect(
+      service.createOrder("event-1", user, {
+        quantity: 1,
+        paymentReference: "MM-typed",
+      }),
+    ).rejects.toThrow("Choose at least one ticket type for this event");
+    expect(orderRepo.create).not.toHaveBeenCalled();
+  });
+
   it("allows only the organizer to approve and issues a ticket code", async () => {
     const { service, saved } = setup();
     const order = await service.createOrder("event-1", user, {

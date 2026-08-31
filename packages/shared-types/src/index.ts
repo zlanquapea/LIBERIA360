@@ -545,6 +545,16 @@ export type EventCategory =
 export type EventReviewStatus = "pending" | "approved" | "rejected";
 export type EventRsvpStatus = "interested" | "going";
 
+export interface EventTicketType {
+  id: string;
+  name: string;
+  price: string;
+  quantity: number;
+  description: string;
+  salesStart: string | null;
+  salesEnd: string | null;
+}
+
 // api/src/events/entities/event.entity.ts (sanitized — createdBy is the
 // public user shape). interestedCount/goingCount are always present;
 // viewerRsvpStatus is NOT — see events.controller.ts's GET :id/rsvp doc
@@ -567,6 +577,7 @@ export interface Event {
   ticketCurrency: string;
   ticketCapacity: number | null;
   paymentInstructions: string | null;
+  ticketTypes: EventTicketType[];
   createdBy: AuthUser | null;
   reviewStatus: EventReviewStatus;
   rejectionReason: string | null;
@@ -595,6 +606,7 @@ export interface EventTicketOrder {
   buyer: AuthUser | null;
   buyerUserId: string;
   quantity: number;
+  items?: Array<{ ticketTypeId: string; name: string; quantity: number; unitPrice: string }>;
   unitPrice: string;
   currency: string;
   totalAmount: string;

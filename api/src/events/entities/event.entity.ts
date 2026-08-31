@@ -13,6 +13,16 @@ import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
 import { EventCategory, EventReviewStatus } from "./event.enums";
 
+export interface EventTicketType {
+  id: string;
+  name: string;
+  price: string;
+  quantity: number;
+  description: string;
+  salesStart: string | null;
+  salesEnd: string | null;
+}
+
 /**
  * Event (Tech Spec §5 Event, §3.2). `county` is required so GET /events can
  * always filter by county (§10) even for events with no catalog Place link
@@ -99,6 +109,9 @@ export class Event {
 
   @Column({ name: "payment_instructions", type: "text", nullable: true })
   paymentInstructions: string | null;
+
+  @Column({ name: "ticket_types", type: "jsonb", default: () => "'[]'::jsonb" })
+  ticketTypes: EventTicketType[];
 
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: "created_by_user_id" })

@@ -41,6 +41,14 @@ export class EventTicketOrder {
   @Column({ type: "smallint" })
   quantity: number;
 
+  @Column({ type: "jsonb", default: () => "'[]'::jsonb" })
+  items: Array<{
+    ticketTypeId: string;
+    name: string;
+    quantity: number;
+    unitPrice: string;
+  }>;
+
   @Column({ name: "unit_price", type: "numeric", precision: 12, scale: 2 })
   unitPrice: string;
 
