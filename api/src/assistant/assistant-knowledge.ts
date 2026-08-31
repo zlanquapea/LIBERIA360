@@ -88,7 +88,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "help",
     ],
     answer:
-      "LIBERIA360 helps people discover places, businesses, events, trips, and local creators across Liberia. You can search by county or category, read reviews, save places, request bookings, follow creators, add a business or place, and advertise to reach more people.",
+      "LIBERIA360 helps people discover places, businesses, events, trips, and local creators across Liberia. You can search by county or category, read reviews, save places, request bookings, follow creators, add a business or place, advertise to reach more people, and buy tickets for approved paid events.",
     actionIds: ["search", "creators", "events"],
     followUps: ["How do I add my business?", "How does advertising work?"],
   },
@@ -509,7 +509,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "payment reference",
     ],
     answer:
-      "For an approved paid event, open the event page and use Get tickets. Choose the number of passes, follow the organizer’s payment instructions, and submit your payment reference. Your order stays under payment review until the organizer verifies it.",
+      "For an approved paid event, open the event page and use Get tickets. Choose the number and ticket type of your passes when the event offers categories, follow the organizer’s payment instructions, and submit your payment reference. Your order stays under payment review until the organizer verifies it.",
     actionIds: ["events", "myTickets", "login"],
     followUps: ["Where can I see my QR ticket?", "How does ticket scanning work?"],
   },
@@ -528,7 +528,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "issued ticket",
     ],
     answer:
-      "After the organizer approves your payment, open Account → My Tickets. Your individual LIBERIA360 pass appears with a branded QR code. View it on your phone or tap Download QR to save it as an image. Keep the QR code private because each pass can be redeemed only once.",
+      "After the organizer approves your payment, open Account → My Tickets. Each individual LIBERIA360 pass appears with its ticket type, ticket number, status, and a branded QR code. View it on your phone or tap Download QR to save it as an image. Keep the QR code private because each pass can be redeemed only once. If a pass is cancelled, it is marked cancelled and cannot be used.",
     actionIds: ["myTickets", "account"],
     followUps: ["How do I buy an event ticket?", "How does an organizer scan a ticket?"],
   },
@@ -547,7 +547,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "ticket fraud",
     ],
     answer:
-      "An event organizer opens the event’s Ticket orders area and chooses Open ticket scanner. The dedicated scanner page works with the phone camera, including iPhone Safari and Android browsers. A valid pass is accepted once; a second scan is rejected as already used. Organizers should only scan passes for their own event and should not accept copied or previously redeemed codes.",
+      "An event organizer opens the event’s Ticket orders area and chooses Open ticket scanner. The dedicated scanner page works with the phone camera, including iPhone Safari and Android browsers. A valid pass is accepted once. The scanner distinguishes valid, already used, cancelled, wrong-event, and invalid tickets. Organizers should only scan passes for their own event and should not accept copied or previously redeemed codes.",
     actionIds: ["myEvents", "events"],
     followUps: ["Where can attendees download their QR ticket?", "How do I review ticket payments?"],
   },
@@ -564,7 +564,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "reject ticket order",
     ],
     answer:
-      "Event organizers review incoming ticket orders from My Events → the event → Ticket orders. Check the payment reference and either approve the order to issue individual QR passes or reject it with a note. Scanning is handled separately on the dedicated Open ticket scanner page.",
+      "Event organizers review incoming ticket orders from My Events → the event → Ticket orders. Check the payment reference and either approve the order to issue individual QR passes, including the selected ticket types when applicable, or reject it with a note. Approved tickets can be cancelled individually if needed. Scanning is handled separately on the dedicated Open ticket scanner page.",
     actionIds: ["myEvents", "events"],
     followUps: ["How do I scan a ticket?", "How do attendees get their QR code?"],
   },
@@ -574,6 +574,9 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     keywords: [
       "customer service",
       "customer support",
+      "support contact",
+      "refund",
+      "ticket problem",
       "contact support",
       "contact liberia360",
       "help from the team",
@@ -614,7 +617,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "how do you work",
     ],
     answer:
-      "I am the LIBERIA360 Assistant. I explain how the app works and can guide you to search, add a business, advertise, book, plan a trip, use creator features, and manage your account. I cannot approve, verify, publish, delete, pay, or submit forms for you. Never share passwords, codes, or payment details in chat.",
+      "I am the LIBERIA360 Assistant. I explain how the app works and can guide you to search, add a business, advertise, book, plan a trip, use creator features, manage events, buy tickets, download QR passes, and understand ticket scanning. I cannot approve, verify, publish, delete, pay, issue refunds, or submit forms for you. Never share passwords, codes, or payment details in chat.",
     actionIds: ["home", "search", "account"],
     followUps: ["How do I add my business?", "How does advertising work?"],
   },
@@ -716,6 +719,7 @@ export const ASSISTANT_QUICK_PROMPTS = [
   "What can I do on LIBERIA360?",
   "How do I add my business?",
   "How does advertising work?",
+  "How do I get my event QR ticket?",
   "How do bookings work?",
   "How do event tickets work?",
   "Where can I download my QR ticket?",
