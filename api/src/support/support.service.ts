@@ -89,7 +89,7 @@ export class SupportService {
       .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.customer", "customer")
       .leftJoinAndSelect("ticket.assignedAgent", "agent")
-      .orderBy("ticket.updatedAt", "DESC");
+      .orderBy(`ticket.${query.sortBy}`, query.sortOrder);
     if (query.status)
       qb.andWhere("ticket.status = :status", { status: query.status });
     if (query.priority)

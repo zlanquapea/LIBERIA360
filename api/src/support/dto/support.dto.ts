@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -56,4 +57,8 @@ export class QuerySupportTicketsDto {
   @IsOptional() @IsDateString() dateTo?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 25;
+  @IsOptional()
+  @IsIn(["updatedAt", "createdAt", "priority", "status"])
+  sortBy: "updatedAt" | "createdAt" | "priority" | "status" = "updatedAt";
+  @IsOptional() @IsIn(["ASC", "DESC"]) sortOrder: "ASC" | "DESC" = "DESC";
 }
