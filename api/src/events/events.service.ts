@@ -300,14 +300,14 @@ export class EventsService {
       throw new BadRequestException("endDate cannot be before startDate");
     }
     if (
-      dto.ticketPrice !== undefined &&
+      dto.ticketPrice != null &&
       (!Number.isFinite(Number(dto.ticketPrice)) ||
         Number(dto.ticketPrice) <= 0)
     ) {
       throw new BadRequestException("ticketPrice must be a positive number");
     }
     if (
-      dto.ticketCapacity !== undefined &&
+      dto.ticketCapacity != null &&
       (!Number.isInteger(Number(dto.ticketCapacity)) ||
         Number(dto.ticketCapacity) <= 0)
     ) {
@@ -324,12 +324,19 @@ export class EventsService {
 
     this.eventRepo.merge(event, {
       ...dto,
-      ticketPrice: dto.ticketPrice?.trim(),
+      ticketPrice:
+        dto.ticketPrice === null ? null : dto.ticketPrice?.trim(),
       ticketCurrency: dto.ticketCurrency?.trim().toUpperCase(),
-      ticketCapacity: dto.ticketCapacity
-        ? Number(dto.ticketCapacity)
-        : undefined,
-      paymentInstructions: dto.paymentInstructions?.trim(),
+      ticketCapacity:
+        dto.ticketCapacity === null
+          ? null
+          : dto.ticketCapacity
+            ? Number(dto.ticketCapacity)
+            : undefined,
+      paymentInstructions:
+        dto.paymentInstructions === null
+          ? null
+          : dto.paymentInstructions?.trim(),
       ticketTypes: dto.ticketTypes ? this.normalizeTicketTypes(dto.ticketTypes) : undefined,
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,

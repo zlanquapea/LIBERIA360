@@ -190,6 +190,11 @@ export class EventTicketsService {
         "This event does not have paid tickets enabled",
       );
     }
+    if (event.ticketTypes?.length && !dto.selections?.length) {
+      throw new BadRequestException(
+        "Choose at least one ticket type for this event",
+      );
+    }
     const selections = event.ticketTypes?.length && dto.selections?.length
       ? dto.selections.map((selection) => {
           const type = event.ticketTypes.find((ticket) => ticket.id === selection.ticketTypeId);
