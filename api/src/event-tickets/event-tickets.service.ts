@@ -185,7 +185,10 @@ export class EventTicketsService {
         "Tickets are available only for approved events",
       );
     }
-    if ((!event.ticketTypes?.length) && (!event.ticketPrice || Number(event.ticketPrice) <= 0)) {
+    if (
+      !event.ticketTypes?.length &&
+      (!event.ticketPrice || Number(event.ticketPrice) <= 0)
+    ) {
       throw new BadRequestException(
         "This event does not have paid tickets enabled",
       );
@@ -195,24 +198,65 @@ export class EventTicketsService {
         "Choose at least one ticket type for this event",
       );
     }
-    const selections = event.ticketTypes?.length && dto.selections?.length
-      ? dto.selections.map((selection) => {
-          const type = event.ticketTypes.find((ticket) => ticket.id === selection.ticketTypeId);
-          const quantity = Number(selection.quantity);
-          if (!type || !Number.isInteger(quantity) || quantity < 1 || quantity > 20) throw new BadRequestException("Choose a valid ticket type and quantity");
-          const now = new Date();
-          if ((type.salesStart && now < new Date(type.salesStart)) || (type.salesEnd && now > new Date(type.salesEnd))) throw new BadRequestException(`${type.name} is not currently on sale`);
-          return { ticketTypeId: type.id, name: type.name, quantity, unitPrice: type.price };
-        })
-      : [];
-    const requestedQuantity = selections.length ? selections.reduce((sum, item) => sum + item.quantity, 0) : (dto.quantity ?? 0);
-    if (requestedQuantity < 1 || requestedQuantity > 20) throw new BadRequestException("Choose between 1 and 20 tickets");
+    const selections =
+      event.ticketTypes?.length && dto.selections?.length
+        ? dto.selections.map((selection) => {
+            const type = event.ticketTypes.find(
+              (ticket) => ticket.id === selection.ticketTypeId,
+            );
+            const quantity = Number(selection.quantity);
+            if (
+              !type ||
+              !Number.isInteger(quantity) ||
+              quantity < 1 ||
+              quantity > 20
+            )
+              throw new BadRequestException(
+                "Choose a valid ticket type and quantity",
+              );
+            const now = new Date();
+            if (
+              (type.salesStart && now < new Date(type.salesStart)) ||
+              (type.salesEnd && now > new Date(type.salesEnd))
+            )
+              throw new BadRequestException(
+                `${type.name} is not currently on sale`,
+              );
+            return {
+              ticketTypeId: type.id,
+              name: type.name,
+              quantity,
+              unitPrice: type.price,
+            };
+          })
+        : [];
+    const requestedQuantity = selections.length
+      ? selections.reduce((sum, item) => sum + item.quantity, 0)
+      : (dto.quantity ?? 0);
+    if (requestedQuantity < 1 || requestedQuantity > 20)
+      throw new BadRequestException("Choose between 1 and 20 tickets");
     if (event.ticketTypes?.length) {
-      const orders = await this.orderRepo.find({ where: { eventId, status: In([EventTicketOrderStatus.PENDING_PAYMENT_REVIEW, EventTicketOrderStatus.APPROVED]) } });
+      const orders = await this.orderRepo.find({
+        where: {
+          eventId,
+          status: In([
+            EventTicketOrderStatus.PENDING_PAYMENT_REVIEW,
+            EventTicketOrderStatus.APPROVED,
+          ]),
+        },
+      });
       for (const item of selections) {
-        const capacity = event.ticketTypes.find((ticket) => ticket.id === item.ticketTypeId)!.quantity;
-        const reserved = orders.flatMap((order) => order.items || []).filter((line) => line.ticketTypeId === item.ticketTypeId).reduce((sum, line) => sum + line.quantity, 0);
-        if (reserved + item.quantity > capacity) throw new BadRequestException(`Not enough ${item.name} tickets remain`);
+        const capacity = event.ticketTypes.find(
+          (ticket) => ticket.id === item.ticketTypeId,
+        )!.quantity;
+        const reserved = orders
+          .flatMap((order) => order.items || [])
+          .filter((line) => line.ticketTypeId === item.ticketTypeId)
+          .reduce((sum, line) => sum + line.quantity, 0);
+        if (reserved + item.quantity > capacity)
+          throw new BadRequestException(
+            `Not enough ${item.name} tickets remain`,
+          );
       }
     } else if (event.ticketCapacity && event.ticketCapacity > 0) {
       const orders = await this.orderRepo.find({
@@ -231,8 +275,15 @@ export class EventTicketsService {
         );
       }
     }
-    const total = selections.length ? selections.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0) : Number(event.ticketPrice) * requestedQuantity;
-    const unitPrice = selections.length ? total / requestedQuantity : Number(event.ticketPrice);
+    const total = selections.length
+      ? selections.reduce(
+          (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+          0,
+        )
+      : Number(event.ticketPrice) * requestedQuantity;
+    const unitPrice = selections.length
+      ? total / requestedQuantity
+      : Number(event.ticketPrice);
     const order = this.orderRepo.create({
       event,
       eventId,

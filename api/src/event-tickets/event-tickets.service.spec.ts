@@ -77,9 +77,7 @@ describe("EventTicketsService", () => {
       createdByUserId: organizer.id,
       reviewStatus: EventReviewStatus.APPROVED,
       ticketPrice: null,
-      ticketTypes: [
-        { id: "vip", name: "VIP", price: "1000", quantity: 5 },
-      ],
+      ticketTypes: [{ id: "vip", name: "VIP", price: "1000", quantity: 5 }],
     });
 
     await expect(

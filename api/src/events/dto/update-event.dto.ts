@@ -35,6 +35,11 @@ export class UpdateEventDto {
   @IsOptional() @IsString() @MaxLength(20) ticketPrice?: string | null;
   @IsOptional() @IsString() @MaxLength(3) ticketCurrency?: string;
   @IsOptional() @IsString() @MaxLength(20) ticketCapacity?: string | null;
-  @IsOptional() @IsString() @MaxLength(1000) paymentInstructions?: string | null;
-  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsObject({ each: true }) ticketTypes?: Array<Record<string, unknown>>;
+  @IsOptional() @IsString() @MaxLength(1000) paymentInstructions?:
+    string | null;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsObject({ each: true })
+  ticketTypes?: Array<Record<string, unknown>>;
 }

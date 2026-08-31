@@ -105,6 +105,7 @@ describe("eventJsonLd", () => {
     ticketCurrency: "LRD",
     ticketCapacity: null,
     paymentInstructions: null,
+    ticketTypes: [],
     createdBy: null,
     reviewStatus: "approved",
     rejectionReason: null,

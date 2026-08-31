@@ -105,6 +105,11 @@ export function NewEventForm({
     try {
       if (eventAccess === 'paid' && ticketTypes.length === 0) throw new Error('Add at least one ticket type for a paid event.');
       const primaryTicket = eventAccess === 'paid' ? ticketTypes[0] : undefined;
+      // A free event's ticket fields are set to `null` below so editing an
+      // existing paid event to free explicitly clears its stale paid values
+      // (UpdateEventInput allows `null` for exactly this). A brand-new event
+      // has nothing to clear, so those fields are coerced to `undefined`
+      // before being sent to createEvent, which doesn't accept `null`.
       const input = {
         name,
         category,
@@ -121,7 +126,14 @@ export function NewEventForm({
         paymentInstructions: eventAccess === 'paid' ? paymentInstructions.trim() || undefined : null,
         ticketTypes: eventAccess === 'paid' ? ticketTypes : [],
       };
-      const saved = event ? await updateEvent(token, event.id, input) : await createEvent(token, input);
+      const saved = event
+        ? await updateEvent(token, event.id, input)
+        : await createEvent(token, {
+            ...input,
+            ticketPrice: input.ticketPrice ?? undefined,
+            ticketCapacity: input.ticketCapacity ?? undefined,
+            paymentInstructions: input.paymentInstructions ?? undefined,
+          });
       if (onSaved) {
         onSaved(saved);
       } else {

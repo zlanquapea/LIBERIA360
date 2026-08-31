@@ -44,24 +44,38 @@ export class EventsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  private normalizeTicketTypes(input?: Array<Record<string, unknown>>): EventTicketType[] {
+  private normalizeTicketTypes(
+    input?: Array<Record<string, unknown>>,
+  ): EventTicketType[] {
     if (!input) return [];
     return input.map((ticket, index) => {
       const name = String(ticket.name ?? "").trim();
       const price = String(ticket.price ?? "").trim();
       const quantity = Number(ticket.quantity);
-      if (!name || name.length > 100) throw new BadRequestException(`Ticket ${index + 1} needs a valid name`);
-      if (!Number.isFinite(Number(price)) || Number(price) <= 0) throw new BadRequestException(`Ticket ${index + 1} needs a positive price`);
-      if (!Number.isInteger(quantity) || quantity < 1) throw new BadRequestException(`Ticket ${index + 1} needs a positive quantity`);
+      if (!name || name.length > 100)
+        throw new BadRequestException(`Ticket ${index + 1} needs a valid name`);
+      if (!Number.isFinite(Number(price)) || Number(price) <= 0)
+        throw new BadRequestException(
+          `Ticket ${index + 1} needs a positive price`,
+        );
+      if (!Number.isInteger(quantity) || quantity < 1)
+        throw new BadRequestException(
+          `Ticket ${index + 1} needs a positive quantity`,
+        );
       const salesStart = ticket.salesStart ? String(ticket.salesStart) : null;
       const salesEnd = ticket.salesEnd ? String(ticket.salesEnd) : null;
-      if (salesStart && salesEnd && new Date(salesEnd) <= new Date(salesStart)) throw new BadRequestException(`Ticket ${index + 1} sales must end after they start`);
+      if (salesStart && salesEnd && new Date(salesEnd) <= new Date(salesStart))
+        throw new BadRequestException(
+          `Ticket ${index + 1} sales must end after they start`,
+        );
       return {
         id: String(ticket.id || `ticket-${index + 1}`).slice(0, 100),
         name,
         price: Number(price).toFixed(2),
         quantity,
-        description: String(ticket.description ?? "").trim().slice(0, 300),
+        description: String(ticket.description ?? "")
+          .trim()
+          .slice(0, 300),
         salesStart,
         salesEnd,
       };
@@ -324,8 +338,7 @@ export class EventsService {
 
     this.eventRepo.merge(event, {
       ...dto,
-      ticketPrice:
-        dto.ticketPrice === null ? null : dto.ticketPrice?.trim(),
+      ticketPrice: dto.ticketPrice === null ? null : dto.ticketPrice?.trim(),
       ticketCurrency: dto.ticketCurrency?.trim().toUpperCase(),
       ticketCapacity:
         dto.ticketCapacity === null
@@ -337,7 +350,9 @@ export class EventsService {
         dto.paymentInstructions === null
           ? null
           : dto.paymentInstructions?.trim(),
-      ticketTypes: dto.ticketTypes ? this.normalizeTicketTypes(dto.ticketTypes) : undefined,
+      ticketTypes: dto.ticketTypes
+        ? this.normalizeTicketTypes(dto.ticketTypes)
+        : undefined,
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
     });
