@@ -3,6 +3,8 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   IsObject,
@@ -27,6 +29,18 @@ export class CreateEventDto {
   @IsString()
   @MaxLength(255)
   locationText?: string;
+
+  // Same map-picker-driven pin as a self-service Place submission — see
+  // CreatePlaceSubmissionDto. Optional: locationText alone still satisfies
+  // the location requirement (see EventsService.create), a pin just adds a
+  // map + directions link on top.
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
 
   @IsUUID()
   countyId: string;

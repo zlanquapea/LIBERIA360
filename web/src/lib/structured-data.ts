@@ -204,6 +204,16 @@ export function categoryJsonLd(category: Category, places: Place[]) {
 }
 
 export function eventJsonLd(event: Event) {
+  // The organizer's own pin (set the same way as a Place submission's map
+  // picker) takes priority; falls back to a linked catalog Place's
+  // coordinates when the event has no pin of its own.
+  const latitude = event.latitude ?? event.place?.latitude ?? null;
+  const longitude = event.longitude ?? event.place?.longitude ?? null;
+  const geo =
+    latitude !== null && longitude !== null
+      ? { '@type': 'GeoCoordinates', latitude, longitude }
+      : undefined;
+
   const location = event.place
     ? compact({
         '@type': 'Place',
@@ -214,6 +224,7 @@ export function eventJsonLd(event: Event) {
           addressRegion: `${event.county.name} County`,
           addressCountry: 'LR',
         }),
+        geo,
       })
     : compact({
         '@type': 'Place',
@@ -223,6 +234,7 @@ export function eventJsonLd(event: Event) {
           addressRegion: `${event.county.name} County`,
           addressCountry: 'LR',
         },
+        geo,
       });
 
   return compact({

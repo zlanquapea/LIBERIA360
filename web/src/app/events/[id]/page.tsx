@@ -4,15 +4,18 @@ import {
   ArrowLeftIcon,
   CalendarDaysIcon,
   MapPinIcon,
+  PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import { ApiError, getEvent, getEventAttendees } from "@/lib/api";
 import { formatEventCategory, formatEventDateRange } from "@/lib/format";
 import { resolveImageUrl } from "@/lib/images";
 import { gradientForCategory } from "@/lib/category-colors";
+import { directionsLink } from "@/lib/contact";
 import { JsonLd } from "@/components/JsonLd";
 import { eventJsonLd } from "@/lib/structured-data";
 import { ReportButton } from "@/components/ReportButton";
 import { EventOwnerActions } from "@/components/EventOwnerActions";
+import { EventMiniMapLoader } from "@/components/EventMiniMapLoader";
 import { EventRsvpButtons } from "@/components/EventRsvpButtons";
 import { SafeImage } from "@/components/SafeImage";
 import { EventViewTracker } from "@/components/EventViewTracker";
@@ -58,6 +61,12 @@ export default async function EventDetailPage({
   const gallery = event.images.map(resolveImageUrl);
   const [cover, ...moreImages] = gallery;
   const hasStats = event.interestedCount > 0 || event.goingCount > 0;
+  // The organizer's own pin (NewEventForm's PlaceLocationPickerLoader)
+  // takes priority; falls back to the linked catalog Place's coordinates
+  // when this event has no pin of its own but is tied to a Place.
+  const eventLatitude = event.latitude ?? event.place?.latitude ?? null;
+  const eventLongitude = event.longitude ?? event.place?.longitude ?? null;
+  const hasMap = eventLatitude !== null && eventLongitude !== null;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
@@ -128,8 +137,25 @@ export default async function EventDetailPage({
             event.locationText
           )}{" "}
           · {event.county.name} County
+          {hasMap && (
+            <a
+              href={directionsLink(eventLatitude as number, eventLongitude as number)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-brand-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-800"
+            >
+              <PaperAirplaneIcon aria-hidden className="h-3 w-3 -rotate-45" />
+              Directions
+            </a>
+          )}
         </p>
       </div>
+
+      {hasMap && (
+        <div className="h-48 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-64">
+          <EventMiniMapLoader latitude={eventLatitude as number} longitude={eventLongitude as number} />
+        </div>
+      )}
 
       <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
         {!event.ticketTypes?.length && !event.ticketPrice && <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/30"><div><p className="font-bold text-emerald-900 dark:text-emerald-100">Free admission</p><p className="text-xs text-emerald-700 dark:text-emerald-300">Reserve your spot—no payment required.</p></div><span className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Register Free</span></div>}

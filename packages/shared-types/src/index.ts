@@ -567,6 +567,8 @@ export interface Event {
   place: Place | null;
   placeId: string | null;
   locationText: string | null;
+  latitude: number | null;
+  longitude: number | null;
   county: County;
   startDate: string;
   endDate: string | null;

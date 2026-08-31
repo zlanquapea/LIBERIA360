@@ -11,6 +11,7 @@ import {
 import { Place } from "../../places/entities/place.entity";
 import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
+import { decimalTransformer } from "../../database/decimal.transformer";
 import { EventCategory, EventReviewStatus } from "./event.enums";
 
 export interface EventTicketType {
@@ -62,6 +63,28 @@ export class Event {
     nullable: true,
   })
   locationText: string | null;
+
+  // Exact pin, same map-based flow as Place.latitude/longitude
+  // (PlaceLocationPicker) — optional because a freeform locationText alone
+  // still satisfies §5's "place_id/location" requirement, but without a
+  // pin there's nothing to build a map or a "Get directions" link from.
+  @Column({
+    type: "decimal",
+    precision: 9,
+    scale: 6,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  latitude: number | null;
+
+  @Column({
+    type: "decimal",
+    precision: 9,
+    scale: 6,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  longitude: number | null;
 
   @ManyToOne(() => County, { eager: true })
   @JoinColumn({ name: "county_id" })

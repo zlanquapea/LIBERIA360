@@ -139,6 +139,8 @@ export class EventsService {
       category: dto.category,
       placeId: dto.placeId ?? null,
       locationText: dto.locationText ?? null,
+      latitude: dto.latitude ?? null,
+      longitude: dto.longitude ?? null,
       countyId: dto.countyId,
       startDate: new Date(dto.startDate),
       endDate: dto.endDate ? new Date(dto.endDate) : null,
