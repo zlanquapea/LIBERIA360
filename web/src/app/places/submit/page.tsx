@@ -5,17 +5,23 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { PlaceSubmissionForm } from '@/components/PlaceSubmissionForm';
+import { getMyBusinesses } from '@/lib/business-api';
 import type { Place } from '@/lib/types';
 
 // Self-service place submission — anyone signed in can add a destination
 // that isn't in the catalog yet, the same fields an admin has via
 // CreatePlaceForm. It goes into review, not live immediately (see
 // PlaceReviewStatus's doc comment on the backend) — this is the entry
-// point; /account/my-places is where a submitter tracks what happens next.
+// point. Submitting auto-claims the new place as a Business owned by this
+// same user (see BusinessesService.autoClaimSubmittedPlace), synchronously
+// within the same request, so the confirmation screen can link straight
+// into that business's dashboard — there is no separate "my places" area
+// to track it from anymore.
 export default function SubmitPlacePage() {
   const router = useRouter();
   const { user, token, ready } = useAuth();
   const [submitted, setSubmitted] = useState<Place | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
 
   if (!ready) {
     return (
@@ -50,14 +56,17 @@ export default function SubmitPlacePage() {
         </p>
         <div className="flex flex-col gap-2">
           <Link
-            href="/account/my-places"
+            href={businessId ? `/account/my-businesses/${businessId}` : '/account/my-businesses'}
             className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
           >
-            Track its status
+            {businessId ? 'Manage its listing' : 'Go to My Businesses'}
           </Link>
           <button
             type="button"
-            onClick={() => setSubmitted(null)}
+            onClick={() => {
+              setSubmitted(null);
+              setBusinessId(null);
+            }}
             className="rounded-full border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
           >
             Submit another place
@@ -81,6 +90,13 @@ export default function SubmitPlacePage() {
         onSaved={(place) => {
           setSubmitted(place);
           router.refresh();
+          // Auto-claim already happened server-side by the time this
+          // resolves — find the resulting business so the confirmation
+          // screen can deep-link straight into its dashboard.
+          getMyBusinesses(token).then((list) => {
+            const match = list.find((b) => b.linkedPlaceId === place.id);
+            if (match) setBusinessId(match.id);
+          });
         }}
       />
     </main>

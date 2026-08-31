@@ -5,6 +5,7 @@ import {
   ChartBarIcon,
   ClipboardDocumentListIcon,
   HomeIcon,
+  MapPinIcon,
   MegaphoneIcon,
   ShoppingBagIcon,
   Squares2X2Icon,
@@ -31,6 +32,7 @@ export interface BusinessDashboardNavItem {
 export const BUSINESS_DASHBOARD_NAV: BusinessDashboardNavItem[] = [
   { key: 'overview', label: 'Overview', segment: null, icon: HomeIcon },
   { key: 'profile', label: 'Profile & Photos', segment: 'profile', icon: BuildingStorefrontIcon },
+  { key: 'place', label: 'Place Details', segment: 'place', icon: MapPinIcon },
   {
     key: 'menu',
     label: 'Menu',
