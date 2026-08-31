@@ -239,15 +239,21 @@ describe("AssistantService", () => {
 
   it("routes event ticket purchase questions to the ticket guidance", async () => {
     const service = new AssistantService(config());
-    const response = await service.ask({ message: "How do I buy a ticket for a paid event?" });
+    const response = await service.ask({
+      message: "How do I buy a ticket for a paid event?",
+    });
     expect(response.answer).toContain("payment reference");
     expect(response.answer).toContain("ticket type");
-    expect(response.actions).toEqual(expect.arrayContaining([expect.objectContaining({ id: "myTickets" })]));
+    expect(response.actions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: "myTickets" })]),
+    );
   });
 
   it("routes QR download questions to My Tickets guidance", async () => {
     const service = new AssistantService(config());
-    const response = await service.ask({ message: "Where can I download my QR ticket?" });
+    const response = await service.ask({
+      message: "Where can I download my QR ticket?",
+    });
     expect(response.answer).toContain("Account → My Tickets");
     expect(response.answer).toContain("Download QR");
     expect(response.answer).toContain("cancelled");
@@ -255,7 +261,9 @@ describe("AssistantService", () => {
 
   it("routes organizer scan questions to one-time redemption guidance", async () => {
     const service = new AssistantService(config());
-    const response = await service.ask({ message: "How does an organizer scan and validate a ticket?" });
+    const response = await service.ask({
+      message: "How does an organizer scan and validate a ticket?",
+    });
     expect(response.answer).toContain("dedicated scanner page");
     expect(response.answer).toContain("already used");
     expect(response.answer).toContain("wrong-event");
@@ -263,7 +271,9 @@ describe("AssistantService", () => {
 
   it("routes customer service questions safely", async () => {
     const service = new AssistantService(config());
-    const response = await service.ask({ message: "How do I contact customer service about a ticket problem?" });
+    const response = await service.ask({
+      message: "How do I contact customer service about a ticket problem?",
+    });
     expect(response.answer).toContain("cannot");
     expect(response.answer).toContain("payment credentials");
     expect(response.answer).toContain("support-center page");

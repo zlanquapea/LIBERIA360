@@ -1,5 +1,6 @@
 import type {
   EventTicketInstance,
+  EventTicketMetrics,
   EventTicketOrder,
   EventTicketOrderStatus,
   EventTicketScanResult,
@@ -52,6 +53,15 @@ export function redeemEventTicket(
     method: 'POST',
     headers: authHeader(token),
     body: JSON.stringify({ payload }),
+  });
+}
+
+export function getEventTicketMetrics(
+  token: string,
+  eventId: string,
+): Promise<EventTicketMetrics> {
+  return apiRequest<EventTicketMetrics>(`/events/${eventId}/ticket-metrics`, {
+    headers: authHeader(token),
   });
 }
 

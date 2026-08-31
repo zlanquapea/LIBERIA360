@@ -64,18 +64,22 @@ function ScanResultCard({ result }: { result: EventTicketScanResult }) {
         <>
           {/* The ticket type is deliberately the single largest, boldest
               element here — staff enforcing VIP/Regular/Backstage access
-              should never have to hunt for it. */}
-          <p className="mt-2 text-2xl font-black leading-tight sm:text-3xl">
+              should never have to hunt for it. Ticket ID is always shown
+              with an actual value right below it, never a bare label. */}
+          <p className="mt-2 text-xs font-bold uppercase tracking-wide opacity-70">Ticket Type</p>
+          <p className="text-2xl font-black leading-tight sm:text-3xl">
             {result.ticket.ticketTypeName}
           </p>
-          <p className="mt-0.5 text-sm font-semibold opacity-80">{result.ticket.eventName}</p>
-          <p className="mt-1 font-mono text-xs opacity-70">Ticket ID: {result.ticket.ticketNumber}</p>
+          <p className="mt-1 font-mono text-sm font-bold">Ticket ID: {result.ticket.ticketNumber}</p>
+          {result.outcome !== "already_used" && (
+            <p className="mt-0.5 text-sm font-semibold opacity-80">Event: {result.ticket.eventName}</p>
+          )}
         </>
       )}
       <p className="mt-2 text-sm leading-5">{result.message}</p>
       {result.outcome === "already_used" && result.firstScannedAt && (
         <p className="mt-1 text-xs font-semibold">
-          First scanned:{" "}
+          First Scanned:{" "}
           {new Date(result.firstScannedAt).toLocaleString(undefined, {
             dateStyle: "long",
             timeStyle: "short",
@@ -83,7 +87,7 @@ function ScanResultCard({ result }: { result: EventTicketScanResult }) {
         </p>
       )}
       {result.outcome === "valid" && (
-        <p className="mt-2 text-sm font-black uppercase tracking-wide">Entry Approved</p>
+        <p className="mt-2 text-sm font-black uppercase tracking-wide">Status: Entry Approved</p>
       )}
     </div>
   );

@@ -106,16 +106,28 @@ export default function EventTicketOrdersPage() {
           Review payment references and issue tickets from this page.
         </p>
       </div>
-      <Link
-        href={`/account/my-events/tickets/${params.id}/scan`}
-        className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-brand-950 hover:border-brand-400 hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-900/60 dark:bg-brand-950/25 dark:text-brand-50 dark:hover:bg-brand-950/45"
-      >
-        <span>
-          <span className="block text-sm font-bold">Open ticket scanner</span>
-          <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-300">Scan and validate passes at the entrance on a separate page.</span>
-        </span>
-        <span aria-hidden className="text-xl">→</span>
-      </Link>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Link
+          href={`/account/my-events/tickets/${params.id}/scan`}
+          className="flex min-h-14 flex-1 items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-brand-950 hover:border-brand-400 hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-900/60 dark:bg-brand-950/25 dark:text-brand-50 dark:hover:bg-brand-950/45"
+        >
+          <span>
+            <span className="block text-sm font-bold">Open ticket scanner</span>
+            <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-300">Scan and validate passes at the entrance on a separate page.</span>
+          </span>
+          <span aria-hidden className="text-xl">→</span>
+        </Link>
+        <Link
+          href={`/account/my-events/tickets/${params.id}/metrics`}
+          className="flex min-h-14 flex-1 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 hover:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
+        >
+          <span>
+            <span className="block text-sm font-bold">View sales metrics</span>
+            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Revenue, ticket types, orders, and attendance in one place.</span>
+          </span>
+          <span aria-hidden className="text-xl">→</span>
+        </Link>
+      </div>
       {error && (
         <p
           role="alert"
@@ -143,6 +155,18 @@ export default function EventTicketOrdersPage() {
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {order.quantity} ticket{order.quantity === 1 ? "" : "s"} ·{" "}
                     {order.currency} {Number(order.totalAmount).toFixed(2)}
+                  </p>
+                  {/* Order ID identifies the transaction; each ticket below
+                      carries its own separate Ticket ID — the two are never
+                      the same identifier. */}
+                  <p className="mt-1 font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                    Order: {order.ticketCode ?? `ORD-${order.id.slice(0, 8).toUpperCase()}`}
+                    {" · "}
+                    {new Date(order.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </p>
                 </div>
                 <span className="text-xs font-medium text-slate-500">

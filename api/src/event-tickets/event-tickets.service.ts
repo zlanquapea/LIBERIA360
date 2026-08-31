@@ -82,6 +82,68 @@ export interface EventTicketScanResult {
   firstScannedAt?: string;
 }
 
+export type TicketSoldOutState = "available" | "almost_sold_out" | "sold_out";
+
+// Per-ticket-type row of the organizer Metrics dashboard. `totalAvailable`/
+// `remaining`/`percentSold` are null for a legacy non-typed event with no
+// capacity set — there's nothing to divide by, not zero of anything.
+export interface TicketTypeMetrics {
+  ticketTypeId: string | null;
+  name: string;
+  totalAvailable: number | null;
+  sold: number;
+  remaining: number | null;
+  cancelled: number;
+  revenue: string;
+  checkedIn: number;
+  notCheckedIn: number;
+  percentSold: number | null;
+  soldOutState: TicketSoldOutState;
+}
+
+// GET /events/:id/ticket-metrics response. A free event (no ticket types,
+// no positive ticketPrice) carries `freeEvent` and reports registrations
+// via RSVP instead of orders/revenue — there is no paid-ticket data to
+// show, and no scan/check-in mechanism for RSVP-only attendance today, so
+// this deliberately doesn't fabricate check-in numbers for it.
+export interface EventTicketMetrics {
+  currency: string;
+  isFreeEvent: boolean;
+  overview: {
+    totalTicketsSold: number;
+    totalTicketsRemaining: number | null;
+    totalRevenue: string;
+    totalOrders: number;
+    totalCheckedIn: number;
+    totalAttendeesExpected: number;
+  };
+  byTicketType: TicketTypeMetrics[];
+  revenue: {
+    gross: string;
+    platformFees: string;
+    refunds: string;
+    net: string;
+  };
+  orders: {
+    totalOrders: number;
+    totalTicketsSold: number;
+    averageTicketsPerOrder: number;
+    largestOrderQuantity: number;
+    multiTypeOrders: number;
+  };
+  attendance: {
+    ticketsSold: number;
+    checkedIn: number;
+    notCheckedIn: number;
+    checkInRatePercent: number;
+  };
+  freeEvent?: {
+    totalRegistrations: number;
+    remainingCapacity: number | null;
+    registrationRatePercent: number | null;
+  };
+}
+
 @Injectable()
 export class EventTicketsService {
   constructor(
@@ -721,6 +783,219 @@ export class EventTicketsService {
       ticketTypeName: saved.ticketTypeName,
       status: saved.status,
       redeemedAt: saved.redeemedAt,
+    };
+  }
+
+  // Organizer Metrics dashboard: everything needed to answer "how many
+  // sold, how many remain, how much revenue, how many orders, how many
+  // checked in" without the organizer ever computing it by hand. Reads
+  // straight off approved orders + their ticket instances — there's no
+  // separate metrics table to keep in sync, so this is always current as
+  // of the moment it's called.
+  async getMetrics(eventId: string, user: User): Promise<EventTicketMetrics> {
+    const event = await this.getEvent(eventId);
+    if (event.createdByUserId !== user.id) {
+      throw new ForbiddenException(
+        "Only the event organizer can view ticket metrics",
+      );
+    }
+
+    const currency = event.ticketCurrency || "LRD";
+    const isFreeEvent =
+      !event.ticketTypes?.length &&
+      !(event.ticketPrice && Number(event.ticketPrice) > 0);
+
+    if (isFreeEvent) {
+      const totalRegistrations = event.goingCount;
+      const remainingCapacity =
+        event.ticketCapacity != null
+          ? Math.max(0, event.ticketCapacity - totalRegistrations)
+          : null;
+      const registrationRatePercent = event.ticketCapacity
+        ? Math.round((totalRegistrations / event.ticketCapacity) * 100)
+        : null;
+      return {
+        currency,
+        isFreeEvent: true,
+        overview: {
+          totalTicketsSold: totalRegistrations,
+          totalTicketsRemaining: remainingCapacity,
+          totalRevenue: "0.00",
+          totalOrders: 0,
+          totalCheckedIn: 0,
+          totalAttendeesExpected: totalRegistrations,
+        },
+        byTicketType: [],
+        revenue: {
+          gross: "0.00",
+          platformFees: "0.00",
+          refunds: "0.00",
+          net: "0.00",
+        },
+        orders: {
+          totalOrders: 0,
+          totalTicketsSold: totalRegistrations,
+          averageTicketsPerOrder: 0,
+          largestOrderQuantity: 0,
+          multiTypeOrders: 0,
+        },
+        attendance: {
+          ticketsSold: totalRegistrations,
+          checkedIn: 0,
+          notCheckedIn: totalRegistrations,
+          checkInRatePercent: 0,
+        },
+        freeEvent: {
+          totalRegistrations,
+          remainingCapacity,
+          registrationRatePercent,
+        },
+      };
+    }
+
+    if (!this.instanceRepo)
+      throw new Error("Ticket instance repository is unavailable");
+
+    const [orders, instances] = await Promise.all([
+      this.orderRepo.find({
+        where: { eventId, status: EventTicketOrderStatus.APPROVED },
+      }),
+      this.instanceRepo.find({ where: { eventId } }),
+    ]);
+
+    // A legacy non-typed event (single ticketPrice/ticketCapacity, no
+    // catalog) is modeled as one implicit "General Admission" type so the
+    // same per-type table shape covers both cases.
+    const typeCatalog: Array<{
+      id: string | null;
+      name: string;
+      capacity: number | null;
+      price: number;
+    }> = event.ticketTypes?.length
+      ? event.ticketTypes.map((type) => ({
+          id: type.id,
+          name: type.name,
+          capacity: type.quantity ?? null,
+          price: Number(type.price) || 0,
+        }))
+      : [
+          {
+            id: null,
+            name: "General Admission",
+            capacity: event.ticketCapacity ?? null,
+            price: Number(event.ticketPrice) || 0,
+          },
+        ];
+
+    // Selling out is judged at 90%+ sold (and not yet literally sold out) —
+    // a simple, fixed threshold rather than a per-event setting.
+    const ALMOST_SOLD_OUT_THRESHOLD = 90;
+
+    const byTicketType: TicketTypeMetrics[] = typeCatalog.map((type) => {
+      const typeInstances = instances.filter(
+        (instance) => (instance.ticketTypeId ?? null) === type.id,
+      );
+      const cancelled = typeInstances.filter(
+        (instance) => instance.status === EventTicketInstanceStatus.VOID,
+      ).length;
+      // A cancelled ticket is treated as never having consumed inventory —
+      // it doesn't count toward "sold" or either check-in bucket.
+      const active = typeInstances.filter(
+        (instance) => instance.status !== EventTicketInstanceStatus.VOID,
+      );
+      const checkedIn = active.filter(
+        (instance) => instance.status === EventTicketInstanceStatus.REDEEMED,
+      ).length;
+      const sold = active.length;
+      const remaining =
+        type.capacity != null ? Math.max(0, type.capacity - sold) : null;
+      const percentSold =
+        type.capacity && type.capacity > 0
+          ? Math.round((sold / type.capacity) * 100)
+          : null;
+      const soldOutState: TicketSoldOutState =
+        remaining !== null && remaining <= 0
+          ? "sold_out"
+          : percentSold !== null && percentSold >= ALMOST_SOLD_OUT_THRESHOLD
+            ? "almost_sold_out"
+            : "available";
+      return {
+        ticketTypeId: type.id,
+        name: type.name,
+        totalAvailable: type.capacity,
+        sold,
+        remaining,
+        cancelled,
+        revenue: (sold * type.price).toFixed(2),
+        checkedIn,
+        notCheckedIn: sold - checkedIn,
+        percentSold,
+        soldOutState,
+      };
+    });
+
+    const totalTicketsSold = byTicketType.reduce((sum, t) => sum + t.sold, 0);
+    const totalCheckedIn = byTicketType.reduce(
+      (sum, t) => sum + t.checkedIn,
+      0,
+    );
+    const gross = byTicketType
+      .reduce((sum, t) => sum + Number(t.revenue), 0)
+      .toFixed(2);
+    const remainingKnownForEveryType = byTicketType.every(
+      (t) => t.remaining !== null,
+    );
+    const totalTicketsRemaining = remainingKnownForEveryType
+      ? byTicketType.reduce((sum, t) => sum + (t.remaining ?? 0), 0)
+      : null;
+
+    const totalOrders = orders.length;
+    const averageTicketsPerOrder =
+      totalOrders > 0 ? Number((totalTicketsSold / totalOrders).toFixed(2)) : 0;
+    const largestOrderQuantity = orders.reduce(
+      (max, order) => Math.max(max, order.quantity),
+      0,
+    );
+    const multiTypeOrders = orders.filter(
+      (order) =>
+        new Set((order.items || []).map((item) => item.ticketTypeId)).size > 1,
+    ).length;
+
+    const notCheckedIn = totalTicketsSold - totalCheckedIn;
+    const checkInRatePercent =
+      totalTicketsSold > 0
+        ? Math.round((totalCheckedIn / totalTicketsSold) * 100)
+        : 0;
+
+    return {
+      currency,
+      isFreeEvent: false,
+      overview: {
+        totalTicketsSold,
+        totalTicketsRemaining,
+        totalRevenue: gross,
+        totalOrders,
+        totalCheckedIn,
+        totalAttendeesExpected: totalTicketsSold,
+      },
+      byTicketType,
+      // No platform-fee or refund tracking exists yet — both are always
+      // zero today, which keeps net === gross rather than implying
+      // deductions that were never actually taken.
+      revenue: { gross, platformFees: "0.00", refunds: "0.00", net: gross },
+      orders: {
+        totalOrders,
+        totalTicketsSold,
+        averageTicketsPerOrder,
+        largestOrderQuantity,
+        multiTypeOrders,
+      },
+      attendance: {
+        ticketsSold: totalTicketsSold,
+        checkedIn: totalCheckedIn,
+        notCheckedIn,
+        checkInRatePercent,
+      },
     };
   }
 }

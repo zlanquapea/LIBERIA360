@@ -634,6 +634,66 @@ export interface EventTicketScanResult {
   firstScannedAt?: string;
 }
 
+export type TicketSoldOutState = "available" | "almost_sold_out" | "sold_out";
+
+// Per-ticket-type row of the organizer Metrics dashboard. `totalAvailable`/
+// `remaining`/`percentSold` are null for a legacy non-typed event with no
+// capacity set — there's nothing to divide by, not zero of anything.
+export interface TicketTypeMetrics {
+  ticketTypeId: string | null;
+  name: string;
+  totalAvailable: number | null;
+  sold: number;
+  remaining: number | null;
+  cancelled: number;
+  revenue: string;
+  checkedIn: number;
+  notCheckedIn: number;
+  percentSold: number | null;
+  soldOutState: TicketSoldOutState;
+}
+
+// GET /events/:id/ticket-metrics response. A free event (no ticket types,
+// no positive ticketPrice) carries `freeEvent` and reports registrations
+// via RSVP instead of orders/revenue.
+export interface EventTicketMetrics {
+  currency: string;
+  isFreeEvent: boolean;
+  overview: {
+    totalTicketsSold: number;
+    totalTicketsRemaining: number | null;
+    totalRevenue: string;
+    totalOrders: number;
+    totalCheckedIn: number;
+    totalAttendeesExpected: number;
+  };
+  byTicketType: TicketTypeMetrics[];
+  revenue: {
+    gross: string;
+    platformFees: string;
+    refunds: string;
+    net: string;
+  };
+  orders: {
+    totalOrders: number;
+    totalTicketsSold: number;
+    averageTicketsPerOrder: number;
+    largestOrderQuantity: number;
+    multiTypeOrders: number;
+  };
+  attendance: {
+    ticketsSold: number;
+    checkedIn: number;
+    notCheckedIn: number;
+    checkInRatePercent: number;
+  };
+  freeEvent?: {
+    totalRegistrations: number;
+    remainingCapacity: number | null;
+    registrationRatePercent: number | null;
+  };
+}
+
 export interface EventTicketOrder {
   id: string;
   event: Event;
