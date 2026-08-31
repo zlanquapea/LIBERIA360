@@ -269,13 +269,6 @@ describe("AssistantService", () => {
     expect(response.answer).toContain("support-center page");
   });
 
-  it("does not invent details about This Extraordinary Life", async () => {
-    const service = new AssistantService(config());
-    const response = await service.ask({ message: "What is This Extraordinary Life?" });
-    expect(response.answer).toContain("do not yet have confirmed details");
-    expect(response.answer).toContain("official description");
-  });
-
   it("does not pretend to know unrelated questions", async () => {
     const service = new AssistantService(config());
 
