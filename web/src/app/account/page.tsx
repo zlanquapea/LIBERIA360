@@ -6,8 +6,8 @@ import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { StarIcon } from "@heroicons/react/24/solid";
 import {
   BuildingOffice2Icon,
+  BuildingStorefrontIcon,
   CalendarDaysIcon,
-  ChartBarIcon,
   ClipboardDocumentListIcon,
   BookmarkIcon,
   ChevronRightIcon,
@@ -93,10 +93,10 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: TruckIcon,
   },
   {
-    href: "/account/analytics",
-    label: "Place Dashboard",
-    description: "View place performance",
-    icon: ChartBarIcon,
+    href: "/account/my-businesses",
+    label: "My Businesses",
+    description: "Manage listings, menus, orders & more",
+    icon: BuildingStorefrontIcon,
   },
   {
     href: "/creators/me",

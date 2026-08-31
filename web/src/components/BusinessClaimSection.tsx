@@ -4,27 +4,15 @@ import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
-import { claimBusiness, getMyBusinesses, updateBusiness } from '@/lib/business-api';
+import { claimBusiness, getMyBusinesses } from '@/lib/business-api';
 import { HttpError } from '@/lib/http';
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { BUSINESS_TYPES } from '@/lib/business-categories';
-import { DEFAULT_CLOSE_TIME, DEFAULT_OPEN_TIME, formatDailyHours, parseDailyHours } from '@/lib/opening-hours';
+import { DEFAULT_CLOSE_TIME, DEFAULT_OPEN_TIME, formatDailyHours } from '@/lib/opening-hours';
 import { VerificationBadge } from './VerificationBadge';
 import { DailyHoursPicker } from './DailyHoursPicker';
 import { AmenitiesPicker } from './AmenitiesPicker';
-import { PhotoManager } from './PhotoManager';
-import { SingleImageUploader } from './SingleImageUploader';
-import { BusinessContentManager } from './BusinessContentManager';
-import { MenuItemsManager } from './MenuItemsManager';
-import { FoodOrdersManager } from './FoodOrdersManager';
 import type { Business, BusinessType } from '@/lib/types';
-
-function splitList(value: string): string[] {
-  return value
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 // The review-lifecycle status the owner sees on their own listing — a
 // stranger never reaches this (the public lookup only ever returns an
@@ -83,7 +71,6 @@ export function BusinessClaimSection({
   const { user, token, ready } = useAuth();
   const [business, setBusiness] = useState(initialBusiness);
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<BusinessType>(suggestedType);
   const [phone, setPhone] = useState('');
@@ -151,29 +138,6 @@ export function BusinessClaimSection({
   if (business) {
     const isOwner = user?.id === business.owner?.id;
 
-    if (isOwner && editing && token) {
-      return (
-        <div className="flex flex-col gap-3">
-          <BusinessEditForm
-            token={token}
-            business={business}
-            onSaved={(updated) => {
-              setBusiness(updated);
-              setEditing(false);
-            }}
-            onCancel={() => setEditing(false)}
-          />
-          <BusinessContentManager token={token} businessId={business.id} />
-          {business.type === 'restaurant' && (
-            <>
-              <MenuItemsManager token={token} businessId={business.id} />
-              <FoodOrdersManager token={token} businessId={business.id} />
-            </>
-          )}
-        </div>
-      );
-    }
-
     // The name/description/hours/price/amenities/contact card that used to
     // live here duplicated what PlaceKeyFacts already shows right at the
     // top of the page the moment anyone opens it (product feedback, Aug
@@ -181,6 +145,14 @@ export function BusinessClaimSection({
     // to users is not important again ... show what is important"). All
     // that's left here is the review-status banner (owner only) and a slim
     // entry point into managing/viewing the full profile.
+    //
+    // The owner's actual management console — editing this profile,
+    // photos, menu, orders, bookings, content, analytics — lives at its
+    // own dedicated dashboard (/account/my-businesses/[id]) rather than
+    // inline here (product feedback, Aug 2026: "the process to manage a
+    // business is kinda hidden and difficult to find ... instead of
+    // clicking here and there"). This section's only job for an owner is
+    // pointing them there.
     return (
       <div className="flex flex-col gap-2">
         {isOwner && <ReviewStatusBanner business={business} />}
@@ -194,13 +166,12 @@ export function BusinessClaimSection({
               </Link>
             )}
             {isOwner && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
+              <Link
+                href={`/account/my-businesses/${business.id}`}
+                className="text-xs font-bold text-brand-700 dark:text-brand-300 hover:underline"
               >
-                Manage this place (hours, amenities, contact info &amp; more)
-              </button>
+                Open business dashboard →
+              </Link>
             )}
           </div>
         </div>
@@ -377,212 +348,6 @@ export function BusinessClaimSection({
         <button
           type="button"
           onClick={() => setShowForm(false)}
-          className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// Owner editing their own listing after claiming — contact info plus the
-// photos travelers actually want to see (rooms, pool, storefront, menu)
-// plus the rest of the profile fields (logo, videos, hours, price range,
-// services).
-function BusinessEditForm({
-  token,
-  business,
-  onSaved,
-  onCancel,
-}: {
-  token: string;
-  business: Business;
-  onSaved: (business: Business) => void;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState(business.name);
-  const [phone, setPhone] = useState(business.phone ?? '');
-  const [whatsapp, setWhatsapp] = useState(business.whatsapp ?? '');
-  const [email, setEmail] = useState(business.email ?? '');
-  const [website, setWebsite] = useState(business.website ?? '');
-  const [description, setDescription] = useState(business.description ?? '');
-  const [images, setImages] = useState(business.images);
-  const [logoImage, setLogoImage] = useState<string | null>(business.logoImage);
-  const [videos, setVideos] = useState(business.videos.join(', '));
-  const initialHours = parseDailyHours(business.openingHours);
-  const [openTime, setOpenTime] = useState(initialHours.open);
-  const [closeTime, setCloseTime] = useState(initialHours.close);
-  const [priceRangeMin, setPriceRangeMin] = useState(business.priceRangeMin?.toString() ?? '');
-  const [priceRangeMax, setPriceRangeMax] = useState(business.priceRangeMax?.toString() ?? '');
-  const [servicesOffered, setServicesOffered] = useState(business.servicesOffered);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const updated = await updateBusiness(token, business.id, {
-        name,
-        phone: phone.trim() || undefined,
-        whatsapp: whatsapp.trim() || undefined,
-        email: email.trim() || undefined,
-        website: website.trim() || undefined,
-        description: description.trim() || undefined,
-        images,
-        logoImage: logoImage ?? undefined,
-        videos: splitList(videos),
-        openingHours: formatDailyHours(openTime, closeTime),
-        priceRangeMin: priceRangeMin ? Number(priceRangeMin) : undefined,
-        priceRangeMax: priceRangeMax ? Number(priceRangeMax) : undefined,
-        servicesOffered,
-      });
-      onSaved(updated);
-    } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Manage this place</p>
-      {business.reviewStatus === 'rejected' && (
-        <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-xs text-flag-700 dark:text-flag-300">
-          Saving resubmits this listing for admin review.
-        </p>
-      )}
-
-      <SingleImageUploader token={token} value={logoImage} onChange={setLogoImage} label="Logo" className="h-24 w-24" />
-
-      <PhotoManager token={token} images={images} onChange={setImages} label="Photos (rooms, pool, storefront, menu…)" />
-
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Place name
-        <input
-          type="text"
-          required
-          maxLength={200}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Phone
-          <input
-            type="tel"
-            maxLength={40}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          WhatsApp
-          <input
-            type="tel"
-            maxLength={40}
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Website
-          <input
-            type="url"
-            placeholder="https://"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
-      </div>
-
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Description
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          maxLength={2000}
-          rows={3}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
-
-      <DailyHoursPicker open={openTime} close={closeTime} onChange={(o, c) => { setOpenTime(o); setCloseTime(c); }} />
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Price from (USD)
-          <input
-            type="number"
-            min={0}
-            value={priceRangeMin}
-            onChange={(e) => setPriceRangeMin(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-          Price up to (USD)
-          <input
-            type="number"
-            min={0}
-            value={priceRangeMax}
-            onChange={(e) => setPriceRangeMax(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </label>
-      </div>
-
-      <AmenitiesPicker value={servicesOffered} onChange={setServicesOffered} />
-
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Video links
-        <input
-          type="text"
-          placeholder="https://youtube.com/..., https://... (comma-separated)"
-          value={videos}
-          onChange={(e) => setVideos(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
-
-      {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
-          {error}
-        </p>
-      )}
-
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-        >
-          {submitting ? 'Saving…' : 'Save changes'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
           className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
         >
           Cancel
