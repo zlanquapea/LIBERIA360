@@ -526,10 +526,11 @@ export function CreatorPostViewerVideoPreview({
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
         />
       ) : isDirectVideoFile(post.mediaUrl) ? (
-        <CreatorVideoThumbnail
-          src={post.mediaUrl}
-          label={`${post.creator.name}'s video post preview`}
-        />
+          <CreatorVideoThumbnail
+            src={post.mediaUrl}
+            label={`${post.creator.name}'s video post preview`}
+            autoplayOnView
+          />
       ) : (
         <div
           aria-hidden
