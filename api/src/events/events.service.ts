@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Event } from "./entities/event.entity";
+import { Event, EventTicketType } from "./entities/event.entity";
 import { EventRsvp } from "./entities/event-rsvp.entity";
 import { EventReviewStatus, EventRsvpStatus } from "./entities/event.enums";
 import { CreateEventDto } from "./dto/create-event.dto";
@@ -43,6 +43,30 @@ export class EventsService {
     private readonly creatorsService: CreatorsService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  private normalizeTicketTypes(input?: Array<Record<string, unknown>>): EventTicketType[] {
+    if (!input) return [];
+    return input.map((ticket, index) => {
+      const name = String(ticket.name ?? "").trim();
+      const price = String(ticket.price ?? "").trim();
+      const quantity = Number(ticket.quantity);
+      if (!name || name.length > 100) throw new BadRequestException(`Ticket ${index + 1} needs a valid name`);
+      if (!Number.isFinite(Number(price)) || Number(price) <= 0) throw new BadRequestException(`Ticket ${index + 1} needs a positive price`);
+      if (!Number.isInteger(quantity) || quantity < 1) throw new BadRequestException(`Ticket ${index + 1} needs a positive quantity`);
+      const salesStart = ticket.salesStart ? String(ticket.salesStart) : null;
+      const salesEnd = ticket.salesEnd ? String(ticket.salesEnd) : null;
+      if (salesStart && salesEnd && new Date(salesEnd) <= new Date(salesStart)) throw new BadRequestException(`Ticket ${index + 1} sales must end after they start`);
+      return {
+        id: String(ticket.id || `ticket-${index + 1}`).slice(0, 100),
+        name,
+        price: Number(price).toFixed(2),
+        quantity,
+        description: String(ticket.description ?? "").trim().slice(0, 300),
+        salesStart,
+        salesEnd,
+      };
+    });
+  }
 
   async create(user: User, dto: CreateEventDto): Promise<Event> {
     await this.assertCanPostEvents(user);
@@ -94,6 +118,7 @@ export class EventsService {
       ticketCurrency: dto.ticketCurrency?.trim().toUpperCase() || "LRD",
       ticketCapacity: ticketCapacity ? Number(ticketCapacity) : null,
       paymentInstructions: dto.paymentInstructions?.trim() || null,
+      ticketTypes: this.normalizeTicketTypes(dto.ticketTypes),
       createdByUserId: user.id,
       reviewStatus: isAdminSubmission
         ? EventReviewStatus.APPROVED
@@ -305,6 +330,7 @@ export class EventsService {
         ? Number(dto.ticketCapacity)
         : undefined,
       paymentInstructions: dto.paymentInstructions?.trim(),
+      ticketTypes: dto.ticketTypes ? this.normalizeTicketTypes(dto.ticketTypes) : undefined,
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
     });

@@ -3,6 +3,7 @@ import type {
   EventCategory,
   EventRsvpState,
   EventRsvpStatus,
+  EventTicketType,
 } from "./types";
 import { apiRequest, authHeader } from "./http";
 
@@ -21,6 +22,7 @@ export interface CreateEventInput {
   ticketCurrency?: string;
   ticketCapacity?: string;
   paymentInstructions?: string;
+  ticketTypes?: EventTicketType[];
 }
 
 export function createEvent(

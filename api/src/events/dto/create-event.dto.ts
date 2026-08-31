@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  IsObject,
   IsUUID,
   MaxLength,
 } from "class-validator";
@@ -72,4 +73,10 @@ export class CreateEventDto {
   @IsString()
   @MaxLength(1000)
   paymentInstructions?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsObject({ each: true })
+  ticketTypes?: Array<Record<string, unknown>>;
 }
