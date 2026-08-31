@@ -19,6 +19,16 @@ const categories: SupportTicketCategory[] = [
 ];
 const label = (value: string) =>
   value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const categoryLabel: Record<SupportTicketCategory, string> = {
+  account: "Account, login, or profile",
+  booking: "Booking or reservation",
+  payment: "Payment or event ticket",
+  listing: "Business, place, or car listing",
+  technical: "Technical problem",
+  safety: "Safety or suspicious activity",
+  feedback: "Feedback or suggestion",
+  other: "Advertisement or other issue",
+};
 export default function CustomerSupportPage() {
   const { token, ready } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -114,6 +124,17 @@ export default function CustomerSupportPage() {
           {error}
         </p>
       )}
+      <section className="rounded-2xl border border-brand-200 bg-brand-50/70 p-4 dark:border-brand-900/60 dark:bg-brand-950/20">
+        <h2 className="font-bold text-slate-900 dark:text-white">How to get help</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Use this official support page for every LIBERIA360 problem. Choose the closest category, include the affected listing, booking, advertisement, account, or ticket reference, and describe what happened. Add a screenshot when useful. Never include your password, verification code, or full payment credentials.</p>
+        <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2 dark:text-slate-300">
+          <p><strong>Bookings:</strong> choose Booking and include dates or request details.</p>
+          <p><strong>Businesses:</strong> choose Listing and include the business or place name.</p>
+          <p><strong>Advertisements:</strong> choose Other and include the ad title or link.</p>
+          <p><strong>Accounts:</strong> choose Account and include the affected screen.</p>
+          <p><strong>Event tickets:</strong> choose Payment and include the event or ticket reference. Do not share the QR payload.</p>
+        </div>
+      </section>
       {showForm && (
         <form
           onSubmit={submit}
@@ -130,7 +151,7 @@ export default function CustomerSupportPage() {
             >
               {categories.map((c) => (
                 <option key={c} value={c}>
-                  {label(c)}
+                  {categoryLabel[c]}
                 </option>
               ))}
             </select>
@@ -205,7 +226,7 @@ export default function CustomerSupportPage() {
                   <div>
                     <p className="font-semibold">{ticket.subject}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      {ticket.reference} · {label(ticket.category)} ·{" "}
+                      {ticket.reference} · {categoryLabel[ticket.category]} ·{" "}
                       {new Date(ticket.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
