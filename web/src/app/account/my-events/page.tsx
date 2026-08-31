@@ -277,7 +277,8 @@ export default function MyEventsPage() {
                     >
                       Edit details
                     </button>
-                    {event.ticketPrice && Number(event.ticketPrice) > 0 && (
+                    {((event.ticketPrice && Number(event.ticketPrice) > 0) ||
+                      event.ticketTypes?.length > 0) && (
                       <Link
                         href={`/account/my-events/tickets/${event.id}`}
                         className="self-start text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"

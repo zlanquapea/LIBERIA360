@@ -51,10 +51,15 @@ export class EventsService {
     return input.map((ticket, index) => {
       const name = String(ticket.name ?? "").trim();
       const price = String(ticket.price ?? "").trim();
+      // Round to the currency's two-decimal precision before validating —
+      // otherwise a sub-cent price like "0.001" passes the positive check
+      // above but rounds down to "0.00", producing a free ticket that
+      // still reports as a paid event.
+      const roundedPrice = Number(price).toFixed(2);
       const quantity = Number(ticket.quantity);
       if (!name || name.length > 100)
         throw new BadRequestException(`Ticket ${index + 1} needs a valid name`);
-      if (!Number.isFinite(Number(price)) || Number(price) <= 0)
+      if (!Number.isFinite(Number(price)) || Number(roundedPrice) <= 0)
         throw new BadRequestException(
           `Ticket ${index + 1} needs a positive price`,
         );
@@ -64,6 +69,18 @@ export class EventsService {
         );
       const salesStart = ticket.salesStart ? String(ticket.salesStart) : null;
       const salesEnd = ticket.salesEnd ? String(ticket.salesEnd) : null;
+      // Reject unparseable dates individually rather than letting an
+      // invalid Date silently fall through the (false) comparison below
+      // and get persisted — that would disable the sales-window check
+      // everywhere it's later compared against (event-tickets.service.ts).
+      if (salesStart && Number.isNaN(new Date(salesStart).getTime()))
+        throw new BadRequestException(
+          `Ticket ${index + 1} has an invalid sales start date`,
+        );
+      if (salesEnd && Number.isNaN(new Date(salesEnd).getTime()))
+        throw new BadRequestException(
+          `Ticket ${index + 1} has an invalid sales end date`,
+        );
       if (salesStart && salesEnd && new Date(salesEnd) <= new Date(salesStart))
         throw new BadRequestException(
           `Ticket ${index + 1} sales must end after they start`,
@@ -71,7 +88,7 @@ export class EventsService {
       return {
         id: String(ticket.id || `ticket-${index + 1}`).slice(0, 100),
         name,
-        price: Number(price).toFixed(2),
+        price: roundedPrice,
         quantity,
         description: String(ticket.description ?? "")
           .trim()
