@@ -195,7 +195,7 @@ export default async function PlaceProfilePage({
         </p>
       </section>
 
-      <MenuSection items={menuItems} />
+      <MenuSection items={menuItems} businessId={business?.id} />
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>

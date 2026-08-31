@@ -1117,6 +1117,56 @@ export type UpdateMenuItemInput = Partial<
   Omit<CreateMenuItemInput, "businessId">
 >;
 
+// api/src/food-orders/entities/food-order.enums.ts
+export type FoodOrderStatus = "pending" | "confirmed" | "declined" | "cancelled";
+
+// api/src/food-orders/entities/food-order.entity.ts — snapshotted at order
+// time from the live MenuItem catalog, so a later menu price change or a
+// renamed/removed dish never rewrites what a past order actually charged.
+export interface FoodOrderLineItem {
+  menuItemId: string;
+  name: string;
+  unitPrice: string;
+  quantity: number;
+}
+
+// api/src/food-orders/entities/food-order.entity.ts (sanitized — buyer and
+// business.owner are the public user shape). A guest's request to order
+// specific dishes from a restaurant's menu — always targets exactly one
+// Business (no XOR union the way Booking does for business/creator/
+// carListing). items/totalAmount are computed server-side, never trusted
+// from the client.
+export interface FoodOrder {
+  id: string;
+  business: Business | null;
+  businessId: string;
+  buyer: AuthUser | null;
+  buyerUserId: string;
+  items: FoodOrderLineItem[];
+  totalAmount: number;
+  notes: string | null;
+  status: FoodOrderStatus;
+  businessResponse: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// api/src/food-order-messages/entities/food-order-message.entity.ts
+// (sanitized — sender is the public user shape). Same readAt-based
+// read-receipt model as BookingMessage, but deliberately without
+// editedAt/deletedAt — an order's conversation is short-lived, not worth
+// rewriting after the fact.
+export interface FoodOrderMessage {
+  id: string;
+  orderId: string;
+  sender: AuthUser | null;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
 // api/src/admin/admin.service.ts's runBulk() — the shape every bulk
 // moderation endpoint (places/businesses/business-content review-status)
 // returns, so one bad id in a multi-select batch doesn't abort the rest.

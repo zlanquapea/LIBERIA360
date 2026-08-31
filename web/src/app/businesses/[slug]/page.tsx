@@ -306,7 +306,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
       </Section>
 
-      <MenuSection items={menuItems} />
+      <MenuSection items={menuItems} businessId={business.id} />
 
       <Section eyebrow="Find your way" title="Location">
         <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">

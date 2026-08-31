@@ -14,6 +14,7 @@ import type {
   CreatorCategory,
   EventCategory,
   EventReviewStatus,
+  FoodOrderStatus,
   PlaceReviewStatus,
   PlaceType,
   RecommendedVisitLength,
@@ -269,6 +270,20 @@ const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
 
 export function formatBookingStatus(status: BookingStatus): string {
   return BOOKING_STATUS_LABELS[status] ?? status;
+}
+
+const FOOD_ORDER_STATUS_LABELS: Record<FoodOrderStatus, string> = {
+  pending: 'Awaiting response',
+  confirmed: 'Confirmed',
+  declined: 'Declined',
+  cancelled: 'Cancelled',
+};
+
+// Shared between the buyer's My Orders list and the restaurant owner's
+// Incoming Orders queue, so the two sides of the same order always agree
+// on what a status means.
+export function formatFoodOrderStatus(status: FoodOrderStatus): string {
+  return FOOD_ORDER_STATUS_LABELS[status] ?? status;
 }
 
 // Shared between the compact booking row and its detail view — kept as one
