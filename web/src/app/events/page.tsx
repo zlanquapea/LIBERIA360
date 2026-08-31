@@ -4,6 +4,7 @@ import { EventFilters } from '@/components/EventFilters';
 import { EventFeedCard } from '@/components/EventFeedCard';
 import { EventCarousel } from '@/components/EventCarousel';
 import type { EventCategory } from '@/lib/types';
+import { PageHeader } from '@/components/PageHeader';
 
 // How many events the "Featured events" shelf shows — same shelf-size
 // reasoning as Home's own carousel (UPCOMING_EVENTS_LIMIT in page.tsx):
@@ -57,19 +58,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">LIBERIA360 events</p>
-          <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">Events</h1>
-        </div>
-        <Link
-          href="/events/new"
-          className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-        >
-          + Post an event
-        </Link>
-      </div>
+    <main className="page-shell max-w-4xl">
+      <PageHeader eyebrow="What's happening" title="Events" description="Find festivals, gatherings, and experiences across Liberia." action={
+        <Link href="/events/new" className="button-secondary">+ Post an event</Link>
+      } />
 
       {featured && featured.data.length > 0 && (
         <EventCarousel events={featured.data} title="Featured events" seeAllHref={null} />
@@ -78,7 +70,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
       <EventFilters counties={counties} />
 
       {result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+        <p className="empty-state">
           No upcoming events match these filters.
         </p>
       ) : (

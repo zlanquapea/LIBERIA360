@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * LIBERIA360 design foundations
+ * -----------------------------
+ * Semantic variables keep product surfaces coherent without coupling them
+ * to a particular component implementation. Tailwind remains the authoring
+ * tool; these tokens also cover native controls and one-off feature modules.
+ */
+:root {
+  --surface-canvas: #f6f8fc;
+  --surface-raised: #ffffff;
+  --surface-subtle: #eef2f8;
+  --ink-strong: #0f172a;
+  --ink-muted: #526077;
+  --border-subtle: #dce3ed;
+  --focus-ring: #3355ad;
+  --radius-control: 0.875rem;
+  --radius-card: 1.25rem;
+  --radius-panel: 1.75rem;
+  --shadow-card: 0 2px 8px -2px rgb(8 26 80 / 0.08), 0 12px 32px -10px rgb(8 26 80 / 0.14);
+  --shadow-float: 0 20px 55px -20px rgb(8 26 80 / 0.3);
+  --ease-product: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dark {
+  --surface-canvas: #070d1d;
+  --surface-raised: #10192b;
+  --surface-subtle: #182338;
+  --ink-strong: #f8fafc;
+  --ink-muted: #a9b5c8;
+  --border-subtle: #26344b;
+  --focus-ring: #93a1d6;
+  --shadow-card: 0 2px 10px rgb(0 0 0 / 0.24), 0 18px 40px -18px rgb(0 0 0 / 0.7);
+  --shadow-float: 0 22px 60px -22px rgb(0 0 0 / 0.8);
+}
+
 html,
 body {
   @apply antialiased;
@@ -14,6 +49,19 @@ html {
 
 body {
   min-width: 320px;
+  background-color: var(--surface-canvas);
+  background-image: radial-gradient(circle at 12% -8%, rgb(51 85 173 / 0.07), transparent 28rem);
+}
+
+/* A quiet entrance gives route changes continuity without making the
+   interface feel animated for animation's sake. */
+#main-content > main {
+  animation: route-enter 360ms var(--ease-product) both;
+}
+
+@keyframes route-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 ::selection {
@@ -70,7 +118,69 @@ body {
 :where(button, input, select, textarea):disabled,
 :where([aria-disabled="true"]) {
   cursor: not-allowed;
+  opacity: 0.58;
 }
+
+/* Baseline treatment for controls across legacy and newly composed forms.
+   Feature-level Tailwind classes can still override every property. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+  min-height: 2.75rem;
+  color: var(--ink-strong);
+  background-color: var(--surface-raised);
+  border-color: var(--border-subtle);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):hover:not(:disabled) {
+  border-color: #93a1d6;
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-9 lg:px-10 lg:py-12;
+  }
+
+  .page-kicker {
+    @apply text-xs font-extrabold uppercase tracking-[0.18em] text-accent-700 dark:text-accent-300;
+  }
+
+  .page-title {
+    @apply font-display text-3xl font-extrabold tracking-[-0.035em] text-slate-950 dark:text-white sm:text-4xl;
+  }
+
+  .page-description {
+    @apply max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base sm:leading-7;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-slate-200/90 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .empty-state {
+    @apply flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-10 text-center text-sm leading-6 text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300;
+  }
+
+  .button-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-brand-800 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:shadow-none dark:bg-brand-500 dark:hover:bg-brand-400 dark:focus-visible:ring-offset-slate-950;
+  }
+
+  .button-secondary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:text-brand-800 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 active:translate-y-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-brand-500 dark:hover:text-white;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200 dark:bg-slate-800;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-shimmer { to { transform: translateX(100%); } }
 
 :where(h1, h2, h3, [id]) {
   scroll-margin-top: 6rem;
@@ -131,6 +241,11 @@ html.dark {
   .animate-fade-in-up,
   .animate-fade-in,
   .animate-pop {
+    animation: none !important;
+  }
+
+  #main-content > main,
+  .skeleton::after {
     animation: none !important;
   }
 
