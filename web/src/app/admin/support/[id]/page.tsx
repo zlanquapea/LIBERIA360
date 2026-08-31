@@ -10,9 +10,11 @@ import {
   getSupportAgents,
   getSupportMessages,
   getSupportTicket,
+  markSupportMessagesRead,
   sendSupportMessage,
   updateSupportTicket,
 } from "@/lib/support-api";
+import { MessageStatus } from "@/components/MessageStatus";
 import type {
   AuthUser,
   SupportMessage,
@@ -58,6 +60,14 @@ export default function AdminSupportDetail() {
             setHistory(h);
             setAgents(a);
             setError("");
+            const hasUnreadFromCustomer = m.some(
+              (message) => message.senderUserId !== user?.id && !message.readAt,
+            );
+            if (hasUnreadFromCustomer) {
+              // Fire-and-forget: this is the "viewing the thread" signal,
+              // not something the reader needs to wait on or see fail.
+              markSupportMessagesRead(token, id).catch(() => undefined);
+            }
           })
           .catch((cause) =>
             setError(
@@ -68,7 +78,7 @@ export default function AdminSupportDetail() {
           )
           .finally(() => setLoading(false)));
   };
-  useEffect(load, [token, id]);
+  useEffect(load, [token, id, user?.id]);
   useEffect(() => {
     if (!token) return;
     const timer = window.setInterval(() => load(true), 15000);
@@ -216,6 +226,11 @@ export default function AdminSupportDetail() {
                   <p className="mt-1 text-[10px] opacity-70">
                     {m.sender.name} · {new Date(m.createdAt).toLocaleString()}
                   </p>
+                  {m.senderUserId === user?.id && (
+                    <div className="mt-1 text-[10px] opacity-70">
+                      <MessageStatus viewed={Boolean(m.readAt)} />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

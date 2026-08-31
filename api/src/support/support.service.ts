@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, Repository } from "typeorm";
+import { Brackets, IsNull, Not, Repository } from "typeorm";
 import { NotificationsService } from "../notifications/notifications.service";
 import { User } from "../users/entities/user.entity";
 import {
@@ -180,6 +180,20 @@ export class SupportService {
       });
     }
     return this.messages.findOneOrFail({ where: { id: message.id } });
+  }
+  // Marks every message the *other* side sent on this ticket as read —
+  // same bulk-update pattern as BookingMessagesService.markRead and
+  // FoodOrderMessagesService.markRead. "Other side" is just "not this
+  // caller", so a customer viewing the thread flips every admin message to
+  // read, and an admin viewing it flips every customer message to read —
+  // whichever admin happens to be looking.
+  async markRead(user: User, id: string): Promise<void> {
+    const ticket = await this.get(id);
+    this.assertAccess(user, ticket);
+    await this.messages.update(
+      { ticketId: id, senderUserId: Not(user.id), readAt: IsNull() },
+      { readAt: new Date() },
+    );
   }
   async update(agent: User, id: string, dto: UpdateSupportTicketDto) {
     const ticket = await this.get(id);

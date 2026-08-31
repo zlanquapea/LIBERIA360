@@ -1593,5 +1593,7 @@ export interface SupportTicket {
   status: SupportTicketStatus; priority: SupportTicketPriority; rating: number | null; ratingComment: string | null;
   resolvedAt: string | null; closedAt: string | null; createdAt: string; updatedAt: string;
 }
-export interface SupportMessage { id: string; ticketId: string; sender: AuthUser; senderUserId: string; body: string; attachments: string[]; createdAt: string; }
+// readAt: same read-receipt convention as BookingMessage/FoodOrderMessage
+// — set once the other side of the conversation has opened the thread.
+export interface SupportMessage { id: string; ticketId: string; sender: AuthUser; senderUserId: string; body: string; attachments: string[]; createdAt: string; readAt: string | null; }
 export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total: number; page: number; limit: number; totalPages: number }; }

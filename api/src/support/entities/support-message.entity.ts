@@ -28,4 +28,11 @@ export class SupportMessage {
   @Column({ type: "text", array: true, default: () => "'{}'" })
   attachments: string[];
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
+  // Set once the *other* side of the conversation has opened the thread
+  // since this message was sent — same convention as BookingMessage.readAt
+  // and FoodOrderMessage.readAt. "Other side" is simply "not this
+  // message's own sender": a customer's messages read by any admin, or an
+  // admin's messages read by the customer (see SupportService.markRead).
+  @Column({ name: "read_at", type: "timestamp", nullable: true })
+  readAt: Date | null;
 }

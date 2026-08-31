@@ -67,6 +67,13 @@ export class SupportController {
   ) {
     return this.support.reply(user, id, dto).then(sanitize);
   }
+  @Patch("tickets/:id/messages/read") async markRead(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+  ): Promise<{ success: true }> {
+    await this.support.markRead(user, id);
+    return { success: true };
+  }
   @Post("tickets/:id/confirm-resolved") confirm(
     @CurrentUser() user: User,
     @Param("id") id: string,
