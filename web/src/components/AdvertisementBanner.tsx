@@ -15,46 +15,17 @@ import {
   PauseIcon,
   PlayIcon,
 } from "@heroicons/react/24/outline";
-import { whatsappLink } from "@/lib/contact";
+import { advertisementToAd } from "@/lib/ad-mapping";
 import { AdvertisementCard } from "./AdvertisementCard";
-import type { Ad, Advertisement, AdCtaType } from "@/lib/types";
+import type { Advertisement } from "@/lib/types";
 
 const AUTOPLAY_DELAY_MS = 5000;
 const RESUME_DELAY_MS = 5000;
 const TRANSITION_DURATION_MS = 360;
 const SWIPE_THRESHOLD_PX = 42;
 
-function toHomepageAd(ad: Advertisement): Ad {
-  let ctaType: AdCtaType = "learn_more";
-  let ctaUrl = `/ads/${ad.id}`;
-
-  if (ad.contactWhatsapp) {
-    ctaType = "message";
-    ctaUrl = whatsappLink(ad.contactWhatsapp);
-  } else if (ad.contactPhone) {
-    ctaType = "call";
-    ctaUrl = `tel:${ad.contactPhone}`;
-  } else if (ad.externalLink) {
-    ctaType = /apply|career|hiring|job/i.test(`${ad.title} ${ad.description}`)
-      ? "apply"
-      : "learn_more";
-    ctaUrl = ad.externalLink;
-  }
-
-  return {
-    id: ad.id,
-    sponsorLabel: "Sponsored",
-    image: ad.images[0] ?? null,
-    title: ad.title,
-    description: ad.description,
-    ctaType,
-    ctaUrl,
-    advertiserName: ad.owner?.name ?? undefined,
-  };
-}
-
 export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
-  const mappedAds = useMemo(() => ads.map(toHomepageAd), [ads]);
+  const mappedAds = useMemo(() => ads.map(advertisementToAd), [ads]);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);

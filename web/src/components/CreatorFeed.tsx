@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { getCreatorFeed, getFollowedCreatorFeed } from "@/lib/creator-feed-api";
-import type { CreatorPost } from "@/lib/types";
+import { getActiveAdvertisements } from "@/lib/api";
+import { advertisementToAd } from "@/lib/ad-mapping";
+import {
+  createCreatorFeedAdSession,
+  mergeCreatorPostsWithAds,
+} from "@/lib/creator-feed-ads";
+import type { Ad, CreatorPost } from "@/lib/types";
 import { CreatorPostCard } from "./CreatorPostCard";
+import { SponsoredCreatorAdCard } from "./SponsoredCreatorAdCard";
 
 type CreatorFeedMode = "discover" | "following";
 
@@ -21,11 +28,37 @@ export function CreatorFeed({
 }) {
   const { token, ready } = useAuth();
   const [posts, setPosts] = useState(initialPosts);
+  const [ads, setAds] = useState<Ad[]>([]);
+  const adSessionRef = useRef(createCreatorFeedAdSession());
   const [page, setPage] = useState(1);
   const [loadingInitial, setLoadingInitial] = useState(mode === "following");
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialPosts.length >= 20);
   const [error, setError] = useState<string | null>(null);
+  const feedItems = useMemo(
+    () =>
+      mergeCreatorPostsWithAds(
+        posts,
+        mode === "discover" ? ads : [],
+        adSessionRef.current,
+      ),
+    [ads, mode, posts],
+  );
+
+  useEffect(() => {
+    if (mode !== "discover") return;
+    let cancelled = false;
+    getActiveAdvertisements(20)
+      .then((result) => {
+        if (!cancelled) setAds(result.map(advertisementToAd));
+      })
+      .catch(() => {
+        // Ads are optional feed content; organic posts remain available.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
 
   useEffect(() => {
     if (mode !== "following" || !ready) return;
@@ -105,9 +138,16 @@ export function CreatorFeed({
         </div>
       ) : posts.length > 0 ? (
         <div className="grid gap-5 lg:grid-cols-2">
-          {posts.map((post) => (
-            <CreatorPostCard key={post.id} post={post} />
-          ))}
+          {feedItems.map((item, index) =>
+            item.kind === "ad" ? (
+              <SponsoredCreatorAdCard
+                key={`ad-${item.ad.id}-${index}`}
+                ad={item.ad}
+              />
+            ) : (
+              <CreatorPostCard key={item.post.id} post={item.post} />
+            ),
+          )}
         </div>
       ) : (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
