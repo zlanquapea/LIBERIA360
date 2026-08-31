@@ -2,28 +2,17 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
-import { deleteEvent, getMyEvents } from "@/lib/event-api";
-import { getCounties } from "@/lib/api";
-import { getEventAnalytics } from "@/lib/analytics-api";
-import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
+import { getMyEvents } from "@/lib/event-api";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 import {
   formatEventCategory,
   formatEventDateRange,
   formatEventReviewStatus,
 } from "@/lib/format";
 import { resolveImageUrl } from "@/lib/images";
-import { NewEventForm } from "@/components/NewEventForm";
 import { SafeImage } from "@/components/SafeImage";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { SuccessBanner } from "@/components/SuccessBanner";
-import type {
-  BusinessAnalytics,
-  County,
-  Event,
-  EventReviewStatus,
-} from "@/lib/types";
+import type { Event, EventReviewStatus } from "@/lib/types";
 
 const STATUS_BADGE: Record<EventReviewStatus, string> = {
   pending:
@@ -37,21 +26,17 @@ const STATUS_BADGE: Record<EventReviewStatus, string> = {
 // (GET /events/mine, unlike the public listing, includes past events too
 // so someone can see what they've already run), mirroring the "My
 // Places"/"My Trips" pattern already used elsewhere in the account area.
+//
+// Each card exposes exactly two destinations — Manage Event (edit details,
+// review payments, cancel tickets or the event, open the scanner) and
+// Insights (how the event is performing) — rather than the "Metrics" /
+// "View metrics" / "Edit" / "Ticket orders" pile this used to show. Every
+// other action lives one tap away, inside Manage Event.
 export default function MyEventsPage() {
   const { user, token, ready } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
-  const [counties, setCounties] = useState<County[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [metricsId, setMetricsId] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<BusinessAnalytics | null>(null);
-  const [metricsLoading, setMetricsLoading] = useState(false);
-
-  const [pendingCancel, setPendingCancel] = useState<Event | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [dialogError, setDialogError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -68,68 +53,12 @@ export default function MyEventsPage() {
   }, [token]);
 
   useEffect(() => {
-    getCounties().then(setCounties);
-  }, []);
-
-  useEffect(() => {
     if (!ready || !token) {
       if (ready) setLoading(false);
       return;
     }
     reload();
   }, [ready, token, reload]);
-
-  useEffect(() => {
-    if (!successMessage) return;
-    const id = setTimeout(() => setSuccessMessage(null), 4000);
-    return () => clearTimeout(id);
-  }, [successMessage]);
-
-  async function toggleMetrics(event: Event) {
-    if (metricsId === event.id) {
-      setMetricsId(null);
-      setMetrics(null);
-      return;
-    }
-    if (!token) return;
-    setMetricsId(event.id);
-    setMetrics(null);
-    setMetricsLoading(true);
-    try {
-      setMetrics(await getEventAnalytics(token, event.id));
-    } catch {
-      setMetricsId(null);
-    } finally {
-      setMetricsLoading(false);
-    }
-  }
-
-  async function confirmCancel() {
-    if (!token || !pendingCancel) return;
-    const target = pendingCancel;
-    setActionLoading(true);
-    setDialogError(null);
-    try {
-      await deleteEvent(token, target.id);
-      setEvents((prev) => prev.filter((e) => e.id !== target.id));
-      setPendingCancel(null);
-      setSuccessMessage(`"${target.name}" was cancelled.`);
-    } catch (err) {
-      if (isNotFoundError(err)) {
-        setEvents((prev) => prev.filter((e) => e.id !== target.id));
-        setPendingCancel(null);
-        setSuccessMessage("This event was already removed.");
-      } else {
-        setDialogError(
-          getFriendlyErrorMessage(err, {
-            context: { action: "cancel-event", eventId: target.id },
-          }),
-        );
-      }
-    } finally {
-      setActionLoading(false);
-    }
-  }
 
   if (!ready || loading) {
     return (
@@ -171,8 +100,6 @@ export default function MyEventsPage() {
           + Post an event
         </Link>
       </div>
-
-      {successMessage && <SuccessBanner>{successMessage}</SuccessBanner>}
 
       {loadError && (
         <p
@@ -257,117 +184,25 @@ export default function MyEventsPage() {
                   </div>
                 </div>
 
-                {editingId === event.id ? (
-                  <NewEventForm
-                    counties={counties}
-                    event={event}
-                    onSaved={(updated) => {
-                      setEvents((prev) =>
-                        prev.map((e) => (e.id === updated.id ? updated : e)),
-                      );
-                      setEditingId(null);
-                    }}
-                  />
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(event.id)}
-                      className="self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
-                    >
-                      Edit details
-                    </button>
-                    {((event.ticketPrice && Number(event.ticketPrice) > 0) ||
-                      event.ticketTypes?.length > 0) && (
-                      <Link
-                        href={`/account/my-events/tickets/${event.id}/metrics`}
-                        className="self-start text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"
-                      >
-                        Metrics
-                      </Link>
-                    )}
-                    {((event.ticketPrice && Number(event.ticketPrice) > 0) ||
-                      event.ticketTypes?.length > 0) && (
-                      <Link
-                        href={`/account/my-events/tickets/${event.id}`}
-                        className="self-start text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"
-                      >
-                        Ticket orders
-                      </Link>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => toggleMetrics(event)}
-                      className="flex items-center gap-1 self-start text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
-                    >
-                      <ChartBarIcon aria-hidden className="h-3.5 w-3.5" />
-                      {metricsId === event.id ? "Hide metrics" : "View metrics"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingCancel(event)}
-                      className="self-start text-xs font-medium text-flag-700 dark:text-flag-300 hover:underline"
-                    >
-                      Cancel event
-                    </button>
-                  </div>
-                )}
-
-                {metricsId === event.id && (
-                  <div className="flex flex-wrap gap-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
-                    {metricsLoading ? (
-                      <span>Loading metrics…</span>
-                    ) : metrics ? (
-                      <>
-                        <span>
-                          <strong className="text-slate-900 dark:text-slate-50">
-                            {metrics.totals.view}
-                          </strong>{" "}
-                          views
-                        </span>
-                        <span>
-                          <strong className="text-slate-900 dark:text-slate-50">
-                            {event.interestedCount}
-                          </strong>{" "}
-                          interested
-                        </span>
-                        <span>
-                          <strong className="text-slate-900 dark:text-slate-50">
-                            {event.goingCount}
-                          </strong>{" "}
-                          going
-                        </span>
-                      </>
-                    ) : (
-                      <span>Couldn&apos;t load metrics.</span>
-                    )}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/account/my-events/tickets/${event.id}`}
+                    className="rounded-full bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-800"
+                  >
+                    Manage Event
+                  </Link>
+                  <Link
+                    href={`/account/my-events/tickets/${event.id}/metrics`}
+                    className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:border-brand-400 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    Insights
+                  </Link>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
-
-      <ConfirmDialog
-        open={pendingCancel != null}
-        title={
-          pendingCancel
-            ? `Cancel "${pendingCancel.name}"?`
-            : "Cancel this event?"
-        }
-        description="This removes the event listing for everyone. Anyone who was planning around it won't be notified."
-        confirmLabel="Cancel Event"
-        loadingLabel="Cancelling…"
-        isLoading={actionLoading}
-        error={dialogError}
-        onConfirm={confirmCancel}
-        onCancel={() => {
-          if (actionLoading) return;
-          setPendingCancel(null);
-          setDialogError(null);
-        }}
-      />
     </main>
   );
 }

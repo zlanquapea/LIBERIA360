@@ -6,13 +6,14 @@ import { useState } from "react";
 import {
   ArrowRightIcon,
   BanknotesIcon,
+  CheckCircleIcon,
   InformationCircleIcon,
   TicketIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { createEventTicketOrder } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
-import type { Event } from "@/lib/types";
+import type { Event, EventTicketOrder } from "@/lib/types";
 
 export function EventTicketPurchase({ event }: { event: Event }) {
   const { user, token } = useAuth();
@@ -21,8 +22,10 @@ export function EventTicketPurchase({ event }: { event: Event }) {
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set once an order is created — swaps the whole form for a dedicated
+  // confirmation screen rather than an inline message the buyer might miss.
+  const [submittedOrder, setSubmittedOrder] = useState<EventTicketOrder | null>(null);
 
   const ticketTypes = event.ticketTypes ?? [];
   if (!ticketTypes.length && (!event.ticketPrice || Number(event.ticketPrice) <= 0)) return null;
@@ -31,23 +34,29 @@ export function EventTicketPurchase({ event }: { event: Event }) {
   const selectedQuantity = ticketTypes.reduce((sum, ticket) => sum + (quantities[ticket.id] || 0), 0);
   const total = ticketTypes.length ? ticketTypes.reduce((sum, ticket) => sum + Number(ticket.price) * (quantities[ticket.id] || 0), 0) : unitPrice * quantity;
 
+  function resetForm() {
+    // "Submit Another Payment" starts from a genuinely blank form — nothing
+    // from the previous submission should linger unless the buyer re-enters it.
+    setQuantity(1);
+    setQuantities({});
+    setPaymentReference("");
+    setPaymentNote("");
+    setError(null);
+    setSubmittedOrder(null);
+  }
+
   async function submit() {
     if (!token) return;
     setSubmitting(true);
     setError(null);
-    setMessage(null);
     try {
-      await createEventTicketOrder(token, event.id, {
+      const order = await createEventTicketOrder(token, event.id, {
         quantity: ticketTypes.length ? undefined : quantity,
         selections: ticketTypes.length ? ticketTypes.filter((ticket) => quantities[ticket.id]).map((ticket) => ({ ticketTypeId: ticket.id, quantity: quantities[ticket.id] })) : undefined,
         paymentReference: paymentReference.trim(),
         paymentNote: paymentNote.trim() || undefined,
       });
-      setMessage(
-        "Payment submitted. The organizer will verify it and issue your ticket.",
-      );
-      setPaymentReference("");
-      setPaymentNote("");
+      setSubmittedOrder(order);
     } catch (err) {
       setError(
         err instanceof HttpError
@@ -57,6 +66,36 @@ export function EventTicketPurchase({ event }: { event: Event }) {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (submittedOrder) {
+    return (
+      <section className="ticket-purchase-shell" aria-labelledby="ticket-purchase-title">
+        <div className="flex flex-col items-center gap-3 py-6 text-center animate-fade-in-up">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+            <CheckCircleIcon aria-hidden className="h-8 w-8" />
+          </div>
+          <h2 id="ticket-purchase-title" className="text-xl font-black text-slate-900 dark:text-white">Payment Submitted</h2>
+          <p className="max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Your payment reference has been submitted successfully. We will verify your payment and update your ticket status once the payment has been confirmed.
+          </p>
+          <p className="mt-1 rounded-lg bg-slate-100 px-3 py-2 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            Reference: {submittedOrder.paymentReference}
+          </p>
+          <div className="mt-3 flex w-full max-w-xs flex-col gap-2">
+            <Link href="/account/my-tickets" className="flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-brand-700 px-5 text-sm font-semibold text-white hover:bg-brand-800">
+              View My Payment <ArrowRightIcon aria-hidden className="h-4 w-4" />
+            </Link>
+            <button type="button" onClick={resetForm} className="flex min-h-11 items-center justify-center rounded-full border border-slate-300 px-5 text-sm font-semibold text-slate-700 hover:border-brand-400 dark:border-slate-700 dark:text-slate-200">
+              Submit Another Payment
+            </button>
+            <Link href={`/events/${event.id}`} className="mt-1 text-xs font-medium text-slate-500 hover:underline dark:text-slate-400">
+              Back to event
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -155,7 +194,6 @@ export function EventTicketPurchase({ event }: { event: Event }) {
             {submitting ? "Submitting…" : "Submit payment reference"}
             <ArrowRightIcon aria-hidden className="h-4 w-4" />
           </button>
-          {message && <p className="ticket-form-message ticket-form-success">{message} <Link href="/account/my-tickets">View My Tickets</Link></p>}
         </div>
       )}
 

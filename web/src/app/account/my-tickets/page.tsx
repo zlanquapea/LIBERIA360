@@ -20,10 +20,13 @@ import { getMyTicketOrders } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
 import type { EventTicketOrder } from "@/lib/types";
 
+// The customer-facing payment status vocabulary — deliberately just these
+// three (plus Cancelled) so a buyer never has to guess what a status
+// means or wonder whether their reference was even received.
 const STATUS_LABELS: Record<EventTicketOrder["status"], string> = {
-  pending_payment_review: "Payment under review",
-  approved: "Ticket issued",
-  rejected: "Payment rejected",
+  pending_payment_review: "Pending Verification",
+  approved: "Approved",
+  rejected: "Rejected",
   cancelled: "Cancelled",
 };
 
@@ -140,8 +143,11 @@ export default function MyTicketsPage() {
                 <p className="ticket-order-message ticket-order-message-review">Your payment was approved. The organizer is finishing ticket issuance; refresh shortly.</p>
               ) : order.status === "pending_payment_review" ? (
                 <p className="ticket-order-message ticket-order-message-review">Payment reference: {order.paymentReference}. The organizer must verify it before issuing your QR ticket.</p>
-              ) : order.status === "rejected" && order.reviewNote ? (
-                <p className="ticket-order-message ticket-order-message-rejected">Note: {order.reviewNote}</p>
+              ) : order.status === "rejected" ? (
+                <p className="ticket-order-message ticket-order-message-rejected">
+                  {order.reviewNote ? `Reason: ${order.reviewNote}` : "This payment reference could not be verified."}{" "}
+                  <Link href={`/events/${order.event.id}`} className="font-semibold underline">Submit another payment reference</Link>
+                </p>
               ) : null}
 
               <div className="ticket-order-foot"><span><InformationCircleIcon aria-hidden className="h-4 w-4" /> Keep this QR code private.</span><Link href={`/events/${order.event.id}`}>View event <ArrowRightIcon aria-hidden className="h-4 w-4" /></Link></div>
