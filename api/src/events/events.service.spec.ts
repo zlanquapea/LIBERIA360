@@ -303,6 +303,33 @@ describe("EventsService", () => {
       );
     });
 
+    it("rejects a ticket type whose price rounds down to zero", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+
+      await expect(
+        service.update({ id: "user-1", isAdmin: false } as never, "event-1", {
+          ticketTypes: [{ name: "VIP", price: "0.001", quantity: 5 }] as never,
+        }),
+      ).rejects.toThrow("needs a positive price");
+    });
+
+    it("rejects a ticket type with an unparseable sales-window date", async () => {
+      eventRepo.findOne.mockResolvedValue({ ...existing });
+
+      await expect(
+        service.update({ id: "user-1", isAdmin: false } as never, "event-1", {
+          ticketTypes: [
+            {
+              name: "VIP",
+              price: "10",
+              quantity: 5,
+              salesStart: "not-a-date",
+            },
+          ] as never,
+        }),
+      ).rejects.toThrow("invalid sales start date");
+    });
+
     it("lets an admin update someone else's event", async () => {
       eventRepo.findOne.mockResolvedValue({ ...existing });
       await expect(
