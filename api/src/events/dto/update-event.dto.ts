@@ -3,6 +3,8 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   IsObject,
@@ -20,6 +22,8 @@ export class UpdateEventDto {
   @IsOptional() @IsEnum(EventCategory) category?: EventCategory;
   @IsOptional() @IsUUID() placeId?: string;
   @IsOptional() @IsString() @MaxLength(255) locationText?: string;
+  @IsOptional() @IsLatitude() latitude?: number;
+  @IsOptional() @IsLongitude() longitude?: number;
   @IsOptional() @IsUUID() countyId?: string;
   @IsOptional() @IsDateString() startDate?: string;
   @IsOptional() @IsDateString() endDate?: string;

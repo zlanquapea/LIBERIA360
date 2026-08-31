@@ -10,6 +10,7 @@ import { getMyCreatorProfile } from '@/lib/creator-api';
 import { HttpError } from '@/lib/http';
 import { formatEventCategory, toDatetimeLocalInput } from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
+import { PlaceLocationPickerLoader } from '@/app/admin/content/PlaceLocationPickerLoader';
 import type { County, Event, EventCategory, EventTicketType } from '@/lib/types';
 
 const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nightlife', 'seasonal', 'other'];
@@ -47,6 +48,8 @@ export function NewEventForm({
   const [category, setCategory] = useState<EventCategory>(event?.category ?? 'other');
   const [countyId, setCountyId] = useState(event?.county.id ?? counties[0]?.id ?? '');
   const [locationText, setLocationText] = useState(event?.locationText ?? '');
+  const [latitude, setLatitude] = useState<number | null>(event?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(event?.longitude ?? null);
   const [startDate, setStartDate] = useState(event ? toDatetimeLocalInput(event.startDate) : '');
   const [endDate, setEndDate] = useState(event?.endDate ? toDatetimeLocalInput(event.endDate) : '');
   const [description, setDescription] = useState(event?.description ?? '');
@@ -115,6 +118,8 @@ export function NewEventForm({
         category,
         countyId,
         locationText: locationText.trim() || undefined,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
         startDate: new Date(startDate).toISOString(),
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
         description: description.trim() || undefined,
@@ -241,6 +246,21 @@ export function NewEventForm({
           className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
+
+      {/* Same map-based pin as adding a place (PlaceSubmissionForm) —
+          optional on top of the location name above, so attendees can get
+          turn-by-turn directions instead of just reading an address. */}
+      <div className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        Pin it on the map (optional, but attendees will thank you)
+        <PlaceLocationPickerLoader
+          latitude={latitude}
+          longitude={longitude}
+          onChange={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">

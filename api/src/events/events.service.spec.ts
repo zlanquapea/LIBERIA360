@@ -198,6 +198,28 @@ describe("EventsService", () => {
     });
   });
 
+  describe("location coordinates", () => {
+    it("persists an optional lat/lng pin alongside locationText", async () => {
+      creatorsService.findMine.mockResolvedValue({ id: "creator-1" });
+      const event = await service.create(
+        { id: "user-1", isAdmin: false } as never,
+        { ...BASE_DTO, latitude: 6.3106, longitude: -10.8047 },
+      );
+      expect(event.latitude).toBe(6.3106);
+      expect(event.longitude).toBe(-10.8047);
+    });
+
+    it("defaults to null when no pin is provided", async () => {
+      creatorsService.findMine.mockResolvedValue({ id: "creator-1" });
+      const event = await service.create(
+        { id: "user-1", isAdmin: false } as never,
+        BASE_DTO,
+      );
+      expect(event.latitude).toBeNull();
+      expect(event.longitude).toBeNull();
+    });
+  });
+
   describe("validation (runs after the eligibility check)", () => {
     it("still rejects a missing location for an eligible user", async () => {
       creatorsService.findMine.mockResolvedValue({ id: "creator-1" });

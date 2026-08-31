@@ -12,6 +12,8 @@ export interface CreateEventInput {
   category: EventCategory;
   placeId?: string;
   locationText?: string;
+  latitude?: number;
+  longitude?: number;
   countyId: string;
   startDate: string;
   endDate?: string;

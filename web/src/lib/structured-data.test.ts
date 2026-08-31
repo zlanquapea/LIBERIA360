@@ -95,6 +95,8 @@ describe("eventJsonLd", () => {
     place: null,
     placeId: null,
     locationText: "CeeCee Beach",
+    latitude: null,
+    longitude: null,
     county: COUNTY,
     startDate: "2026-09-01T09:00:00.000Z",
     endDate: null,
@@ -117,6 +119,33 @@ describe("eventJsonLd", () => {
   it("uses locationText when there is no linked Place", () => {
     const data = eventJsonLd(EVENT) as { location: { name: string } };
     expect(data.location.name).toBe("CeeCee Beach");
+  });
+
+  it("omits geo coordinates when the event has no pin and no linked Place", () => {
+    const data = eventJsonLd(EVENT) as { location: { geo?: unknown } };
+    expect(data.location.geo).toBeUndefined();
+  });
+
+  it("includes geo coordinates from the event's own pin", () => {
+    const data = eventJsonLd({ ...EVENT, latitude: 6.31, longitude: -10.8 }) as {
+      location: { geo: { latitude: number; longitude: number } };
+    };
+    expect(data.location.geo).toEqual({
+      "@type": "GeoCoordinates",
+      latitude: 6.31,
+      longitude: -10.8,
+    });
+  });
+
+  it("falls back to the linked Place's coordinates when the event has no pin of its own", () => {
+    const data = eventJsonLd({ ...EVENT, place: PLACE, placeId: PLACE.id }) as {
+      location: { geo: { latitude: number; longitude: number } };
+    };
+    expect(data.location.geo).toEqual({
+      "@type": "GeoCoordinates",
+      latitude: PLACE.latitude,
+      longitude: PLACE.longitude,
+    });
   });
 });
 
