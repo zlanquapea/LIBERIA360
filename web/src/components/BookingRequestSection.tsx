@@ -29,6 +29,7 @@ export function BookingRequestSection({
   href,
   returnTo,
   startExpanded = false,
+  initialRentalDetails,
 }: {
   business?: Business;
   creator?: Creator;
@@ -60,6 +61,11 @@ export function BookingRequestSection({
   // one would just be a second click to reach the thing the visitor
   // already navigated here for. Skips straight to the form.
   startExpanded?: boolean;
+  initialRentalDetails?: {
+    pickupDate?: string;
+    returnDate?: string;
+    pickupLocation?: string;
+  };
 }) {
   const { user, token, ready } = useAuth();
   const targetId = business?.id ?? creator?.id ?? carListing!.id;
@@ -70,8 +76,12 @@ export function BookingRequestSection({
       : user?.id === carListing!.owner?.id;
 
   const [showForm, setShowForm] = useState(startExpanded);
-  const [requestedDate, setRequestedDate] = useState("");
-  const [requestedEndDate, setRequestedEndDate] = useState("");
+  const [requestedDate, setRequestedDate] = useState(
+    initialRentalDetails?.pickupDate ?? "",
+  );
+  const [requestedEndDate, setRequestedEndDate] = useState(
+    initialRentalDetails?.returnDate ?? "",
+  );
   // By-day vs by-hour — only ever relevant for a carListing that opted
   // into hourly rental (pricePerHour set); every other target, and a car
   // listing without pricePerHour, stays on "day" and never shows the
@@ -81,13 +91,17 @@ export function BookingRequestSection({
   const [requestedEndTime, setRequestedEndTime] = useState("");
   const [partySize, setPartySize] = useState("");
   const [withDriver, setWithDriver] = useState(false);
-  const [pickupLocation, setPickupLocation] = useState("");
+  const [pickupLocation, setPickupLocation] = useState(
+    initialRentalDetails?.pickupLocation ?? "",
+  );
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ status: BookingStatus } | null>(null);
 
-  const isHourly = Boolean(carListing?.pricePerHour != null && rentalUnit === "hour");
+  const isHourly = Boolean(
+    carListing?.pricePerHour != null && rentalUnit === "hour",
+  );
 
   // Live estimate shown under the time inputs — mirrors
   // BookingsService.create's own hoursBetween/estimatedTotal math so a
@@ -95,14 +109,21 @@ export function BookingRequestSection({
   // request; null (nothing shown) until both times are filled in and
   // valid, same as the server would reject an empty/backwards range.
   let estimatedHourlyTotal: number | null = null;
-  if (isHourly && carListing?.pricePerHour != null && requestedStartTime && requestedEndTime) {
+  if (
+    isHourly &&
+    carListing?.pricePerHour != null &&
+    requestedStartTime &&
+    requestedEndTime
+  ) {
     const [startH, startM] = requestedStartTime.split(":").map(Number);
     const [endH, endM] = requestedEndTime.split(":").map(Number);
     const minutes = endH * 60 + endM - (startH * 60 + startM);
     if (minutes > 0) {
       const hours = Math.ceil(minutes / 60);
       const driverFee =
-        withDriver && carListing.withDriverAvailable && carListing.driverFeePerHour != null
+        withDriver &&
+        carListing.withDriverAvailable &&
+        carListing.driverFeePerHour != null
           ? hours * carListing.driverFeePerHour
           : 0;
       estimatedHourlyTotal = hours * carListing.pricePerHour + driverFee;
@@ -126,7 +147,9 @@ export function BookingRequestSection({
         requestedEndTime: isHourly ? requestedEndTime : undefined,
         partySize: partySize ? Number(partySize) : undefined,
         withDriver: carListing ? withDriver : undefined,
-        pickupLocation: carListing ? pickupLocation.trim() || undefined : undefined,
+        pickupLocation: carListing
+          ? pickupLocation.trim() || undefined
+          : undefined,
         notes: notes.trim() || undefined,
       });
       setSent({ status: booking.status });
@@ -187,7 +210,9 @@ export function BookingRequestSection({
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
         <Link
-          href={returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : "/login"}
+          href={
+            returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : "/login"
+          }
           className={`inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 ${prominent ? "w-full text-base shadow-sm sm:text-lg" : "text-sm"}`}
         >
           Log in to request a booking
@@ -208,7 +233,11 @@ export function BookingRequestSection({
 
   if (!showForm) {
     return (
-      <button type="button" onClick={() => setShowForm(true)} className={requestToBookClass}>
+      <button
+        type="button"
+        onClick={() => setShowForm(true)}
+        className={requestToBookClass}
+      >
         Request to book
       </button>
     );
@@ -320,10 +349,14 @@ export function BookingRequestSection({
               Add a driver
               {isHourly
                 ? carListing.driverFeePerHour != null && (
-                    <span className="text-slate-500 dark:text-slate-400">(+${carListing.driverFeePerHour.toFixed(2)}/hr)</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      (+${carListing.driverFeePerHour.toFixed(2)}/hr)
+                    </span>
                   )
                 : carListing.driverFeePerDay != null && (
-                    <span className="text-slate-500 dark:text-slate-400">(+${carListing.driverFeePerDay.toFixed(2)}/day)</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      (+${carListing.driverFeePerDay.toFixed(2)}/day)
+                    </span>
                   )}
             </label>
           )}
@@ -332,7 +365,10 @@ export function BookingRequestSection({
             <input
               type="text"
               maxLength={200}
-              placeholder={carListing.pickupLocation ?? "Where should the car be picked up?"}
+              placeholder={
+                carListing.pickupLocation ??
+                "Where should the car be picked up?"
+              }
               value={pickupLocation}
               onChange={(e) => setPickupLocation(e.target.value)}
               className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
