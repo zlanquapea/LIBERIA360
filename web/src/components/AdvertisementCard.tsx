@@ -37,10 +37,10 @@ export function AdvertisementCard({
   return (
     <div
       ref={cardRef}
-      className="group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-600"
+      className="group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition hover:border-brand-300 hover:shadow-card-hover lg:hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-600"
     >
       <Link href={`/ads/${ad.id}`} className="flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500" aria-label={`${ad.title}, sponsored advertisement`}>
-        <div className="relative aspect-[16/10] overflow-hidden bg-slate-200 dark:bg-slate-800">
+        <div className="relative aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-slate-800 lg:aspect-[16/10]">
         <SafeImage
           src={cover}
           alt={cover ? ad.title : ''}

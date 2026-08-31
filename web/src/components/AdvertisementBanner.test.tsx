@@ -24,23 +24,26 @@ function makeAd(id: string, title: string): Advertisement {
 
 const ads = [makeAd('a1', 'First ad'), makeAd('a2', 'Second ad'), makeAd('a3', 'Third ad')];
 
-describe('AdvertisementBanner grid', () => {
-  it('renders every advertisement in a single responsive grid', () => {
+describe('AdvertisementBanner responsive carousel', () => {
+  it('renders a mobile slider and a responsive desktop grid', () => {
     render(<AdvertisementBanner ads={ads} />);
+    expect(screen.getByTestId('sponsored-mobile-slider')).toBeInTheDocument();
     const grid = screen.getByTestId('sponsored-card-grid');
     expect(within(grid).getByText('First ad')).toBeInTheDocument();
     expect(within(grid).getByText('Second ad')).toBeInTheDocument();
     expect(within(grid).getByText('Third ad')).toBeInTheDocument();
-    expect(grid).toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4');
+    expect(grid).toHaveClass('hidden', 'lg:grid', 'grid-cols-3', 'xl:grid-cols-4');
+    expect(screen.getByRole('button', { name: 'Previous advertisement' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next advertisement' })).toBeEnabled();
   });
 
   it('dismisses only the selected advertisement and keeps the remaining cards stable', async () => {
     const user = userEvent.setup();
     render(<AdvertisementBanner ads={ads} />);
-    await user.click(screen.getByRole('button', { name: 'Dismiss Second ad' }));
-    expect(screen.queryByText('Second ad')).not.toBeInTheDocument();
-    expect(screen.getByText('First ad')).toBeInTheDocument();
-    expect(screen.getByText('Third ad')).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'Dismiss Second ad' })[0]);
+    expect(screen.queryAllByText('Second ad')).toHaveLength(0);
+    expect(screen.getAllByText('First ad')).toHaveLength(2);
+    expect(screen.getAllByText('Third ad')).toHaveLength(2);
   });
 
   it('renders no sponsored section for empty inventory', () => {

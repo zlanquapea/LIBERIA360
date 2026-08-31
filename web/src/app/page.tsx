@@ -269,7 +269,7 @@ export default async function Home() {
 
       <div className="flex flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
         {quickCounties.length > 0 && (
-          <section aria-labelledby="counties-heading" className="flex flex-col gap-3">
+          <section aria-labelledby="counties-heading" className="hidden flex-col gap-3 lg:flex">
             <div className="flex items-center justify-between gap-3">
               <h2 id="counties-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">Browse counties</h2>
               <Link href="/counties" className="hidden items-center gap-1 text-sm font-semibold text-brand-700 hover:underline sm:flex dark:text-brand-300">
