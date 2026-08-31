@@ -45,6 +45,11 @@ export class EventTicketsController {
     return this.ticketsService.findForOrganizer(eventId, user);
   }
 
+  @Get("events/:eventId/ticket-metrics")
+  getMetrics(@Param("eventId") eventId: string, @CurrentUser() user: User) {
+    return this.ticketsService.getMetrics(eventId, user);
+  }
+
   @Post("events/:eventId/ticket-scan")
   redeemTicket(
     @Param("eventId") eventId: string,

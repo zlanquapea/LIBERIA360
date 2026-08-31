@@ -64,7 +64,7 @@ function setup() {
       ),
     create: jest
       .fn()
-      .mockImplementation((input) => ({ id: "order-1", ...input })),
+      .mockImplementation((input) => ({ id: randomUUID(), ...input })),
     save: jest.fn().mockImplementation((order) => {
       const existing = saved.findIndex((item) => item.id === order.id);
       if (existing >= 0) saved[existing] = order;
@@ -523,6 +523,157 @@ describe("EventTicketsService", () => {
       // And the real ticket is untouched — the tampered attempt didn't
       // consume it.
       expect(instance.status).toBe(EventTicketInstanceStatus.ISSUED);
+    });
+  });
+
+  describe("getMetrics", () => {
+    // The shared setup()'s orderRepo.find always returns [] (existing tests
+    // never need it to reflect `saved`) — metrics needs the real thing, so
+    // this test suite swaps in a filter over `saved` by status.
+    function withApprovedOrdersFilter(
+      orderRepo: any,
+      saved: EventTicketOrder[],
+    ) {
+      orderRepo.find = jest.fn(({ where }: any = {}) =>
+        Promise.resolve(
+          saved.filter((o) => !where?.status || o.status === where.status),
+        ),
+      );
+    }
+
+    it("reports sold/remaining/revenue/check-in per ticket type and rolls them up correctly", async () => {
+      const { service, eventRepo, orderRepo, saved, instances } = setup();
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        name: "Monrovia Music Festival",
+        createdByUserId: organizer.id,
+        reviewStatus: EventReviewStatus.APPROVED,
+        ticketPrice: null,
+        ticketCurrency: "LRD",
+        ticketCapacity: null,
+        goingCount: 0,
+        ticketTypes: [
+          { id: "vip", name: "VIP", price: "50", quantity: 4 },
+          { id: "reg", name: "Regular", price: "20", quantity: 10 },
+        ],
+      });
+      withApprovedOrdersFilter(orderRepo, saved);
+
+      const orderA = await service.createOrder("event-1", user, {
+        selections: [
+          { ticketTypeId: "vip", quantity: 2 },
+          { ticketTypeId: "reg", quantity: 3 },
+        ],
+        paymentReference: "MM-a",
+      });
+      await service.reviewOrder(orderA.id, organizer, {
+        status: EventTicketOrderStatus.APPROVED,
+      });
+      const orderB = await service.createOrder("event-1", user, {
+        selections: [{ ticketTypeId: "vip", quantity: 1 }],
+        paymentReference: "MM-b",
+      });
+      await service.reviewOrder(orderB.id, organizer, {
+        status: EventTicketOrderStatus.APPROVED,
+      });
+
+      const vipInstances = instances.filter((i) => i.ticketTypeName === "VIP");
+      const regInstances = instances.filter(
+        (i) => i.ticketTypeName === "Regular",
+      );
+      expect(vipInstances).toHaveLength(3);
+      expect(regInstances).toHaveLength(3);
+
+      // One VIP checked in, one Regular cancelled — usage must be tracked
+      // per ticket, and metrics must reflect exactly that, not the order.
+      await service.redeemTicket("event-1", organizer, {
+        payload: payloadFor(vipInstances[0].id),
+      });
+      await service.voidTicket(regInstances[0].id, organizer);
+
+      const metrics = await service.getMetrics("event-1", organizer);
+      expect(metrics.isFreeEvent).toBe(false);
+      expect(metrics.currency).toBe("LRD");
+
+      const vip = metrics.byTicketType.find((t) => t.ticketTypeId === "vip")!;
+      expect(vip).toMatchObject({
+        totalAvailable: 4,
+        sold: 3,
+        remaining: 1,
+        cancelled: 0,
+        revenue: "150.00",
+        checkedIn: 1,
+        notCheckedIn: 2,
+      });
+
+      const reg = metrics.byTicketType.find((t) => t.ticketTypeId === "reg")!;
+      expect(reg).toMatchObject({
+        totalAvailable: 10,
+        sold: 2,
+        remaining: 8,
+        cancelled: 1,
+        revenue: "40.00",
+        checkedIn: 0,
+        notCheckedIn: 2,
+      });
+
+      expect(metrics.overview).toMatchObject({
+        totalTicketsSold: 5,
+        totalTicketsRemaining: 9,
+        totalRevenue: "190.00",
+        totalOrders: 2,
+        totalCheckedIn: 1,
+        totalAttendeesExpected: 5,
+      });
+      expect(metrics.orders).toMatchObject({
+        totalOrders: 2,
+        totalTicketsSold: 5,
+        averageTicketsPerOrder: 2.5,
+        largestOrderQuantity: 5,
+        multiTypeOrders: 1,
+      });
+      expect(metrics.attendance).toMatchObject({
+        ticketsSold: 5,
+        checkedIn: 1,
+        notCheckedIn: 4,
+        checkInRatePercent: 20,
+      });
+      expect(metrics.revenue).toEqual({
+        gross: "190.00",
+        platformFees: "0.00",
+        refunds: "0.00",
+        net: "190.00",
+      });
+    });
+
+    it("reports registrations instead of revenue for a free (RSVP) event", async () => {
+      const { service, eventRepo } = setup();
+      eventRepo.findOne.mockResolvedValue({
+        id: "event-1",
+        name: "Community Cleanup Day",
+        createdByUserId: organizer.id,
+        reviewStatus: EventReviewStatus.APPROVED,
+        ticketPrice: null,
+        ticketTypes: [],
+        ticketCapacity: 200,
+        goingCount: 40,
+      });
+      const metrics = await service.getMetrics("event-1", organizer);
+      expect(metrics.isFreeEvent).toBe(true);
+      expect(metrics.byTicketType).toEqual([]);
+      expect(metrics.overview.totalRevenue).toBe("0.00");
+      expect(metrics.freeEvent).toEqual({
+        totalRegistrations: 40,
+        remainingCapacity: 160,
+        registrationRatePercent: 20,
+      });
+    });
+
+    it("blocks a non-organizer from viewing ticket metrics", async () => {
+      const { service } = setup();
+      await expect(service.getMetrics("event-1", user)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
     });
   });
 });
