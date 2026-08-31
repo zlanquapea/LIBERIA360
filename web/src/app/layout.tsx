@@ -15,8 +15,9 @@ export const metadata: Metadata = {
   description:
     "Discover Liberia's destinations, food, stays, and experiences — map-first, WhatsApp-first, built county by county.",
   manifest: "/manifest.webmanifest",
-  // Favicon/app icon comes from the app/icon.png file convention (Next.js
-  // auto-generates the <link rel="icon"> tags from it).
+  // Favicon/app icon comes from the app/icon.png file convention, and the
+  // iOS home-screen icon from app/apple-icon.png — Next.js auto-generates
+  // the <link rel="icon">/<link rel="apple-touch-icon"> tags from them.
 };
 
 export const viewport: Viewport = {
