@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Event } from "../../events/entities/event.entity";
 import { User } from "../../users/entities/user.entity";
 import { EventTicketOrder } from "./event-ticket-order.entity";
 
@@ -31,8 +32,41 @@ export class EventTicketInstance {
   @Column({ name: "order_id", type: "uuid" })
   orderId: string;
 
+  // Denormalized off order.eventId so a scan can check "does this ticket
+  // belong to the event being scanned at" without joining through the
+  // order — and so the wrong-event scan state can be reported before
+  // that join would even happen.
+  @ManyToOne(() => Event, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "event_id" })
+  event: Event;
+
+  @Column({ name: "event_id", type: "uuid" })
+  eventId: string;
+
+  // This ticket's position within its order (1-based), independent of
+  // ticket type — what "Ticket 3 of 5" means in the buyer's ticket list.
   @Column({ type: "smallint" })
   sequence: number;
+
+  // Null for a legacy non-typed event (single ticketPrice/ticketCapacity);
+  // ticketTypeName is always set (denormalized at issuance) so a display
+  // label survives even if the organizer later edits or removes that
+  // ticket type from the event.
+  @Column({
+    name: "ticket_type_id",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
+  ticketTypeId: string | null;
+
+  @Column({ name: "ticket_type_name", type: "varchar", length: 120 })
+  ticketTypeName: string;
+
+  // Human-readable ID for display and support lookups, e.g. "L360-VIP-00291"
+  // — distinct from the QR's actual security token, which this never is.
+  @Column({ name: "ticket_number", type: "varchar", length: 40 })
+  ticketNumber: string;
 
   @Column({ name: "token_hash", type: "varchar", length: 64, unique: true })
   tokenHash: string;

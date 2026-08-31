@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -15,7 +14,7 @@ import {
   timingSafeEqual,
 } from "crypto";
 import * as QRCode from "qrcode";
-import { In, Repository } from "typeorm";
+import { In, IsNull, Repository } from "typeorm";
 import { Event } from "../events/entities/event.entity";
 import { EventReviewStatus } from "../events/entities/event.enums";
 import { User } from "../users/entities/user.entity";
@@ -34,6 +33,8 @@ import {
 export interface BuyerTicketQr {
   id: string;
   sequence: number;
+  ticketNumber: string;
+  ticketTypeName: string;
   status: EventTicketInstanceStatus;
   qrDataUrl: string;
   redeemedAt: Date | null;
@@ -42,6 +43,44 @@ export interface BuyerTicketQr {
 export type BuyerEventTicketOrder = EventTicketOrder & {
   tickets: BuyerTicketQr[];
 };
+
+// Lightweight per-ticket status for the organizer's order-management view —
+// enough to list and cancel individual passes without handing back QR
+// images or anything that could authenticate a scan.
+export interface OrganizerTicketSummary {
+  id: string;
+  sequence: number;
+  ticketNumber: string;
+  ticketTypeName: string;
+  status: EventTicketInstanceStatus;
+  redeemedAt: Date | null;
+}
+
+export type OrganizerEventTicketOrder = EventTicketOrder & {
+  tickets: OrganizerTicketSummary[];
+};
+
+export type EventTicketScanOutcome =
+  "valid" | "already_used" | "cancelled" | "wrong_event" | "invalid";
+
+export interface ScannedTicketSummary {
+  id: string;
+  ticketNumber: string;
+  ticketTypeName: string;
+  eventName: string;
+  orderId: string;
+}
+
+export interface EventTicketScanResult {
+  outcome: EventTicketScanOutcome;
+  message: string;
+  ticket?: ScannedTicketSummary;
+  // Only present for "already_used" — the point of it: give staff enough
+  // context to recognize a genuine-but-reused QR code without exposing it
+  // anywhere else (see redeemTicket's ordering: this is decided only after
+  // the token itself checks out).
+  firstScannedAt?: string;
+}
 
 @Injectable()
 export class EventTicketsService {
@@ -120,6 +159,25 @@ export class EventTicketsService {
     ]).toString("utf8");
   }
 
+  // Short uppercase code for a human-readable ticket number, e.g.
+  // "VIP" -> "VIP", "Regular" -> "REG", "Early Bird" -> "EB",
+  // "General Admission" -> "GA". Purely cosmetic — never used to look up
+  // or authenticate a ticket, only to label it.
+  private ticketTypeCode(name: string): string {
+    const cleaned = name
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, "")
+      .trim();
+    if (!cleaned) return "GEN";
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    if (words.length > 1)
+      return words
+        .map((word) => word[0])
+        .join("")
+        .slice(0, 4);
+    return words[0].slice(0, 3);
+  }
+
   private ticketPayload(instanceId: string, token: string): string {
     return `L360TICKET:v1:${instanceId}:${token}`;
   }
@@ -165,12 +223,34 @@ export class EventTicketsService {
         return {
           id: instance.id,
           sequence: instance.sequence,
+          ticketNumber: instance.ticketNumber,
+          ticketTypeName: instance.ticketTypeName,
           status: instance.status,
           qrDataUrl,
           redeemedAt: instance.redeemedAt,
         };
       }),
     );
+    return Object.assign(order, { tickets });
+  }
+
+  private async serializeOrganizerOrder(
+    order: EventTicketOrder,
+  ): Promise<OrganizerEventTicketOrder> {
+    if (!this.instanceRepo)
+      throw new Error("Ticket instance repository is unavailable");
+    const instances = await this.instanceRepo.find({
+      where: { orderId: order.id },
+      order: { sequence: "ASC" },
+    });
+    const tickets = instances.map((instance) => ({
+      id: instance.id,
+      sequence: instance.sequence,
+      ticketNumber: instance.ticketNumber,
+      ticketTypeName: instance.ticketTypeName,
+      status: instance.status,
+      redeemedAt: instance.redeemedAt,
+    }));
     return Object.assign(order, { tickets });
   }
 
@@ -333,17 +413,24 @@ export class EventTicketsService {
   async findForOrganizer(
     eventId: string,
     user: User,
-  ): Promise<EventTicketOrder[]> {
+  ): Promise<OrganizerEventTicketOrder[]> {
     const event = await this.getEvent(eventId);
     if (event.createdByUserId !== user.id) {
       throw new ForbiddenException(
         "Only the event organizer can view ticket orders",
       );
     }
-    return this.orderRepo.find({
+    const orders = await this.orderRepo.find({
       where: { eventId },
       order: { createdAt: "DESC" },
     });
+    return Promise.all(
+      orders.map((order) =>
+        order.status === EventTicketOrderStatus.APPROVED
+          ? this.serializeOrganizerOrder(order)
+          : Object.assign(order, { tickets: [] }),
+      ),
+    );
   }
 
   async reviewOrder(
@@ -374,24 +461,76 @@ export class EventTicketsService {
         dto.status === EventTicketOrderStatus.APPROVED &&
         instanceRepository
       ) {
-        const instances = Array.from({ length: order.quantity }, (_, index) => {
-          const token = randomBytes(32).toString("base64url");
-          return instanceRepository.create({
-            order: saved,
-            orderId: saved.id,
-            sequence: index + 1,
-            tokenHash: this.hashToken(token),
-            tokenCiphertext: this.encryptToken(token),
-            status: EventTicketInstanceStatus.ISSUED,
-            redeemedAt: null,
-            redeemedBy: null,
-            redeemedByUserId: null,
-            scanCount: 0,
-            lastScannedAt: null,
-            lastScannedBy: null,
-            lastScannedByUserId: null,
+        // Issue tickets per selected type (2 VIP + 3 Regular -> 5 individually
+        // typed passes), not one undifferentiated batch of `quantity` — a
+        // legacy non-typed event (single ticketPrice/ticketCapacity, no
+        // `items`) still issues `quantity` passes, just all labeled the same
+        // generic type.
+        const typeGroups = saved.items?.length
+          ? saved.items.map((item) => ({
+              ticketTypeId: item.ticketTypeId as string | null,
+              ticketTypeName: item.name,
+              quantity: item.quantity,
+            }))
+          : [
+              {
+                ticketTypeId: null as string | null,
+                ticketTypeName: "General Admission",
+                quantity: saved.quantity,
+              },
+            ];
+
+        // Continue each type's human-readable numbering from how many of
+        // that type have already been issued for this event, so numbers
+        // stay meaningful (and non-repeating) across separate orders rather
+        // than restarting at 1 every time.
+        const nextNumberByType = new Map<string, number>();
+        for (const group of typeGroups) {
+          const key = group.ticketTypeId ?? group.ticketTypeName;
+          if (nextNumberByType.has(key)) continue;
+          const issuedSoFar = await instanceRepository.count({
+            where: {
+              eventId: saved.eventId,
+              ticketTypeId: group.ticketTypeId ?? IsNull(),
+            },
           });
-        });
+          nextNumberByType.set(key, issuedSoFar);
+        }
+
+        let sequence = 0;
+        const instances: EventTicketInstance[] = [];
+        for (const group of typeGroups) {
+          const key = group.ticketTypeId ?? group.ticketTypeName;
+          const code = this.ticketTypeCode(group.ticketTypeName);
+          for (let i = 0; i < group.quantity; i++) {
+            sequence += 1;
+            const number = (nextNumberByType.get(key) ?? 0) + 1;
+            nextNumberByType.set(key, number);
+            const token = randomBytes(32).toString("base64url");
+            instances.push(
+              instanceRepository.create({
+                order: saved,
+                orderId: saved.id,
+                event: saved.event,
+                eventId: saved.eventId,
+                sequence,
+                ticketTypeId: group.ticketTypeId,
+                ticketTypeName: group.ticketTypeName,
+                ticketNumber: `L360-${code}-${String(number).padStart(5, "0")}`,
+                tokenHash: this.hashToken(token),
+                tokenCiphertext: this.encryptToken(token),
+                status: EventTicketInstanceStatus.ISSUED,
+                redeemedAt: null,
+                redeemedBy: null,
+                redeemedByUserId: null,
+                scanCount: 0,
+                lastScannedAt: null,
+                lastScannedBy: null,
+                lastScannedByUserId: null,
+              }),
+            );
+          }
+        }
         await instanceRepository.save(instances);
       }
       return saved;
@@ -412,30 +551,55 @@ export class EventTicketsService {
     );
   }
 
+  // Scanning always returns 200 with an `outcome` — never throws for a bad
+  // or reused ticket — so the scanner UI can render each of valid /
+  // already_used / cancelled / wrong_event / invalid without picking apart
+  // HTTP status codes. The only thrown errors left are route-level (wrong
+  // event id, not the organizer): those aren't ticket states, they're
+  // requests that shouldn't have been made at all.
+  //
+  // Order matters here for security: the QR's token is checked FIRST, and
+  // every state-specific reply (which ticket type, which event, when it was
+  // first scanned) is only ever built after that check passes. A copied or
+  // guessed instance id with the wrong token gets the same generic
+  // "invalid" reply as one that doesn't exist at all — it never learns
+  // whether the id it guessed was real, what type it was, or that it
+  // belongs to a different event.
   async redeemTicket(
     eventId: string,
     user: User,
     dto: RedeemEventTicketDto,
-  ): Promise<{
-    valid: true;
-    ticketId: string;
-    eventName: string;
-    ticketNumber: number;
-    redeemedAt: Date;
-  }> {
+  ): Promise<EventTicketScanResult> {
     const event = await this.getEvent(eventId);
     if (event.createdByUserId !== user.id) {
       throw new ForbiddenException("Only the event organizer can scan tickets");
     }
     if (!this.instanceRepo)
       throw new Error("Ticket instance repository is unavailable");
-    const { instanceId, token } = this.parseTicketPayload(dto.payload);
+
+    let parsed: { instanceId: string; token: string };
+    try {
+      parsed = this.parseTicketPayload(dto.payload);
+    } catch {
+      return {
+        outcome: "invalid",
+        message: "This is not a valid LIBERIA360 ticket QR code.",
+      };
+    }
+    const { instanceId, token } = parsed;
+    // Deliberately not scoped to this event yet — the wrong-event outcome
+    // below needs to see a ticket that exists for a *different* event, and
+    // that distinction (exists elsewhere vs. doesn't exist at all) only
+    // gets decided once the token is confirmed genuine.
     const instance = await this.instanceRepo.findOne({
-      where: { id: instanceId, order: { eventId } },
+      where: { id: instanceId },
       relations: { order: true },
     });
-    if (!instance || instance.order.eventId !== eventId) {
-      throw new NotFoundException("Ticket not found for this event");
+    if (!instance) {
+      return {
+        outcome: "invalid",
+        message: "This QR code does not match any LIBERIA360 ticket.",
+      };
     }
     const suppliedHash = Buffer.from(this.hashToken(token), "hex");
     const storedHash = Buffer.from(instance.tokenHash, "hex");
@@ -443,14 +607,41 @@ export class EventTicketsService {
       suppliedHash.length !== storedHash.length ||
       !timingSafeEqual(suppliedHash, storedHash)
     ) {
-      throw new BadRequestException("This ticket QR code is invalid");
+      return {
+        outcome: "invalid",
+        message: "This ticket QR code is invalid.",
+      };
     }
-    if (instance.status !== EventTicketInstanceStatus.ISSUED) {
-      throw new ConflictException(
-        instance.status === EventTicketInstanceStatus.REDEEMED
-          ? "This ticket has already been scanned"
-          : "This ticket is no longer valid",
-      );
+
+    const ticket: ScannedTicketSummary = {
+      id: instance.id,
+      ticketNumber: instance.ticketNumber,
+      ticketTypeName: instance.ticketTypeName,
+      eventName: instance.order.event?.name ?? event.name,
+      orderId: instance.orderId,
+    };
+
+    if (instance.eventId !== eventId) {
+      return {
+        outcome: "wrong_event",
+        message: `This ticket belongs to "${ticket.eventName}", not this event.`,
+        ticket,
+      };
+    }
+    if (instance.status === EventTicketInstanceStatus.VOID) {
+      return {
+        outcome: "cancelled",
+        message: "This ticket has been cancelled and cannot be used.",
+        ticket,
+      };
+    }
+    if (instance.status === EventTicketInstanceStatus.REDEEMED) {
+      return {
+        outcome: "already_used",
+        message: "This ticket was previously scanned successfully.",
+        ticket,
+        firstScannedAt: (instance.redeemedAt ?? new Date()).toISOString(),
+      };
     }
 
     const redeemedAt = new Date();
@@ -471,14 +662,65 @@ export class EventTicketsService {
       })
       .execute();
     if (result.affected !== 1) {
-      throw new ConflictException("This ticket has already been scanned");
+      // Raced with another scan of the same ticket between our read above
+      // and this write — re-read so the reply still reflects reality
+      // (almost always "already_used" a moment sooner than expected).
+      const fresh = await this.instanceRepo.findOne({
+        where: { id: instance.id },
+      });
+      return {
+        outcome:
+          fresh?.status === EventTicketInstanceStatus.VOID
+            ? "cancelled"
+            : "already_used",
+        message:
+          fresh?.status === EventTicketInstanceStatus.VOID
+            ? "This ticket has been cancelled and cannot be used."
+            : "This ticket was previously scanned successfully.",
+        ticket,
+        firstScannedAt: fresh?.redeemedAt?.toISOString(),
+      };
     }
     return {
-      valid: true,
-      ticketId: instance.id,
-      eventName: event.name,
-      ticketNumber: instance.sequence,
-      redeemedAt,
+      outcome: "valid",
+      message: "Entry approved.",
+      ticket,
+    };
+  }
+
+  // Organizer-only: mark one issued or already-redeemed ticket as
+  // cancelled (lost, refunded, fraudulent payment reference, etc.) without
+  // touching the rest of its order — ticket usage is tracked per instance,
+  // never at the order level, so cancelling one never affects its
+  // siblings.
+  async voidTicket(
+    instanceId: string,
+    user: User,
+  ): Promise<OrganizerTicketSummary> {
+    if (!this.instanceRepo)
+      throw new Error("Ticket instance repository is unavailable");
+    const instance = await this.instanceRepo.findOne({
+      where: { id: instanceId },
+      relations: { order: true },
+    });
+    if (!instance) throw new NotFoundException("Ticket not found");
+    if (instance.order.event.createdByUserId !== user.id) {
+      throw new ForbiddenException(
+        "Only the event organizer can cancel tickets",
+      );
+    }
+    if (instance.status === EventTicketInstanceStatus.VOID) {
+      throw new BadRequestException("This ticket is already cancelled");
+    }
+    instance.status = EventTicketInstanceStatus.VOID;
+    const saved = await this.instanceRepo.save(instance);
+    return {
+      id: saved.id,
+      sequence: saved.sequence,
+      ticketNumber: saved.ticketNumber,
+      ticketTypeName: saved.ticketTypeName,
+      status: saved.status,
+      redeemedAt: saved.redeemedAt,
     };
   }
 }

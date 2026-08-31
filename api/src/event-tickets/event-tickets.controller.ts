@@ -62,4 +62,9 @@ export class EventTicketsController {
   ) {
     return this.ticketsService.reviewOrder(id, user, dto);
   }
+
+  @Patch("ticket-instances/:id/void")
+  voidTicket(@Param("id") id: string, @CurrentUser() user: User) {
+    return this.ticketsService.voidTicket(id, user);
+  }
 }

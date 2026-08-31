@@ -106,19 +106,32 @@ export default function MyTicketsPage() {
                 <div className="issued-pass-grid">
                   {order.tickets.map((ticket) => (
                     <div key={ticket.id} className="issued-pass-card">
-                      <div className="issued-pass-head"><span><QrCodeIcon aria-hidden className="h-4 w-4" /> Pass {ticket.sequence}</span>{ticket.status === "redeemed" ? <span className="issued-pass-used"><CheckBadgeIcon aria-hidden className="h-4 w-4" /> Used</span> : <span className="issued-pass-valid">Valid</span>}</div>
-                      {order.ticketCode && (
-                        <div className="issued-pass-id" aria-label={`Ticket ID ${order.ticketCode}`}>
-                          <div className="issued-pass-id-label"><TicketIcon aria-hidden className="h-4 w-4" /> Ticket ID</div>
-                          <code>{order.ticketCode}</code>
-                          <p>Use this ID if scanning fails or when reporting an issue.</p>
-                        </div>
-                      )}
-                      {ticket.qrDataUrl && <img src={ticket.qrDataUrl} alt={`QR code for ${order.event.name}, pass ${ticket.sequence}`} className={`issued-pass-qr ${ticket.status === "redeemed" ? "issued-pass-qr-used" : ""}`} />}
+                      <div className="issued-pass-head">
+                        <span><QrCodeIcon aria-hidden className="h-4 w-4" /> Ticket {ticket.sequence} of {order.quantity}</span>
+                        {ticket.status === "redeemed" ? (
+                          <span className="issued-pass-used"><CheckBadgeIcon aria-hidden className="h-4 w-4" /> Used</span>
+                        ) : ticket.status === "void" ? (
+                          <span className="issued-pass-used">Cancelled</span>
+                        ) : (
+                          <span className="issued-pass-valid">Active</span>
+                        )}
+                      </div>
+                      {/* Ticket type is the single most prominent label on the
+                          card — VIP, Regular, Backstage, etc. should be
+                          unmistakable at a glance, not buried in small text. */}
+                      <p className="issued-pass-type">{ticket.ticketTypeName}</p>
+                      <div className="issued-pass-id" aria-label={`Ticket ID ${ticket.ticketNumber}`}>
+                        <div className="issued-pass-id-label"><TicketIcon aria-hidden className="h-4 w-4" /> Ticket ID</div>
+                        <code>{ticket.ticketNumber}</code>
+                        <p>Use this ID if scanning fails or when reporting an issue.</p>
+                      </div>
+                      {ticket.qrDataUrl && <img src={ticket.qrDataUrl} alt={`QR code for ${order.event.name}, ${ticket.ticketTypeName} ticket ${ticket.sequence} of ${order.quantity}`} className={`issued-pass-qr ${ticket.status === "redeemed" ? "issued-pass-qr-used" : ""}`} />}
                       {ticket.status === "redeemed" ? (
                         <p className="issued-pass-note">Scanned on {ticket.redeemedAt ? new Date(ticket.redeemedAt).toLocaleString() : "event day"}.</p>
+                      ) : ticket.status === "void" ? (
+                        <p className="issued-pass-note">This ticket has been cancelled and can no longer be used.</p>
                       ) : ticket.qrDataUrl ? (
-                        <a href={ticket.qrDataUrl} download={`liberia360-${order.event.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-pass-${ticket.sequence}.png`} className="issued-pass-download"><ArrowDownTrayIcon aria-hidden className="h-4 w-4" /> Download QR</a>
+                        <a href={ticket.qrDataUrl} download={`liberia360-${order.event.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${ticket.ticketNumber}.png`} className="issued-pass-download"><ArrowDownTrayIcon aria-hidden className="h-4 w-4" /> Download QR</a>
                       ) : null}
                     </div>
                   ))}
