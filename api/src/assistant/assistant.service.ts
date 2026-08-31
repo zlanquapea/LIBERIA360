@@ -376,10 +376,6 @@ ${matchedEntry.answer}`;
         "event-tickets",
       ],
       [
-        /this extraordinary life|extraordinary life|life program|extraordinary/,
-        "extraordinary-life",
-      ],
-      [
         /customer.*(service|support)|contact.*(support|liberia360|team)|technical.*problem|need.*(help|assistance)|report.*(problem|issue)/,
         "customer-support",
       ],
