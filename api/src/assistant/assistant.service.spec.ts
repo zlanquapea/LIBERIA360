@@ -276,7 +276,12 @@ describe("AssistantService", () => {
     });
     expect(response.answer).toContain("cannot");
     expect(response.answer).toContain("payment credentials");
-    expect(response.answer).toContain("support-center page");
+    expect(response.answer).toContain("Account → Customer Support");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "support", href: "/account/support" }),
+      ]),
+    );
   });
 
   it("does not pretend to know unrelated questions", async () => {
