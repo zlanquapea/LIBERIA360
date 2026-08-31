@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { CreatorPost } from "@/lib/types";
 import {
   CreatorPostViewer,
@@ -65,7 +66,7 @@ export function CreatorPostMedia({
           onOpen={() => setOpen(true)}
         />
       )}
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <CreatorPostViewer
           post={post}
           mode={mode}
@@ -87,7 +88,8 @@ export function CreatorPostMedia({
           onSave={onSave}
           onShare={onShare}
           onClose={() => setOpen(false)}
-        />
+        />,
+        document.body,
       )}
     </>
   );
