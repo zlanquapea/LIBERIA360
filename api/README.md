@@ -257,8 +257,13 @@ A car listing can also opt into **hourly rental** by setting `pricePerHour` (plu
 |---|---|---|
 | `POST /bookings/:bookingId/messages` | Post a message (1–2000 chars) | Guest or business owner |
 | `GET /bookings/:bookingId/messages` | List messages, oldest first | Guest or business owner |
+| `PATCH /bookings/:bookingId/messages/read` | Mark every message the other participant sent as read | Guest or business owner |
+| `PATCH /bookings/:bookingId/messages/:messageId` | Edit the sender's own message body (flags `editedAt`) | Sender |
+| `DELETE /bookings/:bookingId/messages/:messageId` | Soft-delete the sender's own message (`body` becomes `null`, `deletedAt` set) | Sender |
 
-Plain text only; no attachments, read receipts, or editing.
+Plain text only, no attachments. `readAt` drives the sent/delivered/viewed
+receipt shown on each of the sender's own messages — the same convention
+used for food-order messages and support messages below.
 
 ### Analytics
 
@@ -358,7 +363,48 @@ Admin: `GET /admin/car-listings` (every listing, any status) and `PATCH /admin/c
 | `PATCH /menu-items/:id` | Edit a menu item | JWT, business owner |
 | `DELETE /menu-items/:id` | Remove a menu item | JWT, business owner |
 
-A restaurant (or any other food-and-dining business — cafe, bar, food stand) can list what it serves: a photo (`image`, optional), the item's `name`, its `price`, and an optional `description`/freeform `category` ("Appetizers", "Mains", "Drinks", "Desserts" — a business names its own sections, no fixed enum) to group items on the public menu. Unlike Advertisement/CarListing/BusinessContent, a menu item never goes through admin review — same reasoning as `CreatorOffering`: a $6 jollof rice listing carries none of the real-money/safety stakes a car rental or ad placement does, so an owner can add and edit their menu instantly. `GET /menu-items` is both the public menu (shown on the business profile) and the owner's own manage view — there's no separate "mine" endpoint since there's no draft/review state to hide. `isAvailable` is the owner's quick "sold out today" toggle; an unavailable item still comes back from the API and still renders on the public menu, just tagged "Sold out", so a diner planning a visit still sees the whole menu and its prices rather than an item silently vanishing.
+A restaurant (or any other food-and-dining business — cafe, bar, food stand) can list what it serves: a photo (`image`, optional), the item's `name`, its `price`, and an optional `description`/freeform `category` ("Appetizers", "Mains", "Drinks", "Desserts" — a business names its own sections, no fixed enum) to group items on the public menu. Unlike Advertisement/CarListing/BusinessContent, a menu item never goes through admin review — same reasoning as `CreatorOffering`: a $6 jollof rice listing carries none of the real-money/safety stakes a car rental or ad placement does, so an owner can add and edit their menu instantly. `GET /menu-items` is both the public menu and the owner's own manage view — there's no separate "mine" endpoint since there's no draft/review state to hide. `isAvailable` is the owner's quick "sold out today" toggle; an unavailable item still comes back from the API and still renders on the public menu, just tagged "Sold out", so a diner planning a visit still sees the whole menu and its prices rather than an item silently vanishing. On the frontend the menu renders on the **Place** page, not the Business page — a visitor who clicks into a restaurant sees its menu (and amenities) as part of that place's own information, with no detour through a separate business profile.
+
+### Food Orders
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /businesses/:businessId/food-orders` | Place an order — a cart of `{menuItemId, quantity}` plus optional `notes` | JWT |
+| `GET /food-orders/mine` | The signed-in buyer's own order history, across every restaurant | JWT |
+| `GET /businesses/:businessId/food-orders` | A restaurant's incoming orders | JWT, business owner |
+| `PATCH /food-orders/:id/respond` | Confirm or decline (`{action, message?}`) | JWT, business owner |
+| `PATCH /food-orders/:id/cancel` | Cancel while pending/confirmed | JWT, buyer |
+
+Lets a signed-in user order directly from a restaurant's menu, in-platform — the same "guest asks, business owner responds" shape as Booking, just with a cart of `MenuItem`s instead of a reservation date. Kept as its own entity rather than bolted onto Booking (whose `requestedDate`/party-size fields are a reservation's shape, not a cart's) — same precedent as `EventTicketOrder` being kept separate from Booking. `items` (name + `unitPrice` per line) and `totalAmount` are snapshotted server-side from the live `MenuItem` catalog at order time — a client only ever submits `menuItemId`/`quantity`, never a price. Restricted to approved, `restaurant`-type businesses.
+
+### Food Order Messages
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /food-orders/:orderId/messages` | Post a message (1–2000 chars) | Buyer or business owner |
+| `GET /food-orders/:orderId/messages` | List messages, oldest first | Buyer or business owner |
+| `PATCH /food-orders/:orderId/messages/read` | Mark every message the other participant sent as read | Buyer or business owner |
+
+Lets a buyer and the restaurant owner exchange messages about an order, in-platform. A deliberately simpler sibling of Booking messages — same `readAt`-based sent/delivered/viewed receipt, but no edit/delete: an order's conversation is short-lived, not the kind of thing worth rewriting after the fact.
+
+### Customer support
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /support/tickets` | Open a ticket (`category`, `subject`, `description`, optional `attachments`) | JWT |
+| `GET /support/tickets/mine` | The signed-in user's own tickets | JWT |
+| `GET /support/tickets/:id` | One ticket | JWT, customer or admin |
+| `GET /support/tickets/:id/messages` | List messages, oldest first | JWT, customer or admin |
+| `POST /support/tickets/:id/messages` | Post a reply (1–10000 chars, up to 5 image attachments) | JWT, customer or admin |
+| `PATCH /support/tickets/:id/messages/read` | Mark every message the other side sent as read | JWT, customer or admin |
+| `POST /support/tickets/:id/confirm-resolved` | Customer confirms a resolved ticket and rates it | JWT, customer |
+| `POST /support/tickets/:id/rating` | Rate a ticket outside the resolve flow | JWT, customer |
+| `GET /admin/support/tickets` | Search/filter/paginate every ticket | Admin |
+| `GET /admin/support/tickets/:id/history` | A customer's other tickets, most recent first | Admin |
+| `PATCH /admin/support/tickets/:id` | Update `status`/`priority`/`assignedAgentUserId` | Admin |
+| `GET /admin/support/agents` | Every admin, assignable as a ticket's agent | Admin |
+
+Same `readAt`-based sent/delivered/viewed receipt as Booking and Food Order messages, with one difference: "the other side" of a support conversation isn't always the same specific person — any admin can reply to an unassigned or reassigned ticket — so `markRead` treats every message not sent by the caller as readable, not just messages from one fixed counterpart.
 
 ### Admin
 

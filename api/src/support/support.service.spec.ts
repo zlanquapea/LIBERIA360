@@ -23,13 +23,16 @@ function setup(ticketOverrides: Record<string, unknown> = {}) {
     save: jest.fn(async (value) => value),
     create: jest.fn((value) => value),
   } as any;
-  const messages = {} as any;
+  const messages = {
+    update: jest.fn().mockResolvedValue({ affected: 0 }),
+  } as any;
   const users = { findOne: jest.fn(), find: jest.fn() } as any;
   const notifications = { create: jest.fn(), createMany: jest.fn() } as any;
   return {
     ticket,
     tickets,
     users,
+    messages,
     notifications,
     service: new SupportService(tickets, messages, users, notifications),
   };
@@ -146,6 +149,32 @@ describe("SupportService", () => {
           body: expect.stringContaining("unassigned queue"),
         }),
       );
+    });
+  });
+
+  describe("markRead", () => {
+    it("rejects a stranger", async () => {
+      const { service } = setup();
+      await expect(
+        service.markRead(
+          { id: "someone-else", isAdmin: false } as any,
+          "ticket-1",
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("marks only the other side's unread messages as read", async () => {
+      const { service, messages } = setup();
+      await service.markRead(agent, "ticket-1");
+      expect(messages.update).toHaveBeenCalledTimes(1);
+      const [where, patch] = messages.update.mock.calls[0];
+      expect(where).toMatchObject({ ticketId: "ticket-1" });
+      expect(patch.readAt).toBeInstanceOf(Date);
+      expect(where.senderUserId).toMatchObject({
+        _type: "not",
+        _value: agent.id,
+      });
+      expect(where.readAt).toMatchObject({ _type: "isNull" });
     });
   });
 

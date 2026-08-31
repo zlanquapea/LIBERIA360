@@ -25,9 +25,10 @@ import { ReportButton } from '@/components/ReportButton';
 import { ShareMenu } from '@/components/ShareMenu';
 import { SaveButton } from '@/components/SaveButton';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
+import { MenuSection } from '@/components/MenuSection';
 import { JsonLd } from '@/components/JsonLd';
 import { businessJsonLd } from '@/lib/structured-data';
-import type { BusinessContent, MenuItem } from '@/lib/types';
+import type { BusinessContent } from '@/lib/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -97,56 +98,6 @@ function UpdateCard({ item }: { item: BusinessContent }) {
         </a>
       )}
     </article>
-  );
-}
-
-// Groups a business's menu into its sections in the order the backend
-// already returns them (category ASC, then sortOrder — see
-// MenuItemsService.findForBusiness), with uncategorized items collected
-// under "Menu" at the end rather than scattered by their null category.
-function groupMenuByCategory(items: MenuItem[]): { category: string; items: MenuItem[] }[] {
-  const groups: { category: string; items: MenuItem[] }[] = [];
-  for (const item of items) {
-    const category = item.category ?? 'Menu';
-    const group = groups.find((g) => g.category === category);
-    if (group) {
-      group.items.push(item);
-    } else {
-      groups.push({ category, items: [item] });
-    }
-  }
-  return groups;
-}
-
-function MenuItemRow({ item }: { item: MenuItem }) {
-  const image = item.image ? resolveImageUrl(item.image) : null;
-  return (
-    <li className={`flex items-start gap-3 py-3 ${!item.isAvailable ? 'opacity-60' : ''}`}>
-      <SafeImage
-        src={image}
-        alt=""
-        className="h-14 w-14 shrink-0 rounded-xl object-cover"
-        fallback={
-          <div aria-hidden className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg dark:bg-slate-800">
-            🍽️
-          </div>
-        }
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <p className="font-semibold text-slate-900 dark:text-slate-50">{item.name}</p>
-          <span className="shrink-0 font-semibold text-slate-900 dark:text-slate-50">{formatCost(item.price)}</span>
-        </div>
-        {item.description && (
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{item.description}</p>
-        )}
-        {!item.isAvailable && (
-          <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-            Sold out
-          </span>
-        )}
-      </div>
-    </li>
   );
 }
 
@@ -355,24 +306,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
       </Section>
 
-      {menuItems.length > 0 && (
-        <Section eyebrow="What's on offer" title="Menu">
-          <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
-            {groupMenuByCategory(menuItems).map((group) => (
-              <div key={group.category} className="min-w-0">
-                <h3 className="border-b border-slate-100 pb-2 font-display text-sm font-bold uppercase tracking-wide text-brand-700 dark:border-slate-800 dark:text-brand-300">
-                  {group.category}
-                </h3>
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {group.items.map((item) => (
-                    <MenuItemRow key={item.id} item={item} />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
+      <MenuSection items={menuItems} businessId={business.id} />
 
       <Section eyebrow="Find your way" title="Location">
         <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">

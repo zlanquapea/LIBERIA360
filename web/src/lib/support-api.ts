@@ -46,6 +46,14 @@ export const sendSupportMessage = (
     headers: authHeader(token),
     body: JSON.stringify({ body, attachments }),
   });
+// Marks every message the *other* side sent on this ticket as read — call
+// this once the current user has the thread open. Mirrors
+// markBookingMessagesRead/markFoodOrderMessagesRead.
+export const markSupportMessagesRead = (token: string, id: string) =>
+  apiRequest<{ success: true }>(`/support/tickets/${id}/messages/read`, {
+    method: "PATCH",
+    headers: authHeader(token),
+  });
 export const confirmSupportResolved = (
   token: string,
   id: string,

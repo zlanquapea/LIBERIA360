@@ -9,10 +9,12 @@ import {
   confirmSupportResolved,
   getSupportMessages,
   getSupportTicket,
+  markSupportMessagesRead,
   rateSupport,
   sendSupportMessage,
 } from "@/lib/support-api";
 import { uploadImage } from "@/lib/uploads-api";
+import { MessageStatus } from "@/components/MessageStatus";
 import type { SupportMessage, SupportTicket } from "@/lib/types";
 
 const label = (value: string) =>
@@ -55,9 +57,17 @@ export default function SupportThreadPage() {
       .then(([nextTicket, nextMessages]) => {
         setTicket(nextTicket);
         setMessages(nextMessages);
+        const hasUnreadFromAgent = nextMessages.some(
+          (m) => m.senderUserId !== user?.id && !m.readAt,
+        );
+        if (hasUnreadFromAgent) {
+          // Fire-and-forget: this is the "viewing the thread" signal, not
+          // something the reader needs to wait on or see fail.
+          markSupportMessagesRead(token, id).catch(() => undefined);
+        }
       })
       .catch((reason) => setError(getFriendlyErrorMessage(reason)));
-  }, [token, id]);
+  }, [token, id, user?.id]);
 
   async function addFiles(files: FileList | null) {
     if (!token || !files) return;
@@ -182,6 +192,11 @@ export default function SupportThreadPage() {
                   : message.sender.name || "Support"}{" "}
                 · {new Date(message.createdAt).toLocaleString()}
               </p>
+              {message.senderUserId === user?.id && (
+                <div className="mt-1 text-[10px] opacity-70">
+                  <MessageStatus viewed={Boolean(message.readAt)} />
+                </div>
+              )}
             </div>
           </div>
         ))}

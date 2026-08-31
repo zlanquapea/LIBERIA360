@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { MdAccessTime, MdDone, MdDoneAll } from 'react-icons/md';
 import { useAuth } from '@/hooks/useAuth';
 import {
   deleteBookingMessage,
@@ -13,6 +12,7 @@ import {
 } from '@/lib/booking-messages-api';
 import { HttpError } from '@/lib/http';
 import { ConfirmDialog } from './ConfirmDialog';
+import { MessageStatus } from './MessageStatus';
 import type { BookingMessage } from '@/lib/types';
 
 // How often to re-poll the thread while it's open, so a read receipt
@@ -326,25 +326,5 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
         }}
       />
     </div>
-  );
-}
-
-// The little "Sending… / Delivered / Viewed" ladder under your own bubble
-// — same idea as any chat app's checkmarks, just spelled out in words too
-// since a single vs. double check isn't obvious out of context.
-function MessageStatus({ sending, viewed }: { sending?: boolean; viewed?: boolean }) {
-  if (sending) {
-    return (
-      <span className="flex items-center gap-1">
-        <MdAccessTime aria-hidden className="h-3 w-3" />
-        Sending…
-      </span>
-    );
-  }
-  return (
-    <span className={`flex items-center gap-1 ${viewed ? 'text-brand-600 dark:text-brand-300' : ''}`}>
-      {viewed ? <MdDoneAll aria-hidden className="h-3.5 w-3.5" /> : <MdDone aria-hidden className="h-3.5 w-3.5" />}
-      {viewed ? 'Viewed' : 'Delivered'}
-    </span>
   );
 }

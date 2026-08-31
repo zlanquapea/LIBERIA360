@@ -4,6 +4,7 @@ import {
   ApiError,
   getBusinessByPlace,
   getCountyPlaces,
+  getMenuItems,
   getPlaceBySlug,
   getReviews,
 } from "@/lib/api";
@@ -22,6 +23,7 @@ import { PlaceCardCompact } from "@/components/PlaceCardCompact";
 import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
 import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
+import { MenuSection } from "@/components/MenuSection";
 import { ShareMenu } from "@/components/ShareMenu";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { BusinessClaimSection } from "@/components/BusinessClaimSection";
@@ -89,6 +91,12 @@ export default async function PlaceProfilePage({
     getReviews(place.id, { limit: 20 }),
     getBusinessByPlace(place.id),
   ]);
+  // The menu is information about *this place* to a visitor, not about the
+  // separate "Business" management entity — it belongs here, not gated
+  // behind a trip to the business page. Only restaurants have one; see
+  // MenuItemsManager's matching gate on the owner side.
+  const menuItems =
+    business?.type === "restaurant" ? await getMenuItems(business.id) : [];
   const nearby = nearbyResult.data.filter(
     (candidate) => candidate.id !== place.id,
   );
@@ -186,6 +194,8 @@ export default async function PlaceProfilePage({
           {place.description}
         </p>
       </section>
+
+      <MenuSection items={menuItems} businessId={business?.id} />
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>
