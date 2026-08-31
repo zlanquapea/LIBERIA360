@@ -273,6 +273,36 @@ describe("EventsService", () => {
       expect(eventRepo.save).toHaveBeenCalled();
     });
 
+    it("clears legacy payment fields when an event becomes free", async () => {
+      eventRepo.findOne.mockResolvedValue({
+        ...existing,
+        ticketPrice: "500",
+        ticketCapacity: 20,
+        paymentInstructions: "Pay by mobile money",
+      });
+
+      await service.update(
+        { id: "user-1", isAdmin: false } as never,
+        "event-1",
+        {
+          ticketPrice: null,
+          ticketCapacity: null,
+          paymentInstructions: null,
+          ticketTypes: [],
+        },
+      );
+
+      expect(eventRepo.merge).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          ticketPrice: null,
+          ticketCapacity: null,
+          paymentInstructions: null,
+          ticketTypes: [],
+        }),
+      );
+    });
+
     it("lets an admin update someone else's event", async () => {
       eventRepo.findOne.mockResolvedValue({ ...existing });
       await expect(

@@ -43,7 +43,13 @@ export function getMyEvents(token: string): Promise<Event[]> {
   return apiRequest<Event[]>("/events/mine", { headers: authHeader(token) });
 }
 
-export type UpdateEventInput = Partial<CreateEventInput>;
+export type UpdateEventInput = Partial<
+  Omit<CreateEventInput, "ticketPrice" | "ticketCapacity" | "paymentInstructions">
+> & {
+  ticketPrice?: string | null;
+  ticketCapacity?: string | null;
+  paymentInstructions?: string | null;
+};
 
 // Self-service edit for the organizer who posted it (or an admin) — see
 // EventsService.update. Only the fields being changed need to be sent.

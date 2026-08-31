@@ -115,10 +115,10 @@ export function NewEventForm({
         description: description.trim() || undefined,
         images,
         ticketInfo: eventAccess === 'free' ? 'Free admission' : primaryTicket?.description || undefined,
-        ticketPrice: primaryTicket?.price || undefined,
+        ticketPrice: eventAccess === 'free' ? null : primaryTicket?.price || undefined,
         ticketCurrency: ticketCurrency.trim().toUpperCase() || undefined,
-        ticketCapacity: primaryTicket?.quantity.toString() || undefined,
-        paymentInstructions: eventAccess === 'paid' ? paymentInstructions.trim() || undefined : undefined,
+        ticketCapacity: eventAccess === 'free' ? null : primaryTicket?.quantity.toString() || undefined,
+        paymentInstructions: eventAccess === 'paid' ? paymentInstructions.trim() || undefined : null,
         ticketTypes: eventAccess === 'paid' ? ticketTypes : [],
       };
       const saved = event ? await updateEvent(token, event.id, input) : await createEvent(token, input);

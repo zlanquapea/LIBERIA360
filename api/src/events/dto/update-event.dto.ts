@@ -32,9 +32,9 @@ export class UpdateEventDto {
   images?: string[];
 
   @IsOptional() @IsString() @MaxLength(500) ticketInfo?: string;
-  @IsOptional() @IsString() @MaxLength(20) ticketPrice?: string;
+  @IsOptional() @IsString() @MaxLength(20) ticketPrice?: string | null;
   @IsOptional() @IsString() @MaxLength(3) ticketCurrency?: string;
-  @IsOptional() @IsString() @MaxLength(20) ticketCapacity?: string;
-  @IsOptional() @IsString() @MaxLength(1000) paymentInstructions?: string;
+  @IsOptional() @IsString() @MaxLength(20) ticketCapacity?: string | null;
+  @IsOptional() @IsString() @MaxLength(1000) paymentInstructions?: string | null;
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsObject({ each: true }) ticketTypes?: Array<Record<string, unknown>>;
 }
