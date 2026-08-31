@@ -198,7 +198,7 @@ export class EventTicketsService {
         "Choose at least one ticket type for this event",
       );
     }
-    const selections =
+    const rawSelections =
       event.ticketTypes?.length && dto.selections?.length
         ? dto.selections.map((selection) => {
             const type = event.ticketTypes.find(
@@ -230,6 +230,25 @@ export class EventTicketsService {
             };
           })
         : [];
+    // A request can list the same ticketTypeId more than once (e.g. two
+    // separate line items the client never merged) — aggregate those
+    // before the per-type capacity check below, which otherwise compares
+    // each line only against already-*saved* orders and would let two
+    // halves of a single oversell through independently.
+    const selections = Array.from(
+      rawSelections
+        .reduce((byType, item) => {
+          const existing = byType.get(item.ticketTypeId);
+          byType.set(
+            item.ticketTypeId,
+            existing
+              ? { ...existing, quantity: existing.quantity + item.quantity }
+              : item,
+          );
+          return byType;
+        }, new Map<string, (typeof rawSelections)[number]>())
+        .values(),
+    );
     const requestedQuantity = selections.length
       ? selections.reduce((sum, item) => sum + item.quantity, 0)
       : (dto.quantity ?? 0);

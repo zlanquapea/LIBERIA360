@@ -89,6 +89,30 @@ describe("EventTicketsService", () => {
     expect(orderRepo.create).not.toHaveBeenCalled();
   });
 
+  it("aggregates repeated selections of the same ticket type before checking capacity", async () => {
+    const { service, eventRepo } = setup();
+    eventRepo.findOne.mockResolvedValue({
+      id: "event-1",
+      createdByUserId: organizer.id,
+      reviewStatus: EventReviewStatus.APPROVED,
+      ticketPrice: null,
+      ticketTypes: [{ id: "vip", name: "VIP", price: "10", quantity: 10 }],
+    });
+
+    // Two lines of 8 each for the same type: neither exceeds the 10-ticket
+    // capacity alone, but together they oversell it by 6 — the aggregate
+    // check (not each line independently) must catch that.
+    await expect(
+      service.createOrder("event-1", user, {
+        selections: [
+          { ticketTypeId: "vip", quantity: 8 },
+          { ticketTypeId: "vip", quantity: 8 },
+        ],
+        paymentReference: "MM-dup",
+      }),
+    ).rejects.toThrow("Not enough VIP tickets remain");
+  });
+
   it("allows only the organizer to approve and issues a ticket code", async () => {
     const { service, saved } = setup();
     const order = await service.createOrder("event-1", user, {
