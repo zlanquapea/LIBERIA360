@@ -25,6 +25,18 @@ async function bootstrap() {
   });
   const configService = app.get(ConfigService<AppConfig, true>);
 
+  // Express must only honor forwarded addresses when the deployment has
+  // explicitly declared how many trusted proxy hops sit in front of it.
+  // Keeping the default at zero prevents clients from spoofing audit and
+  // throttling addresses with an arbitrary X-Forwarded-For header.
+  const trustedProxyHops = Number.parseInt(
+    process.env.TRUST_PROXY_HOPS ?? "0",
+    10,
+  );
+  if (Number.isFinite(trustedProxyHops) && trustedProxyHops > 0) {
+    app.set("trust proxy", trustedProxyHops);
+  }
+
   validateProductionConfig(configService);
 
   initErrorTracking(
