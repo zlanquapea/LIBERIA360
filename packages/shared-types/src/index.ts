@@ -1439,6 +1439,22 @@ export interface Advertisement {
   updatedAt: string;
 }
 
+// Presentation contract for the homepage Sponsored carousel. Backend
+// advertisements are deliberately mapped into this smaller, structured shape
+// so card copy is rendered as real text instead of being baked into imagery.
+export type AdCtaType = "learn_more" | "call" | "message" | "apply";
+
+export interface Ad {
+  id: string;
+  sponsorLabel: "Sponsored";
+  image: string | null;
+  title: string;
+  description: string;
+  ctaType: AdCtaType;
+  ctaUrl?: string;
+  advertiserName?: string;
+}
+
 // api/src/car-listings/entities/car-listing.enums.ts — "Car Rental": hire
 // a specific vehicle from a car-rental Business's fleet, booked through
 // the same Booking flow as everything else (see Booking.carListingId).
