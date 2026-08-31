@@ -271,7 +271,7 @@ ${matchedEntry.answer}`;
     const answer = greeting
       ? `Hello! I’m the LIBERIA360 Assistant. ${ASSISTANT_KNOWLEDGE[0].answer}`
       : (match?.answer ??
-        "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, car rentals, advertising, bookings, creators, events, trips, reviews, or your account.");
+        "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, advertising, bookings, creators, events, tickets, customer support, trips, reviews, or your account.");
     const fallbackEntry =
       match ??
       ASSISTANT_KNOWLEDGE.find((entry) => entry.id === "assistant-help");
@@ -358,6 +358,30 @@ ${matchedEntry.answer}`;
       [
         /review|rating|verified|verification|recommended|badge/,
         "reviews-verification",
+      ],
+      [
+        /already.*(scan|used)|scan.*(ticket|qr)|ticket.*(scan|scanner|redeem|validate)|validate.*(ticket|qr)|organizer.*scan|ticket.*fraud/,
+        "organizer-ticket-scanning",
+      ],
+      [
+        /download.*(ticket|qr)|qr.*(ticket|code)|my tickets|issued.*ticket|ticket.*pass/,
+        "ticket-qr-download",
+      ],
+      [
+        /incoming.*ticket|ticket.*order|review.*ticket.*payment|approve.*ticket|issue.*ticket|reject.*ticket.*order/,
+        "ticket-order-review",
+      ],
+      [
+        /buy.*(ticket|pass)|get.*(ticket|pass)|paid.*event|event.*ticket|ticket.*price|payment.*reference/,
+        "event-tickets",
+      ],
+      [
+        /this extraordinary life|extraordinary life|life program|extraordinary/,
+        "extraordinary-life",
+      ],
+      [
+        /customer.*(service|support)|contact.*(support|liberia360|team)|technical.*problem|need.*(help|assistance)|report.*(problem|issue)/,
+        "customer-support",
       ],
       [/event|rsvp|happening/, "events"],
       [/trip|itinerary|travel plan|weekend|vacation/, "trips"],
