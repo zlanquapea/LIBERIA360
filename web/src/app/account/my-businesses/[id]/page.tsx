@@ -6,6 +6,7 @@ import {
   BuildingStorefrontIcon,
   CalendarDaysIcon,
   ChartBarIcon,
+  MapPinIcon,
   MegaphoneIcon,
   ShoppingBagIcon,
   Squares2X2Icon,
@@ -78,6 +79,12 @@ export default function BusinessDashboardOverview() {
             label="Profile & Photos"
             description="Contact info, hours, amenities, photos"
             href={dashboardHref(business.id, 'profile')}
+          />
+          <QuickLink
+            icon={MapPinIcon}
+            label="Place Details"
+            description="Name, category, location, tags"
+            href={dashboardHref(business.id, 'place')}
           />
           {isRestaurant && (
             <QuickLink

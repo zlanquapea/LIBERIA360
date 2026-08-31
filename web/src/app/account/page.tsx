@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { StarIcon } from "@heroicons/react/24/solid";
 import {
-  BuildingOffice2Icon,
   BuildingStorefrontIcon,
   CalendarDaysIcon,
   ClipboardDocumentListIcon,
@@ -61,12 +60,6 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: "My Bookings",
     description: "Track booking requests",
     icon: ClipboardDocumentListIcon,
-  },
-  {
-    href: "/account/my-places",
-    label: "My Places",
-    description: "Manage submitted places",
-    icon: BuildingOffice2Icon,
   },
   {
     href: "/account/my-events",
