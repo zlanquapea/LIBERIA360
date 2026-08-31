@@ -91,6 +91,7 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
+import { CountyGrid } from '@/components/CountyGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { EventCarousel } from '@/components/EventCarousel';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
@@ -119,18 +120,16 @@ export default async function Home() {
   // it's actual catalog depth — not the stage number — that makes one of
   // them the one worth leading with.
   const quickCounties = [...counties]
-    .sort((a, b) => (b.placeCount ?? 0) - (a.placeCount ?? 0) || a.rolloutStage - b.rolloutStage)
-    .slice(0, 5);
+    .sort((a, b) => (b.placeCount ?? 0) - (a.placeCount ?? 0) || a.rolloutStage - b.rolloutStage);
 
-  // "Featured Destination" spotlight — a random pick from every currently
-  // active SponsoredPlacement, re-rolled on every request (this page does
-  // no ISR/caching — see apiFetch's `cache: 'no-store'` comment — so a
-  // fresh visit or a plain refresh both draw again). Several businesses
-  // can be paying for this same slot at once; rather than a first-one-wins
-  // static pick or cramming them all into a carousel, each pays for a
-  // random shot at the single spotlight — see /featured for the full pool.
-  const featuredPlacement =
-    sponsoredPlacements.length > 0 ? sponsoredPlacements[Math.floor(Math.random() * sponsoredPlacements.length)] : null;
+  // Randomize the order on each uncached request so every active sponsored
+  // placement gets a fair chance at the leading card while the responsive
+  // grid keeps the rest visible rather than stretching one across the page.
+  const featuredStart = sponsoredPlacements.length > 0 ? Math.floor(Math.random() * sponsoredPlacements.length) : 0;
+  const featuredPlacements = [
+    ...sponsoredPlacements.slice(featuredStart),
+    ...sponsoredPlacements.slice(0, featuredStart),
+  ];
   const businessVerificationByPlaceId = new Map(
     businesses.data.map((business) => [business.linkedPlaceId, business.verificationStatus]),
   );
@@ -270,28 +269,15 @@ export default async function Home() {
 
       <div className="flex flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
         {quickCounties.length > 0 && (
-          <nav aria-label="Browse by county" className="-mx-4 flex items-center gap-5 overflow-x-auto border-b border-slate-200 px-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
-            {quickCounties.map((county, i) => (
-              <Link
-                key={county.id}
-                href={`/counties/${county.slug}`}
-                className={`shrink-0 whitespace-nowrap border-b-2 pb-2 pt-1 text-sm transition-colors ${
-                  i === 0
-                    ? 'border-accent-500 font-semibold text-slate-900 dark:text-slate-50'
-                    : 'border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
-                }`}
-              >
-                {county.name}
+          <section aria-labelledby="counties-heading" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="counties-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">Browse counties</h2>
+              <Link href="/counties" className="hidden items-center gap-1 text-sm font-semibold text-brand-700 hover:underline sm:flex dark:text-brand-300">
+                View all <ArrowRightIcon aria-hidden className="h-4 w-4" />
               </Link>
-            ))}
-            <Link
-              href="/counties"
-              className="ml-auto flex shrink-0 items-center gap-0.5 whitespace-nowrap pb-2 pt-1 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
-            >
-              See all
-              <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
-            </Link>
-          </nav>
+            </div>
+            <CountyGrid counties={quickCounties} />
+          </section>
         )}
 
         <section aria-labelledby="categories-heading" className="flex flex-col gap-3">
@@ -301,7 +287,7 @@ export default async function Home() {
           <CategoryGrid categories={categories} />
         </section>
 
-        {featuredPlacement && (
+        {featuredPlacements.length > 0 && (
           <section aria-labelledby="featured-heading" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2
@@ -309,9 +295,9 @@ export default async function Home() {
                 className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
               >
                 <StarIcon aria-hidden className="h-5 w-5 text-gold-500" />
-                Featured Destination
+                Featured Places
               </h2>
-              {sponsoredPlacements.length > 1 && (
+              {featuredPlacements.length > 1 && (
                 <Link
                   href="/featured"
                   className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
@@ -321,10 +307,15 @@ export default async function Home() {
                 </Link>
               )}
             </div>
-            <FeaturedDestinationCard
-              place={featuredPlacement.place}
-              verificationStatus={businessVerificationByPlaceId.get(featuredPlacement.place.id)}
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {featuredPlacements.map((placement) => (
+                <FeaturedDestinationCard
+                  key={placement.id}
+                  place={placement.place}
+                  verificationStatus={businessVerificationByPlaceId.get(placement.place.id)}
+                />
+              ))}
+            </div>
           </section>
         )}
 

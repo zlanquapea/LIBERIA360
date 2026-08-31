@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChatBubbleLeftRightIcon, MegaphoneIcon, PhoneIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ArrowRightIcon, ChatBubbleLeftRightIcon, MegaphoneIcon, PhoneIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { resolveImageUrl } from '@/lib/images';
 import { whatsappLink } from '@/lib/contact';
 import { ContactLink } from './ContactLink';
@@ -26,14 +26,10 @@ export function AdvertisementCard({
   ad,
   onDismiss,
   cardRef,
-  fillContainer = false,
-  shimmerActive = false,
 }: {
   ad: Advertisement;
   onDismiss: () => void;
   cardRef?: (el: HTMLDivElement | null) => void;
-  fillContainer?: boolean;
-  shimmerActive?: boolean;
 }) {
   const cover = ad.images[0] ? resolveImageUrl(ad.images[0]) : null;
   const hasContact = Boolean(ad.contactWhatsapp || ad.contactPhone);
@@ -41,16 +37,13 @@ export function AdvertisementCard({
   return (
     <div
       ref={cardRef}
-      className={`group relative overflow-hidden rounded-2xl shadow-card ${
-        fillContainer
-          ? "h-full w-full"
-          : "h-56 w-[85%] shrink-0 snap-center transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover sm:h-64 sm:w-96"
-      }`}
+      className="group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-600"
     >
-      <Link href={`/ads/${ad.id}`} className="absolute inset-0 block">
+      <Link href={`/ads/${ad.id}`} className="flex h-full flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500" aria-label={`${ad.title}, sponsored advertisement`}>
+        <div className="relative aspect-[16/10] overflow-hidden bg-slate-200 dark:bg-slate-800">
         <SafeImage
           src={cover}
-          alt=""
+          alt={cover ? ad.title : ''}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           fallback={
             <div
@@ -61,19 +54,19 @@ export function AdvertisementCard({
             </div>
           }
         />
-        {shimmerActive && (
-          <div
-            aria-hidden
-            className="sponsored-ad-shimmer pointer-events-none absolute inset-0"
-          />
-        )}
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/40" />
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-4 pr-24 text-white">
-          <span className="w-fit rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur-sm">
+        <span className="absolute left-3 top-3 rounded-full bg-slate-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
             Sponsored
+        </span>
+        </div>
+        <div className="flex flex-1 flex-col gap-2 p-4 pb-16">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2 font-display text-lg font-bold leading-tight text-slate-900 dark:text-white">{ad.title}</h3>
+            {ad.priceLabel && <span className="shrink-0 rounded-full bg-gold-50 px-2 py-1 text-xs font-bold text-gold-600 dark:bg-gold-950 dark:text-gold-300">{ad.priceLabel}</span>}
+          </div>
+          {ad.description && <p className="line-clamp-2 text-sm leading-5 text-slate-600 dark:text-slate-300">{ad.description}</p>}
+          <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-bold text-brand-700 dark:text-brand-300">
+            Learn more <ArrowRightIcon aria-hidden className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </span>
-          <h3 className="line-clamp-2 font-display text-lg font-bold leading-tight">{ad.title}</h3>
-          <span className="mt-0.5 text-xs font-semibold text-white/85 group-hover:text-white">See more →</span>
         </div>
       </Link>
 
@@ -81,7 +74,7 @@ export function AdvertisementCard({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss this ad"
-        className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50"
+        className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/75 text-white backdrop-blur-sm transition-colors hover:bg-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         <XMarkIcon aria-hidden className="h-4 w-4" />
       </button>

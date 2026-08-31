@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronRightIcon } from '@heroicons/react/24/solid';
+import { ChevronRightIcon, MapPinIcon } from '@heroicons/react/24/solid';
 import type { Place, VerificationStatus } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
 import { resolveImageUrl } from '@/lib/images';
@@ -7,48 +7,33 @@ import { CategoryIcon } from '@/lib/icons';
 import { SafeImage } from './SafeImage';
 import { VerificationBadge } from './VerificationBadge';
 
-// Home's single spotlight banner — one paid "featured" placement
-// (SponsoredPlacement), picked at random from every currently active one
-// on each page load (see page.tsx) rather than shown as a multi-card
-// shelf: with several businesses paying for the same slot, a random pick
-// per view/refresh is the fairest way to share it out — a rotating
-// "bidding for placement" pool instead of a first-come-forever spot or a
-// crowded carousel. Full-bleed image with the details overlaid on a
-// bottom gradient and an "Explore" pill, matching the shared mock-up
-// layout exactly. A single <Link> wraps the whole card (like the "Plan a
-// weekend" banner elsewhere on this page) — the "Explore" pill is a
-// decorative `<span>`, not a nested `<button>`, so there's no invalid
-// button-inside-anchor markup.
+// A consistent editorial card for Home's paid featured-placement grid.
+// A single Link wraps the card; the Explore affordance stays decorative,
+// avoiding nested interactive elements while keeping a generous tap target.
 export function FeaturedDestinationCard({ place, verificationStatus }: { place: Place; verificationStatus?: VerificationStatus }) {
   const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
 
   return (
     <Link
       href={`/places/${place.slug}`}
-      className="group relative block h-56 overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover sm:h-64"
+      className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-600"
     >
-      <SafeImage
-        src={cover}
-        alt=""
-        className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-105 sm:h-64"
-        fallback={
-          <div
-            aria-hidden
-            className="flex h-56 items-center justify-center sm:h-64"
-            style={{ backgroundImage: gradientForCategory(place.category.slug) }}
-          >
-            <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-16 w-16 text-white/80" />
-          </div>
-        }
-      />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 p-4 text-white">
-        <h3 className="flex flex-wrap items-center gap-2 font-display text-xl font-bold leading-tight sm:text-2xl">
+      <div className="aspect-[16/10] overflow-hidden bg-slate-200 dark:bg-slate-800">
+        <SafeImage
+          src={cover}
+          alt={cover ? place.name : ''}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          fallback={<div aria-hidden className="flex h-full items-center justify-center" style={{ backgroundImage: gradientForCategory(place.category.slug) }}><CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-14 w-14 text-white/80" /></div>}
+        />
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <h3 className="flex flex-wrap items-center gap-2 font-display text-lg font-bold leading-tight text-slate-900 dark:text-white">
           <span>{place.name}</span>
           <VerificationBadge status={verificationStatus ?? place.verificationStatus} />
         </h3>
-        <p className="line-clamp-2 text-sm text-white/85">{place.description}</p>
-        <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white transition-colors group-hover:bg-emerald-700">
+        <p className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400"><MapPinIcon aria-hidden className="h-4 w-4" />{place.city}, {place.county.name}</p>
+        <p className="line-clamp-2 text-sm leading-5 text-slate-600 dark:text-slate-300">{place.description}</p>
+        <span className="mt-auto inline-flex w-fit items-center gap-1 pt-1 text-sm font-bold text-brand-700 dark:text-brand-300">
           Explore
           <ChevronRightIcon aria-hidden className="h-4 w-4" />
         </span>

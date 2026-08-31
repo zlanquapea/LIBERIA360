@@ -9,7 +9,7 @@ const desktopNavigation = [
   { href: "/explore", label: "Explore" },
   { href: "/counties", label: "Counties" },
   { href: "/events", label: "Events" },
-  { href: "/businesses", label: "Businesses" },
+  { href: "/car-rentals", label: "Car Rentals" },
   { href: "/creators", label: "Creators" },
 ];
 
