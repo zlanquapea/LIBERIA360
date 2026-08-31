@@ -1,4 +1,9 @@
-import type { EventTicketOrder, EventTicketOrderStatus } from './types';
+import type {
+  EventTicketInstance,
+  EventTicketOrder,
+  EventTicketOrderStatus,
+  EventTicketScanResult,
+} from './types';
 import { apiRequest, authHeader } from './http';
 
 export function createEventTicketOrder(
@@ -38,22 +43,24 @@ export function reviewEventTicketOrder(
   });
 }
 
-export interface RedeemedEventTicket {
-  valid: true;
-  ticketId: string;
-  eventName: string;
-  ticketNumber: number;
-  redeemedAt: string;
-}
-
 export function redeemEventTicket(
   token: string,
   eventId: string,
   payload: string,
-): Promise<RedeemedEventTicket> {
-  return apiRequest<RedeemedEventTicket>(`/events/${eventId}/ticket-scan`, {
+): Promise<EventTicketScanResult> {
+  return apiRequest<EventTicketScanResult>(`/events/${eventId}/ticket-scan`, {
     method: 'POST',
     headers: authHeader(token),
     body: JSON.stringify({ payload }),
+  });
+}
+
+export function voidEventTicket(
+  token: string,
+  instanceId: string,
+): Promise<EventTicketInstance> {
+  return apiRequest<EventTicketInstance>(`/ticket-instances/${instanceId}/void`, {
+    method: 'PATCH',
+    headers: authHeader(token),
   });
 }

@@ -591,12 +591,47 @@ export type EventTicketOrderStatus =
 
 export type EventTicketInstanceStatus = "issued" | "redeemed" | "void";
 
+// One individually issued, individually verifiable pass — a 2-VIP +
+// 3-Regular order is 5 of these, each with its own type, number, QR, and
+// status, never one shared record for the whole order. `qrDataUrl` is
+// present for the buyer's own view (GET /ticket-orders/mine) and absent
+// from the organizer's order-management view (GET
+// /events/:id/ticket-orders), which never hands back scan credentials.
 export interface EventTicketInstance {
   id: string;
   sequence: number;
+  ticketNumber: string;
+  ticketTypeName: string;
   status: EventTicketInstanceStatus;
-  qrDataUrl: string;
+  qrDataUrl?: string;
   redeemedAt: string | null;
+}
+
+export type EventTicketScanOutcome =
+  | "valid"
+  | "already_used"
+  | "cancelled"
+  | "wrong_event"
+  | "invalid";
+
+export interface ScannedTicketSummary {
+  id: string;
+  ticketNumber: string;
+  ticketTypeName: string;
+  eventName: string;
+  orderId: string;
+}
+
+// POST /events/:id/ticket-scan response — always 200 with an `outcome`,
+// never a thrown error for a bad or reused ticket, so the scanner can
+// render each state distinctly. `firstScannedAt` is present only for
+// "already_used" (see api's redeemTicket doc comment for why the token is
+// verified before any of this is decided/returned).
+export interface EventTicketScanResult {
+  outcome: EventTicketScanOutcome;
+  message: string;
+  ticket?: ScannedTicketSummary;
+  firstScannedAt?: string;
 }
 
 export interface EventTicketOrder {

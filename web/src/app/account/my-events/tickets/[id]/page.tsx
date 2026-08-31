@@ -7,15 +7,20 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   getEventTicketOrders,
   reviewEventTicketOrder,
+  voidEventTicket,
 } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
-import type { EventTicketOrder } from "@/lib/types";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import type { EventTicketInstance, EventTicketOrder } from "@/lib/types";
 
 export default function EventTicketOrdersPage() {
   const params = useParams<{ id: string }>();
   const { token, ready, user } = useAuth();
   const [orders, setOrders] = useState<EventTicketOrder[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pendingCancel, setPendingCancel] = useState<EventTicketInstance | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token || !params.id) return;
@@ -45,6 +50,23 @@ export default function EventTicketOrdersPage() {
       setError(
         err instanceof HttpError ? err.message : "Unable to review this order.",
       );
+    }
+  }
+
+  async function confirmCancelTicket() {
+    if (!token || !pendingCancel) return;
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      await voidEventTicket(token, pendingCancel.id);
+      setPendingCancel(null);
+      await load();
+    } catch (err) {
+      setCancelError(
+        err instanceof HttpError ? err.message : "Unable to cancel this ticket.",
+      );
+    } finally {
+      setCancelLoading(false);
     }
   }
 
@@ -154,15 +176,73 @@ export default function EventTicketOrdersPage() {
                   </button>
                 </div>
               )}
-              {order.ticketCode && (
-                <p className="mt-3 font-mono text-sm text-emerald-700 dark:text-emerald-300">
-                  Issued: {order.ticketCode}
-                </p>
+              {order.tickets && order.tickets.length > 0 && (
+                <ul className="mt-3 flex flex-col gap-2 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
+                  {order.tickets.map((ticket) => (
+                    <li
+                      key={ticket.id}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-900"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900 dark:text-slate-50">
+                          {ticket.ticketTypeName}
+                          <span className="ml-1.5 font-normal text-slate-500">
+                            · Ticket {ticket.sequence} of {order.quantity}
+                          </span>
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-slate-500">
+                          {ticket.ticketNumber}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span
+                          className={
+                            ticket.status === "void"
+                              ? "rounded-full bg-slate-200 px-2 py-0.5 font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                              : ticket.status === "redeemed"
+                                ? "rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                                : "rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                          }
+                        >
+                          {ticket.status === "void"
+                            ? "Cancelled"
+                            : ticket.status === "redeemed"
+                              ? "Used"
+                              : "Active"}
+                        </span>
+                        {ticket.status !== "void" && (
+                          <button
+                            type="button"
+                            onClick={() => setPendingCancel(ticket)}
+                            className="rounded-full border border-red-300 px-2 py-0.5 font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/30"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               )}
             </li>
           ))}
         </ul>
       )}
+      <ConfirmDialog
+        open={pendingCancel !== null}
+        title={pendingCancel ? `Cancel ${pendingCancel.ticketTypeName} ticket ${pendingCancel.ticketNumber}?` : ""}
+        description="The attendee will no longer be able to use this ticket for entry. This does not affect any other ticket in the same order."
+        confirmLabel="Cancel ticket"
+        cancelLabel="Keep ticket"
+        loadingLabel="Cancelling…"
+        isLoading={cancelLoading}
+        error={cancelError}
+        onConfirm={confirmCancelTicket}
+        onCancel={() => {
+          setPendingCancel(null);
+          setCancelError(null);
+        }}
+      />
     </main>
   );
 }
