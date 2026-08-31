@@ -590,21 +590,6 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     followUps: ["How do I report wrong information?", "What can the assistant do?"],
   },
   {
-    id: "extraordinary-life",
-    title: "This Extraordinary Life",
-    keywords: [
-      "this extraordinary life",
-      "extraordinary life",
-      "extraordinary",
-      "life program",
-      "life experience",
-    ],
-    answer:
-      "I do not yet have confirmed details about the “This Extraordinary Life” program in my approved LIBERIA360 knowledge. I do not want to guess or give you incorrect information. Please ask the LIBERIA360 team for the official description, eligibility, dates, and contact details, then those details can be added here.",
-    actionIds: ["home"],
-    followUps: ["What can I do on LIBERIA360?", "How do I contact customer support?"],
-  },
-  {
     id: "assistant-help",
     title: "What the assistant can do",
     keywords: [
