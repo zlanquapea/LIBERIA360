@@ -21,6 +21,7 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
   map: { id: "map", label: "Open map", href: "/explore" },
   addPlace: { id: "addPlace", label: "Add a place", href: "/places/submit" },
   account: { id: "account", label: "Open account", href: "/account" },
+  support: { id: "support", label: "Contact customer support", href: "/account/support" },
   myPlaces: {
     id: "myPlaces",
     label: "Manage my places",
@@ -605,8 +606,8 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "need assistance",
     ],
     answer:
-      "The LIBERIA360 Assistant can explain features and guide you to the right page, but it cannot change accounts, approve listings, issue refunds, or manually validate tickets. For a problem with a listing, booking, advertisement, or ticket, keep the relevant reference and use the available report or contact option on that page. Never send passwords, verification codes, or payment credentials in chat. A dedicated support-center page is not currently listed in the app, so the team should publish an official support contact before launch.",
-    actionIds: ["account", "home"],
+      "Use Account → Customer Support as the official LIBERIA360 support channel. Choose the closest category, such as Account, Booking, Payment or event ticket, Listing, Technical, Safety, Feedback, or Other for an advertisement issue. Include the relevant reference, explain what happened, and attach a screenshot when useful. You can follow replies and updates from the support request thread. The assistant cannot change accounts, approve listings, issue refunds, or manually validate tickets. Never send passwords, verification codes, full payment credentials, or QR payloads in chat.",
+    actionIds: ["support", "account"],
     followUps: [
       "How do I report wrong information?",
       "What can the assistant do?",
@@ -728,6 +729,7 @@ export const ASSISTANT_QUICK_PROMPTS = [
   "How do I add my business?",
   "How does advertising work?",
   "How do I get my event QR ticket?",
+  "How do I contact customer support?",
   "How do bookings work?",
   "How do event tickets work?",
   "Where can I download my QR ticket?",
