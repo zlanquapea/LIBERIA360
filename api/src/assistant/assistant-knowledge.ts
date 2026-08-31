@@ -55,8 +55,16 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
   },
   events: { id: "events", label: "Explore events", href: "/events" },
   addEvent: { id: "addEvent", label: "Add an event", href: "/events/new" },
-  myTickets: { id: "myTickets", label: "View my tickets", href: "/account/my-tickets" },
-  myEvents: { id: "myEvents", label: "Manage my events", href: "/account/my-events" },
+  myTickets: {
+    id: "myTickets",
+    label: "View my tickets",
+    href: "/account/my-tickets",
+  },
+  myEvents: {
+    id: "myEvents",
+    label: "Manage my events",
+    href: "/account/my-events",
+  },
   trips: { id: "trips", label: "Plan a trip", href: "/trips/new" },
   weekend: {
     id: "weekend",
@@ -511,7 +519,10 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "For an approved paid event, open the event page and use Get tickets. Choose the number and ticket type of your passes when the event offers categories, follow the organizer’s payment instructions, and submit your payment reference. Your order stays under payment review until the organizer verifies it.",
     actionIds: ["events", "myTickets", "login"],
-    followUps: ["Where can I see my QR ticket?", "How does ticket scanning work?"],
+    followUps: [
+      "Where can I see my QR ticket?",
+      "How does ticket scanning work?",
+    ],
   },
   {
     id: "ticket-qr-download",
@@ -530,7 +541,10 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "After the organizer approves your payment, open Account → My Tickets. Each individual LIBERIA360 pass appears with its ticket type, ticket number, status, and a branded QR code. View it on your phone or tap Download QR to save it as an image. Keep the QR code private because each pass can be redeemed only once. If a pass is cancelled, it is marked cancelled and cannot be used.",
     actionIds: ["myTickets", "account"],
-    followUps: ["How do I buy an event ticket?", "How does an organizer scan a ticket?"],
+    followUps: [
+      "How do I buy an event ticket?",
+      "How does an organizer scan a ticket?",
+    ],
   },
   {
     id: "organizer-ticket-scanning",
@@ -549,7 +563,10 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "An event organizer opens the event’s Ticket orders area and chooses Open ticket scanner. The dedicated scanner page works with the phone camera, including iPhone Safari and Android browsers. A valid pass is accepted once. The scanner distinguishes valid, already used, cancelled, wrong-event, and invalid tickets. Organizers should only scan passes for their own event and should not accept copied or previously redeemed codes.",
     actionIds: ["myEvents", "events"],
-    followUps: ["Where can attendees download their QR ticket?", "How do I review ticket payments?"],
+    followUps: [
+      "Where can attendees download their QR ticket?",
+      "How do I review ticket payments?",
+    ],
   },
   {
     id: "ticket-order-review",
@@ -566,7 +583,10 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "Event organizers review incoming ticket orders from My Events → the event → Ticket orders. Check the payment reference and either approve the order to issue individual QR passes, including the selected ticket types when applicable, or reject it with a note. Approved tickets can be cancelled individually if needed. Scanning is handled separately on the dedicated Open ticket scanner page.",
     actionIds: ["myEvents", "events"],
-    followUps: ["How do I scan a ticket?", "How do attendees get their QR code?"],
+    followUps: [
+      "How do I scan a ticket?",
+      "How do attendees get their QR code?",
+    ],
   },
   {
     id: "customer-support",
@@ -587,7 +607,10 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "The LIBERIA360 Assistant can explain features and guide you to the right page, but it cannot change accounts, approve listings, issue refunds, or manually validate tickets. For a problem with a listing, booking, advertisement, or ticket, keep the relevant reference and use the available report or contact option on that page. Never send passwords, verification codes, or payment credentials in chat. A dedicated support-center page is not currently listed in the app, so the team should publish an official support contact before launch.",
     actionIds: ["account", "home"],
-    followUps: ["How do I report wrong information?", "What can the assistant do?"],
+    followUps: [
+      "How do I report wrong information?",
+      "What can the assistant do?",
+    ],
   },
   {
     id: "assistant-help",
