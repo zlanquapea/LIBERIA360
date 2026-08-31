@@ -1,46 +1,90 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   ChatBubbleLeftRightIcon,
   ChevronLeftIcon,
   MapPinIcon,
   PhoneIcon,
   TruckIcon,
-} from '@heroicons/react/24/outline';
-import { CalendarDaysIcon, UserGroupIcon } from '@heroicons/react/24/solid';
-import { ApiError, getCarListingById, getCarListingReviews } from '@/lib/api';
+} from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, UserGroupIcon } from "@heroicons/react/24/solid";
+import {
+  ApiError,
+  getCarListingById,
+  getCarListingReviews,
+  getCarListings,
+} from "@/lib/api";
+import { recommendCars } from "@/lib/car-recommendations";
 import {
   formatCarCategory,
   formatCarFuelType,
   formatCarTransmission,
   formatCost,
-} from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
-import { whatsappLink } from '@/lib/contact';
-import { SafeImage } from '@/components/SafeImage';
-import { ReviewsSection } from '@/components/ReviewsSection';
-import { BookingRequestSection } from '@/components/BookingRequestSection';
+} from "@/lib/format";
+import { resolveImageUrl } from "@/lib/images";
+import { whatsappLink } from "@/lib/contact";
+import { SafeImage } from "@/components/SafeImage";
+import { ReviewsSection } from "@/components/ReviewsSection";
+import { BookingRequestSection } from "@/components/BookingRequestSection";
+import { CarRecommendations } from "@/components/CarRecommendations";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+type SearchParams = { [key: string]: string | string[] | undefined };
+
+function rentalQuery(params: SearchParams) {
+  const query = new URLSearchParams();
+  for (const key of [
+    "pickupDate",
+    "returnDate",
+    "pickupLocation",
+    "countyId",
+  ]) {
+    const value = params[key];
+    const first = Array.isArray(value) ? value[0] : value;
+    if (first) query.set(key, first);
+  }
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : "";
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const listing = await getCarListingById(id).catch(() => null);
   if (!listing) {
-    return { title: 'Car Rental — LIBERIA360' };
+    return { title: "Car Rental — LIBERIA360" };
   }
   return { title: `${listing.title} — LIBERIA360` };
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-3 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-      <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-50">{title}</h2>
+      <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-50">
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
-export default async function CarListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CarListingDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<SearchParams>;
+}) {
   const { id } = await params;
+  const query = rentalQuery(await searchParams);
 
   const listing = await getCarListingById(id).catch((error) => {
     if (error instanceof ApiError && error.status === 404) return null;
@@ -50,7 +94,11 @@ export default async function CarListingDetailPage({ params }: { params: Promise
     notFound();
   }
 
-  const reviewsResult = await getCarListingReviews(listing.id, { limit: 20 });
+  const [reviewsResult, catalog] = await Promise.all([
+    getCarListingReviews(listing.id, { limit: 20 }),
+    getCarListings({ limit: 100 }),
+  ]);
+  const recommendations = recommendCars(listing, catalog.data);
   const images = listing.images.map(resolveImageUrl);
   const cover = images[0] ?? null;
   const business = listing.business;
@@ -78,7 +126,12 @@ export default async function CarListingDetailPage({ params }: { params: Promise
           src={cover}
           alt=""
           className="h-full w-full object-cover"
-          fallback={<TruckIcon aria-hidden className="h-16 w-16 text-slate-400 dark:text-slate-500" />}
+          fallback={
+            <TruckIcon
+              aria-hidden
+              className="h-16 w-16 text-slate-400 dark:text-slate-500"
+            />
+          }
         />
       </div>
 
@@ -93,7 +146,12 @@ export default async function CarListingDetailPage({ params }: { params: Promise
                 src={src}
                 alt=""
                 className="h-full w-full object-cover"
-                fallback={<TruckIcon aria-hidden className="h-6 w-6 text-slate-400 dark:text-slate-500" />}
+                fallback={
+                  <TruckIcon
+                    aria-hidden
+                    className="h-6 w-6 text-slate-400 dark:text-slate-500"
+                  />
+                }
               />
             </div>
           ))}
@@ -124,7 +182,9 @@ export default async function CarListingDetailPage({ params }: { params: Promise
           <span className="font-display text-3xl font-bold text-slate-950 dark:text-slate-50">
             {formatCost(listing.pricePerDay)}
           </span>
-          <span className="text-sm text-slate-500 dark:text-slate-400">per day</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            per day
+          </span>
           {listing.minRentalDays > 1 && (
             <span className="text-sm text-slate-500 dark:text-slate-400">
               · {listing.minRentalDays}-day minimum
@@ -137,7 +197,9 @@ export default async function CarListingDetailPage({ params }: { params: Promise
             <span className="font-display text-xl font-semibold text-slate-900 dark:text-slate-100">
               {formatCost(listing.pricePerHour)}
             </span>
-            <span className="text-sm text-slate-500 dark:text-slate-400">per hour</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              per hour
+            </span>
             {listing.minRentalHours != null && listing.minRentalHours > 1 && (
               <span className="text-sm text-slate-500 dark:text-slate-400">
                 · {listing.minRentalHours}-hour minimum
@@ -155,11 +217,14 @@ export default async function CarListingDetailPage({ params }: { params: Promise
             <TruckIcon aria-hidden className="h-5 w-5 text-sky-500" />
             {formatCarTransmission(listing.transmission)}
           </div>
-          <div className="text-sm text-slate-700 dark:text-slate-200">{formatCarFuelType(listing.fuelType)}</div>
+          <div className="text-sm text-slate-700 dark:text-slate-200">
+            {formatCarFuelType(listing.fuelType)}
+          </div>
           {listing.withDriverAvailable && (
             <div className="text-sm text-slate-700 dark:text-slate-200">
               Driver +{formatCost(listing.driverFeePerDay)}/day
-              {listing.driverFeePerHour != null && ` (+${formatCost(listing.driverFeePerHour)}/hr)`}
+              {listing.driverFeePerHour != null &&
+                ` (+${formatCost(listing.driverFeePerHour)}/hr)`}
             </div>
           )}
         </div>
@@ -175,14 +240,16 @@ export default async function CarListingDetailPage({ params }: { params: Promise
             carListing={listing}
             prominent
             mode="link"
-            href={`/car-rentals/${listing.id}/book`}
+            href={`/car-rentals/${listing.id}/book${query}`}
           />
         </div>
       </header>
 
       {listing.description && (
         <Section title="About this vehicle">
-          <p className="whitespace-pre-wrap leading-8 text-slate-700 dark:text-slate-200">{listing.description}</p>
+          <p className="whitespace-pre-wrap leading-8 text-slate-700 dark:text-slate-200">
+            {listing.description}
+          </p>
         </Section>
       )}
 
@@ -220,7 +287,11 @@ export default async function CarListingDetailPage({ params }: { params: Promise
               >
                 {business.name}
               </Link>
-              {location && <p className="text-sm text-slate-500 dark:text-slate-400">{location}</p>}
+              {location && (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {location}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {business.whatsapp && (
@@ -255,8 +326,14 @@ export default async function CarListingDetailPage({ params }: { params: Promise
           <Section title="Rented out by">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-semibold text-slate-950 dark:text-slate-50">{listing.owner?.name ?? 'Vehicle owner'}</p>
-                {location && <p className="text-sm text-slate-500 dark:text-slate-400">{location}</p>}
+                <p className="font-semibold text-slate-950 dark:text-slate-50">
+                  {listing.owner?.name ?? "Vehicle owner"}
+                </p>
+                {location && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {location}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {listing.contactWhatsapp && (
@@ -286,8 +363,18 @@ export default async function CarListingDetailPage({ params }: { params: Promise
       )}
 
       <Section title="Reviews">
-        <ReviewsSection carListingId={listing.id} initialReviews={reviewsResult.data} />
+        <ReviewsSection
+          carListingId={listing.id}
+          initialReviews={reviewsResult.data}
+        />
       </Section>
+
+      <CarRecommendations
+        selected={listing}
+        similarCars={recommendations.similarCars}
+        similarPrice={recommendations.similarPrice}
+        query={query}
+      />
     </main>
   );
 }

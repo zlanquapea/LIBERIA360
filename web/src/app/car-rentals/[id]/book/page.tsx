@@ -26,10 +26,15 @@ export async function generateMetadata({
 // width to lay out, not a cramped tile.
 export default async function BookCarListingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const rentalParams = await searchParams;
+  const first = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
 
   const listing = await getCarListingById(id).catch((error) => {
     if (error instanceof ApiError && error.status === 404) return null;
@@ -94,7 +99,8 @@ export default async function BookCarListingPage({
               Request to rent
             </h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Send your pickup and return dates — {business?.name ?? listing.owner?.name ?? "the owner"} will
+              Send your pickup and return dates —{" "}
+              {business?.name ?? listing.owner?.name ?? "the owner"} will
               confirm or decline.
             </p>
           </div>
@@ -103,6 +109,11 @@ export default async function BookCarListingPage({
             prominent
             startExpanded
             returnTo={`/car-rentals/${listing.id}/book`}
+            initialRentalDetails={{
+              pickupDate: first(rentalParams.pickupDate),
+              returnDate: first(rentalParams.returnDate),
+              pickupLocation: first(rentalParams.pickupLocation),
+            }}
           />
         </div>
       </section>
