@@ -23,7 +23,7 @@ type ShareMenuProps = {
   // filled sky-blue pill or "circle"'s solid brand button would stick out
   // next to two minimal-styled siblings.
   variant?: "circle" | "action" | "feed" | "viewer" | "viewer-action";
-  contentType?: "place" | "creator" | "post" | "event";
+  contentType?: "place" | "creator" | "post" | "event" | "trip";
   onShare?: () => void;
 };
 
@@ -49,7 +49,9 @@ export function ShareMenu({
         ? "post"
         : contentType === "event"
           ? "event"
-          : "place";
+          : contentType === "trip"
+            ? "trip"
+            : "place";
   const [currentUrl, setCurrentUrl] = useState(shareUrl ?? "");
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [status, setStatus] = useState<string | null>(null);

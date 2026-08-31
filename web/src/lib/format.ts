@@ -19,6 +19,8 @@ import type {
   PlaceType,
   RecommendedVisitLength,
   TravelerType,
+  TripStatus,
+  TripVisibility,
 } from './types';
 
 const TRAVELER_TYPE_LABELS: Record<TravelerType, string> = {
@@ -259,6 +261,41 @@ const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
 
 export function formatBudgetBand(band: BudgetBand): string {
   return BUDGET_BAND_LABELS[band] ?? band;
+}
+
+const TRIP_STATUS_LABELS: Record<TripStatus, string> = {
+  upcoming: 'Upcoming',
+  ongoing: 'Ongoing',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+export function formatTripStatus(status: TripStatus): string {
+  return TRIP_STATUS_LABELS[status] ?? status;
+}
+
+const TRIP_VISIBILITY_LABELS: Record<TripVisibility, string> = {
+  public: 'Public',
+  private: 'Private',
+};
+
+export function formatTripVisibility(visibility: TripVisibility): string {
+  return TRIP_VISIBILITY_LABELS[visibility] ?? visibility;
+}
+
+// Trip dates are day-level (no meaningful time-of-day for a multi-day
+// trip), unlike formatEventDateRange above — so this deliberately omits
+// the clock time that helper includes.
+export function formatTripDateRange(startDate: string | null, endDate: string | null): string | null {
+  if (!startDate && !endDate) return null;
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
+  }
+  const only = new Date((startDate ?? endDate) as string);
+  return only.toLocaleDateString('en-US', opts);
 }
 
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {

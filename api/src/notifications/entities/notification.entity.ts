@@ -39,7 +39,12 @@ export type NotificationType =
   | "admin.support_ticket_assigned"
   | "admin.support_ticket_unassigned"
   | "admin.support_customer_replied"
-  | "admin.failed_login_alert";
+  | "admin.failed_login_alert"
+  | "trip.invitation_received"
+  | "trip.invitation_accepted"
+  | "trip.join_requested"
+  | "trip.join_request_approved"
+  | "trip.join_request_declined";
 
 /**
  * The in-app notification center's one table — every notification, for

@@ -203,20 +203,38 @@ Requires a VAPID keypair (`npx web-push generate-vapid-keys`); unconfigured, sub
 
 | Method & path | Description | Auth |
 |---|---|---|
-| `POST /itineraries` | Generate a multi-day trip ("Build My Liberia Trip") | JWT |
-| `POST /itineraries/preview` | Generate the same route as above, but return it unsaved — the guest-first trip planner, so a visitor with no account can see a real itinerary before deciding to log in and save it | — |
+| `POST /itineraries` | Generate a multi-day trip ("Build My Liberia Trip") — a real catalog destination, a name, and a public/private visibility choice are all required | JWT |
+| `POST /itineraries/preview` | Generate the same route as above, but return it unsaved — the guest-first trip planner, so a visitor with no account can see a real itinerary before deciding to log in and save it. Destination/visibility/description/cover image are all optional here, unlike `POST /itineraries` | — |
 | `POST /itineraries/weekend` | Generate a trip from a location, filtered by travel time | JWT |
 | `GET /itineraries` | List own itineraries | JWT |
 | `GET /itineraries/:id` | Itinerary detail, stops resolved to full places | Owner or collaborator |
 | `GET /itineraries/shared-with-me` | Itineraries owned by others the user was invited to | JWT |
+| `GET /itineraries/public` | Discoverable public trips (`?destinationPlaceId=`, paginated) — cancelled trips excluded | — |
+| `GET /itineraries/public/:id` | A public trip's basic info (stops included), for anyone deciding whether to request to join. For a real but *private* trip, resolves to `{id, visibility: "private"}` (200, not 404) instead of exposing content — a deliberate, documented exception to the "don't confirm a random id exists" rule elsewhere in this API, so a shared private link can render "this is a private trip" rather than an ambiguous error. A genuinely nonexistent id still 404s | — |
 | `PATCH /itineraries/:id` | Rename the trip | Owner or collaborator |
 | `DELETE /itineraries/:id` | Delete the trip outright — collaborators and invitations cascade away with it | Owner |
+| `POST /itineraries/:id/cancel` | Mark the trip cancelled (one-way) | Owner |
 | `DELETE /itineraries/:id/collaborators/:userId` | Remove a confirmed collaborator, or leave | Owner or self |
 | `POST /itineraries/:id/stops` | Add a stop | Owner or collaborator |
 | `PATCH /itineraries/:id/stops/:placeId` | Edit stop notes | Owner or collaborator |
 | `DELETE /itineraries/:id/stops/:placeId` | Remove a stop | Owner or collaborator |
 
 Generation uses greedy nearest-neighbor sequencing. Non-members get 404 (not 403) on member-only routes. `/itineraries/preview` runs the exact same candidate-selection/sequencing as `/itineraries` without persisting anything — "save this trip" after logging in is just calling `/itineraries` again with the same inputs, deterministic against unchanged catalog data, rather than a second endpoint that has to trust a client-supplied draft back into the DB.
+
+A trip's `status` (`upcoming` / `ongoing` / `completed` / `cancelled`) is always computed at read time from `startDate`/`endDate`/`cancelledAt` — never persisted — the same approach `InvitationDisplayStatus` already uses for "viewed"/"expired", so it can never drift from the underlying dates. The creator is always `admin` in every itinerary response and is always labeled "Trip Admin" in the UI; the data model has room for additional admins later, but the creator is permanent.
+
+### Requests to Join
+
+The counterpart to Trip Collaboration & Invitations' "owner reaches out" direction — a stranger asking to join a *public* trip, gated behind the owner's approval even though the trip is public (`trip_join_requests` table, one row per itinerary/user pair, reused on a re-request after a decline).
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `POST /itineraries/:id/join-requests` | Request to join a public trip | JWT |
+| `GET /itineraries/:id/join-requests` | The trip's join-request queue | Owner |
+| `POST /itineraries/:id/join-requests/:requestId/approve` | Approve — materializes an `ItineraryCollaborator` row | Owner |
+| `POST /itineraries/:id/join-requests/:requestId/decline` | Decline — never touches collaborators | Owner |
+
+Requesting to join your own trip, a private trip, or a trip you're already on/already have a pending request for all reject with a specific message rather than a generic error.
 
 ### Trip Collaboration & Invitations
 
@@ -316,7 +334,7 @@ Distinct from `Place.featured` (undated editorial curation).
 
 One shared in-app notification center for every account, regular users and admins alike — a `Notification.userId` scoped to whoever is signed in, not a separate "admin notifications" system (an admin sees admin-relevant rows for the same reason a traveler sees booking-relevant ones: both are just "this account's rows"). Creating a notification never fails the action that triggered it (same "never blocks the caller" contract as `AdminAuditService.log`/`LoginActivityService.record`); a broadcast to many recipients (e.g. every admin) writes one independent row per recipient so one person's read state never affects another's.
 
-Current triggers: a booking request/confirmation/decline, a new booking message, a place/business/advertisement/car-listing entering admin review (all admins) and the decision on it (the submitter), and a failed-login threshold alert (every super admin, alongside the existing email). Trip invitations, business-content approval, and creator verification don't write a `Notification` yet — trip invitations still surface via the header bell (folded in from `GET /invitations/mine`, not the notifications table), and the others remain email/UI-only for now.
+Current triggers: a booking request/confirmation/decline, a new booking message, a place/business/advertisement/car-listing entering admin review (all admins) and the decision on it (the submitter), a failed-login threshold alert (every super admin, alongside the existing email), and — as of the Aug 2026 social-trip work — a trip invitation received, an invitation accepted (to the organizer), a join request received (to the trip owner), and its approval/decline (to the requester). Business-content approval and creator verification don't write a `Notification` yet and remain email/UI-only for now.
 
 ### Advertisements
 
@@ -501,3 +519,4 @@ Role changes take effect immediately — the JWT strategy re-fetches the user ro
 - Bookings do not process real payments; MTN Mobile Money integration requires a merchant relationship not available in this environment.
 - `npm run load-test` (`scripts/load-test.js`, autocannon) is a local single-instance sanity check against `/health`, catalog browse/search, and a place detail page — not a production capacity number. Run it again once there's a real deployed target and a traffic estimate.
 - IP addresses recorded in the audit trail and login activity log (`src/common/request-info.ts`) come from Express's own `req.ip`, which only reflects `X-Forwarded-For` if the app has `trust proxy` configured — it doesn't yet. Behind a reverse proxy or load balancer without that setting, every request appears to come from the proxy's own address — the same underlying gap as `@nestjs/throttler`'s per-instance rate limiting (see DEPLOYMENT.md's "Known limitations").
+- Social trips (public/private visibility, request-to-join, Trip Admin) are Phase 1 of a larger planned overhaul. Real-time group chat, image sharing with delivery/read receipts, and surfacing public trips on destination pages/feeds beyond `/trips/community` and their creator's own profile are deliberately deferred to a later phase. There's also no dedicated "who am I to this trip" endpoint — `GET /itineraries/:id` keeps its original all-or-404 member-only behavior, and `GET /itineraries/public/:id` is always unauthenticated regardless of the caller's own token, so a signed-in non-participant currently sees the same participant *count* (not the full list) that an anonymous visitor does.

@@ -86,7 +86,7 @@ npm run lint
 | Catalog | Home, Explore (map), category/county browse, search, destination profile, saved places |
 | Auth | Login, signup, two-factor authentication, forgot/reset password, email verification, account security |
 | Content | Reviews, business self-claim + dedicated owner dashboard (`/account/my-businesses`), self-service place submission + status tracking, creator profiles (portfolio, services, discovery directory), events, photo uploads |
-| Trip planning | Trip Planner (guest-first — no login until you save), Weekend Explorer, collaborative multi-user trip editing |
+| Trip planning | Trip Planner (guest-first — no login until you save), Weekend Explorer, collaborative multi-user trip editing, social trips — real catalog destination + public/private visibility set at creation, request-to-join workflow with owner approve/decline (`TripPeoplePanel`), "Trip Admin" labeling, trip status (Upcoming/Ongoing/Completed/Cancelled), Cancel Trip, `/trips/community` public discovery feed |
 | Marketplace | Booking requests, in-booking messaging, in-platform restaurant food ordering + order messaging, business analytics dashboard, featured placements/creators |
 | Advertisements | Self-service ad CRUD + metrics (`/account/my-ads`), "Sponsored" placement on Home/Search, admin pending queue + full status-filtered management with approve/reject/suspend |
 | Car Rentals | Public directory + detail + booking flow (`/car-rentals`), owner fleet CRUD (`/account/my-car-listings`), admin pending queue + full status-filtered management with approve/reject/suspend |
@@ -103,5 +103,6 @@ Admin pages (`/admin/*`) are gated client-side by `AdminGate`/`SuperAdminGate` f
 ## Known limitations
 
 - `public/logo.png` is a full circular lockup rather than an icon-only mark; it reads busy at favicon size.
-- Not every "you might want to know about this" event writes a notification yet — trip invitations still surface via the bell (folded in from `/invitations/mine`, not the notifications feed itself), while business-content approval and creator verification remain email/UI-only for now.
+- Not every "you might want to know about this" event writes a notification yet — trip invitations, acceptances, and join requests/approvals/declines now write in-app notification rows alongside email, while business-content approval and creator verification remain email/UI-only for now.
+- Social trips (public/private, request-to-join, Trip Admin, community discovery) are the first phase of a larger planned overhaul — real-time group chat (message threads, image sharing, delivery/read receipts, replies, reactions) and destination-page/feed cross-linking for public trips are deliberately deferred to a later phase.
 - Unit test coverage (Jest) is a baseline — utilities and core components, not exhaustive. The Playwright suite covers the critical end-to-end flows (auth, search, reviews, bookings, admin moderation — see `e2e/README.md`), not every screen.
