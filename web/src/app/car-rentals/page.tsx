@@ -3,6 +3,7 @@ import { getCarListings, getCounties } from '@/lib/api';
 import { CarListingCard } from '@/components/CarListingCard';
 import { CarRentalFilters } from '@/components/CarRentalFilters';
 import type { CarCategory, CarTransmission } from '@/lib/types';
+import { PageHeader } from '@/components/PageHeader';
 
 export const metadata = { title: 'Car Rentals — LIBERIA360' };
 
@@ -59,23 +60,20 @@ export default async function CarRentalsPage({ searchParams }: { searchParams: P
   );
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Car Rentals</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+    <main className="page-shell max-w-6xl">
+      <PageHeader eyebrow="Travel with confidence" title="Car rentals" description={<>
           Hire a car to get around Liberia on your own schedule — with or without a driver. Own a
           fleet?{' '}
           <Link href="/account/my-car-listings" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
             List your vehicles
           </Link>
           .
-        </p>
-      </div>
+        </>} />
 
       <CarRentalFilters counties={counties} />
 
       {result.data.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+        <p className="empty-state">
           {hasFilters ? 'No vehicles match these filters.' : 'No approved car listings yet.'}
         </p>
       ) : (

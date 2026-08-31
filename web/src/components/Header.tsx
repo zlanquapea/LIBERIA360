@@ -16,20 +16,25 @@ const desktopNavigation = [
 export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-brand-900/95 text-white shadow-[0_8px_24px_rgba(8,26,80,0.16)] backdrop-blur-xl supports-[backdrop-filter]:bg-brand-900/90">
-      <div className="mx-auto flex min-h-16 max-w-[90rem] items-center justify-between gap-4 px-3 py-1.5 sm:px-6 sm:py-2 lg:px-10">
+      <div className="mx-auto flex min-h-[4.5rem] max-w-[90rem] items-center justify-between gap-3 px-3 py-1.5 sm:px-6 lg:px-10">
         <Link
           href="/"
           className="group flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
           aria-label="LIBERIA360 home"
         >
+          <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20 sm:h-14 sm:w-14">
           <Image
             src="/logo.png"
             alt="LIBERIA360"
             width={160}
             height={160}
             priority
-            className="h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-105 sm:h-[4.5rem] sm:w-[4.5rem]"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
+          </span>
+          <span className="ml-2 hidden font-display text-sm font-extrabold tracking-[0.05em] sm:inline">
+            LIBERIA<span className="text-gold-400">360</span>
+          </span>
           <span className="sr-only">
             LIBERIA360 — Everything Liberia. One Place.
           </span>
@@ -51,10 +56,10 @@ export function Header() {
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Link
             href="/search"
-            className="flex min-h-10 items-center gap-1.5 rounded-full border border-white/30 bg-white/5 px-2.5 py-1.5 text-sm text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 sm:px-3"
+            className="flex min-h-10 items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/90 transition-all hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
           >
             <MagnifyingGlassIcon aria-hidden className="h-4 w-4" />
-            Search
+            <span className="hidden sm:inline">Search</span>
           </Link>
           <ThemeToggle />
           <NotificationBell />

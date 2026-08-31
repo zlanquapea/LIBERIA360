@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { CountyIcon } from '@/lib/icons';
 import { colorForCounty } from '@/lib/category-colors';
 import { getCounties } from '@/lib/api';
+import { PageHeader } from '@/components/PageHeader';
 
 export const metadata = { title: 'Counties — LIBERIA360' };
 
@@ -17,11 +18,8 @@ export default async function CountiesPage() {
   const counties = await getCounties();
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Browse by county</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">All 15 counties of Liberia, one tap away.</p>
-      </div>
+    <main className="page-shell">
+      <PageHeader eyebrow="Explore Liberia" title="Browse by county" description="All 15 counties of Liberia, one tap away." />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {counties.map((county) => {
