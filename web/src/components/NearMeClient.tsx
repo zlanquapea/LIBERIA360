@@ -1,15 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ViewfinderCircleIcon } from '@heroicons/react/24/outline';
 import { ApiError, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
+import { BrandLoader } from '@/components/BrandLoader';
 import { CategoryIcon } from '@/lib/icons';
 import type { Category, Place } from '@/lib/types';
 
 const MAX_RADIUS_KM = 200; // QueryPlacesDto's radiusKm ceiling — "anywhere in Liberia"
 const RADIUS_PRESETS = [5, 10, 25, 50, MAX_RADIUS_KM] as const;
+
+// A real GPS/network fix can genuinely take anywhere from a couple of
+// seconds to several minutes — weak signal, indoors, an older device —
+// and the previous 10s timeout was firing "took too long" while the
+// browser was still honestly working on it (product feedback: this was
+// routinely happening around 30s, well before anything was actually
+// wrong). Ten minutes matches what a patient user would try themselves
+// before giving up, paired below with LOCATING_MESSAGES so the wait
+// reads as "still working" rather than "frozen".
+const LOCATION_TIMEOUT_MS = 10 * 60 * 1000;
 
 function radiusLabel(km: number): string {
   return km === MAX_RADIUS_KM ? 'Anywhere in Liberia' : `${km} km`;
@@ -24,11 +35,27 @@ function geolocationErrorMessage(err: GeolocationPositionError): string {
     case err.POSITION_UNAVAILABLE:
       return "Couldn't determine your location. Please try again.";
     case err.TIMEOUT:
-      return 'Finding your location took too long. Please try again.';
+      return "We tried for several minutes but couldn't find your location. Please try again, or check that location access is turned on for your device.";
     default:
       return 'Something went wrong getting your location.';
   }
 }
+
+// A "finding you" spinner that just sits there for up to ten minutes
+// reads as broken, not patient — so it narrates a plausible slice of what
+// a location fix actually involves, cycling every few seconds, and
+// settles on a steady reassurance once it's genuinely taking a while
+// rather than looping the same "almost there" promise forever.
+const LOCATING_MESSAGES = [
+  'Finding you…',
+  "Waking up your device's GPS…",
+  'Checking nearby cell towers and Wi-Fi networks…',
+  'Triangulating your signal…',
+  'Almost there…',
+] as const;
+const LOCATING_MESSAGE_INTERVAL_MS = 4000;
+const LOCATING_PATIENCE_MESSAGE =
+  "Still searching — this can take a while with a weak signal. We'll keep trying for a few more minutes.";
 
 // Product feedback (Aug 25, 2026): "when the user selects the distance,
 // they should be able to filter for the kinds of place — a user will be
@@ -46,7 +73,12 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
   const [radiusKm, setRadiusKm] = useState<number>(10);
   const [categorySlug, setCategorySlug] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [locatingMessageIndex, setLocatingMessageIndex] = useState(0);
   const [locationError, setLocationError] = useState<string | null>(null);
+  // getCurrentPosition has no built-in cancel — this flag lets a stale
+  // success/error callback (from a lookup the user gave up on and
+  // cancelled) know to no-op instead of overwriting state.
+  const cancelledLocatingRef = useRef(false);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [placesError, setPlacesError] = useState<string | null>(null);
@@ -73,20 +105,45 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
       setLocationError('Geolocation is not supported by this browser.');
       return;
     }
+    cancelledLocatingRef.current = false;
     setLocating(true);
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (cancelledLocatingRef.current) return;
         setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
         setLocating(false);
       },
       (err) => {
+        if (cancelledLocatingRef.current) return;
         setLocationError(geolocationErrorMessage(err));
         setLocating(false);
       },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+      { enableHighAccuracy: false, timeout: LOCATION_TIMEOUT_MS, maximumAge: 60_000 },
     );
   }, []);
+
+  // Gives up waiting without pretending the lookup itself can be
+  // interrupted — the in-flight callback above just gets ignored if it
+  // ever resolves.
+  function cancelLocating() {
+    cancelledLocatingRef.current = true;
+    setLocating(false);
+  }
+
+  useEffect(() => {
+    if (!locating) {
+      setLocatingMessageIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLocatingMessageIndex((i) => Math.min(i + 1, LOCATING_MESSAGES.length));
+    }, LOCATING_MESSAGE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [locating]);
+
+  const locatingMessage =
+    locatingMessageIndex < LOCATING_MESSAGES.length ? LOCATING_MESSAGES[locatingMessageIndex] : LOCATING_PATIENCE_MESSAGE;
 
   useEffect(() => {
     if (!coords) return;
@@ -151,16 +208,33 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
 
       {!coords ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-10 text-center">
-          <ViewfinderCircleIcon aria-hidden className="h-10 w-10 text-gold-500" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">Share your location to see what&apos;s nearby.</p>
-          <button
-            type="button"
-            onClick={requestLocation}
-            disabled={locating}
-            className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-          >
-            {locating ? 'Finding you…' : 'Use my location'}
-          </button>
+          {locating ? (
+            <>
+              <BrandLoader label={locatingMessage} />
+              <p className="max-w-sm text-sm font-medium text-slate-600 dark:text-slate-300" aria-live="polite">
+                {locatingMessage}
+              </p>
+              <button
+                type="button"
+                onClick={cancelLocating}
+                className="text-sm font-medium text-slate-500 hover:underline dark:text-slate-400"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <ViewfinderCircleIcon aria-hidden className="h-10 w-10 text-gold-500" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">Share your location to see what&apos;s nearby.</p>
+              <button
+                type="button"
+                onClick={requestLocation}
+                className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+              >
+                Use my location
+              </button>
+            </>
+          )}
           {locationError && (
             <p role="alert" className="max-w-sm text-sm text-flag-700 dark:text-flag-300">
               {locationError}
