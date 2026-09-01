@@ -13,11 +13,18 @@ import {
   TripInvitation,
   TripInvitationStatus,
 } from "./entities/trip-invitation.entity";
+import { TripJoinRequest } from "./entities/trip-join-request.entity";
 import { Place } from "../places/entities/place.entity";
 import { UsersService } from "../users/users.service";
 import { MailService } from "../mail/mail.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { ConfigService } from "@nestjs/config";
-import { BudgetBand, ItineraryKind } from "./entities/itinerary.enums";
+import {
+  BudgetBand,
+  ItineraryKind,
+  TripVisibility,
+} from "./entities/itinerary.enums";
+import { TripJoinRequestStatus } from "./entities/trip-join-request.entity";
 import { hashToken } from "../auth/token-hash";
 
 // Every accept/decline/preview test below calls the service with the
@@ -42,6 +49,14 @@ function makeItinerary(overrides: Partial<Itinerary> = {}): Itinerary {
     budgetBand: BudgetBand.MODERATE,
     interests: [],
     stops: [{ day: 1, order: 0, placeId: "place-1", notes: null }],
+    destination: null,
+    destinationPlaceId: null,
+    visibility: TripVisibility.PRIVATE,
+    description: null,
+    coverImage: null,
+    startDate: null,
+    endDate: null,
+    cancelledAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -73,8 +88,19 @@ describe("ItinerariesService (collaboration)", () => {
   let itineraryRepo: {
     findOne: jest.Mock;
     save: jest.Mock;
+    create: jest.Mock;
     find: jest.Mock;
     delete: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let publicTripsQueryBuilder: {
+    leftJoinAndSelect: jest.Mock;
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    orderBy: jest.Mock;
+    skip: jest.Mock;
+    take: jest.Mock;
+    getManyAndCount: jest.Mock;
   };
   let collaboratorRepo: {
     find: jest.Mock;
@@ -82,8 +108,19 @@ describe("ItinerariesService (collaboration)", () => {
     save: jest.Mock;
     create: jest.Mock;
     delete: jest.Mock;
+    count: jest.Mock;
   };
-  let placeRepo: { find: jest.Mock; findOne: jest.Mock };
+  let placeRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let candidatesQueryBuilder: {
+    leftJoinAndSelect: jest.Mock;
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    getMany: jest.Mock;
+  };
   let invitationRepo: {
     find: jest.Mock;
     findOne: jest.Mock;
@@ -100,13 +137,31 @@ describe("ItinerariesService (collaboration)", () => {
     sendTripInvitation: jest.Mock;
     sendInvitationAccepted: jest.Mock;
   };
+  let joinRequestRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+  };
+  let notificationsService: { create: jest.Mock };
 
   beforeEach(async () => {
+    publicTripsQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
     itineraryRepo = {
       findOne: jest.fn().mockResolvedValue(makeItinerary()),
       save: jest.fn((data) => data),
+      create: jest.fn((data) => data),
       find: jest.fn().mockResolvedValue([]),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      createQueryBuilder: jest.fn(() => publicTripsQueryBuilder),
     };
     collaboratorRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -114,10 +169,22 @@ describe("ItinerariesService (collaboration)", () => {
       save: jest.fn((data) => data),
       create: jest.fn((data) => data),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      count: jest.fn().mockResolvedValue(0),
+    };
+    candidatesQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getMany: jest
+        .fn()
+        .mockResolvedValue([
+          { id: "place-1", latitude: 6.3, longitude: -10.8 },
+        ]),
     };
     placeRepo = {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue({ id: "place-2", slug: "p2" }),
+      createQueryBuilder: jest.fn(() => candidatesQueryBuilder),
     };
     invitationRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -135,6 +202,13 @@ describe("ItinerariesService (collaboration)", () => {
       sendTripInvitation: jest.fn().mockResolvedValue(true),
       sendInvitationAccepted: jest.fn().mockResolvedValue(undefined),
     };
+    joinRequestRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
+      save: jest.fn((data) => data),
+      create: jest.fn((data) => data),
+    };
+    notificationsService = { create: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -149,8 +223,13 @@ describe("ItinerariesService (collaboration)", () => {
           provide: getRepositoryToken(TripInvitation),
           useValue: invitationRepo,
         },
+        {
+          provide: getRepositoryToken(TripJoinRequest),
+          useValue: joinRequestRepo,
+        },
         { provide: UsersService, useValue: usersService },
         { provide: MailService, useValue: mailService },
+        { provide: NotificationsService, useValue: notificationsService },
         {
           provide: ConfigService,
           useValue: {
@@ -675,6 +754,217 @@ describe("ItinerariesService (collaboration)", () => {
             }),
           ]),
         }),
+      );
+    });
+  });
+
+  describe("generateTrip — social trip fields", () => {
+    const CREATE_DTO = {
+      durationDays: 2,
+      interests: [],
+      budgetBand: BudgetBand.MODERATE,
+      title: "Weekend in Robertsport",
+      destinationPlaceId: "place-dest",
+      visibility: TripVisibility.PUBLIC,
+      description: "A relaxed weekend by the coast.",
+      coverImage: "cover.jpg",
+      startDate: "2026-12-15T00:00:00.000Z",
+      endDate: "2026-12-18T00:00:00.000Z",
+    };
+
+    beforeEach(() => {
+      placeRepo.findOne.mockResolvedValue({
+        id: "place-dest",
+        images: ["destination.jpg"],
+      });
+      placeRepo.find.mockResolvedValue([]);
+    });
+
+    it("404s when the destination place doesn't exist", async () => {
+      placeRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.generateTrip(OWNER_ID, CREATE_DTO as never),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("persists the required name, destination, and visibility", async () => {
+      const result = await service.generateTrip(OWNER_ID, CREATE_DTO as never);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Weekend in Robertsport",
+          destinationPlaceId: "place-dest",
+          visibility: TripVisibility.PUBLIC,
+          description: "A relaxed weekend by the coast.",
+          coverImage: "cover.jpg",
+        }),
+      );
+      expect(result.destination).toEqual(
+        expect.objectContaining({ id: "place-dest" }),
+      );
+    });
+  });
+
+  describe("public trip discovery", () => {
+    it("queries only PUBLIC, non-cancelled trips", async () => {
+      await service.findPublicTrips({});
+      expect(publicTripsQueryBuilder.where).toHaveBeenCalledWith(
+        "itinerary.visibility = :visibility",
+        { visibility: TripVisibility.PUBLIC },
+      );
+      expect(publicTripsQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "itinerary.cancelledAt IS NULL",
+      );
+    });
+
+    it("counts the admin themself alongside collaborators", async () => {
+      publicTripsQueryBuilder.getManyAndCount.mockResolvedValue([
+        [makeItinerary({ visibility: TripVisibility.PUBLIC })],
+        1,
+      ]);
+      collaboratorRepo.count.mockResolvedValue(3);
+      const { data } = await service.findPublicTrips({});
+      expect(data[0].participantCount).toBe(4);
+    });
+
+    it("returns a restricted marker (not a 404) for a real but private trip", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PRIVATE }),
+      );
+      const result = await service.findPublicTripById(ITINERARY_ID);
+      expect(result).toEqual({
+        id: ITINERARY_ID,
+        visibility: TripVisibility.PRIVATE,
+      });
+    });
+
+    it("404s for a trip that genuinely doesn't exist", async () => {
+      itineraryRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.findPublicTripById("no-such-trip"),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("returns full stop/detail data for a real public trip", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PUBLIC }),
+      );
+      placeRepo.find.mockResolvedValue([{ id: "place-1", name: "Spot" }]);
+      const result = await service.findPublicTripById(ITINERARY_ID);
+      expect("stops" in result && result.stops).toHaveLength(1);
+    });
+  });
+
+  describe("join requests", () => {
+    it("rejects a request on a private trip", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PRIVATE }),
+      );
+      await expect(
+        service.requestToJoin(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("rejects the trip owner requesting to join their own trip", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PUBLIC }),
+      );
+      await expect(
+        service.requestToJoin(OWNER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects someone who already has a pending request", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PUBLIC }),
+      );
+      joinRequestRepo.findOne.mockResolvedValue({
+        status: TripJoinRequestStatus.PENDING,
+      });
+      await expect(
+        service.requestToJoin(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("creates a pending request and notifies the trip admin", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PUBLIC }),
+      );
+      const result = await service.requestToJoin(STRANGER_ID, ITINERARY_ID);
+      expect(result.status).toBe(TripJoinRequestStatus.PENDING);
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        OWNER_ID,
+        expect.objectContaining({ type: "trip.join_requested" }),
+      );
+    });
+
+    it("approving materializes a collaborator and notifies the requester", async () => {
+      joinRequestRepo.findOne.mockResolvedValue({
+        id: "req-1",
+        itineraryId: ITINERARY_ID,
+        userId: STRANGER_ID,
+        status: TripJoinRequestStatus.PENDING,
+      });
+      await service.approveJoinRequest(OWNER_ID, ITINERARY_ID, "req-1");
+      expect(collaboratorRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: STRANGER_ID }),
+      );
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        STRANGER_ID,
+        expect.objectContaining({ type: "trip.join_request_approved" }),
+      );
+    });
+
+    it("declining never touches collaborators", async () => {
+      joinRequestRepo.findOne.mockResolvedValue({
+        id: "req-1",
+        itineraryId: ITINERARY_ID,
+        userId: STRANGER_ID,
+        status: TripJoinRequestStatus.PENDING,
+      });
+      await service.declineJoinRequest(OWNER_ID, ITINERARY_ID, "req-1");
+      expect(collaboratorRepo.save).not.toHaveBeenCalled();
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        STRANGER_ID,
+        expect.objectContaining({ type: "trip.join_request_declined" }),
+      );
+    });
+
+    it("rejects approving a request that's already been resolved", async () => {
+      joinRequestRepo.findOne.mockResolvedValue({
+        id: "req-1",
+        itineraryId: ITINERARY_ID,
+        userId: STRANGER_ID,
+        status: TripJoinRequestStatus.APPROVED,
+      });
+      await expect(
+        service.approveJoinRequest(OWNER_ID, ITINERARY_ID, "req-1"),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe("cancelTrip", () => {
+    it("404s for a total stranger", async () => {
+      await expect(
+        service.cancelTrip(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("blocks a collaborator (member, but not the owner) from cancelling", async () => {
+      collaboratorRepo.find.mockResolvedValue([
+        {
+          userId: COLLABORATOR_ID,
+          user: { id: COLLABORATOR_ID, name: "Collab" },
+        },
+      ]);
+      await expect(
+        service.cancelTrip(COLLABORATOR_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("sets cancelledAt for the owner", async () => {
+      await service.cancelTrip(OWNER_ID, ITINERARY_ID);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ cancelledAt: expect.any(Date) }),
       );
     });
   });

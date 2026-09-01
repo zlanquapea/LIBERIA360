@@ -743,6 +743,8 @@ export interface PaginatedEvents {
 // api/src/itineraries/entities/itinerary.enums.ts
 export type BudgetBand = "budget" | "moderate" | "premium";
 export type ItineraryKind = "trip" | "weekend";
+export type TripVisibility = "private" | "public";
+export type TripStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
 // GET /itineraries (list) returns stops as stored — placeId only, not
 // resolved. GET /itineraries/:id and the two generate endpoints return
@@ -763,6 +765,16 @@ export interface Itinerary {
   budgetBand: BudgetBand;
   interests: string[];
   stops: ItineraryStop[];
+  // Social travel experience (Aug 2026 spec) — all optional/nullable
+  // since they predate that feature and every trip generated before it.
+  destination: Place | null;
+  destinationPlaceId: string | null;
+  visibility: TripVisibility;
+  description: string | null;
+  coverImage: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  cancelledAt: string | null;
   createdAt: string;
 }
 
@@ -795,6 +807,51 @@ export interface TripPreviewResponse {
 export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
   stops: ItineraryStopWithPlace[];
   collaborators: AuthUser[];
+  // The creator — always labeled "Trip Admin" in the UI.
+  admin: AuthUser | null;
+  status: TripStatus;
+}
+
+// GET /itineraries/public and GET /itineraries/public/:id — what a
+// stranger (signed in or not) gets to see about a PUBLIC trip. Never the
+// full participant list (see Section 8 of the Aug 2026 social-trip spec)
+// — just enough to decide whether to request to join.
+export interface PublicTripSummary {
+  id: string;
+  title: string;
+  destination: Place | null;
+  description: string | null;
+  coverImage: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: TripStatus;
+  admin: AuthUser | null;
+  participantCount: number;
+  createdAt: string;
+}
+
+export interface PublicTripDetail extends PublicTripSummary {
+  stops: ItineraryStopWithPlace[];
+}
+
+// What GET /itineraries/public/:id returns for a real but PRIVATE trip —
+// a deliberate exception to the "don't confirm a random id exists"
+// default, so a private trip's link resolves to a restricted-access
+// message instead of an ambiguous not-found page (Section 15). A
+// genuinely nonexistent id still 404s.
+export interface RestrictedTripPreview {
+  id: string;
+  visibility: "private";
+}
+
+export type TripJoinRequestStatus = "pending" | "approved" | "declined";
+
+export interface TripJoinRequestSummary {
+  id: string;
+  user: AuthUser;
+  status: TripJoinRequestStatus;
+  createdAt: string;
+  respondedAt: string | null;
 }
 
 // Trip Collaboration & Invitations. See

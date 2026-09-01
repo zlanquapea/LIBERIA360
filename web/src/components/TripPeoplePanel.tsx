@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { UserPlusIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { removeCollaborator } from '@/lib/itinerary-api';
+import { approveJoinRequest, declineJoinRequest, listJoinRequests, removeCollaborator } from '@/lib/itinerary-api';
 import { cancelInvitation, listInvitations, resendInvitation } from '@/lib/invitations-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { InvitePeopleModal } from './InvitePeopleModal';
 import { ConfirmDialog } from './ConfirmDialog';
-import type { AuthUser, InvitationDisplayStatus, InvitationSummary } from '@/lib/types';
+import type { AuthUser, InvitationDisplayStatus, InvitationSummary, TripJoinRequestSummary } from '@/lib/types';
 
 const STATUS_STYLES: Record<InvitationDisplayStatus, string> = {
   pending: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
@@ -32,17 +32,23 @@ const STATUS_LABELS: Record<InvitationDisplayStatus, string> = {
 // immediately add someone who already had an account.
 export function TripPeoplePanel({
   itineraryId,
+  admin,
   collaborators,
   isOwner,
   onChange,
 }: {
   itineraryId: string;
+  // The trip's creator — always labeled "Trip Admin" (Section 7 of the
+  // Aug 2026 social-trip spec). Rendered separately from `collaborators`
+  // since ItineraryDetail.collaborators never includes the owner.
+  admin: AuthUser | null;
   collaborators: AuthUser[];
   isOwner: boolean;
   onChange: () => void;
 }) {
   const { user, token } = useAuth();
   const [invitations, setInvitations] = useState<InvitationSummary[]>([]);
+  const [joinRequests, setJoinRequests] = useState<TripJoinRequestSummary[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +62,44 @@ export function TripPeoplePanel({
     listInvitations(token, itineraryId)
       .then(setInvitations)
       .catch(() => setInvitations([]));
+    // A total stranger's request only makes sense for a public trip, but
+    // asking is harmless for a private one too — it'll just always come
+    // back empty (requestToJoin rejects non-public trips outright).
+    listJoinRequests(token, itineraryId)
+      .then(setJoinRequests)
+      .catch(() => setJoinRequests([]));
   }, [token, itineraryId, isOwner]);
 
   function reloadInvitations() {
     if (!token || !isOwner) return;
     listInvitations(token, itineraryId).then(setInvitations).catch(() => undefined);
+  }
+
+  async function handleApproveJoinRequest(requestId: string) {
+    if (!token) return;
+    setBusyId(requestId);
+    setError(null);
+    try {
+      setJoinRequests(await approveJoinRequest(token, itineraryId, requestId));
+      onChange();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'approve-join-request', requestId } }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDeclineJoinRequest(requestId: string) {
+    if (!token) return;
+    setBusyId(requestId);
+    setError(null);
+    try {
+      setJoinRequests(await declineJoinRequest(token, itineraryId, requestId));
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'decline-join-request', requestId } }));
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function confirmRemove() {
@@ -117,11 +156,14 @@ export function TripPeoplePanel({
   // panel only needs to additionally show open/resolved-but-not-yet-a-
   // member rows, so accepted ones aren't listed twice.
   const openInvitations = invitations.filter((i) => i.status !== 'accepted');
+  const pendingJoinRequests = joinRequests.filter((r) => r.status === 'pending');
 
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Trip participants</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          Who&apos;s going{collaborators.length + (admin ? 1 : 0) > 0 && ` (${collaborators.length + (admin ? 1 : 0)})`}
+        </p>
         {isOwner && (
           <button
             type="button"
@@ -134,10 +176,16 @@ export function TripPeoplePanel({
         )}
       </div>
 
-      {collaborators.length === 0 ? (
+      {collaborators.length === 0 && !admin ? (
         <p className="text-xs text-slate-500 dark:text-slate-400">Just you so far — invite someone to plan this trip together.</p>
       ) : (
         <ul className="flex flex-wrap gap-2">
+          {admin && (
+            <li className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
+              {admin.name}
+              <span className="rounded-full bg-brand-700 px-1.5 py-0.5 text-[10px] font-semibold text-white">Trip Admin</span>
+            </li>
+          )}
           {collaborators.map((c) => (
             <li
               key={c.id}
@@ -205,6 +253,46 @@ export function TripPeoplePanel({
             </li>
           ))}
         </ul>
+      )}
+
+      {isOwner && pendingJoinRequests.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            Requests to join ({pendingJoinRequests.length})
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {pendingJoinRequests.map((request) => (
+              <li
+                key={request.id}
+                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span className="min-w-0 truncate text-slate-700 dark:text-slate-200">{request.user.name}</span>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={busyId === request.id}
+                    onClick={() => handleApproveJoinRequest(request.id)}
+                    aria-label={`Approve ${request.user.name}'s request to join`}
+                    className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <CheckIcon aria-hidden className="h-3 w-3" />
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyId === request.id}
+                    onClick={() => handleDeclineJoinRequest(request.id)}
+                    aria-label={`Decline ${request.user.name}'s request to join`}
+                    className="flex items-center gap-1 rounded-full border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:border-flag-400 hover:text-flag-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <XMarkIcon aria-hidden className="h-3 w-3" />
+                    Decline
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}

@@ -15,11 +15,22 @@ import {
   TripInvitationStatus,
   invitationExpiresAt,
 } from "./entities/trip-invitation.entity";
+import {
+  TripJoinRequest,
+  TripJoinRequestStatus,
+} from "./entities/trip-join-request.entity";
 import { Place } from "../places/entities/place.entity";
 import { PlaceType } from "../places/entities/place.enums";
-import { BudgetBand, ItineraryKind } from "./entities/itinerary.enums";
+import {
+  BudgetBand,
+  ItineraryKind,
+  TripStatus,
+  TripVisibility,
+} from "./entities/itinerary.enums";
 import { GenerateTripDto } from "./dto/generate-trip.dto";
+import { CreateTripDto } from "./dto/create-trip.dto";
 import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
+import { QueryPublicTripsDto } from "./dto/query-public-trips.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { InviteeDto } from "./dto/create-invitations.dto";
@@ -32,6 +43,7 @@ import {
 } from "../users/user.serializer";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { AppConfig } from "../config/configuration";
 import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 
@@ -107,6 +119,58 @@ export interface ItineraryStopWithPlace extends Omit<ItineraryStop, "placeId"> {
 export interface ItineraryResponse extends Omit<Itinerary, "stops"> {
   stops: ItineraryStopWithPlace[];
   collaborators: PublicUser[];
+  // The creator, always the trip's "Trip Admin" — resolved here so the
+  // frontend can label them without a second lookup (Section 7 of the
+  // Aug 2026 social-trip spec: "The admin status should be clearly
+  // indicated next to the creator's profile").
+  admin: PublicUser | null;
+  status: TripStatus;
+}
+
+/** GET /itineraries/public and GET /itineraries/public/:id — what a
+ * stranger (signed in or not) gets to see about a PUBLIC trip: enough to
+ * decide whether to request to join, never the full collaborator list
+ * (Section 8: "Users must be signed into LIBERIA360 to view the full
+ * participant list" — and even signed in, only a participant/admin gets
+ * that, via the authenticated GET /itineraries/:id instead). */
+export interface PublicTripSummary {
+  id: string;
+  title: string;
+  destination: Place | null;
+  description: string | null;
+  coverImage: string | null;
+  startDate: Date | null;
+  endDate: Date | null;
+  status: TripStatus;
+  admin: PublicUser | null;
+  participantCount: number;
+  createdAt: Date;
+}
+
+export interface PublicTripDetail extends PublicTripSummary {
+  stops: ItineraryStopWithPlace[];
+}
+
+/** What GET /itineraries/public/:id returns for a PRIVATE trip instead of
+ * a 404 — a deliberate, spec-driven exception to this codebase's usual
+ * "don't confirm a random id exists to someone with no access" rule (see
+ * getOwned's own comment on that rule): Section 15 explicitly wants
+ * someone who follows a real private-trip link to see "This is a private
+ * trip. You must be invited..." rather than an ambiguous not-found page,
+ * which only makes sense if this path *does* confirm the trip exists. A
+ * genuinely nonexistent id still 404s (see findPublicTripById) — this is
+ * only reachable for a real trip that happens to be private. */
+export interface RestrictedTripPreview {
+  id: string;
+  visibility: TripVisibility.PRIVATE;
+}
+
+export interface TripJoinRequestSummary {
+  id: string;
+  user: PublicUser;
+  status: TripJoinRequestStatus;
+  createdAt: Date;
+  respondedAt: Date | null;
 }
 
 // Product review readout (Aug 22, 2026), "guest-first trip planning": a
@@ -183,15 +247,26 @@ export class ItinerariesService {
     private readonly collaboratorRepo: Repository<ItineraryCollaborator>,
     @InjectRepository(TripInvitation)
     private readonly invitationRepo: Repository<TripInvitation>,
+    @InjectRepository(TripJoinRequest)
+    private readonly joinRequestRepo: Repository<TripJoinRequest>,
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   async generateTrip(
     userId: string,
-    dto: GenerateTripDto,
+    dto: CreateTripDto,
   ): Promise<ItineraryResponse> {
+    const destination = await this.placeRepo.findOne({
+      where: { id: dto.destinationPlaceId },
+    });
+    if (!destination) {
+      throw new NotFoundException(
+        `Place "${dto.destinationPlaceId}" not found`,
+      );
+    }
     const candidates = await this.findCandidates(dto.interests, dto.budgetBand);
     const ordered = this.sequenceByProximity(
       candidates,
@@ -203,17 +278,24 @@ export class ItinerariesService {
     const itinerary = await this.itineraryRepo.save(
       this.itineraryRepo.create({
         userId,
-        title: dto.title ?? `${dto.durationDays}-Day Liberia Trip`,
+        title: dto.title,
         kind: ItineraryKind.TRIP,
         durationDays: dto.durationDays,
         budgetBand: dto.budgetBand,
         interests: dto.interests,
+        destinationPlaceId: dto.destinationPlaceId,
+        visibility: dto.visibility,
+        description: dto.description ?? null,
+        coverImage: dto.coverImage ?? null,
+        startDate: dto.startDate ? new Date(dto.startDate) : null,
+        endDate: dto.endDate ? new Date(dto.endDate) : null,
         stops: stops.map(({ place, ...rest }) => ({
           ...rest,
           placeId: place.id,
         })),
       }),
     );
+    itinerary.destination = destination;
 
     return this.toResponse(itinerary, ordered, []);
   }
@@ -511,6 +593,15 @@ export class ItinerariesService {
     }
     invitation = await this.invitationRepo.save(invitation);
     await this.sendInvitationEmail(itinerary, invitation, token, inviteeUser);
+    if (inviteeUser) {
+      const inviter = await this.usersService.findById(ownerId);
+      await this.notificationsService.create(inviteeUser.id, {
+        type: "trip.invitation_received",
+        title: "You've been invited to a trip",
+        body: `${inviter?.name ?? "Someone"} invited you to "${itinerary.title}".`,
+        link: "/invitations",
+      });
+    }
   }
 
   /** The trip's People/Participants panel (Section 4/7) — owner-only. */
@@ -812,6 +903,12 @@ export class ItinerariesService {
         `${webAppUrl}/trips/${itinerary.id}`,
       )
       .catch(() => undefined);
+    await this.notificationsService.create(organizer.id, {
+      type: "trip.invitation_accepted",
+      title: "Invitation accepted",
+      body: `${accepter?.name ?? "Someone you invited"} joined "${itinerary.title}".`,
+      link: `/trips/${itinerary.id}`,
+    });
   }
 
   private async sendInvitationEmail(
@@ -1081,23 +1178,337 @@ export class ItinerariesService {
     }));
   }
 
-  private toResponse(
+  private async toResponse(
     itinerary: Itinerary,
     resolvedPlaces: Place[],
     collaborators: PublicUser[],
-  ): ItineraryResponse {
-    const placeById = new Map(resolvedPlaces.map((p) => [p.id, p]));
+  ): Promise<ItineraryResponse> {
+    const owner = await this.usersService.findById(itinerary.userId);
     return {
       ...itinerary,
-      stops: itinerary.stops
-        .map((s) => ({
-          day: s.day,
-          order: s.order,
-          notes: s.notes,
-          place: placeById.get(s.placeId),
-        }))
-        .filter((s): s is ItineraryStopWithPlace => !!s.place),
+      coverImage: this.resolveCoverImage(itinerary),
+      stops: this.mapStops(itinerary, resolvedPlaces),
       collaborators,
+      admin: owner ? toPublicUser(owner) : null,
+      status: this.computeTripStatus(itinerary),
     };
+  }
+
+  private mapStops(
+    itinerary: Itinerary,
+    resolvedPlaces: Place[],
+  ): ItineraryStopWithPlace[] {
+    const placeById = new Map(resolvedPlaces.map((p) => [p.id, p]));
+    return itinerary.stops
+      .map((s) => ({
+        day: s.day,
+        order: s.order,
+        notes: s.notes,
+        place: placeById.get(s.placeId),
+      }))
+      .filter((s): s is ItineraryStopWithPlace => !!s.place);
+  }
+
+  // Explicit cover image always wins; otherwise borrow the destination
+  // place's first photo so a trip still looks like something in a feed
+  // or card instead of a blank tile (Section 16: "the platform could also
+  // provide a default destination image"). Never persisted onto the row
+  // itself — see Itinerary.coverImage's doc comment.
+  private resolveCoverImage(itinerary: Itinerary): string | null {
+    return itinerary.coverImage ?? itinerary.destination?.images[0] ?? null;
+  }
+
+  // Best-effort lifecycle label (Section 20) — always derived from
+  // startDate/endDate/cancelledAt at read time rather than stored, so it
+  // can never drift out of sync with the dates that actually define it.
+  // A trip with no dates at all (most AI-generated ones, today) reads as
+  // UPCOMING — there's nothing to have started or finished yet.
+  private computeTripStatus(itinerary: Itinerary): TripStatus {
+    if (itinerary.cancelledAt) return TripStatus.CANCELLED;
+    const now = Date.now();
+    if (itinerary.endDate && itinerary.endDate.getTime() < now) {
+      return TripStatus.COMPLETED;
+    }
+    if (itinerary.startDate && itinerary.startDate.getTime() <= now) {
+      return TripStatus.ONGOING;
+    }
+    return TripStatus.UPCOMING;
+  }
+
+  private async toPublicSummary(
+    itinerary: Itinerary,
+  ): Promise<PublicTripSummary> {
+    const [owner, participantCount] = await Promise.all([
+      this.usersService.findById(itinerary.userId),
+      this.collaboratorRepo.count({ where: { itineraryId: itinerary.id } }),
+    ]);
+    return {
+      id: itinerary.id,
+      title: itinerary.title,
+      destination: itinerary.destination,
+      description: itinerary.description,
+      coverImage: this.resolveCoverImage(itinerary),
+      startDate: itinerary.startDate,
+      endDate: itinerary.endDate,
+      status: this.computeTripStatus(itinerary),
+      admin: owner ? toPublicUser(owner) : null,
+      // +1 for the creator themself — collaboratorRepo only tracks
+      // everyone *else*, but "8 people are joining this trip" (Section 8)
+      // should count the admin too.
+      participantCount: participantCount + 1,
+      createdAt: itinerary.createdAt,
+    };
+  }
+
+  /** "Trips You Can Join" (Section 5/17) — every PUBLIC, non-cancelled
+   * trip, newest first. No auth required: this is exactly the discovery
+   * surface a visitor with no account should be able to browse. */
+  async findPublicTrips(query: QueryPublicTripsDto): Promise<{
+    data: PublicTripSummary[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const qb = this.itineraryRepo
+      .createQueryBuilder("itinerary")
+      .leftJoinAndSelect("itinerary.destination", "destination")
+      .leftJoinAndSelect("destination.category", "category")
+      .leftJoinAndSelect("destination.county", "county")
+      .where("itinerary.visibility = :visibility", {
+        visibility: TripVisibility.PUBLIC,
+      })
+      .andWhere("itinerary.cancelledAt IS NULL")
+      .orderBy("itinerary.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (query.destinationPlaceId) {
+      qb.andWhere("itinerary.destinationPlaceId = :destinationPlaceId", {
+        destinationPlaceId: query.destinationPlaceId,
+      });
+    }
+
+    const [rows, total] = await qb.getManyAndCount();
+    const data = await Promise.all(rows.map((r) => this.toPublicSummary(r)));
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  /** GET /itineraries/public/:id — unauthenticated by design (see
+   * RestrictedTripPreview's doc comment for why a PRIVATE trip still gets
+   * a 200 with a minimal body here instead of a 404). A non-member,
+   * signed in or not, always lands here for a trip's "can I request to
+   * join" view; the authenticated GET /itineraries/:id stays exactly the
+   * full-access-or-404 gate it always was for everyone else. */
+  async findPublicTripById(
+    id: string,
+  ): Promise<PublicTripDetail | RestrictedTripPreview> {
+    const itinerary = await this.itineraryRepo.findOne({ where: { id } });
+    if (!itinerary) {
+      throw new NotFoundException(`Trip "${id}" not found`);
+    }
+    if (itinerary.visibility !== TripVisibility.PUBLIC) {
+      return { id: itinerary.id, visibility: TripVisibility.PRIVATE };
+    }
+    const placeIds = itinerary.stops.map((s) => s.placeId);
+    const places = placeIds.length
+      ? await this.placeRepo.find({
+          where: placeIds.map((id) => ({ id })),
+          relations: ["category", "county"],
+        })
+      : [];
+    const summary = await this.toPublicSummary(itinerary);
+    return { ...summary, stops: this.mapStops(itinerary, places) };
+  }
+
+  // ---------------------------------------------------------------------
+  // Join requests (Section 6) — the public-trip counterpart to
+  // TripInvitation above: here a signed-in stranger asks to get in,
+  // rather than the owner reaching out. "Public should not necessarily
+  // mean anyone automatically becomes a participant" — approval still
+  // gates actual membership either way.
+  // ---------------------------------------------------------------------
+
+  /** A signed-in user asking to join a PUBLIC trip they don't already
+   * belong to. Notifies the admin; approving/declining is their call. */
+  async requestToJoin(
+    userId: string,
+    itineraryId: string,
+  ): Promise<{ status: TripJoinRequestStatus }> {
+    const itinerary = await this.itineraryRepo.findOne({
+      where: { id: itineraryId },
+    });
+    if (!itinerary) {
+      throw new NotFoundException(`Trip "${itineraryId}" not found`);
+    }
+    if (itinerary.visibility !== TripVisibility.PUBLIC) {
+      throw new ForbiddenException(
+        "This trip is private — ask the trip admin for an invitation instead.",
+      );
+    }
+    if (itinerary.userId === userId) {
+      throw new BadRequestException("You already own this trip");
+    }
+    const existingCollaborator = await this.collaboratorRepo.findOne({
+      where: { itineraryId, userId },
+    });
+    if (existingCollaborator) {
+      throw new ConflictException("You're already part of this trip");
+    }
+
+    let request = await this.joinRequestRepo.findOne({
+      where: { itineraryId, userId },
+    });
+    if (request?.status === TripJoinRequestStatus.PENDING) {
+      throw new ConflictException(
+        "You already have a pending request to join this trip",
+      );
+    }
+    if (request) {
+      // Re-request after a decline — reuse the row rather than
+      // accumulating duplicate history, same reuse-by-resend pattern as
+      // createOrResendInvitation.
+      request.status = TripJoinRequestStatus.PENDING;
+      request.respondedAt = null;
+    } else {
+      request = this.joinRequestRepo.create({
+        itineraryId,
+        userId,
+        status: TripJoinRequestStatus.PENDING,
+      });
+    }
+    request = await this.joinRequestRepo.save(request);
+
+    const requester = await this.usersService.findById(userId);
+    await this.notificationsService.create(itinerary.userId, {
+      type: "trip.join_requested",
+      title: "New request to join your trip",
+      body: `${requester?.name ?? "Someone"} wants to join "${itinerary.title}".`,
+      link: `/trips/${itinerary.id}`,
+    });
+    return { status: request.status };
+  }
+
+  /** Owner-only: the join-request queue, newest first. */
+  async listJoinRequests(
+    ownerId: string,
+    itineraryId: string,
+  ): Promise<TripJoinRequestSummary[]> {
+    await this.getOwned(ownerId, itineraryId);
+    const rows = await this.joinRequestRepo.find({
+      where: { itineraryId },
+      order: { createdAt: "DESC" },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      user: toPublicUser(r.user),
+      status: r.status,
+      createdAt: r.createdAt,
+      respondedAt: r.respondedAt,
+    }));
+  }
+
+  /** Owner-only: approving materializes an ItineraryCollaborator row —
+   * the exact same "now an actual participant" transition
+   * acceptInvitationRow makes for an invitation accepted. */
+  async approveJoinRequest(
+    ownerId: string,
+    itineraryId: string,
+    requestId: string,
+  ): Promise<TripJoinRequestSummary[]> {
+    const itinerary = await this.getOwned(ownerId, itineraryId);
+    const request = await this.assertRespondableJoinRequest(
+      itineraryId,
+      requestId,
+    );
+
+    request.status = TripJoinRequestStatus.APPROVED;
+    request.respondedAt = new Date();
+    await this.joinRequestRepo.save(request);
+
+    const existingCollaborator = await this.collaboratorRepo.findOne({
+      where: { itineraryId, userId: request.userId },
+    });
+    if (!existingCollaborator) {
+      await this.collaboratorRepo.save(
+        this.collaboratorRepo.create({
+          itineraryId,
+          userId: request.userId,
+          invitedByUserId: ownerId,
+        }),
+      );
+    }
+
+    await this.notificationsService.create(request.userId, {
+      type: "trip.join_request_approved",
+      title: "Join request approved",
+      body: `Your request to join "${itinerary.title}" was approved.`,
+      link: `/trips/${itinerary.id}`,
+    });
+    return this.listJoinRequests(ownerId, itineraryId);
+  }
+
+  /** Owner-only: declines without ever touching collaborators. */
+  async declineJoinRequest(
+    ownerId: string,
+    itineraryId: string,
+    requestId: string,
+  ): Promise<TripJoinRequestSummary[]> {
+    const itinerary = await this.getOwned(ownerId, itineraryId);
+    const request = await this.assertRespondableJoinRequest(
+      itineraryId,
+      requestId,
+    );
+    request.status = TripJoinRequestStatus.DECLINED;
+    request.respondedAt = new Date();
+    await this.joinRequestRepo.save(request);
+
+    await this.notificationsService.create(request.userId, {
+      type: "trip.join_request_declined",
+      title: "Join request declined",
+      body: `Your request to join "${itinerary.title}" was declined.`,
+      link: `/trips/${itinerary.id}`,
+    });
+    return this.listJoinRequests(ownerId, itineraryId);
+  }
+
+  private async assertRespondableJoinRequest(
+    itineraryId: string,
+    requestId: string,
+  ): Promise<TripJoinRequest> {
+    const request = await this.joinRequestRepo.findOne({
+      where: { id: requestId, itineraryId },
+    });
+    if (!request) {
+      throw new NotFoundException("Join request not found");
+    }
+    if (request.status !== TripJoinRequestStatus.PENDING) {
+      throw new ConflictException(
+        `This request has already been ${request.status}`,
+      );
+    }
+    return request;
+  }
+
+  /** Owner-only, one-way — see Itinerary.cancelledAt's doc comment. The
+   * trip stays visible (Section 20: "the group conversation and trip
+   * memories can remain available... unless the product decides
+   * otherwise"), just permanently labeled CANCELLED instead of hidden or
+   * deleted outright. */
+  async cancelTrip(
+    userId: string,
+    itineraryId: string,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getOwned(userId, itineraryId);
+    itinerary.cancelledAt = new Date();
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
   }
 }

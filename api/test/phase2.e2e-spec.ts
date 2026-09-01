@@ -755,6 +755,9 @@ describe("Phase 2 (e2e)", () => {
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
+          title: "Test Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "private",
           durationDays: 1,
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
@@ -767,6 +770,9 @@ describe("Phase 2 (e2e)", () => {
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
+          title: "Test Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "private",
           durationDays: 1,
           interests: ["does-not-exist"],
           budgetBand: "budget",
@@ -790,6 +796,9 @@ describe("Phase 2 (e2e)", () => {
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
+          title: "Test Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "private",
           durationDays: 1,
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
@@ -803,6 +812,9 @@ describe("Phase 2 (e2e)", () => {
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
+          title: "Test Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "private",
           durationDays: 1,
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
@@ -898,6 +910,9 @@ describe("Phase 2 (e2e)", () => {
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
+          title: "Test Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "private",
           durationDays: 1,
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
@@ -1090,6 +1105,9 @@ describe("Phase 2 (e2e)", () => {
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
         .send({
+          title: "Test Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "private",
           durationDays: 1,
           interests: ["culture-heritage"],
           budgetBand: "moderate",

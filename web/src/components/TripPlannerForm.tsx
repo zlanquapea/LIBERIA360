@@ -4,14 +4,15 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { generateTrip, previewTrip } from '@/lib/itinerary-api';
+import { generateTrip, previewTrip, type CreateTripInput } from '@/lib/itinerary-api';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
 import { CategoryIcon } from '@/lib/icons';
 import { requestGeolocation, type Coords } from '@/lib/geolocation';
 import { ItineraryStops } from './ItineraryStops';
-import type { BudgetBand, Category, TripPreviewResponse } from '@/lib/types';
+import { DestinationAutocomplete } from './DestinationAutocomplete';
+import type { BudgetBand, Category, Place, TripPreviewResponse, TripVisibility } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
 
@@ -39,6 +40,11 @@ export function TripPlannerForm({
   const [budgetBand, setBudgetBand] = useState<BudgetBand>('moderate');
   const [interests, setInterests] = useState<string[]>(initialInterests ?? []);
   const [title, setTitle] = useState('');
+  // Trip identity + visibility (Aug 2026 social-trip spec, Sections 1-3):
+  // a name, a real catalog destination, and a deliberate public/private
+  // choice are all required before a trip can be built or even previewed.
+  const [destination, setDestination] = useState<Place | null>(null);
+  const [visibility, setVisibility] = useState<TripVisibility>('private');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<TripPreviewResponse | null>(null);
@@ -74,13 +80,16 @@ export function TripPlannerForm({
     setDurationDays(draft.durationDays);
     setBudgetBand(draft.budgetBand);
     setInterests(draft.interests);
-    setTitle(draft.title ?? '');
+    setTitle(draft.title);
+    setDestination(draft.destination);
+    setVisibility(draft.visibility);
     if (draft.startLat !== undefined && draft.startLng !== undefined) {
       setStartCoords({ lat: draft.startLat, lng: draft.startLng });
     }
     setPreview(null);
     setResuming(true);
-    generateTrip(token, draft)
+    const { destination: _draftDestination, ...input } = draft;
+    generateTrip(token, input)
       .then((itinerary) => router.push(`/trips/${itinerary.id}`))
       .catch((err) => {
         setResuming(false);
@@ -92,18 +101,37 @@ export function TripPlannerForm({
     setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    const input = {
+  // Shared by both the submit and "log in to save" paths — a trip isn't
+  // buildable at all without a name and a real catalog destination
+  // (Sections 1-2 of the Aug 2026 spec).
+  function buildInput(): CreateTripInput | null {
+    if (!title.trim() || !destination) return null;
+    return {
       durationDays,
       budgetBand,
       interests,
       startLat: startCoords?.lat,
       startLng: startCoords?.lng,
-      title: title.trim() || undefined,
+      title: title.trim(),
+      destinationPlaceId: destination.id,
+      visibility,
     };
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!title.trim()) {
+      setError('Give your trip a name.');
+      return;
+    }
+    if (!destination) {
+      setError('Choose a destination.');
+      return;
+    }
+    const input = buildInput();
+    if (!input) return;
+    setSubmitting(true);
     try {
       if (user && token) {
         const itinerary = await generateTrip(token, input);
@@ -120,14 +148,9 @@ export function TripPlannerForm({
   }
 
   function handleLoginToSave() {
-    savePendingTripDraft({
-      durationDays,
-      budgetBand,
-      interests,
-      startLat: startCoords?.lat,
-      startLng: startCoords?.lng,
-      title: title.trim() || undefined,
-    });
+    const input = buildInput();
+    if (!input || !destination) return;
+    savePendingTripDraft({ ...input, destination });
     router.push('/login?next=/trips/new');
   }
 
@@ -179,11 +202,12 @@ export function TripPlannerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Trip name (optional)
+        Trip name
         <input
           type="text"
+          required
           maxLength={200}
           placeholder={`${durationDays}-Day Liberia Trip`}
           value={title}
@@ -191,6 +215,35 @@ export function TripPlannerForm({
           className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
       </label>
+
+      <DestinationAutocomplete value={destination} onChange={setDestination} />
+
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">Who can see this trip?</legend>
+        <div className="flex gap-2">
+          {(
+            [
+              { value: 'private' as TripVisibility, label: 'Private', hint: 'Only people you invite' },
+              { value: 'public' as TripVisibility, label: 'Public', hint: 'Anyone can find & request to join' },
+            ]
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setVisibility(option.value)}
+              aria-pressed={visibility === option.value}
+              className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm ${
+                visibility === option.value
+                  ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-brand-500'
+              }`}
+            >
+              <span className="block font-medium text-slate-900 dark:text-slate-50">{option.label}</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">{option.hint}</span>
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         How many days?

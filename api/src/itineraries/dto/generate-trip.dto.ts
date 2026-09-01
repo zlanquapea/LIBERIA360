@@ -8,11 +8,12 @@ import {
   IsLongitude,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
 } from "class-validator";
-import { BudgetBand } from "../entities/itinerary.enums";
+import { BudgetBand, TripVisibility } from "../entities/itinerary.enums";
 
 /** "Build My Liberia Trip" (Tech Spec §4.3): trip length + interests +
  * budget + (optionally) a starting location. */
@@ -52,4 +53,31 @@ export class GenerateTripDto {
   @IsString()
   @MaxLength(200)
   title?: string;
+
+  // The fields below are all optional here — a guest previewing a route
+  // (POST /itineraries/preview, which uses this same DTO) shouldn't have
+  // to pick a destination or decide public/private just to see a
+  // generated itinerary. CreateTripDto (the real save endpoint) requires
+  // title/destinationPlaceId/visibility by overriding these three.
+  @IsOptional()
+  @IsUUID()
+  destinationPlaceId?: string;
+
+  @IsOptional()
+  @IsEnum(TripVisibility)
+  visibility?: TripVisibility;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  coverImage?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }

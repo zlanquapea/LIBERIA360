@@ -1,6 +1,7 @@
 'use client';
 
-import type { GenerateTripInput } from './itinerary-api';
+import type { CreateTripInput } from './itinerary-api';
+import type { Place } from './types';
 
 // Guest-first trip planning (product review readout, Aug 22, 2026): a
 // visitor with no account can already see a full generated route via
@@ -13,7 +14,13 @@ import type { GenerateTripInput } from './itinerary-api';
 // draft can never resurrect itself on a later, unrelated visit.
 const STORAGE_KEY = 'liberia360:pending-trip-draft';
 
-export function savePendingTripDraft(input: GenerateTripInput): void {
+// The full destination Place rides along too (Aug 2026 social-trip spec) —
+// CreateTripInput only carries destinationPlaceId, but DestinationAutocomplete
+// needs the whole Place object back to re-render the selected destination
+// once the form resumes after login.
+export type PendingTripDraft = CreateTripInput & { destination: Place };
+
+export function savePendingTripDraft(input: PendingTripDraft): void {
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(input));
   } catch {
@@ -22,14 +29,16 @@ export function savePendingTripDraft(input: GenerateTripInput): void {
   }
 }
 
-export function takePendingTripDraft(): GenerateTripInput | null {
+export function takePendingTripDraft(): PendingTripDraft | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     window.sessionStorage.removeItem(STORAGE_KEY);
-    const parsed = JSON.parse(raw) as GenerateTripInput;
-    return parsed && typeof parsed.durationDays === 'number' ? parsed : null;
+    const parsed = JSON.parse(raw) as PendingTripDraft;
+    return parsed && typeof parsed.durationDays === 'number' && parsed.destination
+      ? parsed
+      : null;
   } catch {
     return null;
   }

@@ -3,7 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { TripPlannerForm } from './TripPlannerForm';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
-import type { AuthUser, Category } from '@/lib/types';
+import { getPlaces } from '../lib/api';
+import type { AuthUser, Category, Place } from '@/lib/types';
+
+// jest.mock's module specifier is a plain string, not an import
+// declaration — the '@/...' alias only gets resolved by SWC's transform
+// on real import statements, so this needs the relative path to resolve
+// to the same module DestinationAutocomplete imports via '@/lib/api'.
+jest.mock('../lib/api', () => ({
+  getPlaces: jest.fn(),
+}));
 
 const push = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -39,6 +48,44 @@ const USER: AuthUser = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
+const DESTINATION: Place = {
+  id: 'p-robertsport',
+  name: 'Robertsport',
+  slug: 'robertsport',
+  description: 'Surf town',
+  type: 'beach' as Place['type'],
+  category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
+  tags: [],
+  county: { id: 'cty1', name: 'Grand Cape Mount', slug: 'grand-cape-mount', rolloutStage: 1, icon: null, emergencyNumber: null, safetyTips: [], localCustoms: null },
+  city: 'Robertsport',
+  latitude: 6.75,
+  longitude: -11.37,
+  distanceFromMonroviaKm: 120,
+  recommendedVisitLength: null,
+  estimatedCostEntry: null,
+  estimatedCostGuide: null,
+  estimatedCostTransport: null,
+  images: [],
+  videos: [],
+  openingHours: null,
+  structuredHours: null,
+  contactPhone: null,
+  whatsapp: null,
+  website: null,
+  instagram: null,
+  facebook: null,
+  rating: 0,
+  reviewCount: 0,
+  verificationStatus: 'verified' as Place['verificationStatus'],
+  featured: false,
+  reviewStatus: 'approved' as Place['reviewStatus'],
+  ownerUserId: null,
+  rejectionReason: null,
+  submittedAt: null,
+  reviewedAt: null,
+  reviewedByUserId: null,
+};
+
 const STOP = {
   day: 1,
   order: 0,
@@ -52,6 +99,18 @@ const STOP = {
     category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
   },
 };
+
+// Fills the required name + destination fields (Aug 2026 social-trip spec)
+// shared by every "actually submits" test below — picking the destination
+// exercises the real DestinationAutocomplete search-and-select flow rather
+// than reaching into component state.
+async function fillRequiredFields(name: string) {
+  (getPlaces as jest.Mock).mockResolvedValue({ data: [DESTINATION], meta: { total: 1, page: 1, limit: 8, totalPages: 1 } });
+  await userEvent.type(screen.getByLabelText(/trip name/i), name);
+  await userEvent.type(screen.getByPlaceholderText(/robertsport/i), 'Robert');
+  await screen.findByText('Robertsport');
+  await userEvent.click(screen.getByText('Robertsport'));
+}
 
 describe('TripPlannerForm', () => {
   afterEach(() => {
@@ -72,8 +131,8 @@ describe('TripPlannerForm', () => {
     });
 
     render(<TripPlannerForm categories={CATEGORIES} />);
+    await fillRequiredFields('3-Day Liberia Trip');
 
-    expect(screen.getByRole('button', { name: /preview my trip/i })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
 
     expect(await screen.findByText('3-Day Liberia Trip')).toBeInTheDocument();
@@ -97,6 +156,7 @@ describe('TripPlannerForm', () => {
     });
 
     render(<TripPlannerForm categories={CATEGORIES} />);
+    await fillRequiredFields('3-Day Liberia Trip');
     await userEvent.click(screen.getByRole('button', { name: /beaches/i }));
     await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
     await screen.findByRole('button', { name: /log in to save this trip/i });
@@ -108,12 +168,23 @@ describe('TripPlannerForm', () => {
       durationDays: 3,
       budgetBand: 'moderate',
       interests: ['beaches'],
-      title: undefined,
+      title: '3-Day Liberia Trip',
+      destinationPlaceId: DESTINATION.id,
+      visibility: 'private',
+      destination: DESTINATION,
     });
   });
 
   it('auto-saves a resumed draft the instant a returning visitor is signed in', async () => {
-    savePendingTripDraft({ durationDays: 5, budgetBand: 'budget', interests: ['beaches'], title: 'My Trip' });
+    savePendingTripDraft({
+      durationDays: 5,
+      budgetBand: 'budget',
+      interests: ['beaches'],
+      title: 'My Trip',
+      destinationPlaceId: DESTINATION.id,
+      visibility: 'public',
+      destination: DESTINATION,
+    });
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-1', title: 'My Trip' });
 
@@ -129,6 +200,8 @@ describe('TripPlannerForm', () => {
       budgetBand: 'budget',
       interests: ['beaches'],
       title: 'My Trip',
+      destinationPlaceId: DESTINATION.id,
+      visibility: 'public',
     });
     // Consumed, not left behind for a later unrelated visit.
     expect(window.sessionStorage.getItem('liberia360:pending-trip-draft')).toBeNull();
@@ -146,6 +219,7 @@ describe('TripPlannerForm', () => {
     mockFetchOnce(201, { id: 'itin-3', title: '3-Day Liberia Trip' });
 
     render(<TripPlannerForm categories={CATEGORIES} />);
+    await fillRequiredFields('3-Day Liberia Trip');
     await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
     expect(await screen.findByText(/using your current location/i)).toBeInTheDocument();
 
@@ -175,11 +249,23 @@ describe('TripPlannerForm', () => {
     expect(screen.getByRole('button', { name: /preview my trip/i })).toBeEnabled();
   });
 
+  it('requires a trip name and destination before it can be built', async () => {
+    render(<TripPlannerForm categories={CATEGORIES} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/give your trip a name/i);
+
+    await userEvent.type(screen.getByLabelText(/trip name/i), 'My Trip');
+    await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/choose a destination/i);
+  });
+
   it('signed-in visitors with no pending draft still build and save a trip directly', async () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-2', title: '3-Day Liberia Trip' });
 
     render(<TripPlannerForm categories={CATEGORIES} />);
+    await fillRequiredFields('3-Day Liberia Trip');
     expect(await screen.findByRole('button', { name: /^build my trip$/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /^build my trip$/i }));
