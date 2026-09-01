@@ -8,16 +8,14 @@
 // a business's own CDN) straight into a photo field — those are passed
 // through untouched.
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
-// NEXT_PUBLIC_API_URL points at .../api/v1 — uploads are served off the
-// bare API origin, so strip that suffix to get back to the host.
-const API_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, '');
+// Local uploads are exposed through the same-origin reverse proxy.
+const API_ORIGIN = "";
 
 export function resolveImageUrl(path: string): string {
-  if (/^https?:\/\//i.test(path) || path.startsWith('data:')) {
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) {
     return path;
   }
-  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+  return `${API_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 // Matches the filename this app's own upload pipeline writes — a random

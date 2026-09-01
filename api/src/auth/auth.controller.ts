@@ -7,10 +7,11 @@ import {
   HttpStatus,
   Patch,
   Req,
+  Res,
   UseGuards,
   Post,
 } from "@nestjs/common";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { Throttle, seconds } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { getRequestInfo } from "../common/request-info";
@@ -40,9 +41,27 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
+  private establishSession(
+    response: Response,
+    result: { accessToken: string; user: unknown },
+  ) {
+    response.cookie("liberia360_session", result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    response.setHeader("Cache-Control", "no-store");
+    return { user: result.user };
+  }
+
   @Post("register")
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.establishSession(res, await this.authService.register(dto));
   }
 
   // Stricter than the global default (see app.module.ts) — this is exactly
@@ -50,8 +69,15 @@ export class AuthController {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  login(@Body() dto: LoginDto, @Req() req: Request) {
-    return this.authService.login(dto, getRequestInfo(req));
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto, getRequestInfo(req));
+    return "accessToken" in result
+      ? this.establishSession(res, result)
+      : result;
   }
 
   // Login step 2 — exchanges the pendingToken from a twoFactorRequired
@@ -63,8 +89,15 @@ export class AuthController {
   @Post("2fa/verify")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  verifyTwoFactor(@Body() dto: VerifyTwoFactorDto, @Req() req: Request) {
-    return this.authService.verifyTwoFactor(dto, getRequestInfo(req));
+  async verifyTwoFactor(
+    @Body() dto: VerifyTwoFactorDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.establishSession(
+      res,
+      await this.authService.verifyTwoFactor(dto, getRequestInfo(req)),
+    );
   }
 
   @Get("me")
@@ -162,11 +195,15 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: User,
     @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.changePassword(
-      user,
-      dto.currentPassword,
-      dto.newPassword,
+    return this.establishSession(
+      res,
+      await this.authService.changePassword(
+        user,
+        dto.currentPassword,
+        dto.newPassword,
+      ),
     );
   }
 
@@ -177,8 +214,27 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logoutAllDevices(@CurrentUser() user: User) {
-    return this.authService.logoutAllDevices(user);
+  async logoutAllDevices(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.establishSession(
+      res,
+      await this.authService.logoutAllDevices(user),
+    );
+  }
+
+  @Post("logout")
+  @HttpCode(HttpStatus.OK)
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie("liberia360_session", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+    res.setHeader("Cache-Control", "no-store");
+    return { success: true };
   }
 
   @Delete("me")

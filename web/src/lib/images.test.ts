@@ -1,9 +1,8 @@
 import { coverImage, galleryImages, resolveImageUrl, resolveThumbUrl } from './images';
 
-// NEXT_PUBLIC_API_URL isn't set in the test env, so resolveImageUrl falls
-// back to its documented default (http://localhost:3001/api/v1), and the
-// derived origin is http://localhost:3001.
-const API_ORIGIN = 'http://localhost:3001';
+// Internal uploads are intentionally same-origin and pass through Next's
+// server-only reverse proxy, so no infrastructure hostname is emitted.
+const API_ORIGIN = '';
 
 describe('resolveImageUrl', () => {
   it('prefixes a relative /uploads path with the API origin', () => {

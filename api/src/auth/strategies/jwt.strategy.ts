@@ -9,6 +9,19 @@ import {
 } from "../types/jwt-payload.interface";
 import { AppConfig } from "../../config/configuration";
 import { User } from "../../users/entities/user.entity";
+import type { Request } from "express";
+
+const SESSION_COOKIE = "liberia360_session";
+
+function tokenFromCookie(request: Request): string | null {
+  const cookie = request.headers.cookie;
+  if (!cookie) return null;
+  for (const part of cookie.split(";")) {
+    const [name, ...value] = part.trim().split("=");
+    if (name === SESSION_COOKIE) return decodeURIComponent(value.join("="));
+  }
+  return null;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -17,7 +30,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly usersService: UsersService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        tokenFromCookie,
+        // Retained for trusted non-browser clients during migration. The web
+        // application never receives or stores this bearer token.
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get("jwt", { infer: true }).secret,
     });

@@ -1,7 +1,6 @@
 import { HttpError } from "./http";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1";
+const API_URL = "/api/v1";
 const MAX_VIDEO_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const ALLOWED_VIDEO_MIME_TYPES = [
   "video/mp4",
@@ -36,7 +35,7 @@ export function uploadVideo(
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("POST", `${API_URL}/uploads/video`);
-    request.setRequestHeader("Authorization", `Bearer ${token}`);
+    request.withCredentials = true;
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable)
         onProgress?.(Math.round((event.loaded / event.total) * 100));

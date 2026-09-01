@@ -25,9 +25,14 @@ import type {
   PlacesQuery,
   PublicTripSummary,
   SponsoredPlacement,
-} from './types';
+} from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+const API_URL =
+  process.env.NODE_ENV === "test"
+    ? "http://localhost:3001/api/v1"
+    : typeof window === "undefined"
+      ? `${process.env.API_ORIGIN ?? "http://localhost:3001"}/api/v1`
+      : "/api/v1";
 
 class ApiError extends Error {
   constructor(
@@ -35,7 +40,7 @@ class ApiError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -70,7 +75,7 @@ class ApiError extends Error {
 // status (404, 422, 500, ...) means the API itself is up and running and
 // said something's actually wrong, which should still fail loudly rather
 // than be silently hidden.
-const IS_BUILD_PHASE = process.env.NEXT_PHASE === 'phase-production-build';
+const IS_BUILD_PHASE = process.env.NEXT_PHASE === "phase-production-build";
 const GATEWAY_UNAVAILABLE_STATUSES = new Set([502, 503, 504]);
 
 function emptyPage(limit = 20) {
@@ -85,7 +90,7 @@ async function apiFetch<T>(
   const url = new URL(`${API_URL}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== '') {
+      if (value !== undefined && value !== "") {
         url.searchParams.set(key, String(value));
       }
     }
@@ -106,24 +111,35 @@ async function apiFetch<T>(
       // public site visibly disagreeing with what an admin just fixed.
       // `cache: 'no-store'` opts every catalog read out of Next's Data
       // Cache entirely — no window to wait out, on any topology.
-      cache: 'no-store',
+      cache: "no-store",
     });
   } catch (err) {
     if (IS_BUILD_PHASE && buildFallback !== undefined) {
       // eslint-disable-next-line no-console
-      console.warn(`[build] ${path} unreachable at build time, using an empty placeholder: ${(err as Error).message}`);
+      console.warn(
+        `[build] ${path} unreachable at build time, using an empty placeholder: ${(err as Error).message}`,
+      );
       return buildFallback;
     }
     throw err;
   }
 
   if (!res.ok) {
-    if (IS_BUILD_PHASE && buildFallback !== undefined && GATEWAY_UNAVAILABLE_STATUSES.has(res.status)) {
+    if (
+      IS_BUILD_PHASE &&
+      buildFallback !== undefined &&
+      GATEWAY_UNAVAILABLE_STATUSES.has(res.status)
+    ) {
       // eslint-disable-next-line no-console
-      console.warn(`[build] ${path} returned ${res.status} at build time (likely mid-redeploy), using an empty placeholder`);
+      console.warn(
+        `[build] ${path} returned ${res.status} at build time (likely mid-redeploy), using an empty placeholder`,
+      );
       return buildFallback;
     }
-    throw new ApiError(res.status, `Request to ${path} failed with ${res.status}`);
+    throw new ApiError(
+      res.status,
+      `Request to ${path} failed with ${res.status}`,
+    );
   }
 
   // A Nest controller returning `null` (e.g. GET /businesses?placeId=... for
@@ -137,7 +153,7 @@ async function apiFetch<T>(
 
 export function getPlaces(query: PlacesQuery = {}): Promise<PaginatedPlaces> {
   return apiFetch<PaginatedPlaces>(
-    '/places',
+    "/places",
     query as Record<string, string | number | undefined>,
     emptyPage(query.limit),
   );
@@ -148,27 +164,42 @@ export function getPlaceBySlug(slug: string): Promise<Place> {
 }
 
 export function getCounties(): Promise<County[]> {
-  return apiFetch<County[]>('/counties', undefined, []);
+  return apiFetch<County[]>("/counties", undefined, []);
 }
 
-export function getCountyPlaces(countySlug: string, query: PlacesQuery = {}): Promise<PaginatedPlaces> {
-  return apiFetch<PaginatedPlaces>(`/counties/${countySlug}/places`, query as Record<string, string | number | undefined>);
+export function getCountyPlaces(
+  countySlug: string,
+  query: PlacesQuery = {},
+): Promise<PaginatedPlaces> {
+  return apiFetch<PaginatedPlaces>(
+    `/counties/${countySlug}/places`,
+    query as Record<string, string | number | undefined>,
+  );
 }
 
 export function getCategories(): Promise<Category[]> {
-  return apiFetch<Category[]>('/categories', undefined, []);
+  return apiFetch<Category[]>("/categories", undefined, []);
 }
 
-export function getReviews(placeId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
-  return apiFetch<PaginatedReviews>('/reviews', { placeId, ...query });
+export function getReviews(
+  placeId: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>("/reviews", { placeId, ...query });
 }
 
-export function getCreatorReviews(creatorId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
-  return apiFetch<PaginatedReviews>('/reviews', { creatorId, ...query });
+export function getCreatorReviews(
+  creatorId: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>("/reviews", { creatorId, ...query });
 }
 
-export function getCarListingReviews(carListingId: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedReviews> {
-  return apiFetch<PaginatedReviews>('/reviews', { carListingId, ...query });
+export function getCarListingReviews(
+  carListingId: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedReviews> {
+  return apiFetch<PaginatedReviews>("/reviews", { carListingId, ...query });
 }
 
 // GET /businesses?placeId=... returns `null` (200, not 404) when nothing's
@@ -176,7 +207,7 @@ export function getCarListingReviews(carListingId: string, query: { page?: numbe
 // Only ever an APPROVED listing — see BusinessesService.findByPlace's doc
 // comment for why a still-pending/rejected claim isn't returned here.
 export function getBusinessByPlace(placeId: string): Promise<Business | null> {
-  return apiFetch<Business | null>('/businesses', { placeId });
+  return apiFetch<Business | null>("/businesses", { placeId });
 }
 
 export interface BusinessesQuery {
@@ -189,8 +220,14 @@ export interface BusinessesQuery {
 
 // The discovery directory — approved listings only, same as
 // getBusinessByPlace above.
-export function getBusinesses(query: BusinessesQuery = {}): Promise<PaginatedBusinesses> {
-  return apiFetch<PaginatedBusinesses>('/businesses', { ...query }, emptyPage(query.limit));
+export function getBusinesses(
+  query: BusinessesQuery = {},
+): Promise<PaginatedBusinesses> {
+  return apiFetch<PaginatedBusinesses>(
+    "/businesses",
+    { ...query },
+    emptyPage(query.limit),
+  );
 }
 
 export function getBusinessBySlug(slug: string): Promise<Business> {
@@ -203,7 +240,7 @@ export function getBusinessContent(
   query: { page?: number; limit?: number } = {},
 ): Promise<PaginatedBusinessContent> {
   return apiFetch<PaginatedBusinessContent>(
-    '/business-content',
+    "/business-content",
     { businessId, ...query },
     emptyPage(query.limit),
   );
@@ -212,11 +249,15 @@ export function getBusinessContent(
 // The full public menu for one business — see MenuItemsService's doc
 // comment for why there's no separate approved-only gate here.
 export function getMenuItems(businessId: string): Promise<MenuItem[]> {
-  return apiFetch<MenuItem[]>('/menu-items', { businessId }, []);
+  return apiFetch<MenuItem[]>("/menu-items", { businessId }, []);
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
-  return apiFetch<SponsoredPlacement[]>('/sponsored-placements/active', undefined, []);
+  return apiFetch<SponsoredPlacement[]>(
+    "/sponsored-placements/active",
+    undefined,
+    [],
+  );
 }
 
 // The public "Sponsored" ad placement feed (Home, Explore, Search) —
@@ -224,8 +265,14 @@ export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {
 // how this differs from SponsoredPlacement (a promotion of an *existing*
 // catalog Place, not a self-service ad slot for anything an advertiser
 // wants to promote).
-export function getActiveAdvertisements(limit?: number): Promise<Advertisement[]> {
-  return apiFetch<Advertisement[]>('/advertisements/active', limit ? { limit } : undefined, []);
+export function getActiveAdvertisements(
+  limit?: number,
+): Promise<Advertisement[]> {
+  return apiFetch<Advertisement[]>(
+    "/advertisements/active",
+    limit ? { limit } : undefined,
+    [],
+  );
 }
 
 // The "See more" detail page a carousel card links to — a single approved
@@ -244,10 +291,12 @@ export interface CreatorsQuery {
   featuredOnly?: boolean;
 }
 
-export function getCreators(query: CreatorsQuery = {}): Promise<PaginatedCreators> {
+export function getCreators(
+  query: CreatorsQuery = {},
+): Promise<PaginatedCreators> {
   return apiFetch<PaginatedCreators>(
-    '/creators',
-    { ...query, featuredOnly: query.featuredOnly ? 'true' : undefined },
+    "/creators",
+    { ...query, featuredOnly: query.featuredOnly ? "true" : undefined },
     emptyPage(query.limit),
   );
 }
@@ -256,15 +305,20 @@ export function getCreatorByUsername(username: string): Promise<Creator> {
   return apiFetch<Creator>(`/creators/${username}`);
 }
 
-export function getCreatorFeed(query: { page?: number; limit?: number } = {}): Promise<PaginatedCreatorPosts> {
+export function getCreatorFeed(
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedCreatorPosts> {
   return apiFetch<PaginatedCreatorPosts>(
-    '/creators/feed',
+    "/creators/feed",
     query,
     emptyPage(query.limit),
   );
 }
 
-export function getCreatorFeedForCreator(username: string, query: { page?: number; limit?: number } = {}): Promise<PaginatedCreatorPosts> {
+export function getCreatorFeedForCreator(
+  username: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PaginatedCreatorPosts> {
   return apiFetch<PaginatedCreatorPosts>(
     `/creators/feed/creator/${encodeURIComponent(username)}`,
     query,
@@ -287,7 +341,7 @@ export interface EventsQuery {
 
 export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
   return apiFetch<PaginatedEvents>(
-    '/events',
+    "/events",
     query as Record<string, string | number | boolean | undefined>,
     emptyPage(query.limit),
   );
@@ -316,9 +370,11 @@ export interface PaginatedPublicTrips {
 // apiFetch instead so trip-discovery sections embedded in *server*
 // components (the Home feed, a Place page) get the same no-store freshness
 // and build-time-unreachable fallback as every other catalog read here.
-export function getPublicTrips(query: { destinationPlaceId?: string; page?: number; limit?: number } = {}): Promise<PaginatedPublicTrips> {
+export function getPublicTrips(
+  query: { destinationPlaceId?: string; page?: number; limit?: number } = {},
+): Promise<PaginatedPublicTrips> {
   return apiFetch<PaginatedPublicTrips>(
-    '/itineraries/public',
+    "/itineraries/public",
     query as Record<string, string | number | undefined>,
     emptyPage(query.limit),
   );
@@ -338,10 +394,15 @@ export interface CarListingsQuery {
 
 // The public /car-rentals directory — approved AND active listings only,
 // same "is this actually bookable right now" gate as getCarListingById.
-export function getCarListings(query: CarListingsQuery = {}): Promise<PaginatedCarListings> {
+export function getCarListings(
+  query: CarListingsQuery = {},
+): Promise<PaginatedCarListings> {
   return apiFetch<PaginatedCarListings>(
-    '/car-listings',
-    { ...query, withDriverAvailable: query.withDriverAvailable ? 'true' : undefined },
+    "/car-listings",
+    {
+      ...query,
+      withDriverAvailable: query.withDriverAvailable ? "true" : undefined,
+    },
     emptyPage(query.limit),
   );
 }

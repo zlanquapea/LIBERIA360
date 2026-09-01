@@ -58,6 +58,7 @@ async function bootstrap() {
       crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
   );
+  app.getHttpAdapter().getInstance().disable("x-powered-by");
 
   // Let in-flight requests finish (and TypeORM close its pool) on SIGTERM
   // instead of dropping them — the difference between a clean rolling
@@ -65,7 +66,12 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   app.enableCors({
-    origin: configService.get("corsOrigin", { infer: true }),
+    origin: configService
+      .get("corsOrigin", { infer: true })
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+    credentials: true,
   });
 
   app.useGlobalPipes(
@@ -95,16 +101,18 @@ async function bootstrap() {
   // sync with the real request/response shapes without needing to be
   // maintained twice. Mounted after setGlobalPrefix so every generated
   // path correctly shows the real /api/v1/... route.
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("LIBERIA360 API")
-    .setDescription(
-      "REST API for the LIBERIA360 tourism discovery platform — see api/README.md for feature-area docs (what each module does and why).",
-    )
-    .setVersion("1.0")
-    .addBearerAuth()
-    .build();
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api/docs", app, swaggerDocument);
+  if (configService.get("nodeEnv", { infer: true }) !== "production") {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("LIBERIA360 API")
+      .setDescription(
+        "REST API for the LIBERIA360 tourism discovery platform — see api/README.md for feature-area docs (what each module does and why).",
+      )
+      .setVersion("1.0")
+      .addBearerAuth()
+      .build();
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("api/docs", app, swaggerDocument);
+  }
 
   const port = configService.get("port", { infer: true });
   await app.listen(port);
