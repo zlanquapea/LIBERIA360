@@ -18,6 +18,7 @@ import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand, formatTripDateRange, formatTripStatus, formatTripVisibility } from '@/lib/format';
 import { ItineraryStops } from '@/components/ItineraryStops';
 import { TripPeoplePanel } from '@/components/TripPeoplePanel';
+import { TripChatPanel } from '@/components/TripChatPanel';
 import { AddTripStop } from '@/components/AddTripStop';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
@@ -499,6 +500,11 @@ function MemberTripView({
         isOwner={isOwner}
         onChange={reload}
       />
+
+      {/* Every viewer who reaches MemberTripView is already a member —
+          getItinerary is member-gated (404s a non-member before this ever
+          renders) — so the chat panel needs no extra `canEdit` check here. */}
+      <TripChatPanel itineraryId={itinerary.id} />
 
       <ItineraryStops
         stops={itinerary.stops}

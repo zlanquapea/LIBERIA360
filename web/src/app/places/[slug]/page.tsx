@@ -6,6 +6,7 @@ import {
   getCountyPlaces,
   getMenuItems,
   getPlaceBySlug,
+  getPublicTrips,
   getReviews,
 } from "@/lib/api";
 import { colorForCategory } from "@/lib/category-colors";
@@ -29,6 +30,7 @@ import { ReviewsSection } from "@/components/ReviewsSection";
 import { BusinessClaimSection } from "@/components/BusinessClaimSection";
 import { PlaceViewTracker } from "@/components/PlaceViewTracker";
 import { PlaceFreshnessPrompt } from "@/components/PlaceFreshnessPrompt";
+import { PublicTripCard } from "@/components/PublicTripCard";
 import { JsonLd } from "@/components/JsonLd";
 import { placeJsonLd } from "@/lib/structured-data";
 import type { BusinessType, Place, PlaceType } from "@/lib/types";
@@ -86,10 +88,14 @@ export default async function PlaceProfilePage({
     notFound();
   }
 
-  const [nearbyResult, reviewsResult, business] = await Promise.all([
+  const [nearbyResult, reviewsResult, business, publicTripsResult] = await Promise.all([
     getCountyPlaces(place.county.slug, { limit: 30 }),
     getReviews(place.id, { limit: 20 }),
     getBusinessByPlace(place.id),
+    // Section 17's "surface public trips on destination pages" — trips
+    // whose destination is this exact place, discoverable by anyone
+    // browsing it, not just the trip's own creator/roster.
+    getPublicTrips({ destinationPlaceId: place.id, limit: 6 }),
   ]);
   // The menu is information about *this place* to a visitor, not about the
   // separate "Business" management entity — it belongs here, not gated
@@ -310,6 +316,32 @@ export default async function PlaceProfilePage({
           initialReviews={reviewsResult.data}
         />
       </section>
+
+      {publicTripsResult.data.length > 0 && (
+        <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+                Travel together
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
+                Trips heading here
+              </h2>
+            </div>
+            <Link
+              href="/trips/community"
+              className="flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+            >
+              See all community trips →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {publicTripsResult.data.map((trip) => (
+              <PublicTripCard key={trip.id} trip={trip} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {Object.keys(nearbyByType).length > 0 && (
         <section className="flex flex-col gap-4">
