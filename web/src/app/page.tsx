@@ -88,21 +88,23 @@ import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 // (still a static soft-light accent, matching its top-right sibling,
 // which was never animated). EventCarousel keeps its exact carousel
 // mechanism — only its position in the page changed.
-import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces } from '@/lib/api';
+import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPublicTrips } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { CountyGrid } from '@/components/CountyGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { EventCarousel } from '@/components/EventCarousel';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
+import { PublicTripCard } from '@/components/PublicTripCard';
 
 const TRENDING_PLACES_LIMIT = 10;
 const UPCOMING_EVENTS_LIMIT = 8;
+const COMMUNITY_TRIPS_LIMIT = 6;
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, counties, trending, upcomingEvents, sponsoredPlacements, ads, businesses] = await Promise.all([
+  const [categories, counties, trending, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips] = await Promise.all([
     getCategories(),
     getCounties(),
     getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
@@ -110,6 +112,10 @@ export default async function Home() {
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
     getBusinesses({ limit: 100 }),
+    // Section 17's "surface public trips ... in feeds" — a small rail of
+    // the most recently-created public trips, same source the /trips/community
+    // page pulls its full list from.
+    getPublicTrips({ limit: COMMUNITY_TRIPS_LIMIT }),
   ]);
 
   // Rollout order, not alphabetical — the first tab is the flagship county
@@ -343,6 +349,30 @@ export default async function Home() {
             ))}
           </div>
         </section>
+
+        {communityTrips.data.length > 0 && (
+          <section aria-labelledby="community-trips-heading" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h2 id="community-trips-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
+                Trips you can join
+              </h2>
+              <Link
+                href="/trips/community"
+                className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+              >
+                See all
+                <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {communityTrips.data.map((trip) => (
+                <div key={trip.id} className="w-64 shrink-0 sm:w-72">
+                  <PublicTripCard trip={trip} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <Link
           href="/places/submit"

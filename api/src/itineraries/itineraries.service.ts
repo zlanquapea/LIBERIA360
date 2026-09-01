@@ -44,6 +44,7 @@ import {
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { TripChatService } from "../trip-chat/trip-chat.service";
 import { AppConfig } from "../config/configuration";
 import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 
@@ -252,6 +253,7 @@ export class ItinerariesService {
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
     private readonly notificationsService: NotificationsService,
+    private readonly tripChatService: TripChatService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
@@ -418,8 +420,16 @@ export class ItinerariesService {
     title: string,
   ): Promise<ItineraryResponse> {
     const itinerary = await this.getEditable(userId, itineraryId);
+    const previousTitle = itinerary.title;
     itinerary.title = title;
     await this.itineraryRepo.save(itinerary);
+    if (previousTitle !== title) {
+      const renamer = await this.usersService.findById(userId);
+      await this.tripChatService.postSystemMessage(
+        itineraryId,
+        `${renamer?.name ?? "Someone"} renamed the trip to "${title}".`,
+      );
+    }
     return this.findOne(userId, itineraryId);
   }
 
@@ -466,6 +476,14 @@ export class ItinerariesService {
       itineraryId,
       userId: collaboratorUserId,
     });
+    const removedUser = await this.usersService.findById(collaboratorUserId);
+    const removedName = removedUser?.name ?? "Someone";
+    await this.tripChatService.postSystemMessage(
+      itineraryId,
+      isSelfRemoval
+        ? `${removedName} left the trip.`
+        : `${removedName} was removed from the trip.`,
+    );
     return this.listCollaborators(itineraryId);
   }
 
@@ -893,6 +911,10 @@ export class ItinerariesService {
       this.usersService.findById(itinerary.userId),
       this.usersService.findById(accepterId),
     ]);
+    await this.tripChatService.postSystemMessage(
+      itinerary.id,
+      `${accepter?.name ?? "Someone"} joined the trip.`,
+    );
     if (!organizer) return;
     const webAppUrl = this.configService.get("webAppUrl", { infer: true });
     await this.mailService
@@ -1446,6 +1468,10 @@ export class ItinerariesService {
       );
     }
 
+    await this.tripChatService.postSystemMessage(
+      itineraryId,
+      `${request.user?.name ?? "Someone"} joined the trip.`,
+    );
     await this.notificationsService.create(request.userId, {
       type: "trip.join_request_approved",
       title: "Join request approved",
@@ -1509,6 +1535,10 @@ export class ItinerariesService {
     const itinerary = await this.getOwned(userId, itineraryId);
     itinerary.cancelledAt = new Date();
     await this.itineraryRepo.save(itinerary);
+    await this.tripChatService.postSystemMessage(
+      itineraryId,
+      "This trip has been cancelled.",
+    );
     return this.findOne(userId, itineraryId);
   }
 }

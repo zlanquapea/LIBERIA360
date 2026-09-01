@@ -8,6 +8,7 @@ import { Place } from "../places/entities/place.entity";
 import { UsersModule } from "../users/users.module";
 import { MailModule } from "../mail/mail.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { TripChatModule } from "../trip-chat/trip-chat.module";
 import { ItinerariesService } from "./itineraries.service";
 import { ItinerariesController } from "./itineraries.controller";
 import { TripInvitationsController } from "./trip-invitations.controller";
@@ -25,6 +26,7 @@ import { TripPreviewController } from "./trip-preview.controller";
     UsersModule,
     MailModule,
     NotificationsModule,
+    TripChatModule,
   ],
   controllers: [
     ItinerariesController,

@@ -862,6 +862,46 @@ export interface TripJoinRequestSummary {
 export type InvitationDisplayStatus =
   "pending" | "viewed" | "accepted" | "declined" | "expired";
 
+// Trip group chat (Aug 2026 social-trip spec, Sections 9-12). See
+// api/src/trip-chat/entities/*.ts for the full data-model reasoning
+// (why status is a read *cursor*, not a per-message-per-viewer table;
+// why a reply only ever quotes one level deep; etc).
+export type TripMessageType = "user" | "system";
+
+export type TripMessageDeliveryStatus = "sent" | "delivered" | "read";
+
+export interface TripMessageReactionSummary {
+  emoji: string;
+  count: number;
+  userIds: string[];
+}
+
+export interface TripMessageReplyPreview {
+  id: string;
+  senderName: string | null;
+  body: string | null;
+  imageUrl: string | null;
+  deleted: boolean;
+}
+
+export interface TripMessage {
+  id: string;
+  itineraryId: string;
+  type: TripMessageType;
+  // Null for a SYSTEM message, or a USER message whose sender's account
+  // has since been deleted.
+  sender: AuthUser | null;
+  body: string | null;
+  imageUrl: string | null;
+  clientId: string | null;
+  replyTo: TripMessageReplyPreview | null;
+  reactions: TripMessageReactionSummary[];
+  createdAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+  status: TripMessageDeliveryStatus;
+}
+
 // api/src/users/user.serializer.ts's InvitableUser — the "people you may
 // want to invite" search result. Deliberately thinner than AuthUser: a
 // masked email (see maskEmail) is all a search result should ever leak

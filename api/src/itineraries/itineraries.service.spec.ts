@@ -18,6 +18,7 @@ import { Place } from "../places/entities/place.entity";
 import { UsersService } from "../users/users.service";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { TripChatService } from "../trip-chat/trip-chat.service";
 import { ConfigService } from "@nestjs/config";
 import {
   BudgetBand,
@@ -144,6 +145,7 @@ describe("ItinerariesService (collaboration)", () => {
     create: jest.Mock;
   };
   let notificationsService: { create: jest.Mock };
+  let tripChatService: { postSystemMessage: jest.Mock };
 
   beforeEach(async () => {
     publicTripsQueryBuilder = {
@@ -209,6 +211,9 @@ describe("ItinerariesService (collaboration)", () => {
       create: jest.fn((data) => data),
     };
     notificationsService = { create: jest.fn().mockResolvedValue(undefined) };
+    tripChatService = {
+      postSystemMessage: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -230,6 +235,7 @@ describe("ItinerariesService (collaboration)", () => {
         { provide: UsersService, useValue: usersService },
         { provide: MailService, useValue: mailService },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: TripChatService, useValue: tripChatService },
         {
           provide: ConfigService,
           useValue: {

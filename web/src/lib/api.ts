@@ -23,6 +23,7 @@ import type {
   PaginatedReviews,
   Place,
   PlacesQuery,
+  PublicTripSummary,
   SponsoredPlacement,
 } from './types';
 
@@ -300,6 +301,27 @@ export function getEvent(id: string): Promise<Event> {
 // — see EventsService.getGoingAttendees.
 export function getEventAttendees(id: string): Promise<EventAttendee[]> {
   return apiFetch<EventAttendee[]>(`/events/${id}/attendees`, undefined, []);
+}
+
+export interface PaginatedPublicTrips {
+  data: PublicTripSummary[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+// "Trips You Can Join" (Sections 5/17 of the Aug 2026 social-trip spec) —
+// unauthenticated by design, same GET /itineraries/public endpoint the
+// (client-only) /trips/community page calls via itinerary-api.ts's own
+// getPublicTrips. That version goes through lib/http.ts's browser fetch
+// since the whole page is a client component; this one goes through
+// apiFetch instead so trip-discovery sections embedded in *server*
+// components (the Home feed, a Place page) get the same no-store freshness
+// and build-time-unreachable fallback as every other catalog read here.
+export function getPublicTrips(query: { destinationPlaceId?: string; page?: number; limit?: number } = {}): Promise<PaginatedPublicTrips> {
+  return apiFetch<PaginatedPublicTrips>(
+    '/itineraries/public',
+    query as Record<string, string | number | undefined>,
+    emptyPage(query.limit),
+  );
 }
 
 export interface CarListingsQuery {
