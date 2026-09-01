@@ -36,7 +36,7 @@ export function takePendingTripDraft(): PendingTripDraft | null {
     if (!raw) return null;
     window.sessionStorage.removeItem(STORAGE_KEY);
     const parsed = JSON.parse(raw) as PendingTripDraft;
-    return parsed && typeof parsed.durationDays === 'number' && parsed.destination
+    return parsed && typeof parsed.startDate === 'string' && parsed.destination
       ? parsed
       : null;
   } catch {

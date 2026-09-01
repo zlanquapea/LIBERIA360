@@ -425,8 +425,8 @@ export default async function Home() {
             className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Build My Liberia Trip</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Days, interests, budget — we&apos;ll plan the route</p>
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Plan a Trip</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Pick your dates and destination — add stops as you go</p>
             </div>
             <BriefcaseIcon
               aria-hidden

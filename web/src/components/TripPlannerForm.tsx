@@ -1,87 +1,85 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { MapPinIcon } from '@heroicons/react/24/outline';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { generateTrip, previewTrip, type CreateTripInput } from '@/lib/itinerary-api';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { HttpError } from '@/lib/http';
-import { formatBudgetBand } from '@/lib/format';
-import { requestGeolocation, type Coords } from '@/lib/geolocation';
-import { ItineraryStops } from './ItineraryStops';
+import { formatBudgetBand, formatTripDateRange } from '@/lib/format';
 import { DestinationAutocomplete } from './DestinationAutocomplete';
 import type { BudgetBand, Place, TripPreviewResponse, TripVisibility } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
+const MAX_TRIP_DURATION_DAYS = 14;
 
-// "Build My Liberia Trip" (Tech Spec §4.3) — duration + budget generates a
-// day-by-day route server-side (nearest-neighbor sequencing from Monrovia).
-// The route used to also take an "interests" category filter here, but a
-// wall of category chips added friction without adding much: searching for
-// and picking the actual destination (below) already does the targeting a
-// traveler needs, so this form no longer asks for interests at all — it's
-// still sent to the API as an empty array, which the backend already
-// treats as "match everything."
+// Turns a start/end date pair into an inclusive day count (matches the
+// API's own resolveDurationDays) — used only for the instant "X days" hint
+// and client-side range check below; the API derives its own authoritative
+// durationDays from the same two dates rather than trusting this value.
+function durationDaysFromRange(startDate: string, endDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+// "Plan a Trip" (Tech Spec §4.3, redesigned per a Sept 2026 product note:
+// "do not automatically populate the days with random destinations — a
+// person can plan a 3-day trip at a single location," "the user should
+// have control"). Earlier versions of this form generated a full day-by-day
+// route the moment it was submitted, scattering catalog places across the
+// whole country by interest/budget/proximity alone, with no regard for
+// whether the traveler wanted one stop or ten. This version creates just
+// the trip's shell — its name, dates, destination, and visibility — and
+// hands the traveler straight to the trip page, where they add their own
+// stops one at a time (AddTripStop), to whichever day(s) they actually
+// need. A single search-and-select destination is still required (so the
+// trip has somewhere to point to for discovery/join features), but nothing
+// about its route is assumed from it.
 //
 // Guest-first (product review readout, Aug 22, 2026): a visitor with no
-// account still gets a real generated route from this same form, via the
-// unauthenticated /itineraries/preview endpoint — nothing is saved. Only
-// "Log in to save this trip" asks for an account, and it hands the exact
-// same inputs to the normal save endpoint afterward (see
-// pending-trip-draft.ts), so what they see here is what they get.
+// account can still fill this whole form and see exactly what they're
+// about to create, via the unauthenticated /itineraries/preview endpoint —
+// nothing is saved. Only "Log in to save this trip" asks for an account,
+// and it hands the exact same inputs to the normal create endpoint
+// afterward (see pending-trip-draft.ts), so what they see here is what
+// they get.
 export function TripPlannerForm() {
   const router = useRouter();
   const { user, token, ready } = useAuth();
 
-  const [durationDays, setDurationDays] = useState(3);
   const [budgetBand, setBudgetBand] = useState<BudgetBand>('moderate');
   const [title, setTitle] = useState('');
   // Trip identity + visibility (Aug 2026 social-trip spec, Sections 1-3):
   // a name, a real catalog destination, and a deliberate public/private
-  // choice are all required before a trip can be built or even previewed.
+  // choice are all required before a trip can be created or even previewed.
   const [destination, setDestination] = useState<Place | null>(null);
   const [visibility, setVisibility] = useState<TripVisibility>('private');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<TripPreviewResponse | null>(null);
   const [resuming, setResuming] = useState(false);
   const resumedRef = useRef(false);
 
-  // Product review readout (Aug 25, 2026): "Allow users to enter their
-  // budget, number of days, interests and starting location." Optional —
-  // leaving it unset keeps the previous behavior (routes built outward
-  // from Monrovia), so this is purely additive.
-  const [startCoords, setStartCoords] = useState<Coords | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
-
-  const useMyLocation = useCallback(() => {
-    setLocating(true);
-    setLocationError(null);
-    requestGeolocation()
-      .then((coords) => setStartCoords(coords))
-      .catch((err: Error) => setLocationError(err.message))
-      .finally(() => setLocating(false));
-  }, []);
+  const durationDays = startDate && endDate ? durationDaysFromRange(startDate, endDate) : null;
 
   // Picks back up a guest-built trip the moment login finishes: if this
   // visitor clicked "Log in to save" a minute ago, the draft they were
   // looking at is sitting in sessionStorage, waiting to be handed to the
-  // real save endpoint now that there's a token to save it under.
+  // real create endpoint now that there's a token to save it under.
   useEffect(() => {
     if (!ready || !user || !token || resumedRef.current) return;
     const draft = takePendingTripDraft();
     if (!draft) return;
     resumedRef.current = true;
-    setDurationDays(draft.durationDays);
+    setStartDate(draft.startDate);
+    setEndDate(draft.endDate);
     setBudgetBand(draft.budgetBand);
     setTitle(draft.title);
     setDestination(draft.destination);
     setVisibility(draft.visibility);
-    if (draft.startLat !== undefined && draft.startLng !== undefined) {
-      setStartCoords({ lat: draft.startLat, lng: draft.startLng });
-    }
     setPreview(null);
     setResuming(true);
     const { destination: _draftDestination, ...input } = draft;
@@ -94,16 +92,16 @@ export function TripPlannerForm() {
   }, [ready, user, token, router]);
 
   // Shared by both the submit and "log in to save" paths — a trip isn't
-  // buildable at all without a name and a real catalog destination
-  // (Sections 1-2 of the Aug 2026 spec).
+  // buildable at all without a name, a real catalog destination, and a
+  // valid date range (Sections 1-2 of the Aug 2026 spec, plus the Sept
+  // 2026 date-range redesign).
   function buildInput(): CreateTripInput | null {
-    if (!title.trim() || !destination) return null;
+    if (!title.trim() || !destination || !startDate || !endDate) return null;
     return {
-      durationDays,
+      startDate,
+      endDate,
       budgetBand,
       interests: [],
-      startLat: startCoords?.lat,
-      startLng: startCoords?.lng,
       title: title.trim(),
       destinationPlaceId: destination.id,
       visibility,
@@ -119,6 +117,18 @@ export function TripPlannerForm() {
     }
     if (!destination) {
       setError('Choose a destination.');
+      return;
+    }
+    if (!startDate || !endDate) {
+      setError('Choose a start and end date.');
+      return;
+    }
+    if (endDate < startDate) {
+      setError("The end date can't be before the start date.");
+      return;
+    }
+    if ((durationDays ?? 0) > MAX_TRIP_DURATION_DAYS) {
+      setError(`Trips can be at most ${MAX_TRIP_DURATION_DAYS} days — pick a shorter date range.`);
       return;
     }
     const input = buildInput();
@@ -156,16 +166,14 @@ export function TripPlannerForm() {
         <div>
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{preview.title}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {preview.durationDays} day{preview.durationDays === 1 ? '' : 's'} · {formatBudgetBand(preview.budgetBand)}
-            {preview.interests.length > 0 && ` · ${preview.interests.join(', ')}`}
+            {destination?.name} · {formatTripDateRange(preview.startDate, preview.endDate)} · {preview.durationDays} day
+            {preview.durationDays === 1 ? '' : 's'} · {formatBudgetBand(preview.budgetBand)}
           </p>
         </div>
 
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-          This is a preview — nothing&apos;s saved yet.
+          This is a preview — nothing&apos;s saved yet. Log in to save it, then add your own stops for each day.
         </p>
-
-        <ItineraryStops stops={preview.stops} />
 
         {error && (
           <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
@@ -186,7 +194,7 @@ export function TripPlannerForm() {
             onClick={() => setPreview(null)}
             className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
           >
-            Build a different trip
+            Plan a different trip
           </button>
         </div>
       </div>
@@ -201,7 +209,7 @@ export function TripPlannerForm() {
           type="text"
           required
           maxLength={200}
-          placeholder={`${durationDays}-Day Liberia Trip`}
+          placeholder="My Liberia Trip"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
@@ -237,18 +245,47 @@ export function TripPlannerForm() {
         </div>
       </fieldset>
 
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        How many days?
-        <input
-          type="number"
-          required
-          min={1}
-          max={14}
-          value={durationDays}
-          onChange={(e) => setDurationDays(Number(e.target.value))}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">When are you going?</legend>
+        <div className="flex gap-2">
+          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            Start date
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:text-slate-50"
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            End date
+            <input
+              type="date"
+              required
+              min={startDate || undefined}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:text-slate-50"
+            />
+          </label>
+        </div>
+        {durationDays !== null && (
+          <p
+            className={`text-xs ${
+              durationDays < 1 || durationDays > MAX_TRIP_DURATION_DAYS
+                ? 'text-flag-700 dark:text-flag-300'
+                : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            {durationDays < 1
+              ? "The end date can't be before the start date."
+              : durationDays > MAX_TRIP_DURATION_DAYS
+                ? `That's ${durationDays} days — trips can be at most ${MAX_TRIP_DURATION_DAYS}.`
+                : `${durationDays} day${durationDays === 1 ? '' : 's'}`}
+          </p>
+        )}
+      </fieldset>
 
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Budget
@@ -265,50 +302,11 @@ export function TripPlannerForm() {
         </select>
       </label>
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Starting location (optional)</span>
-        {startCoords ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
-            <span className="flex items-center gap-1.5">
-              <MapPinIcon aria-hidden className="h-4 w-4 text-brand-600 dark:text-brand-300" />
-              Using your current location
-            </span>
-            <button
-              type="button"
-              onClick={() => setStartCoords(null)}
-              className="text-xs font-medium text-slate-500 hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300"
-            >
-              Clear
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={useMyLocation}
-            disabled={locating}
-            className="flex w-fit items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 disabled:opacity-60"
-          >
-            <MapPinIcon aria-hidden className="h-4 w-4" />
-            {locating ? 'Finding you…' : 'Use my current location'}
-          </button>
-        )}
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          {startCoords
-            ? 'Stops are sequenced starting from here instead of Monrovia.'
-            : "Leave this blank to plan a route starting from Monrovia — this only changes the order stops are visited in."}
-        </p>
-        {locationError && (
-          <p role="alert" className="text-xs text-flag-700 dark:text-flag-300">
-            {locationError}
-          </p>
-        )}
-      </div>
-
-      {!user && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          No account needed to see your route — you&apos;ll only be asked to log in if you want to save it.
-        </p>
-      )}
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        {user
+          ? "You'll add your own stops next — as few or as many as this trip actually needs, on whichever day(s) you choose."
+          : "No account needed to plan — you'll only be asked to log in when you're ready to save this trip."}
+      </p>
 
       {error && (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
@@ -321,7 +319,7 @@ export function TripPlannerForm() {
         disabled={submitting}
         className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
       >
-        {submitting ? 'Building your trip…' : user ? 'Build my trip' : 'Preview my trip'}
+        {submitting ? 'One moment…' : user ? 'Start planning' : 'Continue'}
       </button>
     </form>
   );

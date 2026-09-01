@@ -40,7 +40,8 @@ const DESTINATION = {
 } as unknown as Place;
 
 const DRAFT: PendingTripDraft = {
-  durationDays: 4,
+  startDate: '2026-12-05',
+  endDate: '2026-12-08',
   budgetBand: 'premium',
   interests: ['hiking'],
   title: 'Weekend',

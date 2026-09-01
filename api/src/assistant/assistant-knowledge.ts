@@ -663,7 +663,7 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "vacation",
     ],
     answer:
-      "Use the trip planner to choose your days, interests, and budget, then build a Liberia route. There is also a quick weekend planner for places to stay, eat, and explore.",
+      "Use the trip planner to name your trip and pick your dates, destination, and budget, then add your own stops for each day. There is also a quick weekend planner for places to stay, eat, and explore.",
     actionIds: ["trips", "weekend"],
     followUps: ["How do I find hotels?", "How do I explore counties?"],
   },

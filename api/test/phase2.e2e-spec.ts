@@ -750,7 +750,7 @@ describe("Phase 2 (e2e)", () => {
   });
 
   describe("Itineraries", () => {
-    it("generates a trip, rejects when nothing matches, and round-trips through GET", async () => {
+    it("creates a trip with no auto-generated stops, rejects an invalid date range, and round-trips through GET", async () => {
       const trip = await request(app.getHttpServer())
         .post("/api/v1/itineraries")
         .set("Authorization", `Bearer ${userAToken}`)
@@ -758,13 +758,16 @@ describe("Phase 2 (e2e)", () => {
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
           visibility: "private",
-          durationDays: 1,
+          startDate: "2026-12-01",
+          endDate: "2026-12-01",
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
         })
         .expect(201);
-      expect(trip.body.stops.length).toBeGreaterThan(0);
-      expect(trip.body.stops[0].place.name).toBeDefined();
+      // No route is auto-filled at creation time — the traveler adds their
+      // own stops afterward (POST .../stops), whichever day(s) they choose.
+      expect(trip.body.stops).toEqual([]);
+      expect(trip.body.durationDays).toBe(1);
 
       await request(app.getHttpServer())
         .post("/api/v1/itineraries")
@@ -773,8 +776,9 @@ describe("Phase 2 (e2e)", () => {
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
           visibility: "private",
-          durationDays: 1,
-          interests: ["does-not-exist"],
+          startDate: "2026-12-05",
+          endDate: "2026-12-01", // before startDate — rejected
+          interests: [],
           budgetBand: "budget",
         })
         .expect(400);
@@ -789,38 +793,6 @@ describe("Phase 2 (e2e)", () => {
         .get(`/api/v1/itineraries/${trip.body.id}`)
         .set("Authorization", `Bearer ${userBToken}`)
         .expect(404); // owner-only
-    });
-
-    it("generates a trip from an explicit starting location, and rejects a lat with no matching lng", async () => {
-      const withStart = await request(app.getHttpServer())
-        .post("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
-        .send({
-          title: "Test Trip",
-          destinationPlaceId: museumPlace.id,
-          visibility: "private",
-          durationDays: 1,
-          interests: ["culture-heritage", "beaches"],
-          budgetBand: "moderate",
-          startLat: 6.3,
-          startLng: -10.8,
-        })
-        .expect(201);
-      expect(withStart.body.stops.length).toBeGreaterThan(0);
-
-      await request(app.getHttpServer())
-        .post("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
-        .send({
-          title: "Test Trip",
-          destinationPlaceId: museumPlace.id,
-          visibility: "private",
-          durationDays: 1,
-          interests: ["culture-heritage", "beaches"],
-          budgetBand: "moderate",
-          startLat: 6.3, // startLng omitted — must be rejected, not silently ignored
-        })
-        .expect(400);
     });
 
     it("Weekend Explorer generates from an explicit starting point, and 404s when nothing is reachable", async () => {
@@ -860,22 +832,21 @@ describe("Phase 2 (e2e)", () => {
       const preview = await request(app.getHttpServer())
         .post("/api/v1/itineraries/preview")
         .send({
-          durationDays: 1,
+          startDate: "2026-12-01",
+          endDate: "2026-12-01",
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
-          startLat: 6.3,
-          startLng: -10.8,
         })
         .expect(201);
       expect(preview.body.id).toBeUndefined(); // nothing was persisted
-      expect(preview.body.stops.length).toBeGreaterThan(0);
-      expect(preview.body.stops[0].place.name).toBeDefined();
+      expect(preview.body.stops).toEqual([]); // no route is auto-generated
 
       await request(app.getHttpServer())
         .post("/api/v1/itineraries/preview")
         .send({
-          durationDays: 1,
-          interests: ["does-not-exist"],
+          startDate: "2026-12-05",
+          endDate: "2026-12-01", // before startDate — rejected
+          interests: [],
           budgetBand: "budget",
         })
         .expect(400);
@@ -883,10 +854,10 @@ describe("Phase 2 (e2e)", () => {
       await request(app.getHttpServer())
         .post("/api/v1/itineraries/preview")
         .send({
-          durationDays: 1,
+          startDate: "2026-12-01",
+          endDate: "2027-01-01", // more than 14 days — rejected
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
-          startLng: -10.8, // startLat omitted — must be rejected
         })
         .expect(400);
 
@@ -913,7 +884,8 @@ describe("Phase 2 (e2e)", () => {
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
           visibility: "private",
-          durationDays: 1,
+          startDate: "2026-12-01",
+          endDate: "2026-12-01",
           interests: ["culture-heritage", "beaches"],
           budgetBand: "moderate",
         })
@@ -1108,7 +1080,8 @@ describe("Phase 2 (e2e)", () => {
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
           visibility: "private",
-          durationDays: 1,
+          startDate: "2026-12-01",
+          endDate: "2026-12-01",
           interests: ["culture-heritage"],
           budgetBand: "moderate",
         })

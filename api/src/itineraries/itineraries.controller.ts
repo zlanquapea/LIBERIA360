@@ -36,10 +36,10 @@ import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 export class ItinerariesController {
   constructor(private readonly itinerariesService: ItinerariesService) {}
 
-  /** "Build My Liberia Trip" (Tech Spec §4.3) — now also the "create a
-   * social trip" endpoint (Aug 2026 spec): name, destination, and
-   * visibility are all required on CreateTripDto, unlike the preview-only
-   * GenerateTripDto below. */
+  /** "Plan a Trip" (Tech Spec §4.3) — now also the "create a social trip"
+   * endpoint (Aug 2026 spec): name, destination, and visibility are all
+   * required on CreateTripDto, unlike the preview-only GenerateTripDto
+   * below. */
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
