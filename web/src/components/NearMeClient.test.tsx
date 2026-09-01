@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NearMeClient } from './NearMeClient';
 import type { Category, Place } from '@/lib/types';
@@ -73,6 +73,31 @@ function mockGeolocationSuccess() {
     value: { getCurrentPosition },
     configurable: true,
   });
+}
+
+// Never resolves on its own — for asserting what the UI shows *while*
+// a real device is still working on a fix, before either callback fires.
+function mockGeolocationPending() {
+  const getCurrentPosition = jest.fn();
+  Object.defineProperty(global.navigator, 'geolocation', {
+    value: { getCurrentPosition },
+    configurable: true,
+  });
+}
+
+// Captures the success callback instead of firing it immediately, so a
+// test can resolve it on its own schedule — e.g. after the user has
+// already cancelled the search.
+function mockGeolocationCapture() {
+  let success: PositionCallback | null = null;
+  const getCurrentPosition = jest.fn((onSuccess: PositionCallback) => {
+    success = onSuccess;
+  });
+  Object.defineProperty(global.navigator, 'geolocation', {
+    value: { getCurrentPosition },
+    configurable: true,
+  });
+  return { resolve: () => success?.({ coords: { latitude: 6.3, longitude: -10.8 } } as GeolocationPosition) };
 }
 
 function page(data: Place[]) {
@@ -170,5 +195,54 @@ describe('NearMeClient', () => {
     const calls = (global.fetch as jest.Mock).mock.calls;
     const lastUrl = calls[calls.length - 1][0] as string;
     expect(lastUrl).not.toContain('category=');
+  });
+
+  // Product feedback: a real GPS/network fix can genuinely take a while,
+  // and the old 10s timeout was erroring out around 30s while the browser
+  // was still honestly working on it. This asserts the wait now reads as
+  // "still working" (a cycling status message, a way to give up) rather
+  // than silently sitting there or erroring out early.
+  it('shows a cycling status message and a way to cancel while a location fix is still in progress', async () => {
+    jest.useFakeTimers();
+    try {
+      mockGeolocationPending();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+      render(<NearMeClient categories={CATEGORIES} />);
+      await user.click(screen.getByRole('button', { name: /use my location/i }));
+
+      // Two matches expected: BrandLoader's sr-only status text plus the
+      // visible status line right below it.
+      expect(screen.getAllByText('Finding you…').length).toBeGreaterThan(0);
+      expect(screen.queryByRole('button', { name: /use my location/i })).not.toBeInTheDocument();
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(4000);
+      });
+      expect(screen.getAllByText("Waking up your device's GPS…").length).toBeGreaterThan(0);
+
+      await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+      expect(screen.getByRole('button', { name: /use my location/i })).toBeInTheDocument();
+      expect(screen.queryByText("Waking up your device's GPS…")).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('ignores a location fix that arrives after the user already cancelled the search', async () => {
+    const geo = mockGeolocationCapture();
+
+    render(<NearMeClient categories={CATEGORIES} />);
+    await userEvent.click(screen.getByRole('button', { name: /use my location/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.getByRole('button', { name: /use my location/i })).toBeInTheDocument();
+
+    act(() => {
+      geo.resolve();
+    });
+
+    // The stale callback must not sneak coordinates in after the fact.
+    expect(screen.getByRole('button', { name: /use my location/i })).toBeInTheDocument();
+    expect(screen.queryByText('Everything')).not.toBeInTheDocument();
   });
 });
