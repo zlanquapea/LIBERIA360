@@ -102,7 +102,7 @@ are independent, easy to miss one:
 |---|---|
 | `api/.env` → `CORS_ORIGIN` | the production **web** origin (so the API accepts requests from it) |
 | `api/.env` → `WEB_APP_URL` | the production **web** origin (used to build links *inside* verification/reset emails — the API has no view layer of its own) |
-| `web/.env.local` → `NEXT_PUBLIC_API_URL` | the production **API** origin + `/api/v1` |
+| `web/.env.local` → `API_ORIGIN` | the production **API** origin, bare — no `/api/v1` suffix, no trailing slash (server-only: the browser talks to the same-origin `/api` proxy, never this host directly) |
 | `web/.env.local` → `NEXT_PUBLIC_SITE_URL` | the production **web** origin (schema.org JSON-LD's `url` fields need an absolute URL for SEO — falls back to a placeholder otherwise, which is fine pre-launch but shouldn't ship to real search results) |
 
 ## 4. Object storage for uploaded photos
