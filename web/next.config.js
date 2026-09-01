@@ -21,8 +21,18 @@ const nextConfig = {
     // this version cannot silently redirect production traffic to localhost.
     // The legacy value commonly includes /api/v1, whereas rewrite
     // destinations need the bare origin.
+    // Render Blueprints can inject another service's private host and port,
+    // but cannot interpolate those two values into a URL. Accept the pair so
+    // the Blueprint can wire the services together without a placeholder that
+    // has to be replaced manually after the first deploy.
+    const renderPrivateOrigin =
+      process.env.API_HOST && process.env.API_PORT
+        ? `http://${process.env.API_HOST}:${process.env.API_PORT}`
+        : undefined;
     const configuredApiOrigin =
-      process.env.API_ORIGIN || process.env.NEXT_PUBLIC_API_URL;
+      process.env.API_ORIGIN ||
+      renderPrivateOrigin ||
+      process.env.NEXT_PUBLIC_API_URL;
     const apiOrigin = (configuredApiOrigin || 'http://localhost:3001')
       .replace(/\/+$/, '')
       .replace(/\/api\/v1$/, '');

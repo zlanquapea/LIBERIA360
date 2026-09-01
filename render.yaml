@@ -124,15 +124,19 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Server-only upstream the web service's same-origin /api and
-      # /uploads rewrites (next.config.js) proxy to, and that server
-      # components fetch from directly — see web/.env.example. Bare
-      # origin, no /api/v1 suffix and no trailing slash, e.g.
-      # https://liberia360-api.onrender.com, once Render assigns it after
-      # the first deploy. NEXT_PUBLIC_API_URL is gone: the browser never
-      # talks to the API host directly anymore, so nothing in web/src
-      # reads that variable any more.
-      - key: API_ORIGIN
-        value: https://REPLACE-WITH-YOUR-API-URL.onrender.com
+      # Automatically connect the web service to the API over Render's
+      # private network. next.config.js and server-side data fetching combine
+      # these into http://<host>:<port>, so a first deploy no longer falls
+      # back to localhost:3001 while waiting for someone to copy a public URL.
+      - key: API_HOST
+        fromService:
+          type: web
+          name: liberia360-api
+          property: host
+      - key: API_PORT
+        fromService:
+          type: web
+          name: liberia360-api
+          property: port
       - key: NEXT_PUBLIC_SITE_URL
         value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com
