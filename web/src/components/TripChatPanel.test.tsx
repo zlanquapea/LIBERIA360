@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TripChatPanel } from './TripChatPanel';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
@@ -345,5 +345,62 @@ describe('TripChatPanel', () => {
 
     await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.url.includes('/uploads/image'))).toBe(true));
     await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/messages'))).toBe(true));
+  });
+
+  // Regression test for the reported bug: scrolling up to read earlier
+  // messages used to get undone by the next poll (every 3s), which
+  // force-scrolled back to the bottom regardless of where the reader was.
+  it('does not yank the scroll position back to the bottom when a poll brings new messages while scrolled up', async () => {
+    jest.useFakeTimers();
+    try {
+      setStoredAuth({ token: 'tok', user: ME });
+      const firstBatch = [tripMessage({ id: 'm1', sender: OTHER, body: 'First message' })];
+      const secondBatch = [...firstBatch, tripMessage({ id: 'm2', sender: OTHER, body: 'Second message' })];
+      let getCount = 0;
+      global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+        const method = (init?.method ?? 'GET').toUpperCase();
+        if (method === 'GET' && String(url).includes('/messages')) {
+          getCount += 1;
+          return { ok: true, status: 200, json: () => Promise.resolve(getCount === 1 ? firstBatch : secondBatch) };
+        }
+        return { ok: true, status: 200, json: () => Promise.resolve(null) };
+      }) as unknown as typeof fetch;
+
+      render(<TripChatPanel itineraryId="trip-1" />);
+      // Advance past the initial load's own scrollToBottom (queued via
+      // requestAnimationFrame) so it can't fire later, mid-assertion, once
+      // the "scrolled up" geometry below is in place.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(50);
+      });
+      expect(screen.getByText('First message')).toBeInTheDocument();
+
+      // Simulate having scrolled up to read history, well above the bottom.
+      const scrollEl = document.querySelector('.overflow-y-auto') as HTMLElement;
+      Object.defineProperty(scrollEl, 'scrollHeight', { value: 1000, configurable: true });
+      Object.defineProperty(scrollEl, 'clientHeight', { value: 300, configurable: true });
+      Object.defineProperty(scrollEl, 'scrollTop', { value: 0, writable: true, configurable: true });
+
+      // Let the next poll (3s later) bring in the new message.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3000);
+      });
+      expect(screen.getByText('Second message')).toBeInTheDocument();
+
+      // The reader's position must be untouched — no forced scroll-to-bottom.
+      expect(scrollEl.scrollTop).toBe(0);
+      // Instead, a "New messages" pill offers to jump down on request.
+      const jumpButton = screen.getByRole('button', { name: /new messages/i });
+      expect(jumpButton).toBeInTheDocument();
+
+      await userEvent.setup({ advanceTimers: jest.advanceTimersByTime }).click(jumpButton);
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(50);
+      });
+      expect(scrollEl.scrollTop).toBe(1000);
+      expect(screen.queryByRole('button', { name: /new messages/i })).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
