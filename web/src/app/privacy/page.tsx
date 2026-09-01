@@ -54,7 +54,7 @@ export default function PrivacyPolicyPage() {
       </Section>
 
       <Section title="Where your information is stored">
-        <p>Your account session token is stored on your own device (in your browser&apos;s local storage), not in a cookie. Everything else lives in our database. If you upload a photo, it&apos;s stored with whichever storage provider is configured for the platform at the time.</p>
+        <p>Your account session token is stored on your own device in a secure, HttpOnly cookie — set by our server and never readable by JavaScript running on the page, including our own. A separate, non-secret snapshot of your profile (name, email, and similar account details) is kept in your browser&apos;s local storage purely so the interface can show you as signed in without an extra round trip; it carries no credential. Everything else lives in our database. If you upload a photo, it&apos;s stored with whichever storage provider is configured for the platform at the time.</p>
       </Section>
 
       <Section title="Sharing with third parties">
