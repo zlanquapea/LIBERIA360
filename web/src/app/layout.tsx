@@ -81,9 +81,18 @@ export default function RootLayout({
         <div
           id="main-content"
           tabIndex={-1}
-          className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0"
+          className="flex flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0"
         >
-          {children}
+          {/* A flex column with the page content as its own flex-1 item and
+              Footer after it — so Footer always sits at the true bottom of
+              the space between Header and BottomNav, however tall the page
+              content is. Before this, Footer sat directly under `children`
+              in normal document flow: fine once a page's content was tall
+              enough to push it down, but on a short page — or, worse, while
+              a page was still loading and had rendered little or nothing —
+              Footer collapsed up right under the header, leaving a large
+              empty gap below it instead of at the bottom where it belongs. */}
+          <div className="flex-1">{children}</div>
           <Footer />
         </div>
         <BottomNav />
