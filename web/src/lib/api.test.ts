@@ -4,9 +4,12 @@
 // changing `process.env.NEXT_PHASE` after import wouldn't do anything.
 const ORIGINAL_ENV = process.env;
 
-function loadApiModule(nextPhase?: string): typeof import('./api') {
+function loadApiModule(
+  nextPhase?: string,
+  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = ORIGINAL_ENV.NODE_ENV,
+): typeof import('./api') {
   jest.resetModules();
-  process.env = { ...ORIGINAL_ENV, NEXT_PHASE: nextPhase };
+  process.env = { ...ORIGINAL_ENV, NEXT_PHASE: nextPhase, NODE_ENV: nodeEnv };
   return require('./api');
 }
 
@@ -61,5 +64,29 @@ describe('apiFetch build-time fallback', () => {
     const api = loadApiModule('phase-production-build');
 
     await expect(api.getCounties()).resolves.toEqual([]);
+  });
+});
+
+// Jest always runs with NODE_ENV=test, which apiFetch special-cases to an
+// absolute API_URL — masking what a real browser actually gets: API_URL is
+// the bare relative string "/api/v1" there. `new URL(...)` with no base
+// requires an absolute string and throws TypeError: Invalid URL on a
+// relative one, so every client component calling a lib/api.ts function
+// (the account page's getCategories/getCounties, admin content's same
+// pair, ...) would fail outright in the browser. Force a non-test
+// NODE_ENV to exercise that real branch under jsdom's `window`.
+describe('apiFetch in the browser', () => {
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  it('builds a resolvable absolute URL from the relative client-side API_URL instead of throwing', async () => {
+    mockFetchResolved(true, 200);
+    const api = loadApiModule(undefined, 'production');
+
+    await expect(api.getCategories()).resolves.toBeDefined();
+    const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+    expect(calledUrl).toBe(`${window.location.origin}/api/v1/categories`);
   });
 });

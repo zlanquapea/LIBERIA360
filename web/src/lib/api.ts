@@ -87,7 +87,17 @@ async function apiFetch<T>(
   params?: Record<string, string | number | boolean | undefined>,
   buildFallback?: T,
 ): Promise<T> {
-  const url = new URL(`${API_URL}${path}`);
+  // API_URL is a bare relative path ("/api/v1") in the browser — the
+  // one-argument `new URL(...)` form requires an absolute string and
+  // throws TypeError: Invalid URL on a relative one. Give it the page's
+  // own origin as a base there; server-side (test env or SSR) API_URL is
+  // already absolute, so the base is simply ignored per the URL spec —
+  // pass undefined rather than reference `window`, which doesn't exist
+  // during SSR.
+  const url = new URL(
+    `${API_URL}${path}`,
+    typeof window === "undefined" ? undefined : window.location.origin,
+  );
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== "") {
