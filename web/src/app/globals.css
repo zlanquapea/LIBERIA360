@@ -254,6 +254,19 @@ html.dark {
   .collapse-panel {
     transition: none !important;
   }
+
+  /* BrandLoader (app/loading.tsx) — the orbiting rings and pulsing halo
+     stop; the mark and its reveal snap straight to their resting state
+     rather than continuing to spin for however long a route takes to load. */
+  .brand-loader,
+  .brand-loader__ring,
+  .brand-loader__halo {
+    animation: none !important;
+  }
+  .brand-loader {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* LIBERIA360 first-impression splash — a short, one-time reveal. Motion is
@@ -508,6 +521,99 @@ html.dark {
    First visits leave the server-rendered splash visible with no content flash. */
 html[data-splash-seen='1'] .splash-screen {
   display: none;
+}
+
+/* BrandLoader (src/components/BrandLoader.tsx) — the "still loading" moment
+   used by app/loading.tsx on every route transition, so unlike the one-time
+   splash above this needs to look equally at home for 100ms or several
+   seconds. Two rings in the logo's own navy/gold/green palette orbit at
+   different speeds and directions around a static copy of the mark itself
+   (the mark never spins — a spinning logo reads as broken, not premium).
+   The whole thing fades in on a short delay so a near-instant load never
+   flashes it at all. */
+.brand-loader {
+  position: relative;
+  display: grid;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  place-items: center;
+  opacity: 0;
+  animation: brand-loader-reveal 240ms var(--ease-product, ease-out) 140ms both;
+}
+.brand-loader__halo {
+  position: absolute;
+  inset: -35%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 198 61 / 0.35), rgb(22 48 122 / 0.2) 55%, transparent 72%);
+  filter: blur(14px);
+  animation: brand-loader-halo-pulse 2.6s ease-in-out infinite;
+}
+.brand-loader__ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+.brand-loader__ring--outer {
+  border-top-color: #16307a;
+  border-right-color: #ffc63d;
+  animation: brand-loader-spin 1.3s cubic-bezier(0.55, 0.05, 0.35, 0.95) infinite;
+}
+.brand-loader__ring--inner {
+  inset: 18%;
+  border-width: 2.5px;
+  border-bottom-color: #5fbb42;
+  border-left-color: #3355ad;
+  animation: brand-loader-spin-reverse 1.85s cubic-bezier(0.55, 0.05, 0.35, 0.95) infinite;
+}
+.dark .brand-loader__ring--outer {
+  border-top-color: #6478c2;
+}
+.dark .brand-loader__ring--inner {
+  border-left-color: #93a1d6;
+}
+.brand-loader__mark {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 56%;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgb(8 26 80 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.4);
+}
+@keyframes brand-loader-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes brand-loader-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.06);
+  }
+}
+@keyframes brand-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes brand-loader-spin-reverse {
+  to {
+    transform: rotate(-360deg);
+  }
 }
 
 /* Atlantic Signal ticketing surface: modern pass cards, warm paper panels, navy framing, and signal-yellow orientation cues. Visual-only refinement; business logic remains in the existing ticket components. */
