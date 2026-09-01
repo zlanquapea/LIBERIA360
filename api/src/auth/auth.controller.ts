@@ -32,6 +32,15 @@ import { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
 import { toPublicUser } from "../users/user.serializer";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
+import { JwtService } from "@nestjs/jwt";
+
+// Used only if the token's own `exp` claim is somehow unreadable (should
+// never happen — every accessToken this controller hands to
+// establishSession() was just signed with JWT_EXPIRES_IN) — matches the
+// jwt config's own fallback (configuration.ts) so a caller relying on it
+// still gets the previously-hardcoded lifetime rather than a cookie with
+// no expiry at all.
+const FALLBACK_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 @ApiTags("Auth")
 @Controller("auth")
@@ -39,6 +48,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
   ) {}
 
   private establishSession(
@@ -50,10 +60,24 @@ export class AuthController {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      // Read the lifetime back off the token itself (its `exp` claim, in
+      // seconds since epoch) rather than hardcoding a duration here —
+      // JWT_EXPIRES_IN is configurable and this cookie must expire exactly
+      // when the token it carries stops working, whatever that's set to.
+      // A shorter-than-hardcoded lifetime previously left a stale cookie
+      // that kept failing auth for days after the token inside it died; a
+      // longer one lost the browser session while the token was still
+      // good.
+      maxAge: this.cookieMaxAgeMs(result.accessToken),
     });
     response.setHeader("Cache-Control", "no-store");
     return { user: result.user };
+  }
+
+  private cookieMaxAgeMs(accessToken: string): number {
+    const payload = this.jwtService.decode<{ exp?: number }>(accessToken);
+    if (!payload?.exp) return FALLBACK_COOKIE_MAX_AGE_MS;
+    return Math.max(0, payload.exp * 1000 - Date.now());
   }
 
   @Post("register")
