@@ -18,7 +18,17 @@ function tokenFromCookie(request: Request): string | null {
   if (!cookie) return null;
   for (const part of cookie.split(";")) {
     const [name, ...value] = part.trim().split("=");
-    if (name === SESSION_COOKIE) return decodeURIComponent(value.join("="));
+    if (name === SESSION_COOKIE) {
+      try {
+        return decodeURIComponent(value.join("="));
+      } catch {
+        // A malformed percent-encoding (e.g. a lone "%") makes
+        // decodeURIComponent throw URIError. That's just an invalid
+        // credential, not a server error — fall through to "no token
+        // found" so it takes the ordinary 401 path instead of a 500.
+        return null;
+      }
+    }
   }
   return null;
 }

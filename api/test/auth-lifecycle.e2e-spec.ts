@@ -61,6 +61,19 @@ describe("Auth lifecycle (e2e)", () => {
     await app.close();
   });
 
+  describe("Malformed session cookie", () => {
+    it("treats an unparseable cookie value as no credential (401), not a 500", async () => {
+      // A lone "%" isn't valid percent-encoding — decodeURIComponent throws
+      // URIError on it. JwtStrategy's cookie extractor must catch that and
+      // report "no token", the same as a missing cookie, rather than let it
+      // escape as an uncaught error.
+      await request(app.getHttpServer())
+        .get("/api/v1/auth/me")
+        .set("Cookie", "liberia360_session=%")
+        .expect(401);
+    });
+  });
+
   describe("Email verification", () => {
     it("sends a verification email at registration and lets it be confirmed exactly once", async () => {
       const email = "verify-user@example.com";
