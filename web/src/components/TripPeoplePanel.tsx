@@ -57,6 +57,10 @@ export function TripPeoplePanel({
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  const [pendingCancelInvitation, setPendingCancelInvitation] = useState<InvitationSummary | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!token || !isOwner) return;
     listInvitations(token, itineraryId)
@@ -139,16 +143,31 @@ export function TripPeoplePanel({
     }
   }
 
-  async function handleCancel(invitationId: string) {
-    if (!token) return;
-    setBusyId(invitationId);
-    setError(null);
+  // Gated behind a confirm dialog (Section: destructive-action pattern) —
+  // a mis-tapped × here silently revokes someone's invite entirely rather
+  // than just dismissing a row, so it deserves the same "are you sure" as
+  // removing an already-accepted collaborator does.
+  async function confirmCancelInvitation() {
+    if (!token || !pendingCancelInvitation) return;
+    setCancelling(true);
+    setCancelError(null);
     try {
-      setInvitations(await cancelInvitation(token, itineraryId, invitationId));
+      setInvitations(await cancelInvitation(token, itineraryId, pendingCancelInvitation.id));
+      setPendingCancelInvitation(null);
     } catch (err) {
-      setError(getFriendlyErrorMessage(err, { context: { action: 'cancel-invitation', invitationId } }));
+      if (isNotFoundError(err)) {
+        // Already gone (cancelled elsewhere, or resolved) — same outcome.
+        setPendingCancelInvitation(null);
+        reloadInvitations();
+      } else {
+        setCancelError(
+          getFriendlyErrorMessage(err, {
+            context: { action: 'cancel-invitation', invitationId: pendingCancelInvitation.id },
+          }),
+        );
+      }
     } finally {
-      setBusyId(null);
+      setCancelling(false);
     }
   }
 
@@ -242,10 +261,9 @@ export function TripPeoplePanel({
                 )}
                 <button
                   type="button"
-                  disabled={busyId === invitation.id}
-                  onClick={() => handleCancel(invitation.id)}
+                  onClick={() => setPendingCancelInvitation(invitation)}
                   aria-label={`Cancel invitation to ${invitation.email}`}
-                  className="text-slate-400 hover:text-flag-700 disabled:opacity-50 dark:hover:text-flag-300"
+                  className="text-slate-400 hover:text-flag-700 dark:hover:text-flag-300"
                 >
                   ×
                 </button>
@@ -330,6 +348,23 @@ export function TripPeoplePanel({
           if (removing) return;
           setPendingRemove(null);
           setRemoveError(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingCancelInvitation != null}
+        title={`Cancel the invitation to ${pendingCancelInvitation?.invitee?.name ?? pendingCancelInvitation?.email ?? 'this person'}?`}
+        description="They'll need a brand-new invitation to join this trip."
+        confirmLabel="Cancel Invitation"
+        cancelLabel="Keep It"
+        loadingLabel="Cancelling…"
+        isLoading={cancelling}
+        error={cancelError}
+        onConfirm={confirmCancelInvitation}
+        onCancel={() => {
+          if (cancelling) return;
+          setPendingCancelInvitation(null);
+          setCancelError(null);
         }}
       />
     </section>
