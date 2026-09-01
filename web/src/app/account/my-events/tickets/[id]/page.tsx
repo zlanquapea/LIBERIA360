@@ -13,6 +13,7 @@ import {
 } from "@/lib/event-ticket-api";
 import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
 import { HttpError } from "@/lib/http";
+import { BrandLoader } from "@/components/BrandLoader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { NewEventForm } from "@/components/NewEventForm";
 import { SuccessBanner } from "@/components/SuccessBanner";
@@ -146,8 +147,9 @@ export default function ManageEventPage() {
 
   if (!ready)
     return (
-      <main className="mx-auto max-w-2xl px-4 py-10 text-sm text-slate-500">
-        Loading…
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   if (!user)

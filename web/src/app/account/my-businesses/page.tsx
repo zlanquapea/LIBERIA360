@@ -8,6 +8,7 @@ import { getMyBusinesses } from '@/lib/business-api';
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { resolveImageUrl } from '@/lib/images';
+import { BrandLoader } from '@/components/BrandLoader';
 import { SafeImage } from '@/components/SafeImage';
 import type { Business } from '@/lib/types';
 
@@ -41,7 +42,12 @@ export default function MyBusinessesPage() {
   }, [ready, token]);
 
   if (!ready || loading) {
-    return <main className="mx-auto max-w-3xl px-4 py-10 text-sm text-slate-500 dark:text-slate-400">Loading…</main>;
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+      </main>
+    );
   }
 
   if (!user) {

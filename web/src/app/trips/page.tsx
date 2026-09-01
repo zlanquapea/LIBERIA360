@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { deleteItinerary, getMyItineraries, getSharedWithMe, removeCollaborator } from '@/lib/itinerary-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand } from '@/lib/format';
+import { BrandLoader } from '@/components/BrandLoader';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
 import type { Itinerary } from '@/lib/types';
@@ -131,8 +132,9 @@ export default function TripsPage() {
 
   if (!ready || loading) {
     return (
-      <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

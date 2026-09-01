@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getBusinessAnalytics } from '@/lib/analytics-api';
 import { getMyBusinesses } from '@/lib/business-api';
 import { AnalyticsSummary } from '@/components/AnalyticsSummary';
+import { BrandLoader } from '@/components/BrandLoader';
 import type { Business, BusinessAnalytics } from '@/lib/types';
 
 // Place Dashboard (Tech Spec §3.3 "business analytics" — "views, saves,
@@ -44,8 +45,9 @@ export default function AnalyticsPage() {
 
   if (!ready || loading) {
     return (
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

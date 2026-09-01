@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { BrandLoader } from './BrandLoader';
 
 // Shared client-side gate for every /admin page (Tech Spec §7/§8) — mirrors
 // the API's AdminGuard, but purely a UX nicety: the real enforcement is
@@ -13,8 +14,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return (
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

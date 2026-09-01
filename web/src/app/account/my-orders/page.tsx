@@ -9,6 +9,7 @@ import {
   ShoppingBagIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
+import { BrandLoader } from '@/components/BrandLoader';
 import FoodOrderMessageThread from '@/components/FoodOrderMessageThread';
 import { cancelFoodOrder, getMyFoodOrders } from '@/lib/food-orders-api';
 import { formatCost, formatFoodOrderStatus } from '@/lib/format';
@@ -65,7 +66,12 @@ export default function MyOrdersPage() {
   }
 
   if (!ready) {
-    return <main className="mx-auto max-w-3xl px-4 py-10 text-center text-slate-500">Loading your orders…</main>;
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading your orders…</p>
+      </main>
+    );
   }
 
   if (!user) {

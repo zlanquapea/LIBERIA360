@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 import { createSupportTicket, getMySupportTickets } from "@/lib/support-api";
 import { uploadImage } from "@/lib/uploads-api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -84,7 +85,13 @@ export default function CustomerSupportPage() {
       setBusy(false);
     }
   }
-  if (!ready) return <main className="mx-auto max-w-3xl p-6">Loading…</main>;
+  if (!ready)
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+      </main>
+    );
   if (!token)
     return (
       <main className="mx-auto max-w-md p-8 text-center">
