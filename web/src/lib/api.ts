@@ -27,11 +27,23 @@ import type {
   SponsoredPlacement,
 } from "./types";
 
+export function serverApiOrigin(): string {
+  // NEXT_PUBLIC_API_URL is retained as a compatibility fallback for hosts
+  // (notably existing Railway services) configured before API_ORIGIN became
+  // the preferred server-only variable. It may contain the old /api/v1
+  // suffix, so normalize it before constructing API_URL.
+  const configuredOrigin =
+    process.env.API_ORIGIN || process.env.NEXT_PUBLIC_API_URL;
+  return (configuredOrigin || "http://localhost:3001")
+    .replace(/\/+$/, "")
+    .replace(/\/api\/v1$/, "");
+}
+
 const API_URL =
   process.env.NODE_ENV === "test"
     ? "http://localhost:3001/api/v1"
     : typeof window === "undefined"
-      ? `${process.env.API_ORIGIN ?? "http://localhost:3001"}/api/v1`
+      ? `${serverApiOrigin()}/api/v1`
       : "/api/v1";
 
 class ApiError extends Error {
