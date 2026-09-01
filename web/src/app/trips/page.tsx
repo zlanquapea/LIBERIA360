@@ -19,8 +19,8 @@ import type { Itinerary } from '@/lib/types';
 // page.
 const SUBSTANTIAL_STOPS_THRESHOLD = 5;
 
-// "My Trips" — saved itineraries from both Build My Liberia Trip and
-// Weekend Explorer (Tech Spec §4.3, §3.2). Client-only: the API's JWT
+// "My Trips" — saved itineraries from both Plan a Trip and Weekend
+// Explorer (Tech Spec §4.3, §3.2). Client-only: the API's JWT
 // auth is browser-localStorage-based, not cookies, so there's no way for
 // a server component to know who's asking. Trips someone else invited
 // this user onto as a collaborator show in their own "Shared with me"
@@ -175,7 +175,7 @@ export default function TripsPage() {
             href="/trips/new"
             className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
           >
-            + Build a trip
+            + Plan a trip
           </Link>
         </div>
       </div>

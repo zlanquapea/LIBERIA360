@@ -1,6 +1,6 @@
-// Shared by WeekendExplorerForm (which requires a starting point) and
-// TripPlannerForm (where it's an optional refinement) — same browser
-// Geolocation API, same error copy either way.
+// Used by WeekendExplorerForm, which requires a starting point to search
+// outward from — TripPlannerForm doesn't use this at all (a trip's stops
+// are hand-picked by the traveler, not sequenced from a starting point).
 export function geolocationErrorMessage(err: GeolocationPositionError): string {
   switch (err.code) {
     case err.PERMISSION_DENIED:

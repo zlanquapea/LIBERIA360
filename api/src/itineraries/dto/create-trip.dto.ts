@@ -3,22 +3,17 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
-  IsInt,
-  IsLatitude,
-  IsLongitude,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   MaxLength,
-  Min,
 } from "class-validator";
 import { BudgetBand, TripVisibility } from "../entities/itinerary.enums";
 
 /** POST /itineraries — the real "create a trip" endpoint, as opposed to
  * POST /itineraries/preview (GenerateTripDto), which needs nothing beyond
- * duration/interests/budget since nothing is saved there. A full separate
+ * dates/interests/budget since nothing is saved there. A full separate
  * class rather than extending GenerateTripDto — decorator metadata
  * doesn't cleanly "narrow from optional to required" across a subclass
  * (class-validator combines a property's decorators up the whole
@@ -35,18 +30,11 @@ import { BudgetBand, TripVisibility } from "../entities/itinerary.enums";
  * GenerateTripDto.
  */
 export class CreateTripDto {
-  @IsInt()
-  @Min(1)
-  @Max(14)
-  durationDays: number;
-
-  @IsOptional()
   @IsDateString()
-  startDate?: string;
+  startDate: string;
 
-  @IsOptional()
   @IsDateString()
-  endDate?: string;
+  endDate: string;
 
   @IsArray()
   @ArrayMaxSize(10)
@@ -55,14 +43,6 @@ export class CreateTripDto {
 
   @IsEnum(BudgetBand)
   budgetBand: BudgetBand;
-
-  @IsOptional()
-  @IsLatitude()
-  startLat?: number;
-
-  @IsOptional()
-  @IsLongitude()
-  startLng?: number;
 
   @IsString()
   @IsNotEmpty()

@@ -48,15 +48,15 @@ import { TripChatService } from "../trip-chat/trip-chat.service";
 import { AppConfig } from "../config/configuration";
 import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 
-// Home screen "Explore the map" default center — used as the implicit
-// starting point for "Build My Liberia Trip" when no location is given
-// (Weekend Explorer always requires an explicit starting point).
-const MONROVIA_CENTER = { lat: 6.3106, lng: -10.8047 };
-
 const STOPS_PER_DAY = 2;
 // Matches web/src/lib/format.ts's estimateTravelTime assumption, so the
 // same "~35 km/h" mental model holds on both sides of the API.
 const ASSUMED_KMH = 35;
+
+// Was previously enforced as a @Min(1)/@Max(14) bound on a client-supplied
+// durationDays field; now that a trip is framed by real dates (see
+// resolveDurationDays), it's the bound on the date range itself instead.
+const MAX_TRIP_DURATION_DAYS = 14;
 
 // The itinerary is a sequence of things-to-do stops, not a full logistics
 // plan — hotels/restaurants are deliberately left out of the generated
@@ -175,18 +175,22 @@ export interface TripJoinRequestSummary {
 }
 
 // Product review readout (Aug 22, 2026), "guest-first trip planning": a
-// generated-but-not-yet-saved route, returned by previewTrip. Deliberately
-// not an ItineraryResponse — there's no id, userId, or createdAt because
-// nothing was persisted. Saving is just calling generateTrip afterward
-// with the same inputs, which is deterministic against unchanged catalog
-// data, rather than a second endpoint that has to trust client-supplied
-// stop data back into the DB.
+// not-yet-saved trip shell, returned by previewTrip. Deliberately not an
+// ItineraryResponse — there's no id, userId, or createdAt because nothing
+// was persisted. Saving is just calling generateTrip afterward with the
+// same inputs, rather than a second endpoint that has to trust
+// client-supplied stop data back into the DB. `stops` is always empty
+// (see generateTrip's doc comment) — kept on the shape so this stays
+// structurally interchangeable with ItineraryResponse for anything that
+// renders either one (ItineraryStops, the day list, …).
 export interface TripPreviewResponse {
   title: string;
   kind: ItineraryKind;
   durationDays: number;
   budgetBand: BudgetBand;
   interests: string[];
+  startDate: string;
+  endDate: string;
   stops: ItineraryStopWithPlace[];
 }
 
@@ -207,22 +211,31 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Shared by generateTrip/previewTrip: an explicit starting point (both
-// fields) always wins; a request giving only one of the two is a client
-// bug worth surfacing rather than silently guessing which was meant.
-function resolveStart(dto: { startLat?: number; startLng?: number }): {
-  lat: number;
-  lng: number;
-} {
-  if (dto.startLat !== undefined && dto.startLng !== undefined) {
-    return { lat: dto.startLat, lng: dto.startLng };
-  }
-  if (dto.startLat !== undefined || dto.startLng !== undefined) {
+// Shared by generateTrip/previewTrip: a trip is framed by a real start and
+// end date rather than a bare day count (Sept 2026 product note — "add a
+// start date and end date," "the user should have control"), so the
+// day-count the rest of this service still stores (durationDays, used by
+// the day picker on AddTripStop and the "X days" summary line) is derived
+// from that range instead of trusted as a separate client input that could
+// silently drift out of sync with it.
+function resolveDurationDays(dto: {
+  startDate: string;
+  endDate: string;
+}): number {
+  const start = new Date(dto.startDate);
+  const end = new Date(dto.endDate);
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  if (days < 1) {
     throw new BadRequestException(
-      "startLat and startLng must both be provided together",
+      "The end date can't be before the start date.",
     );
   }
-  return MONROVIA_CENTER;
+  if (days > MAX_TRIP_DURATION_DAYS) {
+    throw new BadRequestException(
+      `Trips can be at most ${MAX_TRIP_DURATION_DAYS} days — pick a shorter date range.`,
+    );
+  }
+  return days;
 }
 
 function budgetThreshold(band: BudgetBand): number | null {
@@ -257,6 +270,16 @@ export class ItinerariesService {
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
+  /** "Plan a Trip" (redesigned per the Sept 2026 product note — "the user
+   * should have control," "a person can plan a 3-day trip at a single
+   * location"). No route is auto-generated here: earlier versions filled
+   * every day with catalog places picked by interest/budget and proximity
+   * alone, which routinely scattered stops across the whole country with
+   * no regard for the destination the traveler actually searched for or
+   * whether they wanted one place for the whole trip. The trip is created
+   * with its date range and nothing else — the traveler adds their own
+   * stops afterward from the trip page (AddTripStop), to whichever day(s)
+   * they choose, as few or as many as the trip actually needs. */
   async generateTrip(
     userId: string,
     dto: CreateTripDto,
@@ -269,58 +292,45 @@ export class ItinerariesService {
         `Place "${dto.destinationPlaceId}" not found`,
       );
     }
-    const candidates = await this.findCandidates(dto.interests, dto.budgetBand);
-    const ordered = this.sequenceByProximity(
-      candidates,
-      resolveStart(dto),
-      dto.durationDays * STOPS_PER_DAY,
-    );
-    const stops = this.assignDays(ordered, dto.durationDays);
+    const durationDays = resolveDurationDays(dto);
 
     const itinerary = await this.itineraryRepo.save(
       this.itineraryRepo.create({
         userId,
         title: dto.title,
         kind: ItineraryKind.TRIP,
-        durationDays: dto.durationDays,
+        durationDays,
         budgetBand: dto.budgetBand,
         interests: dto.interests,
         destinationPlaceId: dto.destinationPlaceId,
         visibility: dto.visibility,
         description: dto.description ?? null,
         coverImage: dto.coverImage ?? null,
-        startDate: dto.startDate ? new Date(dto.startDate) : null,
-        endDate: dto.endDate ? new Date(dto.endDate) : null,
-        stops: stops.map(({ place, ...rest }) => ({
-          ...rest,
-          placeId: place.id,
-        })),
+        startDate: new Date(dto.startDate),
+        endDate: new Date(dto.endDate),
+        stops: [],
       }),
     );
     itinerary.destination = destination;
 
-    return this.toResponse(itinerary, ordered, []);
+    return this.toResponse(itinerary, [], []);
   }
 
-  /** Same route-building logic as generateTrip, minus the save — lets a
-   * visitor with no account see a real generated trip before deciding
-   * whether it's worth logging in to keep. */
+  /** Same as generateTrip minus the save — lets a visitor with no account
+   * see exactly what they're about to create (name, dates, destination)
+   * before deciding whether it's worth logging in to keep it. */
   async previewTrip(dto: GenerateTripDto): Promise<TripPreviewResponse> {
-    const candidates = await this.findCandidates(dto.interests, dto.budgetBand);
-    const ordered = this.sequenceByProximity(
-      candidates,
-      resolveStart(dto),
-      dto.durationDays * STOPS_PER_DAY,
-    );
-    const stops = this.assignDays(ordered, dto.durationDays);
+    const durationDays = resolveDurationDays(dto);
 
     return {
-      title: dto.title ?? `${dto.durationDays}-Day Liberia Trip`,
+      title: dto.title ?? `${durationDays}-Day Liberia Trip`,
       kind: ItineraryKind.TRIP,
-      durationDays: dto.durationDays,
+      durationDays,
       budgetBand: dto.budgetBand,
       interests: dto.interests,
-      stops,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      stops: [],
     };
   }
 
@@ -1129,6 +1139,10 @@ export class ItinerariesService {
     return this.findOne(userId, itineraryId);
   }
 
+  /** Weekend Explorer only now — generateTrip/previewTrip stopped
+   * auto-matching places by interest/budget (see generateTrip's doc
+   * comment); "what's reachable and worth doing nearby" is still exactly
+   * what Weekend Explorer is for, so its own route-building keeps this. */
   private async findCandidates(
     interestSlugs: string[],
     budgetBand: BudgetBand,

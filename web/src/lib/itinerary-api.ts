@@ -14,16 +14,14 @@ import type {
 import { apiRequest, authHeader } from './http';
 
 export interface GenerateTripInput {
-  durationDays: number;
-  startDate?: string;
-  endDate?: string;
+  // A trip is framed by a real date range rather than a bare day count
+  // (Sept 2026 product note — "add a start date and end date," "the user
+  // should have control"); the API derives durationDays from these
+  // itself, so there's nothing here for the two to drift out of sync on.
+  startDate: string;
+  endDate: string;
   interests: string[];
   budgetBand: BudgetBand;
-  // Optional starting point (must be given together, or not at all) — the
-  // route is built outward from Monrovia's center when omitted, same as
-  // before this existed.
-  startLat?: number;
-  startLng?: number;
   title?: string;
   // Social travel experience (Aug 2026 spec) — all optional here since
   // POST /itineraries/preview (the only caller that leaves them out)

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TripPlannerForm } from './TripPlannerForm';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
@@ -82,30 +82,21 @@ const DESTINATION: Place = {
   reviewedByUserId: null,
 };
 
-const STOP = {
-  day: 1,
-  order: 0,
-  notes: null,
-  place: {
-    id: 'p1',
-    slug: 'robertsport',
-    name: 'Robertsport',
-    type: 'beach',
-    city: 'Robertsport',
-    category: { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
-  },
-};
-
-// Fills the required name + destination fields (Aug 2026 social-trip spec)
-// shared by every "actually submits" test below — picking the destination
-// exercises the real DestinationAutocomplete search-and-select flow rather
-// than reaching into component state.
+// Fills the required name + destination + date-range fields (Aug 2026
+// social-trip spec + Sept 2026 date-range redesign) shared by every
+// "actually submits" test below — picking the destination exercises the
+// real DestinationAutocomplete search-and-select flow rather than
+// reaching into component state. `type="date"` inputs don't reliably
+// accept userEvent.type across jsdom versions, so those two are set via
+// fireEvent.change instead, same as this codebase's other date-input tests.
 async function fillRequiredFields(name: string) {
   (getPlaces as jest.Mock).mockResolvedValue({ data: [DESTINATION], meta: { total: 1, page: 1, limit: 8, totalPages: 1 } });
   await userEvent.type(screen.getByLabelText(/trip name/i), name);
   await userEvent.type(screen.getByPlaceholderText(/robertsport/i), 'Robert');
   await screen.findByText('Robertsport');
   await userEvent.click(screen.getByText('Robertsport'));
+  fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-01' } });
+  fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-03' } });
 }
 
 describe('TripPlannerForm', () => {
@@ -116,28 +107,33 @@ describe('TripPlannerForm', () => {
     push.mockClear();
   });
 
-  it('lets a signed-out visitor preview a trip with no login prompt', async () => {
+  it('lets a signed-out visitor preview a trip with no login prompt, and no auto-generated stops', async () => {
     mockFetchOnce(201, {
       title: '3-Day Liberia Trip',
       kind: 'trip',
       durationDays: 3,
       budgetBand: 'moderate',
       interests: [],
-      stops: [STOP],
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
+      stops: [],
     });
 
     render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
 
-    await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 
     expect(await screen.findByText('3-Day Liberia Trip')).toBeInTheDocument();
     expect(screen.getByText(/nothing.s saved yet/i)).toBeInTheDocument();
-    expect(screen.getByText('Robertsport')).toBeInTheDocument();
+    expect(screen.getByText(/Robertsport/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /log in to save this trip/i })).toBeInTheDocument();
 
-    const [url] = (global.fetch as jest.Mock).mock.calls[0];
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/itineraries/preview');
+    expect(JSON.parse(init.body)).toEqual(
+      expect.objectContaining({ startDate: '2026-12-01', endDate: '2026-12-03' }),
+    );
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -148,19 +144,22 @@ describe('TripPlannerForm', () => {
       durationDays: 3,
       budgetBand: 'moderate',
       interests: [],
-      stops: [STOP],
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
+      stops: [],
     });
 
     render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
-    await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     await screen.findByRole('button', { name: /log in to save this trip/i });
 
     await userEvent.click(screen.getByRole('button', { name: /log in to save this trip/i }));
 
     expect(push).toHaveBeenCalledWith('/login?next=/trips/new');
     expect(takePendingTripDraft()).toEqual({
-      durationDays: 3,
+      startDate: '2026-12-01',
+      endDate: '2026-12-03',
       budgetBand: 'moderate',
       interests: [],
       title: '3-Day Liberia Trip',
@@ -172,7 +171,8 @@ describe('TripPlannerForm', () => {
 
   it('auto-saves a resumed draft the instant a returning visitor is signed in', async () => {
     savePendingTripDraft({
-      durationDays: 5,
+      startDate: '2026-12-05',
+      endDate: '2026-12-09',
       budgetBand: 'budget',
       interests: ['beaches'],
       title: 'My Trip',
@@ -191,7 +191,8 @@ describe('TripPlannerForm', () => {
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/itineraries');
     expect(JSON.parse(init.body)).toEqual({
-      durationDays: 5,
+      startDate: '2026-12-05',
+      endDate: '2026-12-09',
       budgetBand: 'budget',
       interests: ['beaches'],
       title: 'My Trip',
@@ -202,72 +203,44 @@ describe('TripPlannerForm', () => {
     expect(window.sessionStorage.getItem('liberia360:pending-trip-draft')).toBeNull();
   });
 
-  it('sends startLat/startLng once "Use my current location" resolves', async () => {
-    const getCurrentPosition = jest.fn((success: PositionCallback) => {
-      success({ coords: { latitude: 6.3, longitude: -10.8 } } as GeolocationPosition);
-    });
-    Object.defineProperty(global.navigator, 'geolocation', {
-      value: { getCurrentPosition },
-      configurable: true,
-    });
-    setStoredAuth({ token: 'tok', user: USER });
-    mockFetchOnce(201, { id: 'itin-3', title: '3-Day Liberia Trip' });
-
-    render(<TripPlannerForm />);
-    await fillRequiredFields('3-Day Liberia Trip');
-    await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
-    expect(await screen.findByText(/using your current location/i)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /^build my trip$/i }));
-
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/trips/itin-3'));
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(JSON.parse(init.body)).toEqual(
-      expect.objectContaining({ startLat: 6.3, startLng: -10.8 }),
-    );
-  });
-
-  it('shows a friendly error and never blocks trip building when location access is denied', async () => {
-    const getCurrentPosition = jest.fn((_success: PositionCallback, error: PositionErrorCallback) => {
-      error({ code: 1, PERMISSION_DENIED: 1 } as GeolocationPositionError);
-    });
-    Object.defineProperty(global.navigator, 'geolocation', {
-      value: { getCurrentPosition },
-      configurable: true,
-    });
-
-    render(<TripPlannerForm />);
-    await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/location access was denied/i);
-    // Still fully usable without a location — the field is optional.
-    expect(screen.getByRole('button', { name: /preview my trip/i })).toBeEnabled();
-  });
-
-  it('requires a trip name and destination before it can be built', async () => {
+  it('requires a trip name, destination, and a valid date range before it can be created', async () => {
     render(<TripPlannerForm />);
 
-    await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/give your trip a name/i);
 
     await userEvent.type(screen.getByLabelText(/trip name/i), 'My Trip');
-    await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/choose a destination/i);
+
+    (getPlaces as jest.Mock).mockResolvedValue({ data: [DESTINATION], meta: { total: 1, page: 1, limit: 8, totalPages: 1 } });
+    await userEvent.type(screen.getByPlaceholderText(/robertsport/i), 'Robert');
+    await screen.findByText('Robertsport');
+    await userEvent.click(screen.getByText('Robertsport'));
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/choose a start and end date/i);
+
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-10' } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-01' } });
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/end date can.t be before the start date/i);
   });
 
-  it('signed-in visitors with no pending draft still build and save a trip directly', async () => {
+  it('signed-in visitors with no pending draft still create and save a trip directly, with no stops to pick', async () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-2', title: '3-Day Liberia Trip' });
 
     render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
-    expect(await screen.findByRole('button', { name: /^build my trip$/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^start planning$/i })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /^build my trip$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^start planning$/i }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/trips/itin-2'));
-    const [url] = (global.fetch as jest.Mock).mock.calls[0];
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/itineraries');
     expect(url).not.toContain('/preview');
+    expect(JSON.parse(init.body)).not.toHaveProperty('durationDays');
+    expect(JSON.parse(init.body)).not.toHaveProperty('startLat');
   });
 });

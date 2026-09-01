@@ -787,17 +787,20 @@ export interface ItineraryStopWithPlace {
 
 // POST /itineraries/preview — the one itinerary endpoint that needs no
 // account (product review readout, Aug 22, 2026: "guest-first trip
-// planning" — let a visitor see a real generated route before asking them
-// to log in). Deliberately not an Itinerary/ItineraryDetail: there's no
-// id, userId, or createdAt because nothing was persisted. "Save this trip"
-// after logging in is just calling the normal generate-trip endpoint with
-// the same inputs, which is deterministic against unchanged catalog data.
+// planning" — let a visitor see what they're about to create before
+// asking them to log in). Deliberately not an Itinerary/ItineraryDetail:
+// there's no id, userId, or createdAt because nothing was persisted.
+// "Save this trip" after logging in is just calling the normal
+// generate-trip endpoint with the same inputs. `stops` is always empty —
+// see ItinerariesService.generateTrip's doc comment on the API side.
 export interface TripPreviewResponse {
   title: string;
   kind: ItineraryKind;
   durationDays: number;
   budgetBand: BudgetBand;
   interests: string[];
+  startDate: string;
+  endDate: string;
   stops: ItineraryStopWithPlace[];
 }
 
