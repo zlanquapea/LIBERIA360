@@ -86,10 +86,25 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
   const [openReactionPickerId, setOpenReactionPickerId] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
+  const [newMessagesBelow, setNewMessagesBelow] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const isLoadingOlderRef = useRef(false);
   const messagesRef = useRef<TripMessage[]>([]);
   messagesRef.current = messages;
+
+  // "Near enough to the bottom to be following along" — every poll (every
+  // 3s) re-merges the latest page whether or not anything new arrived, so
+  // without this a visitor who scrolls up to read earlier messages gets
+  // yanked back to the bottom on the very next poll. Scrolling should only
+  // ever follow someone who's already at the bottom; someone reading
+  // history keeps their place, and sees a "New messages" pill instead.
+  const NEAR_BOTTOM_PX = 80;
+  function isNearBottom(): boolean {
+    const el = scrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -124,6 +139,8 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
   }, [token, itineraryId]);
 
   function mergeIncoming(incoming: TripMessage[]) {
+    const wasNearBottom = isNearBottom();
+    const hasGenuinelyNew = incoming.some((m) => !messagesRef.current.some((existing) => existing.id === m.id));
     setMessages((prev) => {
       const byId = new Map(prev.map((m) => [m.id, m]));
       for (const m of incoming) byId.set(m.id, m);
@@ -135,14 +152,24 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
     // matching one of ours means our own optimistic bubble can retire —
     // covers the race where the poll wins against our own POST response.
     setPending((prev) => prev.filter((p) => !incoming.some((m) => m.clientId && m.clientId === p.localId)));
-    if (!isLoadingOlderRef.current) {
+    if (isLoadingOlderRef.current) return;
+    if (wasNearBottom) {
       requestAnimationFrame(scrollToBottom);
+    } else if (hasGenuinelyNew) {
+      setNewMessagesBelow(true);
     }
   }
 
   function scrollToBottom() {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    setNewMessagesBelow(false);
+  }
+
+  // Clears the "New messages" pill the moment someone scrolls back down on
+  // their own, not just when they tap the pill itself.
+  function handleScroll() {
+    if (newMessagesBelow && isNearBottom()) setNewMessagesBelow(false);
   }
 
   async function loadOlder() {
@@ -313,7 +340,21 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
       ) : loadError && messages.length === 0 ? (
         <p className="mx-3 my-3 rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">{loadError}</p>
       ) : (
-        <div ref={scrollRef} className="flex max-h-[28rem] min-h-[10rem] flex-col gap-2 overflow-y-auto px-3 py-3">
+        <div className="relative">
+          {newMessagesBelow && (
+            <button
+              type="button"
+              onClick={() => requestAnimationFrame(scrollToBottom)}
+              className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white shadow-lg hover:bg-brand-800"
+            >
+              ↓ New messages
+            </button>
+          )}
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex max-h-[28rem] min-h-[10rem] flex-col gap-2 overflow-y-auto px-3 py-3"
+          >
           {hasMoreOlder && messages.length > 0 && (
             <button
               type="button"
@@ -363,6 +404,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
           {pending.map((item) => (
             <PendingMessageRow key={item.localId} item={item} onRetry={() => retry(item)} onDiscard={() => setPending((prev) => prev.filter((p) => p.localId !== item.localId))} />
           ))}
+          </div>
         </div>
       )}
 
