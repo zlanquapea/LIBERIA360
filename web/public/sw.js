@@ -10,7 +10,7 @@
 // the visitor plainly "this is a saved copy" instead of silently serving
 // possibly-stale data with no indication either way.
 
-const CACHE_NAME = 'liberia360-shell-v2';
+const CACHE_NAME = 'liberia360-shell-v3';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -31,6 +31,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+  // Never put API responses, cross-origin resources, or authenticated
+  // requests in persistent Cache Storage. API data must always come from
+  // the network and is deliberately unavailable offline.
+  if (
+    url.origin !== self.location.origin ||
+    url.pathname === '/api' ||
+    url.pathname.startsWith('/api/') ||
+    event.request.headers.has('authorization')
+  ) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -39,6 +52,15 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/'))),
+  );
+});
+
+// Logout posts this message from every open client. Delete every app cache,
+// including caches created by older service-worker versions.
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CLEAR_PRIVATE_CACHES') return;
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
   );
 });
 

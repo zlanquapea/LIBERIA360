@@ -7,6 +7,7 @@ import sharp from "sharp";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { localUploadsDir } from "../src/uploads/local-uploads-dir";
+import { sessionCookie } from "./helpers/session-cookie";
 
 // Real HTTP-level coverage of POST /uploads/image — separate from the unit
 // tests in src/uploads (which mock the storage layer and image processing
@@ -50,7 +51,7 @@ describe("Uploads (e2e)", () => {
         password: "password123",
       })
       .expect(201);
-    token = register.body.accessToken;
+    token = sessionCookie(register);
   });
 
   afterAll(async () => {
@@ -76,7 +77,7 @@ describe("Uploads (e2e)", () => {
   it("rejects a disallowed file type", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/uploads/image")
-      .set("Authorization", `Bearer ${token}`)
+      .set("Cookie", token)
       .attach("file", Buffer.from("not an image"), {
         filename: "note.txt",
         contentType: "text/plain",
@@ -87,7 +88,7 @@ describe("Uploads (e2e)", () => {
   it("rejects a file whose bytes aren't a real image even if the MIME type header claims otherwise", async () => {
     await request(app.getHttpServer())
       .post("/api/v1/uploads/image")
-      .set("Authorization", `Bearer ${token}`)
+      .set("Cookie", token)
       .attach("file", Buffer.from("definitely-not-a-jpeg"), {
         filename: "fake.jpg",
         contentType: "image/jpeg",
@@ -110,7 +111,7 @@ describe("Uploads (e2e)", () => {
 
     const res = await request(app.getHttpServer())
       .post("/api/v1/uploads/image")
-      .set("Authorization", `Bearer ${token}`)
+      .set("Cookie", token)
       .attach("file", original, {
         filename: "room.jpg",
         contentType: "image/jpeg",
@@ -146,7 +147,7 @@ describe("Uploads (e2e)", () => {
 
     const res = await request(app.getHttpServer())
       .post("/api/v1/uploads/image")
-      .set("Authorization", `Bearer ${token}`)
+      .set("Cookie", token)
       .attach("file", original, {
         filename: "room.jpg",
         contentType: "image/jpeg",

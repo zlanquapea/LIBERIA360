@@ -4,6 +4,7 @@ import { DataSource } from "typeorm";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { MailService } from "../src/mail/mail.service";
+import { sessionCookie } from "./helpers/session-cookie";
 
 // Full HTTP round-trip through the account-lifecycle endpoints added for
 // production readiness: email verification, password reset, change
@@ -60,6 +61,19 @@ describe("Auth lifecycle (e2e)", () => {
     await app.close();
   });
 
+  describe("Malformed session cookie", () => {
+    it("treats an unparseable cookie value as no credential (401), not a 500", async () => {
+      // A lone "%" isn't valid percent-encoding — decodeURIComponent throws
+      // URIError on it. JwtStrategy's cookie extractor must catch that and
+      // report "no token", the same as a missing cookie, rather than let it
+      // escape as an uncaught error.
+      await request(app.getHttpServer())
+        .get("/api/v1/auth/me")
+        .set("Cookie", "liberia360_session=%")
+        .expect(401);
+    });
+  });
+
   describe("Email verification", () => {
     it("sends a verification email at registration and lets it be confirmed exactly once", async () => {
       const email = "verify-user@example.com";
@@ -105,12 +119,12 @@ describe("Auth lifecycle (e2e)", () => {
         .post("/api/v1/auth/register")
         .send({ name: "Resend User", email, password: "password123" })
         .expect(201);
-      const accessToken = register.body.accessToken as string;
+      const accessToken = sessionCookie(register);
 
       mailService.sendEmailVerification.mockClear();
       await request(app.getHttpServer())
         .post("/api/v1/auth/resend-verification")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .expect(200);
       expect(mailService.sendEmailVerification).toHaveBeenCalledTimes(1);
       const token = tokenFromUrl(
@@ -125,7 +139,7 @@ describe("Auth lifecycle (e2e)", () => {
       mailService.sendEmailVerification.mockClear();
       await request(app.getHttpServer())
         .post("/api/v1/auth/resend-verification")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .expect(200);
       expect(mailService.sendEmailVerification).not.toHaveBeenCalled();
     });
@@ -138,11 +152,11 @@ describe("Auth lifecycle (e2e)", () => {
         .post("/api/v1/auth/register")
         .send({ name: "Reset User", email, password: "old-password-123" })
         .expect(201);
-      const oldToken = register.body.accessToken as string;
+      const oldToken = sessionCookie(register);
 
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${oldToken}`)
+        .set("Cookie", oldToken)
         .expect(200);
 
       const forgot = await request(app.getHttpServer())
@@ -170,7 +184,7 @@ describe("Auth lifecycle (e2e)", () => {
       // account's password.
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${oldToken}`)
+        .set("Cookie", oldToken)
         .expect(401);
 
       await request(app.getHttpServer())
@@ -208,13 +222,13 @@ describe("Auth lifecycle (e2e)", () => {
         .post("/api/v1/auth/register")
         .send({ name: "Lifecycle User", email, password })
         .expect(201);
-      accessToken = register.body.accessToken as string;
+      accessToken = sessionCookie(register);
     });
 
     it("rejects a password change with the wrong current password", async () => {
       await request(app.getHttpServer())
         .patch("/api/v1/auth/password")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .send({ currentPassword: "wrong", newPassword: "newpassword123" })
         .expect(401);
     });
@@ -222,20 +236,20 @@ describe("Auth lifecycle (e2e)", () => {
     it("changes the password, invalidates the old token, and hands back a fresh one", async () => {
       const change = await request(app.getHttpServer())
         .patch("/api/v1/auth/password")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .send({ currentPassword: password, newPassword: "newpassword123" })
         .expect(200);
 
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .expect(401);
 
-      accessToken = change.body.accessToken;
+      accessToken = sessionCookie(change);
       password = "newpassword123";
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .expect(200);
     });
 
@@ -243,25 +257,25 @@ describe("Auth lifecycle (e2e)", () => {
       const oldToken = accessToken;
       const result = await request(app.getHttpServer())
         .post("/api/v1/auth/logout-all")
-        .set("Authorization", `Bearer ${oldToken}`)
+        .set("Cookie", oldToken)
         .expect(200);
 
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${oldToken}`)
+        .set("Cookie", oldToken)
         .expect(401);
 
-      accessToken = result.body.accessToken;
+      accessToken = sessionCookie(result);
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .expect(200);
     });
 
     it("rejects account deletion with the wrong password", async () => {
       await request(app.getHttpServer())
         .delete("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .send({ password: "wrong" })
         .expect(401);
     });
@@ -269,13 +283,13 @@ describe("Auth lifecycle (e2e)", () => {
     it("deletes (anonymizes) the account — the old token stops working and the email is free again", async () => {
       await request(app.getHttpServer())
         .delete("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .send({ password })
         .expect(200);
 
       await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", accessToken)
         .expect(401);
 
       // The email is genuinely free — a new registration with the exact

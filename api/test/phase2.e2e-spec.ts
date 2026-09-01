@@ -11,6 +11,7 @@ import {
   RecommendedVisitLength,
   VerificationStatus,
 } from "../src/places/entities/place.enums";
+import { sessionCookie } from "./helpers/session-cookie";
 
 // This file owns a full reset of every Phase 1 + Phase 2 table in its own
 // beforeAll and is fully self-contained (doesn't assume any other spec file
@@ -42,7 +43,7 @@ describe("Phase 2 (e2e)", () => {
       .send({ name, email, password: "password123" })
       .expect(201);
     return {
-      token: res.body.accessToken as string,
+      token: sessionCookie(res),
       id: res.body.user.id as string,
     };
   }
@@ -187,7 +188,7 @@ describe("Phase 2 (e2e)", () => {
       await request(app.getHttpServer()).get("/api/v1/auth/me").expect(401);
       const res = await request(app.getHttpServer())
         .get("/api/v1/auth/me")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(res.body.email).toBe("usera@example.com");
       expect(res.body.passwordHash).toBeUndefined();
@@ -198,14 +199,14 @@ describe("Phase 2 (e2e)", () => {
     it("creates a review, recalculates the place rating, rejects a duplicate, and lists it", async () => {
       const create = await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ placeId: museumPlace.id, overallRating: 4, comment: "Solid." })
         .expect(201);
       expect(create.body.user.passwordHash).toBeUndefined();
 
       await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ placeId: museumPlace.id, overallRating: 5 })
         .expect(409);
 
@@ -231,13 +232,13 @@ describe("Phase 2 (e2e)", () => {
     it("rejects a review with neither placeId nor creatorId, and with both", async () => {
       await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ overallRating: 3 })
         .expect(400);
 
       await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           placeId: beachPlace.id,
           creatorId: "00000000-0000-0000-0000-000000000000",
@@ -257,7 +258,7 @@ describe("Phase 2 (e2e)", () => {
       );
       const creatorRes = await request(app.getHttpServer())
         .post("/api/v1/creators")
-        .set("Authorization", `Bearer ${creatorOwner.token}`)
+        .set("Cookie", creatorOwner.token)
         .send({
           name: "Review Target Creator",
           username: "review_target_creator",
@@ -268,7 +269,7 @@ describe("Phase 2 (e2e)", () => {
 
       const create = await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ creatorId, overallRating: 4, comment: "Great photos." })
         .expect(201);
       expect(create.body.user.passwordHash).toBeUndefined();
@@ -279,7 +280,7 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ creatorId, overallRating: 5 })
         .expect(409);
 
@@ -298,7 +299,7 @@ describe("Phase 2 (e2e)", () => {
       // constraint is per-target, not "one review ever".
       await request(app.getHttpServer())
         .post("/api/v1/reviews")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ placeId: hotelPlace.id, overallRating: 5 })
         .expect(201);
     });
@@ -308,7 +309,7 @@ describe("Phase 2 (e2e)", () => {
     it("claims a listing (pending review, not yet public), rejects a duplicate claim, and is only findable by its owner until approved", async () => {
       const claim = await request(app.getHttpServer())
         .post("/api/v1/businesses")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           placeId: hotelPlace.id,
           name: "Test Hotel Business",
@@ -321,7 +322,7 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .post("/api/v1/businesses")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ placeId: hotelPlace.id, name: "Dup", type: "hotel" })
         .expect(409);
 
@@ -340,7 +341,7 @@ describe("Phase 2 (e2e)", () => {
 
       const mine = await request(app.getHttpServer())
         .get("/api/v1/businesses/mine")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(mine.body).toHaveLength(1);
       expect(mine.body[0].reviewStatus).toBe("submitted_for_review");
@@ -349,7 +350,7 @@ describe("Phase 2 (e2e)", () => {
     it("lets the owner edit their own listing (including photos) after claiming, blocks everyone else", async () => {
       const claim = await request(app.getHttpServer())
         .post("/api/v1/businesses")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           placeId: beachPlace.id,
           name: "Test Beach Business",
@@ -360,13 +361,13 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .patch(`/api/v1/businesses/${businessId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ name: "Hijacked" })
         .expect(403);
 
       const updated = await request(app.getHttpServer())
         .patch(`/api/v1/businesses/${businessId}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           description: "Now with real photos of the actual place.",
           images: ["/uploads/pool.jpg", "/uploads/room.jpg"],
@@ -384,7 +385,7 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .patch("/api/v1/businesses/00000000-0000-0000-0000-000000000000")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ name: "Nope" })
         .expect(404);
     });
@@ -394,7 +395,7 @@ describe("Phase 2 (e2e)", () => {
     it("creates a profile, rejects a duplicate username, and is publicly readable", async () => {
       await request(app.getHttpServer())
         .post("/api/v1/creators")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           name: "Creator A",
           username: "creator_a",
@@ -410,7 +411,7 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .post("/api/v1/creators")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ name: "Dup", username: "creator_a" })
         .expect(409);
 
@@ -436,13 +437,13 @@ describe("Phase 2 (e2e)", () => {
       // addOffering's getOwned() should reject.
       await request(app.getHttpServer())
         .post("/api/v1/creators/me/portfolio")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ type: "image", url: "https://cdn.example.com/no-profile.jpg" })
         .expect(404);
 
       const item = await request(app.getHttpServer())
         .post("/api/v1/creators/me/portfolio")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           type: "image",
           url: "https://cdn.example.com/shoot-1.jpg",
@@ -454,14 +455,14 @@ describe("Phase 2 (e2e)", () => {
 
       const videoItem = await request(app.getHttpServer())
         .post("/api/v1/creators/me/portfolio")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ type: "video", url: "https://youtu.be/abc123" })
         .expect(201);
       expect(videoItem.body.sortOrder).toBe(1);
 
       await request(app.getHttpServer())
         .patch(`/api/v1/creators/me/portfolio/${item.body.id}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ caption: "Golden hour at the beach" })
         .expect(200);
 
@@ -470,27 +471,27 @@ describe("Phase 2 (e2e)", () => {
       const userC = await registerUser("creatorc@example.com", "User C");
       await request(app.getHttpServer())
         .post("/api/v1/creators")
-        .set("Authorization", `Bearer ${userC.token}`)
+        .set("Cookie", userC.token)
         .send({ name: "Creator C", username: "creator_c" })
         .expect(201);
       await request(app.getHttpServer())
         .patch(`/api/v1/creators/me/portfolio/${item.body.id}`)
-        .set("Authorization", `Bearer ${userC.token}`)
+        .set("Cookie", userC.token)
         .send({ caption: "Hijacked" })
         .expect(403);
       await request(app.getHttpServer())
         .delete(`/api/v1/creators/me/portfolio/${item.body.id}`)
-        .set("Authorization", `Bearer ${userC.token}`)
+        .set("Cookie", userC.token)
         .expect(403);
 
       await request(app.getHttpServer())
         .delete(`/api/v1/creators/me/portfolio/${videoItem.body.id}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
 
       const offering = await request(app.getHttpServer())
         .post("/api/v1/creators/me/offerings")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           title: "Half-day photo shoot",
           description: "Portraits around central Monrovia",
@@ -503,13 +504,13 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .patch(`/api/v1/creators/me/offerings/${offering.body.id}`)
-        .set("Authorization", `Bearer ${userC.token}`)
+        .set("Cookie", userC.token)
         .send({ priceFrom: 1 })
         .expect(403);
 
       const withRelated = await request(app.getHttpServer())
         .get("/api/v1/creators/me")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(withRelated.body.portfolioItems).toHaveLength(1);
       expect(withRelated.body.portfolioItems[0].caption).toBe(
@@ -525,7 +526,7 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .delete(`/api/v1/creators/me/offerings/${offering.body.id}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
     });
 
@@ -569,7 +570,7 @@ describe("Phase 2 (e2e)", () => {
       // account this restriction exists for.
       await request(app.getHttpServer())
         .post("/api/v1/events")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({
           name: "Should Be Blocked",
           category: "concert",
@@ -585,7 +586,7 @@ describe("Phase 2 (e2e)", () => {
       // file, so it's eligible to post events under the same restriction.
       await request(app.getHttpServer())
         .post("/api/v1/events")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           name: "No Location",
           category: "concert",
@@ -596,7 +597,7 @@ describe("Phase 2 (e2e)", () => {
 
       const concert = await request(app.getHttpServer())
         .post("/api/v1/events")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           name: "Test Concert",
           category: "concert",
@@ -641,7 +642,7 @@ describe("Phase 2 (e2e)", () => {
     it("hides a past event from the default listing, but surfaces it via includePast or an explicit dateFrom", async () => {
       const past = await request(app.getHttpServer())
         .post("/api/v1/events")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           name: "Old Festival",
           category: "festival",
@@ -685,7 +686,7 @@ describe("Phase 2 (e2e)", () => {
 
       const mine = await request(app.getHttpServer())
         .get("/api/v1/events/mine")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(mine.body.length).toBeGreaterThan(0);
       expect(
@@ -699,7 +700,7 @@ describe("Phase 2 (e2e)", () => {
     it("lets the organizer edit and cancel their own event, blocks other users", async () => {
       const created = await request(app.getHttpServer())
         .post("/api/v1/events")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           name: "Editable Event",
           category: "concert",
@@ -712,25 +713,25 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .patch(`/api/v1/events/${eventId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ name: "Hijacked" })
         .expect(403);
 
       const updated = await request(app.getHttpServer())
         .patch(`/api/v1/events/${eventId}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ name: "Renamed Event" })
         .expect(200);
       expect(updated.body.name).toBe("Renamed Event");
 
       await request(app.getHttpServer())
         .delete(`/api/v1/events/${eventId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(403);
 
       await request(app.getHttpServer())
         .delete(`/api/v1/events/${eventId}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(204);
 
       await request(app.getHttpServer())
@@ -760,7 +761,7 @@ describe("Phase 2 (e2e)", () => {
     it("creates a trip with no auto-generated stops, rejects an invalid date range, and round-trips through GET", async () => {
       const trip = await request(app.getHttpServer())
         .post("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
@@ -778,7 +779,7 @@ describe("Phase 2 (e2e)", () => {
 
       await request(app.getHttpServer())
         .post("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
@@ -792,20 +793,20 @@ describe("Phase 2 (e2e)", () => {
 
       const mine = await request(app.getHttpServer())
         .get("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(mine.body.length).toBeGreaterThan(0);
 
       await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${trip.body.id}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(404); // owner-only
     });
 
     it("Weekend Explorer generates from an explicit starting point, and 404s when nothing is reachable", async () => {
       await request(app.getHttpServer())
         .post("/api/v1/itineraries/weekend")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           startLat: 6.3,
           startLng: -10.8,
@@ -819,7 +820,7 @@ describe("Phase 2 (e2e)", () => {
       // (~8.75km) radius, so this should 404 rather than return an empty trip.
       await request(app.getHttpServer())
         .post("/api/v1/itineraries/weekend")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           startLat: 7.5,
           startLng: -11.5,
@@ -833,7 +834,7 @@ describe("Phase 2 (e2e)", () => {
     it("previews a trip with no auth at all, saving nothing, and still enforces validation", async () => {
       const before = await request(app.getHttpServer())
         .get("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
 
       const preview = await request(app.getHttpServer())
@@ -873,7 +874,7 @@ describe("Phase 2 (e2e)", () => {
       // anyone's account, not just this one user's.
       const after = await request(app.getHttpServer())
         .get("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(after.body.length).toBe(before.body.length);
     });
@@ -886,7 +887,7 @@ describe("Phase 2 (e2e)", () => {
     beforeAll(async () => {
       const trip = await request(app.getHttpServer())
         .post("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
@@ -908,20 +909,20 @@ describe("Phase 2 (e2e)", () => {
     it("404s inviting/viewing/editing for anyone but the owner, before any invite exists", async () => {
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${strangerToken}`)
+        .set("Cookie", strangerToken)
         .send({ invitees: [{ email: "userB@example.com" }] })
         .expect(404);
 
       await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(404);
     });
 
     it("creates a pending invitation for a bare email with no account yet — no 404, unlike the old immediate-add-only flow", async () => {
       const invite = await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ invitees: [{ email: "nobody@example.com" }] })
         .expect(201);
       const created = invite.body.find(
@@ -934,14 +935,14 @@ describe("Phase 2 (e2e)", () => {
       // of the flow below.
       await request(app.getHttpServer())
         .delete(`/api/v1/itineraries/${tripId}/invitations/${created.id}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
     });
 
     it("lets the owner invite an existing user by id, who accepts and can then view and edit the trip", async () => {
       const invite = await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ invitees: [{ userId: userBId }] })
         .expect(201);
       const pending = invite.body.find(
@@ -954,20 +955,20 @@ describe("Phase 2 (e2e)", () => {
       // Re-inviting a still-pending person resends rather than erroring.
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ invitees: [{ userId: userBId }] })
         .expect(201);
 
       // Not a collaborator yet — invited, not accepted.
       await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(404);
 
       // The invitee finds it in their own inbox without the emailed link...
       const mine = await request(app.getHttpServer())
         .get("/api/v1/invitations/mine")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(200);
       const mineEntry = mine.body.find(
         (i: { tripId: string }) => i.tripId === tripId,
@@ -977,39 +978,39 @@ describe("Phase 2 (e2e)", () => {
       // ...and accepting there makes them a real collaborator.
       await request(app.getHttpServer())
         .post(`/api/v1/invitations/${pending.id}/accept`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(201);
 
       // Accepting again 409s (already resolved).
       await request(app.getHttpServer())
         .post(`/api/v1/invitations/${pending.id}/accept`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(409);
 
       // Inviting an already-confirmed collaborator again is a conflict.
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ invitees: [{ userId: userBId }] })
         .expect(409);
 
       const asCollaborator = await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(200);
       expect(asCollaborator.body.collaborators).toHaveLength(1);
 
       // A collaborator can't invite further collaborators onto the trip.
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ invitees: [{ email: "tripStranger@example.com" }] })
         .expect(403);
 
       // A collaborator can add, annotate, and remove a stop.
       const added = await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/stops`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ placeId: hotelPlace.id, day: 1, notes: "Check in first" })
         .expect(201);
       expect(
@@ -1021,13 +1022,13 @@ describe("Phase 2 (e2e)", () => {
       // Adding the same place twice is rejected.
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/stops`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ placeId: hotelPlace.id, day: 1 })
         .expect(409);
 
       const annotated = await request(app.getHttpServer())
         .patch(`/api/v1/itineraries/${tripId}/stops/${hotelPlace.id}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ notes: "Confirmed 2pm check-in" })
         .expect(200);
       expect(
@@ -1038,7 +1039,7 @@ describe("Phase 2 (e2e)", () => {
 
       const removed = await request(app.getHttpServer())
         .delete(`/api/v1/itineraries/${tripId}/stops/${hotelPlace.id}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(200);
       expect(
         removed.body.stops.some(
@@ -1049,14 +1050,14 @@ describe("Phase 2 (e2e)", () => {
       // Stop mutations stay off-limits to a non-member.
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/stops`)
-        .set("Authorization", `Bearer ${strangerToken}`)
+        .set("Cookie", strangerToken)
         .send({ placeId: hotelPlace.id, day: 1 })
         .expect(404);
 
       // "Shared with me" surfaces it for the collaborator, not the stranger.
       const shared = await request(app.getHttpServer())
         .get("/api/v1/itineraries/shared-with-me")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(200);
       expect(shared.body.some((t: { id: string }) => t.id === tripId)).toBe(
         true,
@@ -1066,12 +1067,12 @@ describe("Phase 2 (e2e)", () => {
       // blocked by them, and userB loses view access again.
       await request(app.getHttpServer())
         .delete(`/api/v1/itineraries/${tripId}/collaborators/${userBId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(200);
 
       await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(404);
     });
   });
@@ -1082,7 +1083,7 @@ describe("Phase 2 (e2e)", () => {
     beforeAll(async () => {
       const trip = await request(app.getHttpServer())
         .post("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           title: "Test Trip",
           destinationPlaceId: museumPlace.id,
@@ -1099,19 +1100,19 @@ describe("Phase 2 (e2e)", () => {
     it("404s a stranger renaming or deleting", async () => {
       await request(app.getHttpServer())
         .patch(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ title: "Hijacked" })
         .expect(404);
       await request(app.getHttpServer())
         .delete(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(404);
     });
 
     it("lets the owner rename the trip", async () => {
       const renamed = await request(app.getHttpServer())
         .patch(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ title: "Mom's 60th birthday trip" })
         .expect(200);
       expect(renamed.body.title).toBe("Mom's 60th birthday trip");
@@ -1120,7 +1121,7 @@ describe("Phase 2 (e2e)", () => {
     it("lets a collaborator rename the trip too, but not delete it", async () => {
       const invite = await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/invitations`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({ invitees: [{ userId: userBId }] })
         .expect(201);
       const pending = invite.body.find(
@@ -1128,40 +1129,40 @@ describe("Phase 2 (e2e)", () => {
       );
       await request(app.getHttpServer())
         .post(`/api/v1/invitations/${pending.id}/accept`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(201);
 
       const renamed = await request(app.getHttpServer())
         .patch(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .send({ title: "Renamed by collaborator" })
         .expect(200);
       expect(renamed.body.title).toBe("Renamed by collaborator");
 
       await request(app.getHttpServer())
         .delete(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(403);
     });
 
     it("deleting the trip cascades — collaborators and invitations lose access, and it vanishes from every list", async () => {
       await request(app.getHttpServer())
         .delete(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(204);
 
       await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(404);
       await request(app.getHttpServer())
         .get(`/api/v1/itineraries/${tripId}`)
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(404);
 
       const shared = await request(app.getHttpServer())
         .get("/api/v1/itineraries/shared-with-me")
-        .set("Authorization", `Bearer ${userBToken}`)
+        .set("Cookie", userBToken)
         .expect(200);
       expect(shared.body.some((t: { id: string }) => t.id === tripId)).toBe(
         false,
@@ -1169,7 +1170,7 @@ describe("Phase 2 (e2e)", () => {
 
       const mine = await request(app.getHttpServer())
         .get("/api/v1/itineraries")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .expect(200);
       expect(mine.body.some((t: { id: string }) => t.id === tripId)).toBe(
         false,
@@ -1191,7 +1192,7 @@ describe("Phase 2 (e2e)", () => {
         .expect(401);
       await request(app.getHttpServer())
         .post("/api/v1/push/subscribe")
-        .set("Authorization", `Bearer ${userAToken}`)
+        .set("Cookie", userAToken)
         .send({
           endpoint: "https://example.com/x",
           keys: { p256dh: "a", auth: "b" },

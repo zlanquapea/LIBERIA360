@@ -9,6 +9,29 @@ import {
 } from "../types/jwt-payload.interface";
 import { AppConfig } from "../../config/configuration";
 import { User } from "../../users/entities/user.entity";
+import type { Request } from "express";
+
+const SESSION_COOKIE = "liberia360_session";
+
+function tokenFromCookie(request: Request): string | null {
+  const cookie = request.headers.cookie;
+  if (!cookie) return null;
+  for (const part of cookie.split(";")) {
+    const [name, ...value] = part.trim().split("=");
+    if (name === SESSION_COOKIE) {
+      try {
+        return decodeURIComponent(value.join("="));
+      } catch {
+        // A malformed percent-encoding (e.g. a lone "%") makes
+        // decodeURIComponent throw URIError. That's just an invalid
+        // credential, not a server error — fall through to "no token
+        // found" so it takes the ordinary 401 path instead of a 500.
+        return null;
+      }
+    }
+  }
+  return null;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -17,7 +40,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly usersService: UsersService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        // Bearer header first: an explicit Authorization header is a
+        // deliberate credential a caller went out of its way to attach, so
+        // it should never be silently shadowed by an ambient session
+        // cookie the same HTTP client happens to also be carrying (e.g. a
+        // non-browser client/test harness that reuses one cookie-jar-backed
+        // client across several logged-in identities). A real browser
+        // never sends this header at all — the web application never
+        // receives or stores a bearer token — so this ordering changes
+        // nothing for normal cookie-only requests.
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // Cookie fallback for the web application. Retained bearer support
+        // above is for trusted non-browser clients during migration.
+        tokenFromCookie,
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get("jwt", { infer: true }).secret,
     });

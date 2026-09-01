@@ -6,6 +6,7 @@ import { AppModule } from "../src/app.module";
 import { County } from "../src/counties/entities/county.entity";
 import { Category } from "../src/categories/entities/category.entity";
 import { User } from "../src/users/entities/user.entity";
+import { sessionCookie } from "./helpers/session-cookie";
 
 // Self-contained (own full reset in beforeAll), same rationale as
 // phase2/phase3.e2e-spec.ts — test/jest-e2e.json's maxWorkers: 1
@@ -35,7 +36,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
       .send({ name, email, password: "password123" })
       .expect(201);
     return {
-      token: res.body.accessToken as string,
+      token: sessionCookie(res),
       id: res.body.user.id as string,
     };
   }
@@ -122,7 +123,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("lets a signed-in user submit a new place, starting hidden from the public catalog", async () => {
     const res = await request(app.getHttpServer())
       .post("/api/v1/places")
-      .set("Authorization", `Bearer ${submitterToken}`)
+      .set("Cookie", submitterToken)
       .send({
         ...submissionPayload,
         categoryId: natureCategory.id,
@@ -153,14 +154,14 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("lets the submitter see their own pending place via GET /places/mine", async () => {
     const res = await request(app.getHttpServer())
       .get("/api/v1/places/mine")
-      .set("Authorization", `Bearer ${submitterToken}`)
+      .set("Cookie", submitterToken)
       .expect(200);
     expect(res.body.some((p: { id: string }) => p.id === placeId)).toBe(true);
 
     // A stranger's "mine" list doesn't see someone else's submission.
     const strangerMine = await request(app.getHttpServer())
       .get("/api/v1/places/mine")
-      .set("Authorization", `Bearer ${strangerToken}`)
+      .set("Cookie", strangerToken)
       .expect(200);
     expect(
       strangerMine.body.some((p: { id: string }) => p.id === placeId),
@@ -170,7 +171,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("blocks a non-owner from editing the submission", async () => {
     await request(app.getHttpServer())
       .patch(`/api/v1/places/${placeId}`)
-      .set("Authorization", `Bearer ${strangerToken}`)
+      .set("Cookie", strangerToken)
       .send({ description: "Hijacked description" })
       .expect(403);
   });
@@ -178,15 +179,15 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("404s the admin place-review endpoints for a non-admin", async () => {
     await request(app.getHttpServer())
       .get("/api/v1/admin/places")
-      .set("Authorization", `Bearer ${strangerToken}`)
+      .set("Cookie", strangerToken)
       .expect(403);
     await request(app.getHttpServer())
       .get(`/api/v1/admin/places/${placeId}`)
-      .set("Authorization", `Bearer ${strangerToken}`)
+      .set("Cookie", strangerToken)
       .expect(403);
     await request(app.getHttpServer())
       .patch(`/api/v1/admin/places/${placeId}/review-status`)
-      .set("Authorization", `Bearer ${strangerToken}`)
+      .set("Cookie", strangerToken)
       .send({ status: "approved" })
       .expect(403);
   });
@@ -194,7 +195,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("shows the admin everything the submitter provided, including who submitted it", async () => {
     const list = await request(app.getHttpServer())
       .get("/api/v1/admin/places?reviewStatus=submitted_for_review")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .expect(200);
     const row = list.body.data.find((p: { id: string }) => p.id === placeId);
     expect(row).toBeDefined();
@@ -203,7 +204,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
 
     const detail = await request(app.getHttpServer())
       .get(`/api/v1/admin/places/${placeId}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .expect(200);
     expect(detail.body.name).toBe(submissionPayload.name);
     expect(detail.body.description).toBe(submissionPayload.description);
@@ -216,7 +217,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("surfaces the pending submission in the admin moderation queue, not just the Content > Places filter", async () => {
     const queue = await request(app.getHttpServer())
       .get("/api/v1/admin/moderation-queue")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .expect(200);
     const row = queue.body.pendingPlaces.find(
       (p: { id: string }) => p.id === placeId,
@@ -229,7 +230,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("approves the submission, making it public", async () => {
     const approved = await request(app.getHttpServer())
       .patch(`/api/v1/admin/places/${placeId}/review-status`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .send({ status: "approved" })
       .expect(200);
     expect(approved.body.reviewStatus).toBe("approved");
@@ -250,7 +251,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
     // No longer clutters the moderation queue once decided.
     const queue = await request(app.getHttpServer())
       .get("/api/v1/admin/moderation-queue")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .expect(200);
     expect(
       queue.body.pendingPlaces.some((p: { id: string }) => p.id === placeId),
@@ -260,7 +261,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("suspends an approved self-submitted place, hiding it from the public catalog again", async () => {
     const suspended = await request(app.getHttpServer())
       .patch(`/api/v1/admin/places/${placeId}/review-status`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .send({ status: "suspended", reason: "Reported as permanently closed" })
       .expect(200);
     expect(suspended.body.reviewStatus).toBe("suspended");
@@ -275,7 +276,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
     // Reinstate for the rejection test below to start from a clean state.
     await request(app.getHttpServer())
       .patch(`/api/v1/admin/places/${placeId}/review-status`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .send({ status: "approved" })
       .expect(200);
   });
@@ -283,7 +284,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
   it("rejects a fresh submission with a reason, then auto-resubmits it when the owner edits", async () => {
     const submit = await request(app.getHttpServer())
       .post("/api/v1/places")
-      .set("Authorization", `Bearer ${submitterToken}`)
+      .set("Cookie", submitterToken)
       .send({
         name: "Blue Lake Trail",
         description: "A scenic hiking trail.",
@@ -299,7 +300,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
 
     const rejected = await request(app.getHttpServer())
       .patch(`/api/v1/admin/places/${secondId}/review-status`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", adminToken)
       .send({ status: "rejected", reason: "Coordinates look off" })
       .expect(200);
     expect(rejected.body.reviewStatus).toBe("rejected");
@@ -307,7 +308,7 @@ describe("Place self-service submission + review gate (e2e)", () => {
 
     const resubmitted = await request(app.getHttpServer())
       .patch(`/api/v1/places/${secondId}`)
-      .set("Authorization", `Bearer ${submitterToken}`)
+      .set("Cookie", submitterToken)
       .send({ latitude: 6.905, longitude: -9.405 })
       .expect(200);
     expect(resubmitted.body.reviewStatus).toBe("submitted_for_review");

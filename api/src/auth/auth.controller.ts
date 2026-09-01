@@ -7,10 +7,11 @@ import {
   HttpStatus,
   Patch,
   Req,
+  Res,
   UseGuards,
   Post,
 } from "@nestjs/common";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 import { Throttle, seconds } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { getRequestInfo } from "../common/request-info";
@@ -31,6 +32,15 @@ import { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
 import { toPublicUser } from "../users/user.serializer";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
+import { JwtService } from "@nestjs/jwt";
+
+// Used only if the token's own `exp` claim is somehow unreadable (should
+// never happen — every accessToken this controller hands to
+// establishSession() was just signed with JWT_EXPIRES_IN) — matches the
+// jwt config's own fallback (configuration.ts) so a caller relying on it
+// still gets the previously-hardcoded lifetime rather than a cookie with
+// no expiry at all.
+const FALLBACK_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 @ApiTags("Auth")
 @Controller("auth")
@@ -38,11 +48,44 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
   ) {}
 
+  private establishSession(
+    response: Response,
+    result: { accessToken: string; user: unknown },
+  ) {
+    response.cookie("liberia360_session", result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      // Read the lifetime back off the token itself (its `exp` claim, in
+      // seconds since epoch) rather than hardcoding a duration here —
+      // JWT_EXPIRES_IN is configurable and this cookie must expire exactly
+      // when the token it carries stops working, whatever that's set to.
+      // A shorter-than-hardcoded lifetime previously left a stale cookie
+      // that kept failing auth for days after the token inside it died; a
+      // longer one lost the browser session while the token was still
+      // good.
+      maxAge: this.cookieMaxAgeMs(result.accessToken),
+    });
+    response.setHeader("Cache-Control", "no-store");
+    return { user: result.user };
+  }
+
+  private cookieMaxAgeMs(accessToken: string): number {
+    const payload = this.jwtService.decode<{ exp?: number }>(accessToken);
+    if (!payload?.exp) return FALLBACK_COOKIE_MAX_AGE_MS;
+    return Math.max(0, payload.exp * 1000 - Date.now());
+  }
+
   @Post("register")
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.establishSession(res, await this.authService.register(dto));
   }
 
   // Stricter than the global default (see app.module.ts) — this is exactly
@@ -50,8 +93,15 @@ export class AuthController {
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  login(@Body() dto: LoginDto, @Req() req: Request) {
-    return this.authService.login(dto, getRequestInfo(req));
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto, getRequestInfo(req));
+    return "accessToken" in result
+      ? this.establishSession(res, result)
+      : result;
   }
 
   // Login step 2 — exchanges the pendingToken from a twoFactorRequired
@@ -63,8 +113,15 @@ export class AuthController {
   @Post("2fa/verify")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: seconds(60) } })
-  verifyTwoFactor(@Body() dto: VerifyTwoFactorDto, @Req() req: Request) {
-    return this.authService.verifyTwoFactor(dto, getRequestInfo(req));
+  async verifyTwoFactor(
+    @Body() dto: VerifyTwoFactorDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.establishSession(
+      res,
+      await this.authService.verifyTwoFactor(dto, getRequestInfo(req)),
+    );
   }
 
   @Get("me")
@@ -162,11 +219,15 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: User,
     @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.changePassword(
-      user,
-      dto.currentPassword,
-      dto.newPassword,
+    return this.establishSession(
+      res,
+      await this.authService.changePassword(
+        user,
+        dto.currentPassword,
+        dto.newPassword,
+      ),
     );
   }
 
@@ -177,8 +238,27 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logoutAllDevices(@CurrentUser() user: User) {
-    return this.authService.logoutAllDevices(user);
+  async logoutAllDevices(
+    @CurrentUser() user: User,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.establishSession(
+      res,
+      await this.authService.logoutAllDevices(user),
+    );
+  }
+
+  @Post("logout")
+  @HttpCode(HttpStatus.OK)
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie("liberia360_session", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+    res.setHeader("Cache-Control", "no-store");
+    return { success: true };
   }
 
   @Delete("me")

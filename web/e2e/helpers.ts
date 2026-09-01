@@ -1,4 +1,4 @@
-import type { APIRequestContext, Page } from '@playwright/test';
+import type { APIRequestContext, APIResponse, Page } from '@playwright/test';
 import { Client } from 'pg';
 
 // Talks directly to the API — the same one the web app under test talks
@@ -7,6 +7,33 @@ import { Client } from 'pg';
 // through the UI. Keeps each spec's browser interactions focused on the
 // flow it's actually testing.
 export const API_URL = process.env.PLAYWRIGHT_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+
+// The web app the browser drives — needed to scope the session cookie
+// loginAs() injects (see below) to the right origin.
+const WEB_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+
+// Kept in sync with AuthController's own SESSION_COOKIE name. Register/
+// login now hand the JWT back exclusively as a Secure, HttpOnly cookie
+// (see AuthController.establishSession) rather than in the JSON body, so
+// fixture setup here reads it the only place it still exists: the
+// response's own Set-Cookie header. Cookie domain-matching ignores port,
+// so a cookie minted by the API on :3001 still applies to the web app on
+// :3000 once added to the browser context with that origin.
+const SESSION_COOKIE_NAME = 'liberia360_session';
+
+function sessionTokenFrom(res: APIResponse): string {
+  const setCookieHeaders = res
+    .headersArray()
+    .filter((h) => h.name.toLowerCase() === 'set-cookie')
+    .map((h) => h.value.split(';')[0]);
+  const match = setCookieHeaders.find((pair) => pair.startsWith(`${SESSION_COOKIE_NAME}=`));
+  if (!match) {
+    throw new Error(
+      `Expected a ${SESSION_COOKIE_NAME} cookie in the response but got: ${setCookieHeaders.join(' | ') || '(none)'}`,
+    );
+  }
+  return match.slice(SESSION_COOKIE_NAME.length + 1);
+}
 
 function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -26,6 +53,11 @@ export function uniqueName(label: string): string {
 }
 
 export interface RegisteredUser {
+  // The raw session JWT, extracted from the response's Set-Cookie header
+  // (see sessionTokenFrom above) — never present in the JSON body anymore.
+  // Still usable as a Bearer token for direct API fixture calls below
+  // (JwtStrategy keeps that fallback for non-browser clients), and it's
+  // exactly what loginAs() needs to seed a browser session.
   token: string;
   id: string;
   name: string;
@@ -45,7 +77,7 @@ export async function registerUser(
     throw new Error(`register failed (${res.status()}): ${await res.text()}`);
   }
   const body = await res.json();
-  return { token: body.accessToken, id: body.user.id, name: opts.name, email };
+  return { token: sessionTokenFrom(res), id: body.user.id, name: opts.name, email };
 }
 
 // `index` (default 0) picks which catalog place to use — specs that
@@ -208,30 +240,41 @@ export async function loginAs(
   user: RegisteredUser,
   roles: { isAdmin?: boolean; isSuperAdmin?: boolean } = {},
 ) {
+  // The actual authenticated identity: a real session cookie, exactly as
+  // the browser would hold one after a real login through the UI. Every
+  // API call the app makes is same-origin with credentials: 'same-origin'
+  // (see web/src/lib/http.ts) — there's no bearer header to fake anymore,
+  // so this is the only way a fixture-registered user's browser session
+  // can actually authenticate.
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: user.token,
+      url: WEB_URL,
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
   await page.goto('/');
   await page.evaluate(
-    ([token, userJson]) => {
-      window.localStorage.setItem('liberia360:auth-token', token);
+    (userJson) => {
       window.localStorage.setItem('liberia360:auth-user', userJson);
     },
-    [
-      user.token,
-      JSON.stringify({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: null,
-        authProvider: 'email',
-        homeCounty: null,
-        isAdmin: roles.isAdmin ?? false,
-        isSuperAdmin: roles.isSuperAdmin ?? false,
-        travelerType: null,
-        interests: [],
-        twoFactorEnabled: false,
-        emailVerified: false,
-        createdAt: new Date().toISOString(),
-      }),
-    ] as const,
+    JSON.stringify({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: null,
+      authProvider: 'email',
+      homeCounty: null,
+      isAdmin: roles.isAdmin ?? false,
+      isSuperAdmin: roles.isSuperAdmin ?? false,
+      travelerType: null,
+      interests: [],
+      twoFactorEnabled: false,
+      emailVerified: false,
+      createdAt: new Date().toISOString(),
+    }),
   );
   await page.reload();
 }
