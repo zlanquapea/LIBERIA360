@@ -105,6 +105,12 @@ are independent, easy to miss one:
 | `web/.env.local` → `API_ORIGIN` | the production **API** origin, bare — no `/api/v1` suffix, no trailing slash (server-only: the browser talks to the same-origin `/api` proxy, never this host directly) |
 | `web/.env.local` → `NEXT_PUBLIC_SITE_URL` | the production **web** origin (schema.org JSON-LD's `url` fields need an absolute URL for SEO — falls back to a placeholder otherwise, which is fine pre-launch but shouldn't ship to real search results) |
 
+Existing Railway/Render web services that still define the former
+`NEXT_PUBLIC_API_URL=https://your-api.example/api/v1` variable remain
+compatible. The web server uses it only when `API_ORIGIN` is absent and removes
+the legacy `/api/v1` suffix automatically. Set `API_ORIGIN` when convenient;
+if both variables exist, `API_ORIGIN` takes precedence.
+
 ## 4. Object storage for uploaded photos
 
 `STORAGE_DRIVER=local` (the default) writes to local disk on whichever

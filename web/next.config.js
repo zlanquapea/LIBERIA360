@@ -15,7 +15,17 @@ const nextConfig = {
     proxyClientMaxBodySize: '60mb',
   },
   async rewrites() {
-    const apiOrigin = process.env.API_ORIGIN ?? 'http://localhost:3001';
+    // API_ORIGIN is the new server-only name, but existing Railway services
+    // were configured with NEXT_PUBLIC_API_URL before the same-origin proxy
+    // was introduced. Keep that value as a migration fallback so deploying
+    // this version cannot silently redirect production traffic to localhost.
+    // The legacy value commonly includes /api/v1, whereas rewrite
+    // destinations need the bare origin.
+    const configuredApiOrigin =
+      process.env.API_ORIGIN || process.env.NEXT_PUBLIC_API_URL;
+    const apiOrigin = (configuredApiOrigin || 'http://localhost:3001')
+      .replace(/\/+$/, '')
+      .replace(/\/api\/v1$/, '');
     return [
       { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
       { source: '/uploads/:path*', destination: `${apiOrigin}/uploads/:path*` },

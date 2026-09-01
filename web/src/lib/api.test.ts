@@ -4,6 +4,35 @@
 // changing `process.env.NEXT_PHASE` after import wouldn't do anything.
 const ORIGINAL_ENV = process.env;
 
+describe('server API origin configuration', () => {
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.resetModules();
+  });
+
+  it('normalizes the legacy Railway URL when API_ORIGIN is absent', () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      API_ORIGIN: '',
+      NEXT_PUBLIC_API_URL: 'https://api.example.com/api/v1/',
+    };
+    const { serverApiOrigin } = require('./api') as typeof import('./api');
+
+    expect(serverApiOrigin()).toBe('https://api.example.com');
+  });
+
+  it('prefers the server-only API_ORIGIN variable', () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      API_ORIGIN: 'https://private-api.railway.app/',
+      NEXT_PUBLIC_API_URL: 'https://legacy.example/api/v1',
+    };
+    const { serverApiOrigin } = require('./api') as typeof import('./api');
+
+    expect(serverApiOrigin()).toBe('https://private-api.railway.app');
+  });
+});
+
 function loadApiModule(
   nextPhase?: string,
   nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = ORIGINAL_ENV.NODE_ENV,
