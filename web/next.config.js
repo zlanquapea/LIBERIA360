@@ -3,6 +3,17 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
+  experimental: {
+    // The proxy rewrites below (added for the same-origin reverse-proxy —
+    // see the /api rewrite) buffer the whole request body in memory, and
+    // Next defaults that buffer to 10MB, silently truncating anything
+    // larger with no error to the client. Creator video uploads
+    // (uploads/uploads.controller.ts, video-uploads-api.ts) accept up to
+    // 50MB, so the default would corrupt every video in the 10-50MB range
+    // instead of rejecting it cleanly. Sized with headroom over that 50MB
+    // ceiling for multipart boundary/header overhead.
+    proxyClientMaxBodySize: '60mb',
+  },
   async rewrites() {
     const apiOrigin = process.env.API_ORIGIN ?? 'http://localhost:3001';
     return [
