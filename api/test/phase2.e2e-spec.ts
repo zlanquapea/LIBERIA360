@@ -602,7 +602,14 @@ describe("Phase 2 (e2e)", () => {
           category: "concert",
           locationText: "City Hall",
           countyId: montserrado.id,
-          startDate: "2026-09-01T18:00:00Z",
+          // Must stay in the future relative to whenever this test
+          // actually runs — EventsService.findAll's default public
+          // listing (see events.service.ts) excludes any event whose
+          // startDate has already passed, and a hardcoded date eventually
+          // becomes past-dated itself, silently failing every assertion
+          // below it (byCounty/byOtherCounty/byCategory all expect this
+          // event to still be listed).
+          startDate: new Date(Date.now() + 3_600_000).toISOString(),
         })
         .expect(201);
       // Self-service events start pending and are invisible on the public
