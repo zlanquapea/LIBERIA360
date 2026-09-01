@@ -31,6 +31,19 @@ describe('server API origin configuration', () => {
 
     expect(serverApiOrigin()).toBe('https://private-api.railway.app');
   });
+
+  it('uses a platform-provided private service host and port', () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      API_ORIGIN: '',
+      API_HOST: 'liberia360-api',
+      API_PORT: '10000',
+      NEXT_PUBLIC_API_URL: '',
+    };
+    const { serverApiOrigin } = require('./api') as typeof import('./api');
+
+    expect(serverApiOrigin()).toBe('http://liberia360-api:10000');
+  });
 });
 
 function loadApiModule(

@@ -41,4 +41,17 @@ describe('API proxy upstream configuration', () => {
       },
     ]);
   });
+
+  it('builds a private origin from a platform-provided host and port', async () => {
+    const rewrites = await destinations({
+      API_ORIGIN: '',
+      API_HOST: 'liberia360-api',
+      API_PORT: '10000',
+      NEXT_PUBLIC_API_URL: '',
+    });
+
+    expect(rewrites[0].destination).toBe(
+      'http://liberia360-api:10000/api/:path*',
+    );
+  });
 });

@@ -32,8 +32,14 @@ export function serverApiOrigin(): string {
   // (notably existing Railway services) configured before API_ORIGIN became
   // the preferred server-only variable. It may contain the old /api/v1
   // suffix, so normalize it before constructing API_URL.
+  const privateServiceOrigin =
+    process.env.API_HOST && process.env.API_PORT
+      ? `http://${process.env.API_HOST}:${process.env.API_PORT}`
+      : undefined;
   const configuredOrigin =
-    process.env.API_ORIGIN || process.env.NEXT_PUBLIC_API_URL;
+    process.env.API_ORIGIN ||
+    privateServiceOrigin ||
+    process.env.NEXT_PUBLIC_API_URL;
   return (configuredOrigin || "http://localhost:3001")
     .replace(/\/+$/, "")
     .replace(/\/api\/v1$/, "");
