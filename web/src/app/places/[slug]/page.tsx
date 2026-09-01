@@ -373,7 +373,7 @@ export default async function PlaceProfilePage({
 
       <section className="border-t border-slate-200 pt-5 dark:border-slate-800">
         <Link
-          href={`/trips/new?interest=${place.category.slug}`}
+          href="/trips/new"
           className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
         >
           Plan a trip with this place

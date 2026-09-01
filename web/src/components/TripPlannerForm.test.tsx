@@ -4,7 +4,7 @@ import { TripPlannerForm } from './TripPlannerForm';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { getPlaces } from '../lib/api';
-import type { AuthUser, Category, Place } from '@/lib/types';
+import type { AuthUser, Place } from '@/lib/types';
 
 // jest.mock's module specifier is a plain string, not an import
 // declaration — the '@/...' alias only gets resolved by SWC's transform
@@ -26,10 +26,6 @@ function mockFetchOnce(status: number, body: unknown) {
     json: () => Promise.resolve(body),
   }) as unknown as typeof fetch;
 }
-
-const CATEGORIES: Category[] = [
-  { id: 'c1', name: 'Beaches', slug: 'beaches', description: null, icon: 'SunIcon' },
-];
 
 const USER: AuthUser = {
   id: 'u1',
@@ -130,7 +126,7 @@ describe('TripPlannerForm', () => {
       stops: [STOP],
     });
 
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
 
     await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
@@ -151,13 +147,12 @@ describe('TripPlannerForm', () => {
       kind: 'trip',
       durationDays: 3,
       budgetBand: 'moderate',
-      interests: ['beaches'],
+      interests: [],
       stops: [STOP],
     });
 
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
-    await userEvent.click(screen.getByRole('button', { name: /beaches/i }));
     await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
     await screen.findByRole('button', { name: /log in to save this trip/i });
 
@@ -167,7 +162,7 @@ describe('TripPlannerForm', () => {
     expect(takePendingTripDraft()).toEqual({
       durationDays: 3,
       budgetBand: 'moderate',
-      interests: ['beaches'],
+      interests: [],
       title: '3-Day Liberia Trip',
       destinationPlaceId: DESTINATION.id,
       visibility: 'private',
@@ -188,7 +183,7 @@ describe('TripPlannerForm', () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-1', title: 'My Trip' });
 
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
 
     expect(await screen.findByText(/saving your trip/i)).toBeInTheDocument();
     await waitFor(() => expect(push).toHaveBeenCalledWith('/trips/itin-1'));
@@ -218,7 +213,7 @@ describe('TripPlannerForm', () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-3', title: '3-Day Liberia Trip' });
 
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
     await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
     expect(await screen.findByText(/using your current location/i)).toBeInTheDocument();
@@ -241,7 +236,7 @@ describe('TripPlannerForm', () => {
       configurable: true,
     });
 
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
     await userEvent.click(screen.getByRole('button', { name: /use my current location/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/location access was denied/i);
@@ -250,7 +245,7 @@ describe('TripPlannerForm', () => {
   });
 
   it('requires a trip name and destination before it can be built', async () => {
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
 
     await userEvent.click(screen.getByRole('button', { name: /preview my trip/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/give your trip a name/i);
@@ -264,7 +259,7 @@ describe('TripPlannerForm', () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-2', title: '3-Day Liberia Trip' });
 
-    render(<TripPlannerForm categories={CATEGORIES} />);
+    render(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
     expect(await screen.findByRole('button', { name: /^build my trip$/i })).toBeInTheDocument();
 

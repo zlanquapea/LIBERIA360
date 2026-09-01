@@ -8,17 +8,21 @@ import { generateTrip, previewTrip, type CreateTripInput } from '@/lib/itinerary
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
-import { CategoryIcon } from '@/lib/icons';
 import { requestGeolocation, type Coords } from '@/lib/geolocation';
 import { ItineraryStops } from './ItineraryStops';
 import { DestinationAutocomplete } from './DestinationAutocomplete';
-import type { BudgetBand, Category, Place, TripPreviewResponse, TripVisibility } from '@/lib/types';
+import type { BudgetBand, Place, TripPreviewResponse, TripVisibility } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
 
-// "Build My Liberia Trip" (Tech Spec §4.3) — duration + interests + budget
-// generates a day-by-day route server-side (nearest-neighbor sequencing
-// from Monrovia).
+// "Build My Liberia Trip" (Tech Spec §4.3) — duration + budget generates a
+// day-by-day route server-side (nearest-neighbor sequencing from Monrovia).
+// The route used to also take an "interests" category filter here, but a
+// wall of category chips added friction without adding much: searching for
+// and picking the actual destination (below) already does the targeting a
+// traveler needs, so this form no longer asks for interests at all — it's
+// still sent to the API as an empty array, which the backend already
+// treats as "match everything."
 //
 // Guest-first (product review readout, Aug 22, 2026): a visitor with no
 // account still gets a real generated route from this same form, via the
@@ -26,19 +30,12 @@ const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
 // "Log in to save this trip" asks for an account, and it hands the exact
 // same inputs to the normal save endpoint afterward (see
 // pending-trip-draft.ts), so what they see here is what they get.
-export function TripPlannerForm({
-  categories,
-  initialInterests,
-}: {
-  categories: Category[];
-  initialInterests?: string[];
-}) {
+export function TripPlannerForm() {
   const router = useRouter();
   const { user, token, ready } = useAuth();
 
   const [durationDays, setDurationDays] = useState(3);
   const [budgetBand, setBudgetBand] = useState<BudgetBand>('moderate');
-  const [interests, setInterests] = useState<string[]>(initialInterests ?? []);
   const [title, setTitle] = useState('');
   // Trip identity + visibility (Aug 2026 social-trip spec, Sections 1-3):
   // a name, a real catalog destination, and a deliberate public/private
@@ -79,7 +76,6 @@ export function TripPlannerForm({
     resumedRef.current = true;
     setDurationDays(draft.durationDays);
     setBudgetBand(draft.budgetBand);
-    setInterests(draft.interests);
     setTitle(draft.title);
     setDestination(draft.destination);
     setVisibility(draft.visibility);
@@ -97,10 +93,6 @@ export function TripPlannerForm({
       });
   }, [ready, user, token, router]);
 
-  function toggleInterest(slug: string) {
-    setInterests((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
-  }
-
   // Shared by both the submit and "log in to save" paths — a trip isn't
   // buildable at all without a name and a real catalog destination
   // (Sections 1-2 of the Aug 2026 spec).
@@ -109,7 +101,7 @@ export function TripPlannerForm({
     return {
       durationDays,
       budgetBand,
-      interests,
+      interests: [],
       startLat: startCoords?.lat,
       startLng: startCoords?.lng,
       title: title.trim(),
@@ -311,31 +303,6 @@ export function TripPlannerForm({
           </p>
         )}
       </div>
-
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">Interests (optional — leave blank for all)</legend>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => {
-            const selected = interests.includes(category.slug);
-            return (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => toggleInterest(category.slug)}
-                aria-pressed={selected}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
-                  selected
-                    ? 'border-transparent bg-brand-700 text-white'
-                    : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
-                }`}
-              >
-                <CategoryIcon iconKey={category.icon} categorySlug={category.slug} className="h-4 w-4" />
-                {category.name}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
 
       {!user && (
         <p className="text-xs text-slate-500 dark:text-slate-400">
