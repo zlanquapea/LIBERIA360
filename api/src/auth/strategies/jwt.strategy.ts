@@ -31,10 +31,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        tokenFromCookie,
-        // Retained for trusted non-browser clients during migration. The web
-        // application never receives or stores this bearer token.
+        // Bearer header first: an explicit Authorization header is a
+        // deliberate credential a caller went out of its way to attach, so
+        // it should never be silently shadowed by an ambient session
+        // cookie the same HTTP client happens to also be carrying (e.g. a
+        // non-browser client/test harness that reuses one cookie-jar-backed
+        // client across several logged-in identities). A real browser
+        // never sends this header at all — the web application never
+        // receives or stores a bearer token — so this ordering changes
+        // nothing for normal cookie-only requests.
         ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // Cookie fallback for the web application. Retained bearer support
+        // above is for trusted non-browser clients during migration.
+        tokenFromCookie,
       ]),
       ignoreExpiration: false,
       secretOrKey: configService.get("jwt", { infer: true }).secret,
