@@ -13,6 +13,7 @@ import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
 import { getMyCarListings } from '@/lib/car-rentals-api';
 import { BookingDetailModal, BookingRow, type SelectedBooking } from '@/components/booking-ui';
+import { BrandLoader } from '@/components/BrandLoader';
 import type { Booking, Business, CarListing, Creator } from '@/lib/types';
 
 // "My Bookings" (Tech Spec §3.3) — client-only, same reasoning as
@@ -101,8 +102,9 @@ export default function BookingsPage() {
 
   if (!ready || loading) {
     return (
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeftIcon, TicketIcon } from "@heroicons/react/24/outline";
+import { BrandLoader } from "@/components/BrandLoader";
 import { EventTicketScanner } from "@/components/EventTicketScanner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -11,7 +12,12 @@ export default function EventTicketScanPage() {
   const { token, ready, user } = useAuth();
 
   if (!ready) {
-    return <main className="mx-auto max-w-xl px-4 py-10 text-sm text-slate-500 dark:text-slate-400">Loading scanner…</main>;
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading scanner…</p>
+      </main>
+    );
   }
 
   if (!user || !token) {

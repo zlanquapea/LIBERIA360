@@ -11,6 +11,7 @@ import {
 } from "@/lib/creator-api";
 import { getCounties } from "@/lib/api";
 import { CountySelect } from "@/components/ProfileFields";
+import { BrandLoader } from "@/components/BrandLoader";
 import { CreatorPhotoActionMenu } from "@/components/CreatorPhotoActionMenu";
 import { CreatorPortfolioManager } from "@/components/CreatorPortfolioManager";
 import { CreatorOfferingsManager } from "@/components/CreatorOfferingsManager";
@@ -207,8 +208,9 @@ export default function MyCreatorProfilePage() {
 
   if (!ready || loadingProfile) {
     return (
-      <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

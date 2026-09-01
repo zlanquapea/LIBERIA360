@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getMyBusinesses } from '@/lib/business-api';
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
+import { BrandLoader } from '@/components/BrandLoader';
 import { BusinessDashboardNav } from '@/components/BusinessDashboardNav';
 import { BusinessDashboardProvider } from '@/components/BusinessDashboardContext';
 import type { Business } from '@/lib/types';
@@ -60,7 +61,12 @@ export default function BusinessDashboardLayout({ children }: { children: ReactN
   }, [ready, token, reload]);
 
   if (!ready || loading) {
-    return <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-slate-500 dark:text-slate-400">Loading your business dashboard…</main>;
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading your business dashboard…</p>
+      </main>
+    );
   }
 
   if (!user || !token) {

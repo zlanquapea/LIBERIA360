@@ -12,6 +12,7 @@ import {
   UsersIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 import { getEvent } from "@/lib/api";
 import { getEventAnalytics } from "@/lib/analytics-api";
 import { getEventTicketMetrics } from "@/lib/event-ticket-api";
@@ -195,8 +196,9 @@ export default function EventTicketMetricsPage() {
 
   if (!ready)
     return (
-      <main className="mx-auto max-w-2xl px-4 py-10 text-sm text-slate-500">
-        Loading…
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   if (!user)

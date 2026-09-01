@@ -10,6 +10,7 @@ import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatAdvertisementReviewStatus, formatAdvertisementType } from '@/lib/format';
 import { resolveImageUrl } from '@/lib/images';
 import { AdvertisementForm } from '@/components/AdvertisementForm';
+import { BrandLoader } from '@/components/BrandLoader';
 import { SafeImage } from '@/components/SafeImage';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
@@ -114,8 +115,9 @@ export default function MyAdsPage() {
 
   if (!ready || loading) {
     return (
-      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

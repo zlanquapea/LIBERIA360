@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { BrandLoader } from '@/components/BrandLoader';
 import { acceptInvitationById, declineInvitationById, listMyInvitations } from '@/lib/invitations-api';
 import { HttpError } from '@/lib/http';
 import type { MyInvitationSummary } from '@/lib/types';
@@ -52,7 +53,14 @@ export default function MyInvitationsPage() {
     }
   }
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+      </main>
+    );
+  }
 
   if (!user) {
     return (

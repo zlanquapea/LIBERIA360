@@ -17,6 +17,7 @@ import {
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand, formatTripDateRange, formatTripStatus, formatTripVisibility } from '@/lib/format';
 import { ItineraryStops } from '@/components/ItineraryStops';
+import { BrandLoader } from '@/components/BrandLoader';
 import { TripPeoplePanel } from '@/components/TripPeoplePanel';
 import { TripChatPanel } from '@/components/TripChatPanel';
 import { AddTripStop } from '@/components/AddTripStop';
@@ -141,8 +142,9 @@ export default function TripDetailPage() {
 
   if (!ready || loading) {
     return (
-      <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }

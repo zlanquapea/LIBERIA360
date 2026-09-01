@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { BrandLoader } from '@/components/BrandLoader';
 import { PlaceSubmissionForm } from '@/components/PlaceSubmissionForm';
 import { getMyBusinesses } from '@/lib/business-api';
 import type { Place } from '@/lib/types';
@@ -25,8 +26,9 @@ export default function SubmitPlacePage() {
 
   if (!ready) {
     return (
-      <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-10">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
       </main>
     );
   }
