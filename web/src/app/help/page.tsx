@@ -3,6 +3,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { getHelpCenterArticles, getHelpCenterCategories } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { StillNeedHelp } from '@/components/StillNeedHelpCard';
+import { SupportHelpNav } from '@/components/SupportHelpNav';
 
 export const metadata = { title: 'Help Center — LIBERIA360' };
 
@@ -44,6 +45,8 @@ export default async function HelpCenterPage({
         title="Help Center"
         description="Search our guides or browse by topic — most questions are answered here faster than a support ticket."
       />
+
+      <SupportHelpNav />
 
       <form
         action="/help"

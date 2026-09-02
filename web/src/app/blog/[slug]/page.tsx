@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { NewspaperIcon } from '@heroicons/react/24/solid';
 import { ApiError, getBlogPost } from '@/lib/api';
 import { SafeImage } from '@/components/SafeImage';
+import { SupportHelpNav } from '@/components/SupportHelpNav';
 import { resolveImageUrl } from '@/lib/images';
 
 export async function generateMetadata({
@@ -33,6 +34,8 @@ export default async function BlogPostPage({
       <Link href="/blog" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
         ← Blog &amp; Updates
       </Link>
+
+      <SupportHelpNav />
 
       <article className="flex flex-col gap-4">
         <div className="h-56 w-full overflow-hidden rounded-2xl">
