@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ClockIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { SuperAdminGate } from '@/components/SuperAdminGate';
+import { LoadingState } from '@/components/admin-ui';
 import { useAuth } from '@/hooks/useAuth';
 import { getAuditLog } from '@/lib/admin-api';
 import { parseUserAgent } from '@/lib/user-agent';
@@ -58,7 +59,7 @@ function AuditLog() {
       </div>
 
       {!result ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <LoadingState />
       ) : result.data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           Nothing recorded yet.

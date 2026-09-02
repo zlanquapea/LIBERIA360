@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
+import { BrandLoader } from './BrandLoader';
 import {
   deleteBookingMessage,
   getBookingMessages,
@@ -179,7 +180,10 @@ export default function BookingMessageThread({ bookingId }: { bookingId: string 
 
       <div className="flex min-h-[4rem] flex-col gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 p-3">
         {loading ? (
-          <p className="text-xs text-slate-500 dark:text-slate-400">Loading…</p>
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <BrandLoader size="sm" />
+            Loading…
+          </div>
         ) : isEmpty ? (
           <p className="text-xs text-slate-500 dark:text-slate-400">No messages yet — say hello 👋</p>
         ) : (

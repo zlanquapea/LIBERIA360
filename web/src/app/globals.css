@@ -584,6 +584,18 @@ html[data-splash-seen='1'] .splash-screen {
   background: #fff;
   box-shadow: 0 6px 18px rgb(8 26 80 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.4);
 }
+.brand-loader--sm {
+  width: 1.75rem;
+}
+.brand-loader--sm .brand-loader__halo {
+  filter: blur(6px);
+}
+.brand-loader--sm .brand-loader__ring--outer {
+  border-width: 2px;
+}
+.brand-loader--sm .brand-loader__ring--inner {
+  border-width: 1.5px;
+}
 @keyframes brand-loader-reveal {
   from {
     opacity: 0;

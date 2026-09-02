@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { BrandLoader } from '@/components/BrandLoader';
 import {
   ArrowLongDownIcon,
   ArrowLongUpIcon,
@@ -166,7 +167,12 @@ export function EmptyState({ title, description }: { title: string; description?
 }
 
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
-  return <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>;
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-700">
+      <BrandLoader size="sm" label={label} />
+      <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
+    </div>
+  );
 }
 
 export function ErrorState({ message }: { message: string }) {

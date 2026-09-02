@@ -11,9 +11,22 @@ import Image from 'next/image';
 // time this can ever mount: Header renders the exact same image, and
 // Header persists across every client-side navigation — only `{children}`
 // swaps — so this never triggers its own image fetch.
-export function BrandLoader({ label = 'Loading…' }: { label?: string }) {
+export function BrandLoader({
+  label = 'Loading…',
+  size = 'md',
+}: {
+  label?: string;
+  // 'sm' scales the same mark/rings down for tight spaces — a notification
+  // dropdown, a chat thread, a dashboard stat panel — where the default
+  // 5.5rem mark would overwhelm the surrounding content.
+  size?: 'md' | 'sm';
+}) {
   return (
-    <div role="status" aria-live="polite" className="brand-loader">
+    <div
+      role="status"
+      aria-live="polite"
+      className={size === 'sm' ? 'brand-loader brand-loader--sm' : 'brand-loader'}
+    >
       <span className="sr-only">{label}</span>
       <span className="brand-loader__halo" aria-hidden />
       <span className="brand-loader__ring brand-loader__ring--outer" aria-hidden />

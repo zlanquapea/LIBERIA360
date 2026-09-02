@@ -20,6 +20,7 @@ import { formatBusinessType, formatPlaceReviewStatus, formatPlaceType } from '@/
 import { PhotoManager } from '@/components/PhotoManager';
 import type { Activity, ActivityDifficulty, Business, BusinessType, Category, County, Place, PlaceReviewStatus, PlaceType } from '@/lib/types';
 import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from './content-shared';
+import { LoadingState } from '@/components/admin-ui';
 import { PlaceLocationPickerLoader } from './PlaceLocationPickerLoader';
 import { PlaceReviewPanel } from './PlaceReviewPanel';
 import { DataQualityPanel } from './DataQualityPanel';
@@ -251,7 +252,7 @@ function PlaceDetail({
   useEffect(reload, [id]);
 
   if (!place) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
+    return <LoadingState />;
   }
 
   // A pending/rejected/suspended place — or any place a user submitted

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, getPlaceBySlug } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { useSavedPlaces } from '@/hooks/useSavedPlaces';
+import { BrandLoader } from '@/components/BrandLoader';
 import { cachePlaceSnapshot, getCachedPlaceSnapshot } from '@/lib/saved-places';
 import type { Place } from '@/lib/types';
 
@@ -76,7 +77,10 @@ export default function SavedPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
+          <BrandLoader />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading…</p>
+        </div>
       ) : resolved.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
           Nothing saved yet — tap &ldquo;Save&rdquo; on a destination profile to add it here.

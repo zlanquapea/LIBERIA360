@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { getPublicTrips } from '@/lib/itinerary-api';
 import { getFriendlyErrorMessage } from '@/lib/errors';
 import { PublicTripCard } from '@/components/PublicTripCard';
+import { BrandLoader } from '@/components/BrandLoader';
 import type { PublicTripSummary } from '@/lib/types';
 
 // "Trips You Can Join" (Sections 5 & 17 of the Aug 2026 social-trip spec)
@@ -53,7 +54,10 @@ export default function CommunityTripsPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
+          <BrandLoader />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading…</p>
+        </div>
       ) : loadError ? (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {loadError}

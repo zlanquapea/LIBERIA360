@@ -102,7 +102,10 @@ export default function MyOrdersPage() {
       {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
+          <BrandLoader />
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading…</p>
+        </div>
       ) : orders.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-[2rem] border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
           <ShoppingBagIcon aria-hidden className="h-8 w-8 text-slate-400" />

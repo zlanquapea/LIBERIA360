@@ -25,6 +25,7 @@ import {
 import { uploadImage } from '@/lib/uploads-api';
 import { HttpError } from '@/lib/http';
 import { resolveImageUrl } from '@/lib/images';
+import { BrandLoader } from './BrandLoader';
 import { ConfirmDialog } from './ConfirmDialog';
 import { MessageStatus } from './MessageStatus';
 import { SafeImage } from './SafeImage';
@@ -336,7 +337,10 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
       </div>
 
       {loading ? (
-        <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-slate-500 dark:text-slate-400">
+          <BrandLoader size="sm" />
+          Loading…
+        </div>
       ) : loadError && messages.length === 0 ? (
         <p className="mx-3 my-3 rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">{loadError}</p>
       ) : (

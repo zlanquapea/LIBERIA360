@@ -314,7 +314,10 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
           )}
 
           {loadingPlaces || checkingFallback ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
+              <BrandLoader />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading…</p>
+            </div>
           ) : displayPlaces.length > 0 ? (
             <>
               {showingFallback && (

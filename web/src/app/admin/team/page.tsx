@@ -5,6 +5,7 @@ import { StarIcon } from '@heroicons/react/24/solid';
 import { UserPlusIcon, MagnifyingGlassIcon, EnvelopeIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuperAdminGate } from '@/components/SuperAdminGate';
+import { LoadingState } from '@/components/admin-ui';
 import { useAuth } from '@/hooks/useAuth';
 import { createAdmin, getTeamRoster, resendTeamInvite, searchTeamMember, setTeamRoles } from '@/lib/admin-api';
 import { HttpError } from '@/lib/http';
@@ -53,7 +54,7 @@ function TeamDashboard() {
           Current team {roster && <span className="font-normal text-slate-400 dark:text-slate-500">({roster.length})</span>}
         </h2>
         {!roster ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+          <LoadingState />
         ) : roster.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">No admins yet — that shouldn&apos;t be possible if you&apos;re seeing this page.</p>
         ) : (
