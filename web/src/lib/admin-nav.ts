@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from 'react';
 import {
+  BookOpenIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
@@ -50,6 +51,17 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     label: 'Dashboard',
     icon: Squares2X2Icon,
     href: '/admin',
+  },
+  {
+    id: 'help-center',
+    label: 'Help Center',
+    icon: BookOpenIcon,
+    capability: 'content.view',
+    items: [
+      { label: 'Articles', href: '/admin/help-center' },
+      { label: 'FAQ', href: '/admin/faq' },
+      { label: 'Blog & Updates', href: '/admin/blog' },
+    ],
   },
   {
     id: 'analytics',

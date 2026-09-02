@@ -1,5 +1,6 @@
 import type {
   Advertisement,
+  BlogPost,
   Business,
   BusinessType,
   CarCategory,
@@ -12,13 +13,18 @@ import type {
   Event,
   EventAttendee,
   EventCategory,
+  Faq,
+  KnowledgeArticleWithRelated,
+  KnowledgeCategoryWithCount,
   MenuItem,
+  PaginatedBlogPosts,
   PaginatedBusinessContent,
   PaginatedBusinesses,
   PaginatedCarListings,
   PaginatedCreators,
   PaginatedCreatorPosts,
   PaginatedEvents,
+  PaginatedKnowledgeArticles,
   PaginatedPlaces,
   PaginatedReviews,
   Place,
@@ -425,6 +431,61 @@ export function getCarListings(
 // is a 404, not an empty state, same as getPlaceBySlug.
 export function getCarListingById(id: string): Promise<CarListing> {
   return apiFetch<CarListing>(`/car-listings/${id}`);
+}
+
+// Help Center / FAQ / Blog — public reads only. These are a brand-new,
+// standalone content layer with no relationship to the support ticket
+// system (see api/src/support): "Still need help?" on an article just
+// links to the existing /account/support flow, it never touches these
+// endpoints.
+export function getHelpCenterCategories(): Promise<KnowledgeCategoryWithCount[]> {
+  return apiFetch<KnowledgeCategoryWithCount[]>("/help-center/categories", undefined, []);
+}
+
+export interface HelpCenterArticlesQuery {
+  category?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function getHelpCenterArticles(
+  query: HelpCenterArticlesQuery = {},
+): Promise<PaginatedKnowledgeArticles> {
+  return apiFetch<PaginatedKnowledgeArticles>(
+    "/help-center/articles",
+    query as Record<string, string | number | undefined>,
+    emptyPage(query.limit),
+  );
+}
+
+// The article detail page — a single published article plus a handful of
+// related ones from the same category. No buildFallback: a missing/draft
+// slug is a 404, same as getPlaceBySlug.
+export function getHelpCenterArticle(slug: string): Promise<KnowledgeArticleWithRelated> {
+  return apiFetch<KnowledgeArticleWithRelated>(`/help-center/articles/${slug}`);
+}
+
+export function getFaqs(): Promise<Faq[]> {
+  return apiFetch<Faq[]>("/faq", undefined, []);
+}
+
+export interface BlogPostsQuery {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function getBlogPosts(query: BlogPostsQuery = {}): Promise<PaginatedBlogPosts> {
+  return apiFetch<PaginatedBlogPosts>(
+    "/blog",
+    query as Record<string, string | number | undefined>,
+    emptyPage(query.limit),
+  );
+}
+
+export function getBlogPost(slug: string): Promise<BlogPost> {
+  return apiFetch<BlogPost>(`/blog/${slug}`);
 }
 
 export { ApiError };

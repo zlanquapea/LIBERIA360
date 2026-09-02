@@ -439,6 +439,28 @@ Lets a buyer and the restaurant owner exchange messages about an order, in-platf
 
 Same `readAt`-based sent/delivered/viewed receipt as Booking and Food Order messages, with one difference: "the other side" of a support conversation isn't always the same specific person — any admin can reply to an unassigned or reassigned ticket — so `markRead` treats every message not sent by the caller as readable, not just messages from one fixed counterpart.
 
+### Help Center / FAQ / Blog
+
+A self-serve content layer built *around* Customer Support above, not a second one — none of these three modules reference `SupportTicket`/`SupportMessage` at all; the only connection is the "Still need help? Contact Support" link the frontend renders, which is just a link to the existing ticket-creation flow.
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /help-center/categories` | Every category, with a `publishedArticleCount` | Public |
+| `GET /help-center/articles` | Published articles, filterable by `category` (slug) and `q`, paginated | Public |
+| `GET /help-center/articles/:slug` | One published article plus up to 4 related articles from the same category | Public |
+| `POST /help-center/articles/:id/feedback` | Record a `{ helpful: boolean }` vote — anonymous, no dedupe | Public |
+| `GET/POST/PATCH/DELETE /admin/help-center/categories[/:id]` | Category CRUD | Admin |
+| `GET/POST/PATCH/DELETE /admin/help-center/articles[/:id]` | Article CRUD (draft/published) | Admin |
+| `GET /admin/help-center/articles/:id/feedback-summary` | `{ yes, no }` vote counts for one article | Admin |
+| `GET /faq` | Published FAQs, ordered by `sortOrder` | Public |
+| `GET/POST/PATCH/DELETE /admin/faq[/:id]` | FAQ CRUD (question/answer/category/published) | Admin |
+| `PATCH /admin/faq/reorder/apply` | Bulk-apply a new `sortOrder` from an ordered array of ids | Admin |
+| `GET /blog` | Published posts, searchable by `q`, paginated | Public |
+| `GET /blog/:slug` | One published post | Public |
+| `GET/POST/PATCH/DELETE /admin/blog[/:id]` | Blog post CRUD (draft/published, optional cover image) | Admin |
+
+A category can't be deleted while it still has articles (`400`, not a cascading delete). Deleting a category or article never touches Customer Support's tables. The existing satisfaction-rating fields on `SupportTicket` (`rating`/`ratingComment`) are reused as-is for ticket satisfaction — no new table was added for that, since the ticket entity already carries it end-to-end.
+
 ### Admin
 
 All routes below require `AdminGuard` (`req.user.isAdmin`) unless marked Super Admin.
