@@ -30,47 +30,49 @@ export default async function BlogPostPage({
   if (!post) notFound();
 
   return (
-    <main className="page-shell max-w-2xl">
+    <main className="page-shell max-w-6xl">
       <Link href="/blog" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
         ← Blog &amp; Updates
       </Link>
 
-      <SupportHelpNav />
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+        <SupportHelpNav />
 
-      <article className="flex flex-col gap-4">
-        <div className="h-56 w-full overflow-hidden rounded-2xl">
-          <SafeImage
-            src={post.coverImage ? resolveImageUrl(post.coverImage) : null}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="eager"
-            fallback={
-              <div className="flex h-56 items-center justify-center bg-gradient-to-br from-brand-700 to-brand-900">
-                <NewspaperIcon className="h-12 w-12 text-white/80" />
-              </div>
-            }
-          />
-        </div>
+        <article className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="h-56 w-full overflow-hidden rounded-2xl">
+            <SafeImage
+              src={post.coverImage ? resolveImageUrl(post.coverImage) : null}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="eager"
+              fallback={
+                <div className="flex h-56 items-center justify-center bg-gradient-to-br from-brand-700 to-brand-900">
+                  <NewspaperIcon className="h-12 w-12 text-white/80" />
+                </div>
+              }
+            />
+          </div>
 
-        <header className="flex flex-col gap-1">
-          <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-white sm:text-3xl">
-            {post.title}
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {post.author?.name && <>By {post.author.name} · </>}
-            {post.publishedAt &&
-              new Date(post.publishedAt).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-          </p>
-        </header>
+          <header className="flex flex-col gap-1">
+            <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-white sm:text-3xl">
+              {post.title}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {post.author?.name && <>By {post.author.name} · </>}
+              {post.publishedAt &&
+                new Date(post.publishedAt).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+            </p>
+          </header>
 
-        <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
-          {post.content}
-        </div>
-      </article>
+          <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
+            {post.content}
+          </div>
+        </article>
+      </div>
     </main>
   );
 }

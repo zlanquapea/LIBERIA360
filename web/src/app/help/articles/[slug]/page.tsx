@@ -33,7 +33,7 @@ export default async function HelpArticlePage({
   const { article, related } = result;
 
   return (
-    <main className="page-shell max-w-3xl">
+    <main className="page-shell max-w-6xl">
       <nav className="flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
         <Link href="/help" className="hover:underline">
           Help Center
@@ -44,47 +44,51 @@ export default async function HelpArticlePage({
         </Link>
       </nav>
 
-      <SupportHelpNav />
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+        <SupportHelpNav />
 
-      <article className="surface-card flex flex-col gap-4 p-5 sm:p-7">
-        <header className="flex flex-col gap-1">
-          <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-white sm:text-3xl">
-            {article.title}
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {article.author?.name && <>By {article.author.name} · </>}
-            Updated {new Date(article.updatedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          </p>
-        </header>
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
+          <article className="surface-card flex flex-col gap-4 p-5 sm:p-7">
+            <header className="flex flex-col gap-1">
+              <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-white sm:text-3xl">
+                {article.title}
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {article.author?.name && <>By {article.author.name} · </>}
+                Updated {new Date(article.updatedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            </header>
 
-        <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
-          {article.content}
+            <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-200">
+              {article.content}
+            </div>
+
+            <ArticleFeedback articleId={article.id} />
+          </article>
+
+          {related.length > 0 && (
+            <section aria-labelledby="related-articles-heading" className="flex flex-col gap-3">
+              <h2 id="related-articles-heading" className="font-semibold text-slate-800 dark:text-slate-100">
+                Related articles
+              </h2>
+              <ul className="flex flex-col gap-2">
+                {related.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={`/help/articles/${item.slug}`}
+                      className="surface-card block p-4 font-medium text-slate-900 transition-colors hover:border-brand-400 dark:text-slate-50 dark:hover:border-brand-600"
+                    >
+                      {item.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <StillNeedHelp />
         </div>
-
-        <ArticleFeedback articleId={article.id} />
-      </article>
-
-      {related.length > 0 && (
-        <section aria-labelledby="related-articles-heading" className="flex flex-col gap-3">
-          <h2 id="related-articles-heading" className="font-semibold text-slate-800 dark:text-slate-100">
-            Related articles
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {related.map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={`/help/articles/${item.slug}`}
-                  className="surface-card block p-4 font-medium text-slate-900 transition-colors hover:border-brand-400 dark:text-slate-50 dark:hover:border-brand-600"
-                >
-                  {item.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <StillNeedHelp />
+      </div>
     </main>
   );
 }
