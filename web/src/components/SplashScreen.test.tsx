@@ -32,7 +32,7 @@ describe('SplashScreen', () => {
     expect(screen.getByRole('status', { name: 'Loading LIBERIA360' })).toBeInTheDocument();
     expect(screen.getByAltText('LIBERIA360')).toBeInTheDocument();
 
-    act(() => jest.advanceTimersByTime(5000));
+    act(() => jest.advanceTimersByTime(2500));
     expect(screen.queryByRole('status', { name: 'Loading LIBERIA360' })).not.toBeInTheDocument();
   });
 
@@ -65,7 +65,7 @@ describe('SplashScreen', () => {
     render(<SplashScreen />);
     expect(screen.getByRole('status', { name: 'Loading LIBERIA360' })).toBeInTheDocument();
 
-    act(() => jest.advanceTimersByTime(5000));
+    act(() => jest.advanceTimersByTime(2500));
     expect(screen.queryByRole('status', { name: 'Loading LIBERIA360' })).not.toBeInTheDocument();
   });
 });
