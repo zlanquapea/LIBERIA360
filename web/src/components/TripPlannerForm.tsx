@@ -8,6 +8,7 @@ import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-d
 import { HttpError } from '@/lib/http';
 import { formatBudgetBand, formatTripDateRange } from '@/lib/format';
 import { DestinationAutocomplete } from './DestinationAutocomplete';
+import { BrandLoader } from './BrandLoader';
 import type { BudgetBand, Place, TripPreviewResponse, TripVisibility } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
@@ -157,7 +158,14 @@ export function TripPlannerForm() {
   }
 
   if (!ready || resuming) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">{resuming ? 'Saving your trip…' : 'Loading…'}</p>;
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-5">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+          {resuming ? 'Saving your trip…' : 'Loading…'}
+        </p>
+      </div>
+    );
   }
 
   if (preview) {

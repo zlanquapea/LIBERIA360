@@ -10,6 +10,7 @@ import { HttpError } from '@/lib/http';
 import { formatBudgetBand } from '@/lib/format';
 import { CategoryIcon } from '@/lib/icons';
 import { requestGeolocation, type Coords } from '@/lib/geolocation';
+import { BrandLoader } from './BrandLoader';
 import type { BudgetBand, Category } from '@/lib/types';
 
 const BUDGET_BANDS: BudgetBand[] = ['budget', 'moderate', 'premium'];
@@ -74,7 +75,12 @@ export function WeekendExplorerForm({ categories }: { categories: Category[] }) 
   }
 
   if (!ready) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-5">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+      </div>
+    );
   }
 
   if (!user) {

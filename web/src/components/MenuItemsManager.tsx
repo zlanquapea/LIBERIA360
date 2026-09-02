@@ -5,6 +5,7 @@ import { createMenuItem, deleteMenuItem, getMenuItems, updateMenuItem } from '@/
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { SingleImageUploader } from './SingleImageUploader';
 import { ConfirmDialog } from './ConfirmDialog';
+import { BrandLoader } from './BrandLoader';
 import type { MenuItem, UpdateMenuItemInput } from '@/lib/types';
 
 const EMPTY_FORM = { name: '', description: '', price: '', category: '', image: null as string | null };
@@ -102,7 +103,12 @@ export function MenuItemsManager({ token, businessId }: { token: string; busines
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Menu (picture, item &amp; price)</p>
 
-      {items === null && !error && <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
+      {items === null && !error && (
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <BrandLoader size="sm" />
+          Loading…
+        </div>
+      )}
 
       {items !== null && items.length > 0 && (
         <div className="flex flex-col gap-2">

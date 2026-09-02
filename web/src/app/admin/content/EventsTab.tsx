@@ -8,6 +8,7 @@ import { formatEventCategory, formatEventDateRange, formatEventReviewStatus } fr
 import { PhotoManager } from '@/components/PhotoManager';
 import type { County, Event, EventCategory, EventReviewStatus } from '@/lib/types';
 import { BackToListLink, DeleteButton, inputClass } from './content-shared';
+import { LoadingState } from '@/components/admin-ui';
 
 const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nightlife', 'seasonal', 'other'];
 
@@ -75,7 +76,7 @@ export function EventsTab({ token, counties }: { token: string; counties: County
         </Link>
       </div>
       {!events ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <LoadingState />
       ) : events.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
           No events yet.

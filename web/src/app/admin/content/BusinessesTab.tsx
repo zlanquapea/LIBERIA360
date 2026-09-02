@@ -6,6 +6,7 @@ import { listBusinessesAdmin, setBusinessReviewStatus, setBusinessVerification }
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { HttpError } from '@/lib/http';
 import { inputClass, TabListHeader } from './content-shared';
+import { LoadingState } from '@/components/admin-ui';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { BusinessFullDetails } from '@/components/BusinessFullDetails';
 import type { Business, BusinessReviewStatus, VerificationStatus } from '@/lib/types';
@@ -110,7 +111,7 @@ export function BusinessesTab({ token }: { token: string }) {
       />
 
       {!result ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <LoadingState />
       ) : result.data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           No businesses match this filter.

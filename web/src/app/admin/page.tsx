@@ -17,6 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/24/solid";
 import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 import {
   getAnalyticsOverview,
   getAuditLog,
@@ -246,9 +247,10 @@ export default function AdminPage() {
         </h2>
         <Panel>
           {!overview ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <BrandLoader size="sm" />
               Loading…
-            </p>
+            </div>
           ) : (
             <ul className="flex flex-col gap-2">
               {overview.insights.map((insight, i) => (
@@ -279,9 +281,10 @@ export default function AdminPage() {
             }
           >
             {!overview ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <BrandLoader size="sm" />
                 Loading…
-              </p>
+              </div>
             ) : overview.topPlaces.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 No activity recorded yet — views, saves, and bookings will show
@@ -297,17 +300,19 @@ export default function AdminPage() {
               {platformKpis ? (
                 <BookingStatusBar counts={platformKpis.bookingsByStatus} />
               ) : (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                  <BrandLoader size="sm" />
                   Loading…
-                </p>
+                </div>
               )}
             </Panel>
           ) : (
             <Panel title="Getting no attention">
               {!overview ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                  <BrandLoader size="sm" />
                   Loading…
-                </p>
+                </div>
               ) : overview.neglectedPlaces.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Every place got at least one view this period.
@@ -348,7 +353,7 @@ export default function AdminPage() {
           </p>
         </div>
         {!queue ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"><BrandLoader size="sm" /> Loading…</div>
         ) : needsAttentionTotal === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
             All clear — nothing pending review right now.
@@ -411,9 +416,10 @@ export default function AdminPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Panel title="Recent reviews">
             {!queue ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <BrandLoader size="sm" />
                 Loading…
-              </p>
+              </div>
             ) : queue.recentReviews.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 No reviews yet.
@@ -461,9 +467,10 @@ export default function AdminPage() {
               }
             >
               {!recentActions ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                  <BrandLoader size="sm" />
                   Loading…
-                </p>
+                </div>
               ) : recentActions.length === 0 ? (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   No admin actions recorded yet.

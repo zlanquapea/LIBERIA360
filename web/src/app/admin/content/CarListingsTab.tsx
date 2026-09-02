@@ -8,6 +8,7 @@ import { HttpError } from '@/lib/http';
 import { SafeImage } from '@/components/SafeImage';
 import { CarListingFullDetails } from '@/components/CarListingFullDetails';
 import { inputClass, TabListHeader } from './content-shared';
+import { LoadingState } from '@/components/admin-ui';
 import type { CarListing, CarListingReviewStatus } from '@/lib/types';
 
 const STATUS_FILTERS: { id: CarListingReviewStatus | 'all'; label: string }[] = [
@@ -87,7 +88,7 @@ export function CarListingsTab({ token }: { token: string }) {
       />
 
       {!listings ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <LoadingState />
       ) : filtered.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           No car listings match this filter.

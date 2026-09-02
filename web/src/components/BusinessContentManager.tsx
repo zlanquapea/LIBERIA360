@@ -13,6 +13,7 @@ import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBusinessContentStatus, formatBusinessContentType } from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
 import { ConfirmDialog } from './ConfirmDialog';
+import { BrandLoader } from './BrandLoader';
 import type { BusinessContent, BusinessContentType } from '@/lib/types';
 
 const CONTENT_TYPES: BusinessContentType[] = ['offer', 'announcement', 'article', 'travel_tip', 'experience'];
@@ -140,7 +141,12 @@ export function BusinessContentManager({ token, businessId }: { token: string; b
         </p>
       )}
 
-      {items === null && <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
+      {items === null && (
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <BrandLoader size="sm" />
+          Loading…
+        </div>
+      )}
 
       {items !== null && items.length === 0 && (
         <p className="text-sm text-slate-500 dark:text-slate-400">

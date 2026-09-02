@@ -10,6 +10,7 @@ import { getMyCreatorProfile } from '@/lib/creator-api';
 import { HttpError } from '@/lib/http';
 import { formatEventCategory, toDatetimeLocalInput } from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
+import { BrandLoader } from './BrandLoader';
 import { PlaceLocationPickerLoader } from '@/app/admin/content/PlaceLocationPickerLoader';
 import type { County, Event, EventCategory, EventTicketType } from '@/lib/types';
 
@@ -152,7 +153,12 @@ export function NewEventForm({
   }
 
   if (!ready) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>;
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-5">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+      </div>
+    );
   }
 
   if (!user) {

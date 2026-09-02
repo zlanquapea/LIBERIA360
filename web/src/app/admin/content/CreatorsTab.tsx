@@ -7,6 +7,7 @@ import { setCreatorFeatured, setCreatorVerification } from '@/lib/admin-api';
 import { colorForCreator } from '@/lib/category-colors';
 import { formatCreatorCategory } from '@/lib/format';
 import { inputClass, TabListHeader } from './content-shared';
+import { LoadingState } from '@/components/admin-ui';
 import type { Creator } from '@/lib/types';
 
 const PAGE_SIZE = 20;
@@ -63,7 +64,7 @@ export function CreatorsTab({ token }: { token: string }) {
       />
 
       {!result ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <LoadingState />
       ) : result.data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           No creators match this search.

@@ -8,6 +8,7 @@ import { HttpError } from '@/lib/http';
 import { SafeImage } from '@/components/SafeImage';
 import { AdvertisementFullDetails } from '@/components/AdvertisementFullDetails';
 import { inputClass, TabListHeader } from './content-shared';
+import { LoadingState } from '@/components/admin-ui';
 import type { Advertisement, AdvertisementReviewStatus } from '@/lib/types';
 
 const STATUS_FILTERS: { id: AdvertisementReviewStatus | 'all'; label: string }[] = [
@@ -83,7 +84,7 @@ export function AdvertisementsTab({ token }: { token: string }) {
       />
 
       {!ads ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+        <LoadingState />
       ) : filtered.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           No advertisements match this filter.

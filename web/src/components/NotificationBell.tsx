@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BellIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
+import { BrandLoader } from './BrandLoader';
 import {
   getUnreadNotificationCount,
   listNotifications,
@@ -187,7 +188,10 @@ export function NotificationBell() {
             )}
 
             {loadingFeed && (
-              <p className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+              <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+                <BrandLoader size="sm" />
+                Loading…
+              </div>
             )}
 
             {isEmpty && (
