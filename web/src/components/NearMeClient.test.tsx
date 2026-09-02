@@ -163,8 +163,14 @@ describe('NearMeClient', () => {
     await screen.findByText('CeeCee Beach');
     await userEvent.click(screen.getByRole('button', { name: /food & dining/i }));
 
-    await screen.findByText(/no food & dining within 10 km/i);
+    await screen.findByText(/nothing within 10 km/i);
+    expect(screen.getByText(/closest food & dining anywhere in liberia/i)).toBeInTheDocument();
     expect(screen.getByText('CeeCee Beach')).toBeInTheDocument();
+    // The distance on a fallback-mode card must be visually flagged as
+    // outside the selected radius, not shown the same as a real match —
+    // this is the whole fix: a place from the widened search should never
+    // be mistakable for one that actually matched the 10 km filter.
+    expect(screen.getByText(/km from monrovia/i).closest('span')).toHaveClass('bg-gold-100');
 
     const calls = (global.fetch as jest.Mock).mock.calls;
     expect(calls).toHaveLength(3);
