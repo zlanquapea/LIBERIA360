@@ -1,23 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLoader } from "@/components/BrandLoader";
-import { createSupportTicket, getMySupportTickets } from "@/lib/support-api";
-import { uploadImage } from "@/lib/uploads-api";
+import { SupportHelpNav } from "@/components/SupportHelpNav";
+import { getMySupportTickets } from "@/lib/support-api";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import type { SupportTicket, SupportTicketCategory } from "@/lib/types";
+import type { SupportTicket, SupportTicketCategory, SupportTicketStatus } from "@/lib/types";
 
-const categories: SupportTicketCategory[] = [
-  "account",
-  "booking",
-  "payment",
-  "listing",
-  "technical",
-  "safety",
-  "feedback",
-  "other",
-];
 const label = (value: string) =>
   value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 const categoryLabel: Record<SupportTicketCategory, string> = {
@@ -30,61 +20,30 @@ const categoryLabel: Record<SupportTicketCategory, string> = {
   feedback: "Feedback or suggestion",
   other: "Advertisement or other issue",
 };
+const OPEN_STATUSES: SupportTicketStatus[] = ["open", "in_progress", "waiting_for_customer"];
+
+// The ticket list only — creating a ticket now lives at its own
+// /account/support/new page (see that file for why) so a customer
+// checking on old requests never has to scroll past a form to get to
+// them, and one submitting a new request never has to scroll past a
+// list of old ones to find the form.
 export default function CustomerSupportPage() {
   const { token, ready } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [category, setCategory] = useState<SupportTicketCategory>("technical");
-  const [subject, setSubject] = useState("");
-  const [description, setDescription] = useState("");
-  const [attachments, setAttachments] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   useEffect(() => {
     if (token)
       getMySupportTickets(token)
         .then(setTickets)
         .catch((e) => setError(getFriendlyErrorMessage(e)));
   }, [token]);
-  async function addFiles(files: FileList | null) {
-    if (!token || !files) return;
-    setBusy(true);
-    try {
-      const urls = await Promise.all(
-        Array.from(files)
-          .slice(0, 5 - attachments.length)
-          .map((f) => uploadImage(token, f)),
-      );
-      setAttachments((old) => [...old, ...urls]);
-    } catch (e) {
-      setError(getFriendlyErrorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!token) return;
-    setBusy(true);
-    setError("");
-    try {
-      const ticket = await createSupportTicket(token, {
-        category,
-        subject,
-        description,
-        attachments,
-      });
-      setTickets((old) => [ticket, ...old]);
-      setShowForm(false);
-      setSubject("");
-      setDescription("");
-      setAttachments([]);
-    } catch (err) {
-      setError(getFriendlyErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
+
+  const openCount = useMemo(
+    () => tickets.filter((t) => OPEN_STATUSES.includes(t.status)).length,
+    [tickets],
+  );
+
   if (!ready)
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
@@ -113,16 +72,19 @@ export default function CustomerSupportPage() {
             Customer Support
           </h1>
           <p className="text-sm text-slate-500">
-            Report a problem and follow every update in one place.
+            Track every request you&apos;ve sent us, in one place.
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white"
+        <Link
+          href="/account/support/new"
+          className="shrink-0 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
         >
-          {showForm ? "Cancel" : "New ticket"}
-        </button>
+          New ticket
+        </Link>
       </header>
+
+      <SupportHelpNav />
+
       {error && (
         <p
           role="alert"
@@ -131,96 +93,37 @@ export default function CustomerSupportPage() {
           {error}
         </p>
       )}
-      <section className="rounded-2xl border border-brand-200 bg-brand-50/70 p-4 dark:border-brand-900/60 dark:bg-brand-950/20">
-        <h2 className="font-bold text-slate-900 dark:text-white">How to get help</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Use this official support page for every LIBERIA360 problem. Choose the closest category, include the affected listing, booking, advertisement, account, or ticket reference, and describe what happened. Add a screenshot when useful. Never include your password, verification code, or full payment credentials.</p>
-        <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2 dark:text-slate-300">
-          <p><strong>Bookings:</strong> choose Booking and include dates or request details.</p>
-          <p><strong>Businesses:</strong> choose Listing and include the business or place name.</p>
-          <p><strong>Advertisements:</strong> choose Other and include the ad title or link.</p>
-          <p><strong>Accounts:</strong> choose Account and include the affected screen.</p>
-          <p><strong>Event tickets:</strong> choose Payment and include the event or ticket reference. Do not share the QR payload.</p>
+
+      {tickets.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Open</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{openCount}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resolved</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+              {tickets.length - openCount}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{tickets.length}</p>
+          </div>
         </div>
-      </section>
-      {showForm && (
-        <form
-          onSubmit={submit}
-          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-        >
-          <label className="block text-sm font-semibold">
-            Issue category
-            <select
-              value={category}
-              onChange={(e) =>
-                setCategory(e.target.value as SupportTicketCategory)
-              }
-              className="mt-1 w-full rounded-xl border p-3 dark:bg-slate-950"
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {categoryLabel[c]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-semibold">
-            Subject
-            <input
-              required
-              minLength={3}
-              maxLength={180}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="mt-1 w-full rounded-xl border p-3 dark:bg-slate-950"
-            />
-          </label>
-          <label className="block text-sm font-semibold">
-            What happened?
-            <textarea
-              required
-              minLength={10}
-              rows={6}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded-xl border p-3 dark:bg-slate-950"
-            />
-          </label>
-          <label className="block text-sm font-semibold">
-            Screenshots (up to 5)
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => void addFiles(e.target.files)}
-              className="mt-2 block text-sm"
-            />
-          </label>
-          {attachments.length > 0 && (
-            <div className="flex gap-2">
-              {attachments.map((url, i) => (
-                <img
-                  key={url}
-                  src={url}
-                  alt={`Attachment ${i + 1}`}
-                  className="h-16 w-16 rounded-lg object-cover"
-                />
-              ))}
-            </div>
-          )}
-          <button
-            disabled={busy}
-            className="rounded-full bg-brand-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50"
-          >
-            {busy ? "Submitting…" : "Submit ticket"}
-          </button>
-        </form>
       )}
+
       <section>
-        <h2 className="mb-3 text-lg font-bold">Your requests</h2>
         {tickets.length === 0 ? (
-          <p className="rounded-2xl border border-dashed p-8 text-center text-slate-500">
-            You have not submitted a support ticket yet.
-          </p>
+          <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">
+            <p>You have not submitted a support ticket yet.</p>
+            <Link
+              href="/account/support/new"
+              className="mt-3 inline-block rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              Submit your first ticket
+            </Link>
+          </div>
         ) : (
           <div className="space-y-3">
             {tickets.map((ticket) => (

@@ -3,6 +3,7 @@ import { NewspaperIcon } from '@heroicons/react/24/solid';
 import { getBlogPosts } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { SafeImage } from '@/components/SafeImage';
+import { SupportHelpNav } from '@/components/SupportHelpNav';
 import { resolveImageUrl } from '@/lib/images';
 
 export const metadata = { title: 'Blog & Updates — LIBERIA360' };
@@ -33,6 +34,8 @@ export default async function BlogPage({
         title="Blog & Updates"
         description="Product announcements, tips, and the occasional heads-up about maintenance."
       />
+
+      <SupportHelpNav />
 
       <form action="/blog" method="GET" className="flex gap-2">
         <input

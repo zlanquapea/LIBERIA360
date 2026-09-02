@@ -15,6 +15,7 @@ import {
 } from "@/lib/support-api";
 import { uploadImage } from "@/lib/uploads-api";
 import { MessageStatus } from "@/components/MessageStatus";
+import { SupportHelpNav } from "@/components/SupportHelpNav";
 import type { SupportMessage, SupportTicket } from "@/lib/types";
 
 const label = (value: string) =>
@@ -142,6 +143,7 @@ export default function SupportThreadPage() {
       >
         ← All support requests
       </Link>
+      <SupportHelpNav />
       {error && (
         <p
           role="alert"

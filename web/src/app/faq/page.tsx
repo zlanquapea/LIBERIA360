@@ -1,6 +1,7 @@
 import { getFaqs } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { StillNeedHelp } from '@/components/StillNeedHelpCard';
+import { SupportHelpNav } from '@/components/SupportHelpNav';
 
 export const metadata = { title: 'FAQ — LIBERIA360' };
 
@@ -24,6 +25,8 @@ export default async function FaqPage() {
         title="Frequently Asked Questions"
         description="The most common questions, answered — no ticket required."
       />
+
+      <SupportHelpNav />
 
       {faqs.length === 0 ? (
         <p className="empty-state">No FAQs published yet.</p>

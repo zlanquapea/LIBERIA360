@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ApiError, getHelpCenterArticle } from '@/lib/api';
 import { ArticleFeedback } from '@/components/ArticleFeedback';
 import { StillNeedHelp } from '@/components/StillNeedHelpCard';
+import { SupportHelpNav } from '@/components/SupportHelpNav';
 
 export async function generateMetadata({
   params,
@@ -42,6 +43,8 @@ export default async function HelpArticlePage({
           {article.category.name}
         </Link>
       </nav>
+
+      <SupportHelpNav />
 
       <article className="surface-card flex flex-col gap-4 p-5 sm:p-7">
         <header className="flex flex-col gap-1">

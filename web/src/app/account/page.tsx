@@ -46,78 +46,98 @@ type QuickAction = {
   icon: ComponentType<{ className?: string }>;
 };
 
-const QUICK_ACTIONS: QuickAction[] = [
+// Grouped instead of one flat 12-tile grid — every quick action used to
+// live in a single undifferentiated block, so "where's the help section"
+// meant scanning past My Ads and Creator Profile to find it. Each group
+// gets its own short heading; within a group, order still goes
+// action-you-take-most-often first.
+const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
   {
-    href: "/account/support",
-    label: "Customer Support",
-    description: "Get help and track requests",
-    icon: LifebuoyIcon,
+    heading: "Help & Support",
+    actions: [
+      {
+        href: "/account/support",
+        label: "Customer Support",
+        description: "Get help and track requests",
+        icon: LifebuoyIcon,
+      },
+      {
+        href: "/help",
+        label: "Help Center",
+        description: "Browse guides and how-tos",
+        icon: BookOpenIcon,
+      },
+      {
+        href: "/faq",
+        label: "FAQ",
+        description: "Quick answers to common questions",
+        icon: QuestionMarkCircleIcon,
+      },
+      {
+        href: "/blog",
+        label: "Blog & Updates",
+        description: "News, tips, and announcements",
+        icon: NewspaperIcon,
+      },
+    ],
   },
   {
-    href: "/help",
-    label: "Help Center",
-    description: "Browse guides and how-tos",
-    icon: BookOpenIcon,
+    heading: "Trips & Bookings",
+    actions: [
+      {
+        href: "/trips",
+        label: "My Trips",
+        description: "Your saved itineraries",
+        icon: CalendarDaysIcon,
+      },
+      {
+        href: "/account/bookings",
+        label: "My Bookings",
+        description: "Track booking requests",
+        icon: ClipboardDocumentListIcon,
+      },
+      {
+        href: "/account/my-events",
+        label: "My Events",
+        description: "Manage your events",
+        icon: CalendarDaysIcon,
+      },
+      {
+        href: "/account/my-tickets",
+        label: "My Tickets",
+        description: "View event ticket orders",
+        icon: TicketIcon,
+      },
+    ],
   },
   {
-    href: "/faq",
-    label: "FAQ",
-    description: "Quick answers to common questions",
-    icon: QuestionMarkCircleIcon,
-  },
-  {
-    href: "/blog",
-    label: "Blog & Updates",
-    description: "News, tips, and announcements",
-    icon: NewspaperIcon,
-  },
-  {
-    href: "/trips",
-    label: "My Trips",
-    description: "Your saved itineraries",
-    icon: CalendarDaysIcon,
-  },
-  {
-    href: "/account/bookings",
-    label: "My Bookings",
-    description: "Track booking requests",
-    icon: ClipboardDocumentListIcon,
-  },
-  {
-    href: "/account/my-events",
-    label: "My Events",
-    description: "Manage your events",
-    icon: CalendarDaysIcon,
-  },
-  {
-    href: "/account/my-tickets",
-    label: "My Tickets",
-    description: "View event ticket orders",
-    icon: TicketIcon,
-  },
-  {
-    href: "/account/my-ads",
-    label: "My Ads",
-    description: "Manage advertisements",
-    icon: MegaphoneIcon,
-  },
-  {
-    href: "/account/my-car-listings",
-    label: "My Car Listings",
-    description: "Manage your rental fleet",
-    icon: TruckIcon,
-  },
-  {
-    href: "/account/my-businesses",
-    label: "My Businesses",
-    description: "Manage listings, menus, orders & more",
-    icon: BuildingStorefrontIcon,
-  },
-  {
-    href: "/creators/me",
-    label: "Creator Profile",
-    description: "Manage your creator page",
-    icon: UserCircleIcon,
+    heading: "Your Business",
+    actions: [
+      {
+        href: "/account/my-businesses",
+        label: "My Businesses",
+        description: "Manage listings, menus, orders & more",
+        icon: BuildingStorefrontIcon,
+      },
+      {
+        href: "/account/my-ads",
+        label: "My Ads",
+        description: "Manage advertisements",
+        icon: MegaphoneIcon,
+      },
+      {
+        href: "/account/my-car-listings",
+        label: "My Car Listings",
+        description: "Manage your rental fleet",
+        icon: TruckIcon,
+      },
+      {
+        href: "/creators/me",
+        label: "Creator Profile",
+        description: "Manage your creator page",
+        icon: UserCircleIcon,
+      },
+    ],
   },
 ];
 
@@ -174,7 +194,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <section aria-labelledby="account-quick-access" className="space-y-3">
+      <section aria-labelledby="account-quick-access" className="space-y-5">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
             Your workspace
@@ -186,41 +206,49 @@ export default function AccountPage() {
             Quick access
           </h2>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {QUICK_ACTIONS.map(({ href, label, description, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex min-h-28 flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:border-brand-800 dark:hover:bg-brand-950/30"
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
-                  <Icon aria-hidden className="h-5 w-5" />
-                </span>
-                <ChevronRightIcon
-                  aria-hidden
-                  className="h-4 w-4 text-slate-400 transition-colors group-hover:text-brand-600 dark:text-slate-500 dark:group-hover:text-brand-300"
-                />
+        {QUICK_ACTION_GROUPS.map((group) => (
+          <div key={group.heading} className="space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              {group.heading}
+            </h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {group.actions.map(({ href, label, description, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="group flex min-h-28 flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-3.5 text-slate-900 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:border-brand-800 dark:hover:bg-brand-950/30"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+                      <Icon aria-hidden className="h-5 w-5" />
+                    </span>
+                    <ChevronRightIcon
+                      aria-hidden
+                      className="h-4 w-4 text-slate-400 transition-colors group-hover:text-brand-600 dark:text-slate-500 dark:group-hover:text-brand-300"
+                    />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold">{label}</span>
+                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                      {description}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+        {user.isAdmin && (
+          <Link
+            href="/admin"
+            className="group flex min-h-28 flex-col justify-between gap-4 rounded-2xl border-2 border-gold-400 bg-gold-50/40 p-3.5 text-slate-900 shadow-sm transition-colors hover:bg-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 dark:bg-gold-950/10 dark:text-slate-50 dark:hover:bg-gold-950/20"
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-400 text-brand-950">
+                <StarIcon aria-hidden className="h-5 w-5" />
               </span>
-              <span>
-                <span className="block text-sm font-semibold">{label}</span>
-                <span className="mt-0.5 block text-[11px] leading-4 text-slate-500 dark:text-slate-400">
-                  {description}
-                </span>
-              </span>
-            </Link>
-          ))}
-          {user.isAdmin && (
-            <Link
-              href="/admin"
-              className="group flex min-h-28 flex-col justify-between gap-4 rounded-2xl border-2 border-gold-400 bg-gold-50/40 p-3.5 text-slate-900 shadow-sm transition-colors hover:bg-gold-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 dark:bg-gold-950/10 dark:text-slate-50 dark:hover:bg-gold-950/20"
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-400 text-brand-950">
-                  <StarIcon aria-hidden className="h-5 w-5" />
-                </span>
-                <ChevronRightIcon
-                  aria-hidden
+              <ChevronRightIcon
+                aria-hidden
                   className="h-4 w-4 text-gold-600 dark:text-gold-300"
                 />
               </span>
@@ -234,7 +262,6 @@ export default function AccountPage() {
               </span>
             </Link>
           )}
-        </div>
       </section>
 
       <Link
