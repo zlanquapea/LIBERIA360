@@ -1,7 +1,7 @@
 import { getFaqs } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { StillNeedHelp } from '@/components/StillNeedHelpCard';
-import { SupportHelpNav } from '@/components/SupportHelpNav';
+import { HelpContentNav } from '@/components/HelpContentNav';
 
 export const metadata = { title: 'FAQ — LIBERIA360' };
 
@@ -27,7 +27,7 @@ export default async function FaqPage() {
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SupportHelpNav />
+        <HelpContentNav />
 
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {faqs.length === 0 ? (

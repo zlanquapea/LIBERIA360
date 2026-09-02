@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { ApiError, getHelpCenterArticle } from '@/lib/api';
 import { ArticleFeedback } from '@/components/ArticleFeedback';
 import { StillNeedHelp } from '@/components/StillNeedHelpCard';
-import { SupportHelpNav } from '@/components/SupportHelpNav';
+import { HelpContentNav } from '@/components/HelpContentNav';
 
 export async function generateMetadata({
   params,
@@ -45,7 +45,7 @@ export default async function HelpArticlePage({
       </nav>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SupportHelpNav />
+        <HelpContentNav />
 
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <article className="surface-card flex flex-col gap-4 p-5 sm:p-7">
