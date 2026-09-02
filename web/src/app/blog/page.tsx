@@ -3,7 +3,7 @@ import { NewspaperIcon } from '@heroicons/react/24/solid';
 import { getBlogPosts } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { SafeImage } from '@/components/SafeImage';
-import { SupportHelpNav } from '@/components/SupportHelpNav';
+import { HelpContentNav } from '@/components/HelpContentNav';
 import { resolveImageUrl } from '@/lib/images';
 
 export const metadata = { title: 'Blog & Updates — LIBERIA360' };
@@ -36,7 +36,7 @@ export default async function BlogPage({
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SupportHelpNav />
+        <HelpContentNav />
 
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <form action="/blog" method="GET" className="flex gap-2">

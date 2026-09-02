@@ -3,7 +3,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { getHelpCenterArticles, getHelpCenterCategories } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { StillNeedHelp } from '@/components/StillNeedHelpCard';
-import { SupportHelpNav } from '@/components/SupportHelpNav';
+import { HelpContentNav } from '@/components/HelpContentNav';
 
 export const metadata = { title: 'Help Center — LIBERIA360' };
 
@@ -47,7 +47,7 @@ export default async function HelpCenterPage({
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <SupportHelpNav />
+        <HelpContentNav />
 
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           <form
