@@ -17,12 +17,7 @@ import { PlaceType } from "../entities/place.enums";
 // "popular" ranks by view count over the trailing 7 days (see
 // PLACE_TRENDING_WINDOW_DAYS in places.service.ts) — Home's "Discover this
 // week" shelf, real usage rather than curation/rating.
-export type PlaceSort =
-  | "featured"
-  | "rating"
-  | "distance"
-  | "name"
-  | "popular";
+export type PlaceSort = "featured" | "rating" | "distance" | "name" | "popular";
 const SORT_VALUES: PlaceSort[] = [
   "featured",
   "rating",
