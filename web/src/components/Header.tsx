@@ -11,6 +11,7 @@ const desktopNavigation = [
   { href: "/events", label: "Events" },
   { href: "/car-rentals", label: "Car Rentals" },
   { href: "/creators", label: "Creators" },
+  { href: "/help", label: "Help" },
 ];
 
 export function Header() {

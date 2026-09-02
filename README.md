@@ -28,6 +28,7 @@ Component-level documentation: [`api/README.md`](./api/README.md), [`web/README.
 | Trip planning | "Build My Liberia Trip" itinerary planning, collaborative multi-user trip editing |
 | Marketplace | Request-to-book bookings for businesses and creators, in-booking messaging, restaurant menus with in-platform food ordering and order messaging, business/creator analytics dashboards, sponsored placements, featured creators |
 | Customer support | In-app tickets with image attachments, threaded customer/agent conversations, status and priority tracking, assignment, notifications, resolution confirmation, and satisfaction ratings |
+| Help Center | Self-serve articles by category with search and "was this helpful?" feedback, a FAQ accordion, and a Blog/Updates section — all admin-authored, all separate from the ticket system, with "Still need help?" linking into it |
 | Admin | Content moderation, verification workflows, crowdsourced freshness reporting, B2B aggregate analytics, audit log |
 | Platform | Progressive Web App (offline saved places, push notifications), SEO structured data, crash reporting |
 

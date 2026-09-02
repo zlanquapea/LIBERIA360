@@ -67,6 +67,9 @@ import { EventTicketsModule } from "./event-tickets/event-tickets.module";
 import { SupportTicket } from "./support/entities/support-ticket.entity";
 import { SupportMessage } from "./support/entities/support-message.entity";
 import { SupportModule } from "./support/support.module";
+import { KnowledgeBaseModule } from "./knowledge-base/knowledge-base.module";
+import { FaqModule } from "./faq/faq.module";
+import { BlogModule } from "./blog/blog.module";
 
 @Module({
   imports: [
@@ -169,6 +172,9 @@ import { SupportModule } from "./support/support.module";
     AssistantModule,
     EventTicketsModule,
     SupportModule,
+    KnowledgeBaseModule,
+    FaqModule,
+    BlogModule,
   ],
   providers: [
     {

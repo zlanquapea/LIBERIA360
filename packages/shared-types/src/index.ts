@@ -1715,3 +1715,35 @@ export interface SupportTicket {
 // — set once the other side of the conversation has opened the thread.
 export interface SupportMessage { id: string; ticketId: string; sender: AuthUser; senderUserId: string; body: string; attachments: string[]; createdAt: string; readAt: string | null; }
 export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+
+// Help Center / FAQ / Blog — a lightweight self-serve layer built *around*
+// the support ticket system above, not a second one: none of these
+// reference SupportTicket, and "Still need help?" on an article just links
+// to the existing /account/support flow.
+export type ArticleStatus = "draft" | "published";
+export interface KnowledgeCategory {
+  id: string; name: string; slug: string; description: string | null;
+  sortOrder: number; createdAt: string; updatedAt: string;
+}
+export interface KnowledgeCategoryWithCount extends KnowledgeCategory { publishedArticleCount: number; }
+export interface KnowledgeArticle {
+  id: string; categoryId: string; category: KnowledgeCategory; title: string; slug: string;
+  content: string; authorUserId: string; author?: AuthUser; status: ArticleStatus;
+  createdAt: string; updatedAt: string;
+}
+export interface PaginatedKnowledgeArticles { data: KnowledgeArticle[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+export interface KnowledgeArticleWithRelated { article: KnowledgeArticle; related: KnowledgeArticle[]; }
+export interface ArticleFeedbackSummary { yes: number; no: number; }
+
+export interface Faq {
+  id: string; question: string; answer: string; category: string | null;
+  sortOrder: number; published: boolean; createdAt: string; updatedAt: string;
+}
+
+export type BlogPostStatus = "draft" | "published";
+export interface BlogPost {
+  id: string; title: string; slug: string; coverImage: string | null; content: string;
+  authorUserId: string; author?: AuthUser; status: BlogPostStatus;
+  publishedAt: string | null; createdAt: string; updatedAt: string;
+}
+export interface PaginatedBlogPosts { data: BlogPost[]; meta: { total: number; page: number; limit: number; totalPages: number }; }

@@ -384,6 +384,20 @@ export default function AdminSupportDetail() {
               </p>
             )}
           </div>
+          {ticket.rating !== null && (
+            <div className="rounded-2xl border p-4 dark:border-slate-800">
+              <h2 className="font-bold">Customer satisfaction</h2>
+              <p className="mt-2 font-bold text-amber-500" aria-label={`${ticket.rating} out of 5 stars`}>
+                {"★".repeat(ticket.rating)}
+                {"☆".repeat(5 - ticket.rating)}
+              </p>
+              {ticket.ratingComment && (
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  &ldquo;{ticket.ratingComment}&rdquo;
+                </p>
+              )}
+            </div>
+          )}
           <div className="rounded-2xl border p-4 dark:border-slate-800">
             <h2 className="font-bold">Previous requests</h2>
             {history.length === 0 ? (
