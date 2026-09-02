@@ -16,14 +16,20 @@ import { SaveIconButton } from './SaveIconButton';
 // position in its list — when a caller passes it, the card fades/lifts
 // into place with a small stagger instead of appearing instantly (see
 // lib/animation.ts); omit it for a lone card (e.g. a single related-place
-// callout) where there's no list rhythm to be part of.
+// callout) where there's no list rhythm to be part of. `distanceOutsideRadius`
+// flags a distance that's actually farther than what the caller searched for
+// (Near Me's "nothing nearby, here's what's closest in Liberia" fallback) —
+// styled distinctly (gold, not the muted default) so it can't be mistaken
+// for a place that genuinely matched the selected radius.
 export function PlaceCard({
   place,
   distanceOverride,
+  distanceOutsideRadius,
   index,
 }: {
   place: Place;
   distanceOverride?: string | null;
+  distanceOutsideRadius?: boolean;
   index?: number;
 }) {
   const distance = distanceOverride ?? formatDistance(place.distanceFromMonroviaKm);
@@ -78,8 +84,17 @@ export function PlaceCard({
             <span className="flex items-center gap-2">
               {place.estimatedCostEntry != null && <span>{formatCost(place.estimatedCostEntry)}</span>}
               {distance && (
-                <span className="flex items-center gap-0.5">
-                  <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-slate-400 dark:text-slate-400" />
+                <span
+                  className={
+                    distanceOutsideRadius
+                      ? 'flex items-center gap-0.5 rounded-full bg-gold-100 px-1.5 py-0.5 font-semibold text-gold-800 dark:bg-gold-900/40 dark:text-gold-300'
+                      : 'flex items-center gap-0.5'
+                  }
+                >
+                  <MapPinIcon
+                    aria-hidden
+                    className={`h-3.5 w-3.5 ${distanceOutsideRadius ? 'text-gold-600 dark:text-gold-400' : 'text-slate-400 dark:text-slate-400'}`}
+                  />
                   {distance}
                 </span>
               )}

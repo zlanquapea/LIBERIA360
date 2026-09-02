@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ViewfinderCircleIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, ViewfinderCircleIcon } from '@heroicons/react/24/outline';
 import { ApiError, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { BrandLoader } from '@/components/BrandLoader';
@@ -321,9 +321,24 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
           ) : displayPlaces.length > 0 ? (
             <>
               {showingFallback && (
-                <p className="rounded-lg bg-brand-700/5 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
-                  No {categoryLabel} within {radiusKm} km — here&apos;s what&apos;s closest in Liberia.
-                </p>
+                <div
+                  role="alert"
+                  className="flex items-start gap-3 rounded-xl border-2 border-gold-400 bg-gold-50 px-4 py-3 dark:border-gold-700 dark:bg-gold-950/40"
+                >
+                  <ExclamationTriangleIcon
+                    aria-hidden
+                    className="mt-0.5 h-5 w-5 shrink-0 text-gold-600 dark:text-gold-400"
+                  />
+                  <div>
+                    <p className="text-sm font-bold text-gold-900 dark:text-gold-200">
+                      Nothing within {radiusKm} km
+                    </p>
+                    <p className="text-sm text-gold-800 dark:text-gold-300">
+                      These are the closest {categoryLabel} anywhere in Liberia — they may be far from you. Look for
+                      the highlighted distance on each card below.
+                    </p>
+                  </div>
+                </div>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {displayPlaces.map((place) => (
@@ -331,6 +346,7 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
                     key={place.id}
                     place={place}
                     distanceOverride={place.distanceKm != null ? `${place.distanceKm} km away` : null}
+                    distanceOutsideRadius={showingFallback}
                   />
                 ))}
               </div>
