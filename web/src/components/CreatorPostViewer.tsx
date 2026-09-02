@@ -43,7 +43,10 @@ function timeAgo(value: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
 type ViewerActionsProps = {
@@ -82,7 +85,11 @@ function ViewerActions({
   const iconClass = isRail ? "h-7 w-7" : "h-6 w-6";
 
   return (
-    <div className={isRail ? "flex flex-col items-center gap-5" : "flex items-center gap-1"}>
+    <div
+      className={
+        isRail ? "flex flex-col items-center gap-5" : "flex items-center gap-1"
+      }
+    >
       <button
         type="button"
         onClick={onLike}
@@ -91,12 +98,16 @@ function ViewerActions({
         className={itemClass}
       >
         {liked ? (
-          <HeartSolidIcon aria-hidden className={`${iconClass} text-rose-400`} />
+          <HeartSolidIcon
+            aria-hidden
+            className={`${iconClass} text-rose-400`}
+          />
         ) : (
           <HeartIcon aria-hidden className={iconClass} />
         )}
         <span className={isRail ? "text-xs font-semibold" : "truncate"}>
-          {formatCount(likeCount)}{!isRail && " Like"}
+          {formatCount(likeCount)}
+          {!isRail && " Like"}
         </span>
       </button>
       <button
@@ -107,7 +118,8 @@ function ViewerActions({
       >
         <ChatBubbleOvalLeftIcon aria-hidden className={iconClass} />
         <span className={isRail ? "text-xs font-semibold" : "truncate"}>
-          {formatCount(commentCount)}{!isRail && " Comment"}
+          {formatCount(commentCount)}
+          {!isRail && " Comment"}
         </span>
       </button>
       <ShareMenu
@@ -130,7 +142,9 @@ function ViewerActions({
           ) : (
             <BookmarkIcon aria-hidden className="h-7 w-7" />
           )}
-          <span className="text-xs font-semibold">{formatCount(post.saveCount)}</span>
+          <span className="text-xs font-semibold">
+            {formatCount(post.saveCount)}
+          </span>
         </button>
       ) : (
         <button
@@ -220,7 +234,10 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      video.play().then(() => setPlaying(true));
+      void video.play().then(
+        () => setPlaying(true),
+        () => setPlaying(false),
+      );
     } else {
       video.pause();
       setPlaying(false);
@@ -239,6 +256,7 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
       <video
         ref={videoRef}
         src={post.mediaUrl}
+        preload="auto"
         muted
         loop
         playsInline
@@ -516,21 +534,22 @@ export function CreatorPostViewerVideoPreview({
       type="button"
       onClick={onOpen}
       aria-label={`Open ${post.creator.name}'s video post`}
-      className="group relative block aspect-[4/3] w-full overflow-hidden bg-slate-950"
+      className="group relative block aspect-[4/5] w-full overflow-hidden bg-slate-950"
     >
-      {poster ? (
+      {isDirectVideoFile(post.mediaUrl) ? (
+        <CreatorVideoThumbnail
+          src={post.mediaUrl}
+          poster={poster}
+          label={`Open ${post.creator.name}'s video post`}
+          autoplayOnView
+        />
+      ) : poster ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={poster}
           alt=""
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
         />
-      ) : isDirectVideoFile(post.mediaUrl) ? (
-          <CreatorVideoThumbnail
-            src={post.mediaUrl}
-            label={`${post.creator.name}'s video post preview`}
-            autoplayOnView
-          />
       ) : (
         <div
           aria-hidden
