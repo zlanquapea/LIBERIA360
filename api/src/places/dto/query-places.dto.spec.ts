@@ -26,6 +26,13 @@ describe("QueryPlacesDto", () => {
     expect(errors.some((e) => e.property === "sort")).toBe(true);
   });
 
+  it("accepts the popular sort (Home's 'Discover this week')", async () => {
+    const dto = plainToInstance(QueryPlacesDto, { sort: "popular" });
+    const errors = await validate(dto);
+    expect(errors).toHaveLength(0);
+    expect(dto.sort).toBe("popular");
+  });
+
   it("rejects a limit above the max", async () => {
     const dto = plainToInstance(QueryPlacesDto, { limit: "999" });
     const errors = await validate(dto);

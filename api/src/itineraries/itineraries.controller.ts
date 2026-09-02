@@ -13,7 +13,6 @@ import {
 } from "@nestjs/common";
 import { ItinerariesService } from "./itineraries.service";
 import { CreateTripDto } from "./dto/create-trip.dto";
-import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
 import { QueryPublicTripsDto } from "./dto/query-public-trips.dto";
 import { CreateInvitationsDto } from "./dto/create-invitations.dto";
 import { SearchInvitableUsersDto } from "./dto/search-invitable-users.dto";
@@ -45,14 +44,6 @@ export class ItinerariesController {
   @UseGuards(JwtAuthGuard)
   generateTrip(@CurrentUser() user: User, @Body() dto: CreateTripDto) {
     return this.itinerariesService.generateTrip(user.id, dto);
-  }
-
-  /** Weekend Explorer (Tech Spec §3.2). */
-  @Post("weekend")
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  generateWeekend(@CurrentUser() user: User, @Body() dto: GenerateWeekendDto) {
-    return this.itinerariesService.generateWeekend(user.id, dto);
   }
 
   // Public discovery (Section 5/17) — unauthenticated, and declared

@@ -54,15 +54,6 @@ export function previewTrip(input: GenerateTripInput): Promise<TripPreviewRespon
   });
 }
 
-export interface GenerateWeekendInput {
-  startLat: number;
-  startLng: number;
-  maxTravelTimeMinutes: number;
-  interests: string[];
-  budgetBand: BudgetBand;
-  durationDays?: number;
-}
-
 export function generateTrip(token: string, input: CreateTripInput): Promise<ItineraryDetail> {
   return apiRequest<ItineraryDetail>('/itineraries', {
     method: 'POST',
@@ -128,14 +119,6 @@ export function cancelTrip(token: string, itineraryId: string): Promise<Itinerar
   return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/cancel`, {
     method: 'POST',
     headers: authHeader(token),
-  });
-}
-
-export function generateWeekend(token: string, input: GenerateWeekendInput): Promise<ItineraryDetail> {
-  return apiRequest<ItineraryDetail>('/itineraries/weekend', {
-    method: 'POST',
-    headers: authHeader(token),
-    body: JSON.stringify(input),
   });
 }
 

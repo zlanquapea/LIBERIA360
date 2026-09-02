@@ -803,34 +803,6 @@ describe("Phase 2 (e2e)", () => {
         .expect(404); // owner-only
     });
 
-    it("Weekend Explorer generates from an explicit starting point, and 404s when nothing is reachable", async () => {
-      await request(app.getHttpServer())
-        .post("/api/v1/itineraries/weekend")
-        .set("Cookie", userAToken)
-        .send({
-          startLat: 6.3,
-          startLng: -10.8,
-          maxTravelTimeMinutes: 15,
-          interests: [],
-          budgetBand: "premium",
-        })
-        .expect(201);
-
-      // Far from every fixture place — nothing falls within a 15-minute
-      // (~8.75km) radius, so this should 404 rather than return an empty trip.
-      await request(app.getHttpServer())
-        .post("/api/v1/itineraries/weekend")
-        .set("Cookie", userAToken)
-        .send({
-          startLat: 7.5,
-          startLng: -11.5,
-          maxTravelTimeMinutes: 15,
-          interests: [],
-          budgetBand: "premium",
-        })
-        .expect(404);
-    });
-
     it("previews a trip with no auth at all, saving nothing, and still enforces validation", async () => {
       const before = await request(app.getHttpServer())
         .get("/api/v1/itineraries")

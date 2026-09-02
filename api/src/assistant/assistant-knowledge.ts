@@ -71,11 +71,6 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
     href: "/account/my-events",
   },
   trips: { id: "trips", label: "Plan a trip", href: "/trips/new" },
-  weekend: {
-    id: "weekend",
-    label: "Plan a weekend",
-    href: "/trips/weekend/new",
-  },
   saved: { id: "saved", label: "View saved places", href: "/saved" },
   notifications: {
     id: "notifications",
@@ -658,13 +653,12 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "trips",
       "travel plan",
       "itinerary",
-      "weekend",
       "plan route",
       "vacation",
     ],
     answer:
-      "Use the trip planner to name your trip and pick your dates, destination, and budget, then add your own stops for each day. There is also a quick weekend planner for places to stay, eat, and explore.",
-    actionIds: ["trips", "weekend"],
+      "Use the trip planner to name your trip and pick your dates, destination, and budget, then add your own stops for each day.",
+    actionIds: ["trips"],
     followUps: ["How do I find hotels?", "How do I explore counties?"],
   },
   {

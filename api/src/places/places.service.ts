@@ -69,6 +69,21 @@ const HAVERSINE_KM_SQL = `
   )
 `;
 
+// Home's "Discover this week" shelf (replaced the old Weekend Explorer
+// banner): real, current usage rather than admin curation. A trailing
+// window, not calendar-week, so Monday morning isn't a cold reset. A
+// correlated scalar subquery — same technique as HAVERSINE_KM_SQL above —
+// rather than a JOIN+GROUP BY, since Postgres would otherwise require every
+// selected column from the leftJoinAndSelect'd category/county relations in
+// the GROUP BY too.
+export const PLACE_TRENDING_WINDOW_DAYS = 7;
+const VIEWS_THIS_WEEK_SQL = `(
+  SELECT COUNT(*) FROM analytics_events ae
+  WHERE ae.place_id = place.id
+    AND ae.event_type = 'view'
+    AND ae.created_at >= :trendingSince
+)`;
+
 // Postgres full-text search, not ILIKE substring matching — handles word
 // stemming ("beaches" matches "beach"), multi-word queries, and relevance
 // ranking, none of which ILIKE '%...%' can do. name is weighted 'A'
@@ -346,6 +361,16 @@ export class PlacesService {
         case "name":
           qb.orderBy("place.name", "ASC");
           break;
+        case "popular": {
+          const trendingSince = new Date(
+            Date.now() - PLACE_TRENDING_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+          );
+          qb.addSelect(VIEWS_THIS_WEEK_SQL, "views_this_week")
+            .setParameter("trendingSince", trendingSince)
+            .orderBy("views_this_week", "DESC")
+            .addOrderBy("place.rating", "DESC");
+          break;
+        }
         case "featured":
         default:
           // A free-text search with no explicit sort should rank by how

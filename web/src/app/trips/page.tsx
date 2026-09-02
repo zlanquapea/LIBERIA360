@@ -19,8 +19,10 @@ import type { Itinerary } from '@/lib/types';
 // page.
 const SUBSTANTIAL_STOPS_THRESHOLD = 5;
 
-// "My Trips" — saved itineraries from both Plan a Trip and Weekend
-// Explorer (Tech Spec §4.3, §3.2). Client-only: the API's JWT
+// "My Trips" — saved itineraries from Plan a Trip (Tech Spec §4.3), plus
+// any older Weekend Explorer trips created before that feature was
+// retired (kind === 'weekend', still shown/renamed/deleted like any
+// other trip below — just no longer creatable). Client-only: the API's JWT
 // auth is browser-localStorage-based, not cookies, so there's no way for
 // a server component to know who's asking. Trips someone else invited
 // this user onto as a collaborator show in their own "Shared with me"
@@ -164,12 +166,6 @@ export default function TripsPage() {
             className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
           >
             Community Trips
-          </Link>
-          <Link
-            href="/trips/weekend/new"
-            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
-          >
-            Weekend Explorer
           </Link>
           <Link
             href="/trips/new"

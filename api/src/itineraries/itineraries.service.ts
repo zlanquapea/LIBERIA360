@@ -20,7 +20,6 @@ import {
   TripJoinRequestStatus,
 } from "./entities/trip-join-request.entity";
 import { Place } from "../places/entities/place.entity";
-import { PlaceType } from "../places/entities/place.enums";
 import {
   BudgetBand,
   ItineraryKind,
@@ -29,7 +28,6 @@ import {
 } from "./entities/itinerary.enums";
 import { GenerateTripDto } from "./dto/generate-trip.dto";
 import { CreateTripDto } from "./dto/create-trip.dto";
-import { GenerateWeekendDto } from "./dto/generate-weekend.dto";
 import { QueryPublicTripsDto } from "./dto/query-public-trips.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
@@ -48,25 +46,10 @@ import { TripChatService } from "../trip-chat/trip-chat.service";
 import { AppConfig } from "../config/configuration";
 import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 
-const STOPS_PER_DAY = 2;
-// Matches web/src/lib/format.ts's estimateTravelTime assumption, so the
-// same "~35 km/h" mental model holds on both sides of the API.
-const ASSUMED_KMH = 35;
-
 // Was previously enforced as a @Min(1)/@Max(14) bound on a client-supplied
 // durationDays field; now that a trip is framed by real dates (see
 // resolveDurationDays), it's the bound on the date range itself instead.
 const MAX_TRIP_DURATION_DAYS = 14;
-
-// The itinerary is a sequence of things-to-do stops, not a full logistics
-// plan — hotels/restaurants are deliberately left out of the generated
-// route. Each stop's own Destination Profile already surfaces "Nearby"
-// accommodation and dining, so the itinerary doesn't need to solve that too.
-const STOP_TYPES = [
-  PlaceType.ATTRACTION,
-  PlaceType.NATURE_SITE,
-  PlaceType.ACTIVITY_PROVIDER,
-];
 
 export type InvitationDisplayStatus =
   "pending" | "viewed" | "accepted" | "declined" | "expired";
@@ -194,23 +177,6 @@ export interface TripPreviewResponse {
   stops: ItineraryStopWithPlace[];
 }
 
-function haversineKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 // Shared by generateTrip/previewTrip: a trip is framed by a real start and
 // end date rather than a bare day count (Sept 2026 product note — "add a
 // start date and end date," "the user should have control"), so the
@@ -236,18 +202,6 @@ function resolveDurationDays(dto: {
     );
   }
   return days;
-}
-
-function budgetThreshold(band: BudgetBand): number | null {
-  switch (band) {
-    case BudgetBand.BUDGET:
-      return 10;
-    case BudgetBand.MODERATE:
-      return 50;
-    case BudgetBand.PREMIUM:
-    default:
-      return null; // no cap
-  }
 }
 
 @Injectable()
@@ -332,54 +286,6 @@ export class ItinerariesService {
       endDate: dto.endDate,
       stops: [],
     };
-  }
-
-  async generateWeekend(
-    userId: string,
-    dto: GenerateWeekendDto,
-  ): Promise<ItineraryResponse> {
-    const maxDistanceKm = (dto.maxTravelTimeMinutes / 60) * ASSUMED_KMH;
-    const start = { lat: dto.startLat, lng: dto.startLng };
-
-    const allCandidates = await this.findCandidates(
-      dto.interests,
-      dto.budgetBand,
-    );
-    const reachable = allCandidates.filter(
-      (p) =>
-        haversineKm(start.lat, start.lng, p.latitude, p.longitude) <=
-        maxDistanceKm,
-    );
-    if (reachable.length === 0) {
-      throw new NotFoundException(
-        "No places match your interests and budget within that travel time — try a wider radius or different interests.",
-      );
-    }
-
-    const durationDays = dto.durationDays ?? 1;
-    const ordered = this.sequenceByProximity(
-      reachable,
-      start,
-      durationDays * STOPS_PER_DAY,
-    );
-    const stops = this.assignDays(ordered, durationDays);
-
-    const itinerary = await this.itineraryRepo.save(
-      this.itineraryRepo.create({
-        userId,
-        title: "Weekend Explorer Trip",
-        kind: ItineraryKind.WEEKEND,
-        durationDays,
-        budgetBand: dto.budgetBand,
-        interests: dto.interests,
-        stops: stops.map(({ place, ...rest }) => ({
-          ...rest,
-          placeId: place.id,
-        })),
-      }),
-    );
-
-    return this.toResponse(itinerary, ordered, []);
   }
 
   async findMine(userId: string): Promise<Itinerary[]> {
@@ -1137,81 +1043,6 @@ export class ItinerariesService {
     itinerary.stops = [...itinerary.stops];
     await this.itineraryRepo.save(itinerary);
     return this.findOne(userId, itineraryId);
-  }
-
-  /** Weekend Explorer only now — generateTrip/previewTrip stopped
-   * auto-matching places by interest/budget (see generateTrip's doc
-   * comment); "what's reachable and worth doing nearby" is still exactly
-   * what Weekend Explorer is for, so its own route-building keeps this. */
-  private async findCandidates(
-    interestSlugs: string[],
-    budgetBand: BudgetBand,
-  ): Promise<Place[]> {
-    const qb = this.placeRepo
-      .createQueryBuilder("place")
-      .leftJoinAndSelect("place.category", "category")
-      .leftJoinAndSelect("place.county", "county")
-      .where("place.type IN (:...types)", { types: STOP_TYPES });
-
-    if (interestSlugs.length > 0) {
-      qb.andWhere("category.slug IN (:...interests)", {
-        interests: interestSlugs,
-      });
-    }
-
-    const threshold = budgetThreshold(budgetBand);
-    if (threshold !== null) {
-      qb.andWhere(
-        "(place.estimatedCostEntry IS NULL OR place.estimatedCostEntry <= :threshold)",
-        { threshold },
-      );
-    }
-
-    const candidates = await qb.getMany();
-    if (candidates.length === 0) {
-      throw new BadRequestException(
-        "No places match your selected interests and budget — try broadening your selection.",
-      );
-    }
-    return candidates;
-  }
-
-  /** Greedy nearest-neighbor: not optimal TSP, but a good-enough route for a
-   * handful of stops, and cheap enough to run per-request with no extra
-   * infrastructure. */
-  private sequenceByProximity(
-    candidates: Place[],
-    from: { lat: number; lng: number },
-    maxStops: number,
-  ): Place[] {
-    const remaining = [...candidates];
-    const ordered: Place[] = [];
-    let current = from;
-
-    while (ordered.length < maxStops && remaining.length > 0) {
-      remaining.sort(
-        (a, b) =>
-          haversineKm(current.lat, current.lng, a.latitude, a.longitude) -
-          haversineKm(current.lat, current.lng, b.latitude, b.longitude),
-      );
-      const next = remaining.shift()!;
-      ordered.push(next);
-      current = { lat: next.latitude, lng: next.longitude };
-    }
-    return ordered;
-  }
-
-  private assignDays(
-    ordered: Place[],
-    durationDays: number,
-  ): { day: number; order: number; place: Place; notes: null }[] {
-    const stopsPerDay = Math.max(1, Math.ceil(ordered.length / durationDays));
-    return ordered.map((place, i) => ({
-      day: Math.floor(i / stopsPerDay) + 1,
-      order: i % stopsPerDay,
-      place,
-      notes: null,
-    }));
   }
 
   private async toResponse(
