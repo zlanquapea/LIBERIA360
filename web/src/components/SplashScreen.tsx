@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 const SPLASH_SESSION_KEY = 'liberia360:splash-seen';
-const SPLASH_DISPLAY_MS = 5000;
+const SPLASH_DISPLAY_MS = 2500;
 const SPLASH_EXIT_MS = 400;
 
 export function SplashScreen() {
@@ -28,8 +28,10 @@ export function SplashScreen() {
 
     setVisible(true);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Keep the designed first impression on screen for five seconds. Reduced
-    // motion changes the fade itself, not the requested display duration.
+    // Keep the designed first impression on screen for 2.5 seconds — long
+    // enough to register as a deliberate brand moment, short enough not to
+    // feel like a delay (product feedback: 5s read as "taking too long").
+    // Reduced motion changes the fade itself, not the requested display duration.
     const exitDelay = SPLASH_DISPLAY_MS - (reducedMotion ? 60 : SPLASH_EXIT_MS);
     const removeDelay = SPLASH_DISPLAY_MS;
 
