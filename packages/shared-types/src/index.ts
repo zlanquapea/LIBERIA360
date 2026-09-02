@@ -956,7 +956,7 @@ export interface InvitationPreview {
   requiresAccount: boolean;
 }
 
-export type PlaceSort = "featured" | "rating" | "distance" | "name";
+export type PlaceSort = "featured" | "rating" | "distance" | "name" | "popular";
 
 export interface PlacesQuery {
   category?: string;

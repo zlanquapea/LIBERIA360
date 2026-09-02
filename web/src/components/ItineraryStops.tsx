@@ -4,9 +4,10 @@ import { formatPlaceType } from '@/lib/format';
 import { CategoryIcon } from '@/lib/icons';
 import type { ItineraryStopWithPlace } from '@/lib/types';
 
-// Groups an itinerary's resolved stops by day (Tech Spec §4.3) — shared
-// between the trip and Weekend Explorer detail views, since both produce
-// the same ItineraryDetail shape. `onRemove` is only passed for a
+// Groups an itinerary's resolved stops by day (Tech Spec §4.3) — the same
+// trip detail view renders an older Weekend Explorer trip too (retired
+// feature, but existing ones still show fine — same ItineraryDetail
+// shape). `onRemove` is only passed for a
 // collaborative trip's detail view where the viewer can actually edit it —
 // the read-only generation-result views leave it undefined.
 export function ItineraryStops({

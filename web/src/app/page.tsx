@@ -9,7 +9,7 @@ import {
   ArrowRightIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { StarIcon, SunIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // Product review readout (Aug 25, 2026), "homepage hierarchy": "the
 // homepage currently has too many things competing for attention... I
 // would make search and discovery the primary focus," plus specifically
@@ -98,16 +98,22 @@ import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
 import { PublicTripCard } from '@/components/PublicTripCard';
 
 const TRENDING_PLACES_LIMIT = 10;
+const DISCOVER_THIS_WEEK_LIMIT = 8;
 const UPCOMING_EVENTS_LIMIT = 8;
 const COMMUNITY_TRIPS_LIMIT = 6;
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
 export default async function Home() {
-  const [categories, counties, trending, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips] = await Promise.all([
+  const [categories, counties, trending, discoverThisWeek, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips] = await Promise.all([
     getCategories(),
     getCounties(),
     getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
+    // Retired the "Weekend Explorer" banner that used to sit here in favor
+    // of this — real, current usage (sort=popular: view count over the
+    // trailing 7 days, see PLACE_TRENDING_WINDOW_DAYS in places.service.ts)
+    // rather than a fixed CTA to a feature most visitors never opened.
+    getPlaces({ sort: 'popular', limit: DISCOVER_THIS_WEEK_LIMIT }),
     getEvents({ dateFrom: new Date().toISOString(), limit: UPCOMING_EVENTS_LIMIT }),
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
@@ -390,30 +396,38 @@ export default async function Home() {
 
         <AdvertisementBanner ads={ads} />
 
-        {/* Primary trip-planning CTA, styled after the mock-up's banner —
-            the actual "Weekend Explorer" feature (previously a bare text
-            link at the bottom of the page). */}
-        <Link
-          href="/trips/weekend/new"
-          className="group flex items-center gap-4 rounded-3xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-4 text-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover sm:p-5"
-        >
-          <div
-            aria-hidden
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gold-400/20 ring-1 ring-gold-400/40"
-          >
-            <SunIcon aria-hidden className="h-7 w-7 text-gold-400" />
+        {/* Replaces the retired "Weekend Explorer" banner that used to live
+            here — a fixed CTA to a feature most visitors never opened, in
+            favor of a real-data discovery surface: whatever's actually
+            getting looked at right now. */}
+        <section aria-labelledby="discover-week-heading" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2
+              id="discover-week-heading"
+              className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
+            >
+              <SparklesIcon aria-hidden className="h-5 w-5 text-gold-500" />
+              Discover this week
+            </h2>
+            <Link
+              href="/search"
+              className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+            >
+              See all
+              <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base font-semibold">Plan a weekend</p>
-            <p className="truncate text-sm text-brand-100">Discover places to stay, eat, and explore across Liberia.</p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {discoverThisWeek.data.map((place, i) => (
+              <PlaceCardCompact
+                key={place.id}
+                place={place}
+                verificationStatus={businessVerificationByPlaceId.get(place.id)}
+                index={i}
+              />
+            ))}
           </div>
-          <span
-            aria-hidden
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-500 transition-transform duration-300 group-hover:translate-x-0.5"
-          >
-            <ChevronRightIcon aria-hidden className="h-4 w-4 text-white" />
-          </span>
-        </Link>
+        </section>
 
         {/* Demoted from full-bleed gradient banners (still useful, but not
             "discovery" the way search/Near Me/the map are — see the review

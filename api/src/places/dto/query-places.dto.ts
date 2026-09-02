@@ -14,8 +14,17 @@ import {
 } from "class-validator";
 import { PlaceType } from "../entities/place.enums";
 
-export type PlaceSort = "featured" | "rating" | "distance" | "name";
-const SORT_VALUES: PlaceSort[] = ["featured", "rating", "distance", "name"];
+// "popular" ranks by view count over the trailing 7 days (see
+// PLACE_TRENDING_WINDOW_DAYS in places.service.ts) — Home's "Discover this
+// week" shelf, real usage rather than curation/rating.
+export type PlaceSort = "featured" | "rating" | "distance" | "name" | "popular";
+const SORT_VALUES: PlaceSort[] = [
+  "featured",
+  "rating",
+  "distance",
+  "name",
+  "popular",
+];
 
 /**
  * GET /places query params (Tech Spec §10): filters by category, county,

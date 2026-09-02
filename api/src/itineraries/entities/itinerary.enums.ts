@@ -6,9 +6,10 @@ export enum BudgetBand {
   PREMIUM = "premium",
 }
 
-/** "Build My Liberia Trip" (§4.3) vs "Weekend Explorer" (§3.2) — same
- * generation engine, different intake and defaults. Tracked so the
- * frontend can label saved itineraries appropriately. */
+/** "Build My Liberia Trip" (§4.3) vs the retired "Weekend Explorer" (§3.2)
+ * — WEEKEND is no longer creatable (its generation endpoint was removed
+ * along with the feature), kept only so trips made while it existed still
+ * load and label correctly. */
 export enum ItineraryKind {
   TRIP = "trip",
   WEEKEND = "weekend",
