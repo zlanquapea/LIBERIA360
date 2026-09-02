@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import { CountyIcon } from '@/lib/icons';
+import { colorForCounty } from '@/lib/category-colors';
 import { getCountyPlaces, getCounties } from '@/lib/api';
 import { ApiError } from '@/lib/api';
-import { PlaceCard } from '@/components/PlaceCard';
+import { PageHeader } from '@/components/PageHeader';
+import { CountyPlacesExplorer } from '@/components/CountyPlacesExplorer';
 import { CountySafetyPanel } from '@/components/CountySafetyPanel';
 import { JsonLd } from '@/components/JsonLd';
 import { countyJsonLd } from '@/lib/structured-data';
@@ -44,18 +46,23 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
       <JsonLd data={countyJsonLd(county, placesResult.data)} />
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-50">
-          <span aria-hidden className="text-2xl">
-            <CountyIcon county={county} className="h-6 w-6 text-brand-600 dark:text-brand-300" />
+
+      <PageHeader
+        eyebrow="County"
+        title={`${county.name} County`}
+        description={`${placesResult.meta.total} place${placesResult.meta.total === 1 ? '' : 's'} in the catalog${
+          county.rolloutStage > 1 ? ' (still growing)' : ''
+        }`}
+        action={
+          <span
+            aria-hidden
+            className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm"
+            style={{ backgroundColor: colorForCounty(county.slug) }}
+          >
+            <CountyIcon county={county} className="h-7 w-7 text-white" />
           </span>
-          {county.name} County
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {placesResult.meta.total} place{placesResult.meta.total === 1 ? '' : 's'} in the catalog
-          {county.rolloutStage > 1 && ' (still growing)'}
-        </p>
-      </div>
+        }
+      />
 
       <CountySafetyPanel county={county} />
 
@@ -64,11 +71,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
           No places here yet — we&apos;re still adding {county.name} to the catalog. Check back soon.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {placesResult.data.map((place, i) => (
-            <PlaceCard key={place.id} place={place} index={i} />
-          ))}
-        </div>
+        <CountyPlacesExplorer places={placesResult.data} countyName={county.name} />
       )}
     </main>
   );
