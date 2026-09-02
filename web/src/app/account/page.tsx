@@ -12,8 +12,6 @@ import {
   BookmarkIcon,
   ChevronRightIcon,
   MegaphoneIcon,
-  NewspaperIcon,
-  QuestionMarkCircleIcon,
   TruckIcon,
   TicketIcon,
   LifebuoyIcon,
@@ -64,20 +62,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
       {
         href: "/help",
         label: "Help Center",
-        description: "Browse guides and how-tos",
+        // FAQ and Blog & Updates aren't separate tiles here — Help
+        // Center's own nav (HelpContentNav) already links to both, so
+        // this is the one entry point into all three, not the first of
+        // three.
+        description: "Guides, FAQ, and Blog & Updates",
         icon: BookOpenIcon,
-      },
-      {
-        href: "/faq",
-        label: "FAQ",
-        description: "Quick answers to common questions",
-        icon: QuestionMarkCircleIcon,
-      },
-      {
-        href: "/blog",
-        label: "Blog & Updates",
-        description: "News, tips, and announcements",
-        icon: NewspaperIcon,
       },
     ],
   },
