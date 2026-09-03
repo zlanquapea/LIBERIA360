@@ -88,6 +88,24 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // (still a static soft-light accent, matching its top-right sibling,
 // which was never animated). EventCarousel keeps its exact carousel
 // mechanism — only its position in the page changed.
+//
+// Redesign pass (Sep 3, 2026): product feedback — "the blue looks light
+// and a lot of things on the home page [compete] with attention." The
+// color half of that is fixed at the source (see the palette rewrite in
+// lib/category-colors.ts — the county/category icon badges and card
+// placeholder gradients were a mismatched grab-bag of stock hues, not
+// this page's own colors). The "too much competing for attention" half
+// is a hierarchy problem, not a content problem: nothing here was cut,
+// but eight sections of near-identical visual weight running back to
+// back with no rhythm made the page read as one long undifferentiated
+// scroll. Two changes: a `border-t` breathing point ahead of "Trending
+// places" now marks where discovery content actually starts (after the
+// two browse grids), and the "Add a place" CTA — previously stranded
+// between Community Trips and the ad slot, competing with real content
+// for attention — now sits with its actual peers, the Plan a Trip /
+// Creators / Rent a car utility links, as one clearly-bounded "quick
+// actions" cluster instead of four separate interruptions scattered
+// through the scroll.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPublicTrips } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
@@ -331,7 +349,7 @@ export default async function Home() {
           </section>
         )}
 
-        <section aria-labelledby="trending-heading" className="flex flex-col gap-3">
+        <section aria-labelledby="trending-heading" className="flex flex-col gap-3 border-t border-slate-100 pt-8 dark:border-slate-800/70">
           <div className="flex items-center justify-between">
             <h2 id="trending-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
               Trending places
@@ -380,20 +398,6 @@ export default async function Home() {
           </section>
         )}
 
-        <Link
-          href="/places/submit"
-          className="group flex items-center gap-4 rounded-3xl border border-dashed border-brand-300 bg-white p-4 text-brand-900 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card-hover dark:border-brand-700 dark:bg-slate-900 dark:text-slate-50"
-        >
-          <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white transition-transform group-hover:scale-105">
-            <PlusIcon className="h-6 w-6" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-base font-bold">Add a place</span>
-            <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">Help others discover great places in Liberia.</span>
-          </span>
-          <ArrowRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-700 transition-transform group-hover:translate-x-1" />
-        </Link>
-
         <AdvertisementBanner ads={ads} />
 
         {/* Replaces the retired "Weekend Explorer" banner that used to live
@@ -429,11 +433,31 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Demoted from full-bleed gradient banners (still useful, but not
-            "discovery" the way search/Near Me/the map are — see the review
-            readout comment at the top of this file) to a compact, quieter
-            pairing further down the page. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Quick actions cluster: "Add a place" used to sit stranded between
+            Community Trips and the ad slot — a fourth unrelated
+            interruption competing with actual content instead of reading
+            as part of a group. Grouped here with its real peers (Plan a
+            Trip / Creators / Rent a car — all secondary utility links, not
+            discovery surfaces) demoted from full-bleed gradient banners
+            (still useful, but not "discovery" the way search/Near Me/the
+            map are — see the review readout comment at the top of this
+            file) into one clearly-bounded, quieter section instead of four
+            separate interruptions scattered through the scroll. */}
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-8 dark:border-slate-800/70">
+          <Link
+            href="/places/submit"
+            className="group flex items-center gap-4 rounded-3xl border border-dashed border-brand-300 bg-white p-4 text-brand-900 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card-hover dark:border-brand-700 dark:bg-slate-900 dark:text-slate-50"
+          >
+            <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white transition-transform group-hover:scale-105">
+              <PlusIcon className="h-6 w-6" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-base font-bold">Add a place</span>
+              <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">Help others discover great places in Liberia.</span>
+            </span>
+            <ArrowRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-700 transition-transform group-hover:translate-x-1" />
+          </Link>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Link
             href="/trips/new"
             className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
@@ -475,6 +499,7 @@ export default async function Home() {
               className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
             />
           </Link>
+          </div>
         </div>
 
         <EventCarousel events={upcomingEvents.data} />
