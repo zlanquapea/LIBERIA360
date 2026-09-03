@@ -387,11 +387,7 @@ export default function ModerationPage() {
         ) : queue.flaggedContent.length === 0 ? (
           <EmptyState title="Nothing flagged." />
         ) : (
-          <ul className="flex flex-col gap-2">
-            {queue.flaggedContent.map((flagged) => (
-              <FlaggedContentRow key={`${flagged.targetType}-${flagged.targetId}`} flagged={flagged} onDone={reload} />
-            ))}
-          </ul>
+          <FlaggedContentList flaggedContent={queue.flaggedContent} onDone={reload} />
         )}
       </section>
 
@@ -857,6 +853,40 @@ function EventReviewStatusControl({ event, onDone }: { event: Event; onDone: () 
         />
       )}
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+    </div>
+  );
+}
+
+const FLAGGED_CONTENT_VISIBLE_COUNT = 8;
+
+// Redesign (Sep 3, 2026): this list has no server-side pagination — on a
+// busy day it rendered 48 nearly-identical amber rows in one unbroken
+// column, turning "Flagged content" into most of the page's scroll and
+// making every item look equally urgent by sheer repetition. Collapsing
+// to the same "show N, then expand" pattern already used by CountyGrid/
+// CategoryGrid keeps the full queue reachable without an admin having to
+// scroll past dozens of rows to reach Recent reviews below it.
+function FlaggedContentList({ flaggedContent, onDone }: { flaggedContent: FlaggedContent[]; onDone: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? flaggedContent : flaggedContent.slice(0, FLAGGED_CONTENT_VISIBLE_COUNT);
+  const hasMore = flaggedContent.length > FLAGGED_CONTENT_VISIBLE_COUNT;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-2">
+        {visible.map((flagged) => (
+          <FlaggedContentRow key={`${flagged.targetType}-${flagged.targetId}`} flagged={flagged} onDone={onDone} />
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="self-center rounded-full px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-slate-800"
+        >
+          {expanded ? 'Show fewer' : `Show all ${flaggedContent.length} flagged items`}
+        </button>
+      )}
     </div>
   );
 }

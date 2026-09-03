@@ -58,17 +58,7 @@ function TeamDashboard() {
         ) : roster.length === 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">No admins yet — that shouldn&apos;t be possible if you&apos;re seeing this page.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {roster.map((member) => (
-              <TeamMemberRow
-                key={member.id}
-                token={token}
-                member={member}
-                isSelf={member.id === currentUser?.id}
-                onChanged={reload}
-              />
-            ))}
-          </ul>
+          <TeamRosterList roster={roster} token={token} currentUserId={currentUser?.id} onChanged={reload} />
         )}
       </section>
     </div>
@@ -364,6 +354,57 @@ function SearchAndPromote({
             setEmail('');
           }}
         />
+      )}
+    </div>
+  );
+}
+
+const TEAM_ROSTER_VISIBLE_COUNT = 10;
+
+// Redesign (Sep 3, 2026): the roster has no server-side pagination, and on
+// an install with a lot of accounts (or a lot of test/seed data) this was
+// rendering every one of them as a full-height card in a single unbroken
+// column — one build measured 50+ rows and a page several screens taller
+// than the rest of Team & Access combined. Same "show N, then expand"
+// pattern used elsewhere in the admin (Flagged content) and on the public
+// side (CountyGrid/CategoryGrid) so the roster stays reachable without
+// turning this page into mostly scroll.
+function TeamRosterList({
+  roster,
+  token,
+  currentUserId,
+  onChanged,
+}: {
+  roster: AuthUser[];
+  token: string;
+  currentUserId: string | undefined;
+  onChanged: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? roster : roster.slice(0, TEAM_ROSTER_VISIBLE_COUNT);
+  const hasMore = roster.length > TEAM_ROSTER_VISIBLE_COUNT;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-2">
+        {visible.map((member) => (
+          <TeamMemberRow
+            key={member.id}
+            token={token}
+            member={member}
+            isSelf={member.id === currentUserId}
+            onChanged={onChanged}
+          />
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="self-center rounded-full px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-slate-800"
+        >
+          {expanded ? 'Show fewer' : `Show all ${roster.length} team members`}
+        </button>
       )}
     </div>
   );
