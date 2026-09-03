@@ -128,6 +128,11 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
     ? `${formatCost(business.priceRangeMin)}${business.priceRangeMax != null ? ` – ${formatCost(business.priceRangeMax)}` : ''}`
     : null;
 
+  // Redesign (Sep 3, 2026): Call and WhatsApp used to be solid red/emerald
+  // blocks — same fix as PlaceKeyFacts.tsx. Directions (navy) and Book
+  // (gold) stay this row's only two intentional accents; every other
+  // action shares the muted bordered-white treatment with a small colored
+  // icon instead of a full-color button competing for attention.
   const actionClass =
     'inline-flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
   const mutedActionClass =
@@ -200,8 +205,8 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
             Directions
           </a>
           {business.phone ? (
-            <a href={`tel:${business.phone}`} className={`${actionClass} bg-red-500 text-white hover:bg-red-600`}>
-              <PhoneIcon aria-hidden className="h-5 w-5" />
+            <a href={`tel:${business.phone}`} className={mutedActionClass}>
+              <PhoneIcon aria-hidden className="h-5 w-5 text-brand-600 dark:text-brand-400" />
               Call
             </a>
           ) : (
@@ -215,9 +220,9 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
               href={whatsappLink(business.whatsapp)}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${actionClass} bg-emerald-600 text-white hover:bg-emerald-700`}
+              className={mutedActionClass}
             >
-              <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5" />
+              <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               WhatsApp
             </a>
           ) : (
