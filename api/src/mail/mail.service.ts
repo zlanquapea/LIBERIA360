@@ -227,6 +227,34 @@ export class MailService {
     });
   }
 
+  /** Settings > Notifications' "email me about new flagged content"
+   * toggle — fired once per recipient the moment a review/event first
+   * crosses the report-flag threshold (ReportsService.maybeNotifyContentFlagged),
+   * not on every subsequent report against the same target. Same
+   * swallow-errors contract as every other send here: a broken mail
+   * provider must never fail the report request that triggered it. */
+  async sendFlaggedContentAlert(
+    to: string,
+    name: string,
+    targetLabel: string,
+    reportCount: number,
+    moderationUrl: string,
+  ): Promise<void> {
+    const reporterCount = `${reportCount} independent users`;
+    await this.send({
+      to,
+      subject: `New flagged content: ${targetLabel}`,
+      text: `Hi ${name},\n\n${targetLabel} was just reported by ${reporterCount} on LIBERIA360 and is waiting for a moderation decision.\n\n${moderationUrl}\n\nThis is an automated alert; you can turn it off in Settings > Notifications.`,
+      html: this.render({
+        heading: "New flagged content",
+        intro: `Hi ${escapeHtml(name)} — ${escapeHtml(targetLabel)} was just reported by <strong>${reporterCount}</strong> on LIBERIA360 and is waiting for a moderation decision.`,
+        ctaLabel: "Review flagged content",
+        ctaUrl: moderationUrl,
+        note: "This is an automated alert; you can turn it off in Settings > Notifications.",
+      }),
+    });
+  }
+
   /** Fire-and-forget notice to the organizer once someone actually
    * accepts (Section 8: "the organizer should receive a notification
    * that the person has joined the trip") — same swallow-errors contract

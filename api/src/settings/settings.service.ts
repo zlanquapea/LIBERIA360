@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ApplicationSettings } from "./entities/application-settings.entity";
+import { AdminNotificationSettings } from "./entities/admin-notification-settings.entity";
 
 // The one and only row — see ApplicationSettings's doc comment for why
 // this is a singleton rather than a generic key-value table.
@@ -19,11 +20,22 @@ export type UpdateApplicationSettingsInput = Partial<
   >
 >;
 
+export type UpdateAdminNotificationSettingsInput = Partial<
+  Pick<
+    AdminNotificationSettings,
+    | "flaggedContentEmailEnabled"
+    | "flaggedContentPushEnabled"
+    | "flaggedContentRecipientUserIds"
+  >
+>;
+
 @Injectable()
 export class SettingsService {
   constructor(
     @InjectRepository(ApplicationSettings)
     private readonly repo: Repository<ApplicationSettings>,
+    @InjectRepository(AdminNotificationSettings)
+    private readonly notificationSettingsRepo: Repository<AdminNotificationSettings>,
   ) {}
 
   /** Every threshold-reading call site (AdminService's moderation queue,
@@ -47,5 +59,29 @@ export class SettingsService {
     const current = await this.getApplicationSettings();
     Object.assign(current, input, { updatedByUserId: actingUserId });
     return this.repo.save(current);
+  }
+
+  /** ReportsService.maybeNotifyContentFlagged reads this on every
+   * newly-crossed flag to decide whether/who to email or push — same
+   * materialize-on-first-read singleton shape as getApplicationSettings,
+   * so a brand-new deploy behaves like the always-on, all-admins default
+   * until a super admin narrows it. */
+  async getAdminNotificationSettings(): Promise<AdminNotificationSettings> {
+    const existing = await this.notificationSettingsRepo.findOne({
+      where: { id: SINGLETON_ID },
+    });
+    if (existing) return existing;
+    return this.notificationSettingsRepo.save(
+      this.notificationSettingsRepo.create({ id: SINGLETON_ID }),
+    );
+  }
+
+  async updateAdminNotificationSettings(
+    input: UpdateAdminNotificationSettingsInput,
+    actingUserId: string,
+  ): Promise<AdminNotificationSettings> {
+    const current = await this.getAdminNotificationSettings();
+    Object.assign(current, input, { updatedByUserId: actingUserId });
+    return this.notificationSettingsRepo.save(current);
   }
 }

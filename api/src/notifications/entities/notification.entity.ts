@@ -12,8 +12,10 @@ import {
 // `booking_message.*` fire for the guest or the business/creator owner
 // (whichever the trigger targets); `place.*`/`business.*` fire for a
 // self-submitted listing's owner when an admin decides it; `admin.*` fire
-// for every admin (or every super admin, for `admin.failed_login_alert`) —
-// see NotificationsService's call sites for exactly who gets each one.
+// for every admin (every super admin for `admin.failed_login_alert`; a
+// super-admin-configurable subset of admins, defaulting to all of them,
+// for `admin.content_flagged` — see Settings > Notifications) — see
+// NotificationsService's call sites for exactly who gets each one.
 export type NotificationType =
   | "booking.requested"
   | "booking.confirmed"
@@ -40,6 +42,7 @@ export type NotificationType =
   | "admin.support_ticket_unassigned"
   | "admin.support_customer_replied"
   | "admin.failed_login_alert"
+  | "admin.content_flagged"
   | "trip.invitation_received"
   | "trip.invitation_accepted"
   | "trip.join_requested"
