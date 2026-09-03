@@ -38,14 +38,32 @@ export function CreatorStories() {
     return () => { cancelled = true; };
   }, [ready, token]);
 
+  const visibleStories = useMemo(
+    () => stories.filter((story) => {
+      if (story.status !== "approved" || !story.expiresAt) return false;
+      return new Date(story.expiresAt).getTime() > Date.now();
+    }),
+    [stories],
+  );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setStories((current) => current.filter((story) => {
+        if (story.status !== "approved" || !story.expiresAt) return false;
+        return new Date(story.expiresAt).getTime() > Date.now();
+      }));
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const creators = useMemo(() => {
     const seen = new Set<string>();
-    return stories.filter((story) => {
+    return visibleStories.filter((story) => {
       if (seen.has(story.creatorId)) return false;
       seen.add(story.creatorId);
       return true;
     });
-  }, [stories]);
+  }, [visibleStories]);
 
   function handlePublished(story: CreatorStory) {
     setStories((current) => [story, ...current.filter((item) => item.id !== story.id)]);
@@ -67,7 +85,7 @@ export function CreatorStories() {
             <span className="relative flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-brand-400 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-950/40 dark:text-brand-200"><PlusIcon aria-hidden className="h-7 w-7 transition-transform group-hover:scale-110" /></span>
             <span className="w-full truncate text-xs font-bold text-slate-800 dark:text-slate-200">Create story</span>
           </button>}
-          {!loading && creators.map((story) => <button key={story.creatorId} type="button" onClick={() => setViewerIndex(stories.findIndex((item) => item.id === story.id))} className="group flex w-[82px] shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+          {!loading && creators.map((story) => <button key={story.creatorId} type="button" onClick={() => setViewerIndex(visibleStories.findIndex((item) => item.id === story.id))} className="group flex w-[82px] shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
             <span className="relative block h-[68px] w-[68px] rounded-full bg-gradient-to-br from-brand-700 via-gold-400 to-emerald-500 p-[3px]"><span className="block h-full w-full overflow-hidden rounded-full border-2 border-white bg-slate-100 dark:border-slate-900">{story.creator.profileImage ? <img src={story.creator.profileImage} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-xl font-bold text-brand-800">{story.creator.name.slice(0, 1)}</span>}</span></span>
             <span className="w-full truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{story.creator.name}</span>
           </button>)}
@@ -75,7 +93,7 @@ export function CreatorStories() {
         </div>
       </section>
       {composerOpen && <StoryComposer token={token!} onClose={() => setComposerOpen(false)} onPublished={handlePublished} />}
-      {viewerIndex !== null && <StoryViewer stories={stories} initialIndex={viewerIndex} token={token} onClose={() => setViewerIndex(null)} />}
+      {viewerIndex !== null && <StoryViewer stories={visibleStories} initialIndex={viewerIndex} token={token} onClose={() => setViewerIndex(null)} />}
     </>
   );
 }

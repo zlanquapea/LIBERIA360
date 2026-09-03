@@ -95,6 +95,14 @@ export class CreatorStoriesService {
 
   async listMine(userId: string) {
     const creator = await this.getOwnedCreator(userId);
+    await this.storyRepo
+      .createQueryBuilder()
+      .update(CreatorStory)
+      .set({ status: CreatorStoryStatus.EXPIRED })
+      .where("creator_id = :creatorId", { creatorId: creator.id })
+      .andWhere("status = :status", { status: CreatorStoryStatus.APPROVED })
+      .andWhere("expires_at IS NOT NULL AND expires_at <= NOW()")
+      .execute();
     const stories = await this.storyRepo.find({
       where: { creatorId: creator.id },
       relations: ["creator"],
@@ -198,7 +206,7 @@ export class CreatorStoriesService {
       Boolean(
         story.publishedAt &&
         story.expiresAt &&
-        story.expiresAt.getTime() > Date.now(),
+        new Date(story.expiresAt).getTime() > Date.now(),
       )
     );
   }
