@@ -24,6 +24,7 @@ import { AddTripStop } from '@/components/AddTripStop';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
 import { ShareMenu } from '@/components/ShareMenu';
+import { TripShareCard } from '@/components/TripShareCard';
 import type { ItineraryDetail, Place, PublicTripDetail, TripStatus, TripVisibility } from '@/lib/types';
 
 // Kept in sync with the same threshold on the trips list page — a trip
@@ -252,6 +253,11 @@ export function TripDetailClient({ id }: { id: string }) {
           <div className="h-10 w-10">
             <ShareMenu placeName={trip.title} contentType="trip" />
           </div>
+          {trip.stops.length > 0 && (
+            <div className="h-10 w-10">
+              <TripShareCard trip={trip} />
+            </div>
+          )}
           {!isAdmin && trip.status !== 'cancelled' && (
             <>
               {!user ? (
@@ -489,8 +495,15 @@ function MemberTripView({
 
         {itinerary.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{itinerary.description}</p>}
 
-        <div className="mt-3 h-10 w-10">
-          <ShareMenu placeName={itinerary.title} contentType="trip" />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <div className="h-10 w-10">
+            <ShareMenu placeName={itinerary.title} contentType="trip" />
+          </div>
+          {itinerary.stops.length > 0 && (
+            <div className="h-10 w-10">
+              <TripShareCard trip={itinerary} />
+            </div>
+          )}
         </div>
 
         {successMessage && (
