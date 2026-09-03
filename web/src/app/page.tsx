@@ -87,6 +87,16 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // not decorative filler. The three-step explainer collapses into one
 // caption line under the grid instead of disappearing outright.
 //
+// Personalization ("make it amazing" pass, item 2/5, Sep 3, 2026): signup
+// has collected traveler-type/interests since task #48/#49, unused until
+// now. PersonalizedPicksSection (a client component — auth state here
+// lives entirely in localStorage, see account/page.tsx) renders a "For
+// you" rail keyed off the visitor's own interest categories, right where
+// Featured Places already sits — curated for this specific visitor, not
+// organic catalog activity like the sections past the "discovery starts
+// here" divider below. Renders nothing for a signed-out visitor or one
+// with no interests set, so this costs anonymous traffic nothing.
+//
 // Events re-ordering + motion cleanup (Aug 27, 2026): product feedback —
 // "the event area should be the last section of the home page" (reversing
 // the "Events visibility fix" placement above, now that the hero and the
@@ -127,6 +137,7 @@ import { EventCarousel } from '@/components/EventCarousel';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
 import { PublicTripCard } from '@/components/PublicTripCard';
 import { HeroPhotoMosaic } from '@/components/HeroPhotoMosaic';
+import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
 
 const TRENDING_PLACES_LIMIT = 10;
 const DISCOVER_THIS_WEEK_LIMIT = 8;
@@ -371,6 +382,8 @@ export default async function Home() {
             </div>
           </section>
         )}
+
+        <PersonalizedPicksSection businessVerificationByPlaceId={businessVerificationByPlaceId} />
 
         <section aria-labelledby="trending-heading" className="flex flex-col gap-3 border-t border-slate-100 pt-8 dark:border-slate-800/70">
           <div className="flex items-center justify-between">
