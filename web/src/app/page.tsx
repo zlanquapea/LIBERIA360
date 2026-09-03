@@ -75,6 +75,18 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // their elevated co-primary spot per the review-readout pass above — they
 // gained the room the search input used to take instead of losing it.
 //
+// Hero visual hook ("make it amazing" pass, Sep 3, 2026): the hero's right
+// rail was a text-only "One simple flow" explainer of the exact three
+// actions the search link and the two discovery pills right next to it
+// already make obvious — worth trying once, but it was carrying none of
+// the "wow, look at this place" weight a first screen should. Swapped for
+// HeroPhotoMosaic: a small bento grid of real photos pulled from places
+// already fetched below (trending + this week's popular picks) — no extra
+// API call, and no violation of the app's "no stock photography" rule
+// (see the layout-pass note below) since these are genuine catalog photos,
+// not decorative filler. The three-step explainer collapses into one
+// caption line under the grid instead of disappearing outright.
+//
 // Events re-ordering + motion cleanup (Aug 27, 2026): product feedback —
 // "the event area should be the last section of the home page" (reversing
 // the "Events visibility fix" placement above, now that the hero and the
@@ -114,6 +126,7 @@ import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { EventCarousel } from '@/components/EventCarousel';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
 import { PublicTripCard } from '@/components/PublicTripCard';
+import { HeroPhotoMosaic } from '@/components/HeroPhotoMosaic';
 
 const TRENDING_PLACES_LIMIT = 10;
 const DISCOVER_THIS_WEEK_LIMIT = 8;
@@ -163,6 +176,24 @@ export default async function Home() {
   const businessVerificationByPlaceId = new Map(
     businesses.data.map((business) => [business.linkedPlaceId, business.verificationStatus]),
   );
+
+  // Hero photo mosaic's showcase picks — reuses the trending/this-week
+  // data already fetched above rather than a fifth API call. Places with
+  // at least one real photo sort first so the mosaic reaches for genuine
+  // imagery whenever the catalog has it; a place with none still renders
+  // fine via HeroPhotoMosaic's own category-color fallback, so this never
+  // needs to filter anything out.
+  const heroShowcasePlaces = (() => {
+    const seen = new Set<string>();
+    const candidates = [...trending.data, ...discoverThisWeek.data].filter((place) => {
+      if (seen.has(place.id)) return false;
+      seen.add(place.id);
+      return true;
+    });
+    return [...candidates]
+      .sort((a, b) => (b.images.length > 0 ? 1 : 0) - (a.images.length > 0 ? 1 : 0))
+      .slice(0, 4);
+  })();
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col">
@@ -275,25 +306,17 @@ export default async function Home() {
             <span>{trending.meta.total}+ places</span>
           </div>
           </div>
-          <aside className="hidden rounded-3xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-sm lg:block">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-400">One simple flow</p>
-            <h2 className="mt-3 max-w-sm font-display text-2xl font-bold leading-tight">Search, explore, and save what matters.</h2>
-            <div className="mt-6 grid gap-4">
-              {[
-                ['01', 'Search', 'Start with a place, experience, or event.'],
-                ['02', 'Explore', 'Use the map and county filters to compare.'],
-                ['03', 'Take action', 'Save a place, get directions, or report an update.'],
-              ].map(([number, title, body]) => (
-                <div key={number} className="flex items-start gap-3 border-t border-white/15 pt-4 first:border-t-0 first:pt-0">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-brand-900">{number}</span>
-                  <div>
-                    <p className="font-semibold text-white">{title}</p>
-                    <p className="mt-0.5 text-sm leading-5 text-brand-100">{body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </aside>
+          {heroShowcasePlaces.length > 0 && (
+            <aside className="hidden flex-col gap-4 lg:flex">
+              <HeroPhotoMosaic places={heroShowcasePlaces} />
+              <div className="text-center">
+                <p className="font-display text-base font-semibold text-white">Real places, ready to explore</p>
+                <p className="mx-auto mt-1 max-w-sm text-sm leading-5 text-brand-100">
+                  Search, explore, and save what matters — starting with what other travelers are already discovering.
+                </p>
+              </div>
+            </aside>
+          )}
         </div>
       </section>
 
