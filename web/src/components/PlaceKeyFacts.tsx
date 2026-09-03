@@ -69,6 +69,13 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
       ? isOpenAt(place.structuredHours, new Date())
       : null;
 
+  // Redesign (Sep 3, 2026): Call and WhatsApp used to be solid red/emerald
+  // blocks — two more saturated colors next to Directions (navy) and Book
+  // (gold) in the same row. Directions and Book are this row's only two
+  // intentional accents (primary navigation, primary conversion); every
+  // other action — Call, WhatsApp, Share, Save — now shares the muted
+  // bordered-white treatment, with a small colored icon for at-a-glance
+  // recognition instead of a full-color button competing for attention.
   const actionClass =
     'inline-flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
   const mutedActionClass =
@@ -99,9 +106,9 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           <ContactLink
             placeId={place.id}
             href={`tel:${phone}`}
-            className={`${actionClass} bg-red-500 text-white hover:bg-red-600`}
+            className={mutedActionClass}
           >
-            <PhoneIcon aria-hidden className="h-5 w-5" />
+            <PhoneIcon aria-hidden className="h-5 w-5 text-brand-600 dark:text-brand-400" />
             Call
           </ContactLink>
         ) : (
@@ -117,9 +124,9 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
             href={whatsappLink(whatsapp)}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${actionClass} bg-emerald-600 text-white hover:bg-emerald-700`}
+            className={mutedActionClass}
           >
-            <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5" />
+            <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             WhatsApp
           </ContactLink>
         ) : (

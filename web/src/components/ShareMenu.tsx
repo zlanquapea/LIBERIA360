@@ -137,7 +137,14 @@ export function ShareMenu({
 
   const actionTrigger =
     variant === "action"
-      ? "inline-flex min-h-14 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl bg-sky-400 px-2 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+      ? // Redesign (Sep 3, 2026): this used to be a solid, saturated
+        // sky-blue block — the one loud color in an otherwise deliberately
+        // muted row (Follow/Message/Save all use the bordered-white,
+        // brand-hover treatment). Matched to those siblings so Share reads
+        // as one of the row's equal secondary actions instead of a fourth
+        // color shouting for attention next to Directions (navy) and Book
+        // (gold), which are the row's only two intentional accents.
+        "inline-flex min-h-14 min-w-0 w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-brand-400 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
       : variant === "feed"
         ? "flex min-h-11 min-w-0 w-full items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
         : variant === "viewer-action"
