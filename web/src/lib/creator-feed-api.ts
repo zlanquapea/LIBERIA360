@@ -174,3 +174,64 @@ export function removeCreatorPostComment(
     headers: authHeader(token),
   });
 }
+
+
+import type { CreatorStory, CreatorStoryMediaType, CreatorStoryVisibility } from "./types";
+
+export interface CreatorStoryInput {
+  mediaType: CreatorStoryMediaType;
+  mediaUrl: string;
+  caption?: string;
+  visibility?: CreatorStoryVisibility;
+  placeId?: string;
+  eventId?: string;
+  tripId?: string;
+  creatorProfileId?: string;
+}
+
+export function getActiveCreatorStories(token?: string): Promise<CreatorStory[]> {
+  return apiRequest<CreatorStory[]>("/creators/stories", {
+    headers: token ? authHeader(token) : undefined,
+  });
+}
+
+export function getMyCreatorStories(token: string): Promise<CreatorStory[]> {
+  return apiRequest<CreatorStory[]>("/creators/stories/me", { headers: authHeader(token) });
+}
+
+export function createCreatorStory(token: string, input: CreatorStoryInput): Promise<CreatorStory> {
+  return apiRequest<CreatorStory>("/creators/stories", {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export function recordCreatorStoryView(token: string, storyId: string) {
+  return apiRequest<{ viewed: boolean; viewCount: number }>(`/creators/stories/${storyId}/view`, {
+    method: "POST",
+    headers: authHeader(token),
+  });
+}
+
+export function reportCreatorStory(token: string, storyId: string, reason: string) {
+  return apiRequest<{ reported: boolean }>(`/creators/stories/${storyId}/report`, {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function deleteCreatorStory(token: string, storyId: string) {
+  return apiRequest<void>(`/creators/stories/${storyId}`, {
+    method: "DELETE",
+    headers: authHeader(token),
+  });
+}
+
+
+export function getCreatorStoryEligibility(token: string): Promise<{ eligible: boolean }> {
+  return apiRequest<{ eligible: boolean }>("/creators/stories/eligibility", {
+    headers: authHeader(token),
+  });
+}

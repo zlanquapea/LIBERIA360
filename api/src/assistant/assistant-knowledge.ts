@@ -630,6 +630,38 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     followUps: ["How do I add my business?", "How does advertising work?"],
   },
   {
+    id: "creator-stories-overview",
+    title: "How creator stories work",
+    keywords: [
+      "creator stories",
+      "stories",
+      "story",
+      "view stories",
+      "24 hours",
+      "story tray",
+    ],
+    answer:
+      "Creator Stories are short photo or video updates from LIBERIA360 creators. Approved creators can publish a story for people to view for 24 hours. Open the Creators area to view active stories, or sign in and become an approved creator to publish your own.",
+    actionIds: ["creators", "login"],
+    followUps: ["How do I post a creator story?"],
+  },
+  {
+    id: "creator-stories-post",
+    title: "How to post a creator story",
+    keywords: [
+      "post a creator story",
+      "create a story",
+      "publish a story",
+      "upload story",
+      "story photo",
+      "story video",
+    ],
+    answer:
+      "Sign in as an approved creator, open the Creators area, choose Create story, add your photo or video, preview it, and publish. Your story is available for 24 hours. The Assistant can explain the steps but cannot publish the story for you.",
+    actionIds: ["creators", "login"],
+    followUps: ["How do creator stories work?"],
+  },
+  {
     id: "events",
     title: "Find and add events",
     keywords: [

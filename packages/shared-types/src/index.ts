@@ -1747,3 +1747,33 @@ export interface BlogPost {
   publishedAt: string | null; createdAt: string; updatedAt: string;
 }
 export interface PaginatedBlogPosts { data: BlogPost[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+
+export type CreatorStoryMediaType = "image" | "video";
+export type CreatorStoryStatus = "pending" | "approved" | "rejected" | "expired" | "deleted";
+export type CreatorStoryVisibility = "public" | "followers";
+
+export interface CreatorStory {
+  id: string;
+  creatorId: string;
+  mediaType: CreatorStoryMediaType;
+  mediaUrl: string;
+  caption: string | null;
+  status: CreatorStoryStatus;
+  visibility: CreatorStoryVisibility;
+  placeId: string | null;
+  eventId: string | null;
+  tripId: string | null;
+  creatorProfileId: string | null;
+  viewCount: number;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  creator: {
+    id: string;
+    name: string;
+    username: string;
+    profileImage: string | null;
+    verificationStatus: CreatorVerificationStatus;
+  };
+}

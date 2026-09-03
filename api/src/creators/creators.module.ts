@@ -6,6 +6,11 @@ import { CreatorOffering } from "./entities/creator-offering.entity";
 import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
 import {
+  CreatorStory,
+  CreatorStoryReport,
+  CreatorStoryView,
+} from "./entities/creator-story.entity";
+import {
   CreatorPostComment,
   CreatorPostCommentLike,
   CreatorPostLike,
@@ -15,6 +20,8 @@ import { CreatorsService } from "./creators.service";
 import { CreatorsController } from "./creators.controller";
 import { CreatorFeedService } from "./creator-feed.service";
 import { CreatorFeedController } from "./creator-feed.controller";
+import { CreatorStoriesService } from "./creator-stories.service";
+import { CreatorStoriesController } from "./creator-stories.controller";
 
 @Module({
   imports: [
@@ -28,10 +35,17 @@ import { CreatorFeedController } from "./creator-feed.controller";
       CreatorPostSave,
       CreatorPostComment,
       CreatorPostCommentLike,
+      CreatorStory,
+      CreatorStoryView,
+      CreatorStoryReport,
     ]),
   ],
-  controllers: [CreatorFeedController, CreatorsController],
-  providers: [CreatorsService, CreatorFeedService],
+  controllers: [
+    CreatorFeedController,
+    CreatorsController,
+    CreatorStoriesController,
+  ],
+  providers: [CreatorsService, CreatorFeedService, CreatorStoriesService],
   exports: [CreatorsService],
 })
 export class CreatorsModule {}

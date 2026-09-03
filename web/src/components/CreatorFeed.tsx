@@ -15,6 +15,7 @@ import {
 import type { Ad, CreatorPost } from "@/lib/types";
 import { CreatorPostCard } from "./CreatorPostCard";
 import { SponsoredCreatorAdCard } from "./SponsoredCreatorAdCard";
+import { CreatorStories } from "./CreatorStories";
 
 type CreatorFeedMode = "discover" | "following";
 const FEED_PAGE_SIZE = 20;
@@ -329,6 +330,8 @@ export function CreatorFeed({
               : "Pull to refresh"}
         </span>
       </div>
+
+      <CreatorStories />
 
       {showHeader && (
         <div className="mb-4">
