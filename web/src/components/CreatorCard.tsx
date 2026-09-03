@@ -18,6 +18,15 @@ import { ShareMenu } from "./ShareMenu";
 // only data available on the paginated creator response; full portfolio media
 // and request booking remain on the creator profile. `index` staggers the
 // entrance fade — see PlaceCard's own doc comment.
+//
+// Motion consistency pass ("make it amazing," Sep 3, 2026): every sibling
+// discovery card (PlaceCard, BusinessCard, CarListingCard, PublicTripCard)
+// lifts on hover; this one only changed its shadow, the one card in the
+// set that didn't match. `active:scale-[0.98]` stays off, unlike those
+// siblings — this card has several independent clickable children (the
+// profile link, Follow/Message, ShareMenu), not one whole-card link, so a
+// press-scale on the container would visually fight whichever button was
+// actually clicked.
 export function CreatorCard({ creator, index }: { creator: Creator; index?: number }) {
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
   const coverThumb = creator.coverImage
@@ -39,7 +48,7 @@ export function CreatorCard({ creator, index }: { creator: Creator; index?: numb
 
   return (
     <article
-      className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition-shadow duration-200 hover:shadow-card-hover dark:bg-slate-900 ${
+      className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:bg-slate-900 ${
         creator.featured
           ? "border-gold-400 dark:border-gold-500"
           : "border-slate-200 dark:border-slate-800"
