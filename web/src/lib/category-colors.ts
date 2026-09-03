@@ -2,17 +2,32 @@
 // pins" requirement (Tech Spec §3.1). Hash the slug instead of hard-coding
 // per-category colors so new categories added later still get a stable,
 // distinct color without a code change.
+//
+// Redesign (Sep 3, 2026): product feedback — "the blue looks light and a
+// lot of things on the home page [compete for] attention." Root cause
+// traced here, not to the navy brand hero: this was a grab-bag of stock
+// Tailwind primaries (a bright `#1d4ed8` blue, a `#0369a1` sky, a
+// `#4338ca` indigo, sitting next to a muted `#a16207` yellow-brown and a
+// deep `#0f766e` teal) with wildly inconsistent lightness/saturation. Fed
+// into county icons, category icons, and card-placeholder gradients on
+// the same page, that unevenness is exactly what reads as "some colors
+// look light/cheap" and "too many things shouting for attention" — ten
+// mismatched hues at ten different visual volumes. Replaced with a
+// curated set of deep jewel tones, deliberately normalized to a similar
+// lightness/chroma so every category reads as an intentional part of one
+// palette rather than a random assortment — and no blue in the set is
+// lighter or more washed-out than its neighbors.
 const PALETTE = [
-  '#1f7c57', // brand green
-  '#b45309', // amber
-  '#1d4ed8', // blue
-  '#be123c', // rose
-  '#7c3aed', // violet
-  '#0f766e', // teal
-  '#c2410c', // orange
-  '#4338ca', // indigo
-  '#a16207', // yellow-brown
-  '#0369a1', // sky
+  '#0f6e4f', // emerald (echoes accent green)
+  '#9a5b12', // bronze
+  '#1e4d8f', // deep sapphire — a rich, saturated navy-blue, not a light one
+  '#9c2b4e', // wine
+  '#5b3a9e', // amethyst
+  '#0d6e6e', // teal
+  '#9a4a1f', // terracotta
+  '#7a2f6e', // plum
+  '#7a5c17', // olive-gold
+  '#1f6b7a', // petrol
 ];
 
 function colorForString(seed: string): string {
@@ -54,7 +69,14 @@ export function colorForCounty(slug: string): string {
 // distinct by category instead, with color-mix() lightening/darkening
 // the category's own hue rather than reaching for a second, unrelated
 // color per category.
+//
+// Redesign (Sep 3, 2026): the previous 72%/80% mix ratios pushed every
+// hue most of the way to white before it ever reached the canvas, which
+// is what made these placeholders look pastel/washed-out next to the
+// app's navy-tinted, deep-shadow "premium" surfaces elsewhere. Pulling
+// both stops back toward the source hue keeps the same white-icon-on-
+// gradient contrast while reading as rich color instead of a tint.
 export function gradientForCategory(slug: string): string {
   const hex = colorForCategory(slug);
-  return `linear-gradient(to bottom right, color-mix(in srgb, ${hex} 72%, white), color-mix(in srgb, ${hex} 80%, black))`;
+  return `linear-gradient(to bottom right, color-mix(in srgb, ${hex} 82%, white), color-mix(in srgb, ${hex} 88%, black))`;
 }
