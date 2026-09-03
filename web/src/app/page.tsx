@@ -87,6 +87,22 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // not decorative filler. The three-step explainer collapses into one
 // caption line under the grid instead of disappearing outright.
 //
+// Counties/categories decluttering (Sep 3, 2026): product feedback,
+// reacting to a screenshot of this exact section on desktop — "why we
+// have see more button and all the categories listed... it looks so off,
+// bad user experience." Both CountyGrid and CategoryGrid already had a
+// collapse mechanism, but each disabled it above a certain width
+// (CountyGrid's "See more" was `sm:hidden`; CategoryGrid's cap literally
+// became `Infinity` past `lg:`) — so on any real desktop viewport, all 15
+// counties and 20+ categories rendered back to back, uncapped, in two
+// visually-identical tile grids. Fixed at the source in each component:
+// CountyGrid now always shows a fixed preview and leans on this section's
+// own "View all" link (→ /counties) for the rest, since a second in-place
+// expand control for the same list would just be a redundant escape
+// hatch; CategoryGrid (no `/categories` browse-all page to link to
+// instead) keeps its expand/collapse toggle, just no longer disables it
+// above 1024px.
+//
 // Personalization ("make it amazing" pass, item 2/5, Sep 3, 2026): signup
 // has collected traveler-type/interests since task #48/#49, unused until
 // now. PersonalizedPicksSection (a client component — auth state here
