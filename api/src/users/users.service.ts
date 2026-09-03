@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 
 @Injectable()
@@ -92,5 +92,23 @@ export class UsersService {
       select: ["id"],
     });
     return admins.map((u) => u.id);
+  }
+
+  /** Full records (not just ids) for every admin — the default "who gets
+   * emailed/pushed about new flagged content" audience (Settings >
+   * Notifications) when a super admin hasn't narrowed it to specific
+   * people. Needs name/email, unlike findAdminIds' broadcast case. */
+  async findAdmins(): Promise<User[]> {
+    return this.userRepo.find({ where: { isAdmin: true } });
+  }
+
+  /** Looks up a specific set of users by id, e.g. the admins a super
+   * admin picked in Settings > Notifications' recipient list. Silently
+   * drops any id that no longer resolves to a user (an admin removed
+   * after being picked) rather than erroring — the notification still
+   * goes to whoever's left. */
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    return this.userRepo.findBy({ id: In(ids) });
   }
 }

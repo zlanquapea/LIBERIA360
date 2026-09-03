@@ -2,6 +2,7 @@ import type {
   Activity,
   Advertisement,
   AssistantReviewQueue,
+  AdminNotificationSettings,
   AdvertisementReviewStatus,
   AggregateAnalytics,
   AnalyticsOverview,
@@ -39,6 +40,7 @@ import type {
   SponsoredPlacement,
   SystemStatus,
   UpdateActivityInput,
+  UpdateAdminNotificationSettingsInput,
   UpdateApplicationSettingsInput,
   UpdateBusinessAdminInput,
   UpdateCategoryInput,
@@ -614,6 +616,23 @@ export function updateApplicationSettings(
   input: UpdateApplicationSettingsInput,
 ): Promise<ApplicationSettings> {
   return apiRequest<ApplicationSettings>('/admin/settings/application', {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+// Settings > Notifications — super admin only. Which admin events send an
+// email or push notification, and to whom. See admin-settings.controller.ts.
+export function getAdminNotificationSettings(token: string): Promise<AdminNotificationSettings> {
+  return apiRequest<AdminNotificationSettings>('/admin/settings/notifications', { headers: authHeader(token) });
+}
+
+export function updateAdminNotificationSettings(
+  token: string,
+  input: UpdateAdminNotificationSettingsInput,
+): Promise<AdminNotificationSettings> {
+  return apiRequest<AdminNotificationSettings>('/admin/settings/notifications', {
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify(input),

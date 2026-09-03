@@ -2,13 +2,24 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { SettingsService } from "./settings.service";
 import { ApplicationSettings } from "./entities/application-settings.entity";
+import { AdminNotificationSettings } from "./entities/admin-notification-settings.entity";
 
 describe("SettingsService", () => {
   let service: SettingsService;
   let repo: { findOne: jest.Mock; create: jest.Mock; save: jest.Mock };
+  let notificationRepo: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+  };
 
   beforeEach(async () => {
     repo = {
+      findOne: jest.fn(),
+      create: jest.fn((data) => data),
+      save: jest.fn((data) => Promise.resolve(data)),
+    };
+    notificationRepo = {
       findOne: jest.fn(),
       create: jest.fn((data) => data),
       save: jest.fn((data) => Promise.resolve(data)),
@@ -18,6 +29,10 @@ describe("SettingsService", () => {
       providers: [
         SettingsService,
         { provide: getRepositoryToken(ApplicationSettings), useValue: repo },
+        {
+          provide: getRepositoryToken(AdminNotificationSettings),
+          useValue: notificationRepo,
+        },
       ],
     }).compile();
 
@@ -100,6 +115,79 @@ describe("SettingsService", () => {
 
       // Once to materialize the singleton, once to persist the update.
       expect(repo.save).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("getAdminNotificationSettings", () => {
+    it("returns the existing singleton row when one already exists", async () => {
+      const existing = { id: 1, flaggedContentEmailEnabled: false };
+      notificationRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.getAdminNotificationSettings();
+
+      expect(result).toBe(existing);
+      expect(notificationRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("materializes the row with column defaults on the very first read", async () => {
+      notificationRepo.findOne.mockResolvedValue(null);
+
+      await service.getAdminNotificationSettings();
+
+      expect(notificationRepo.create).toHaveBeenCalledWith({ id: 1 });
+      expect(notificationRepo.save).toHaveBeenCalledWith({ id: 1 });
+    });
+  });
+
+  describe("updateAdminNotificationSettings", () => {
+    it("applies only the fields given, leaving the rest untouched", async () => {
+      notificationRepo.findOne.mockResolvedValue({
+        id: 1,
+        flaggedContentEmailEnabled: true,
+        flaggedContentPushEnabled: false,
+        flaggedContentRecipientUserIds: [],
+        updatedByUserId: null,
+      });
+
+      const result = await service.updateAdminNotificationSettings(
+        { flaggedContentPushEnabled: true },
+        "admin-1",
+      );
+
+      expect(result).toMatchObject({
+        flaggedContentEmailEnabled: true,
+        flaggedContentPushEnabled: true,
+        updatedByUserId: "admin-1",
+      });
+    });
+
+    it("narrows delivery to the given recipient ids", async () => {
+      notificationRepo.findOne.mockResolvedValue({
+        id: 1,
+        flaggedContentRecipientUserIds: [],
+      });
+
+      const result = await service.updateAdminNotificationSettings(
+        { flaggedContentRecipientUserIds: ["admin-1", "admin-2"] },
+        "admin-1",
+      );
+
+      expect(result.flaggedContentRecipientUserIds).toEqual([
+        "admin-1",
+        "admin-2",
+      ]);
+    });
+
+    it("materializes the row first if this is the very first write", async () => {
+      notificationRepo.findOne.mockResolvedValue(null);
+
+      await service.updateAdminNotificationSettings(
+        { flaggedContentPushEnabled: true },
+        "admin-1",
+      );
+
+      // Once to materialize the singleton, once to persist the update.
+      expect(notificationRepo.save).toHaveBeenCalledTimes(2);
     });
   });
 });

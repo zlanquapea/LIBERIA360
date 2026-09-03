@@ -1443,6 +1443,31 @@ export type UpdateApplicationSettingsInput = Partial<
   >
 >;
 
+// api/src/settings/entities/admin-notification-settings.entity.ts —
+// Settings > Notifications, GET/PATCH /admin/settings/notifications,
+// super-admin only. Which admin events send an email or push
+// notification, and to whom — today that's just "new flagged content"
+// (a review/event that just crossed Application's report-flag
+// threshold). An empty recipient list means "every admin"; a non-empty
+// one narrows delivery to specific admins. Always exactly one row (id: 1).
+export interface AdminNotificationSettings {
+  id: number;
+  flaggedContentEmailEnabled: boolean;
+  flaggedContentPushEnabled: boolean;
+  flaggedContentRecipientUserIds: string[];
+  updatedByUserId: string | null;
+  updatedAt: string;
+}
+
+export type UpdateAdminNotificationSettingsInput = Partial<
+  Pick<
+    AdminNotificationSettings,
+    | "flaggedContentEmailEnabled"
+    | "flaggedContentPushEnabled"
+    | "flaggedContentRecipientUserIds"
+  >
+>;
+
 // api/src/admin/admin-analytics.service.ts's getOverview() — GET
 // /admin/analytics/overview. Current-vs-previous-period comparisons
 // computed from existing timestamped tables, not a stored metrics
