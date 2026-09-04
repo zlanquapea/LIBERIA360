@@ -35,8 +35,10 @@ import { InviteeDto } from "./dto/create-invitations.dto";
 import { UsersService } from "../users/users.service";
 import {
   InvitableUser,
+  PublicProfile,
   PublicUser,
   toInvitableUser,
+  toPublicProfile,
   toPublicUser,
 } from "../users/user.serializer";
 import { User } from "../users/entities/user.entity";
@@ -126,7 +128,15 @@ export interface PublicTripSummary {
   startDate: Date | null;
   endDate: Date | null;
   status: TripStatus;
-  admin: PublicUser | null;
+  // Security audit (Sep 4, 2026 — CVSS 8.6): this is the field the
+  // pentest report's "public admin profile" finding was actually
+  // reading — GET /itineraries/public(/:id) has no auth guard, so
+  // `PublicUser`'s email/isAdmin/isSuperAdmin/twoFactorEnabled were
+  // reaching any anonymous visitor whenever a trip's creator happened to
+  // be an admin. A stranger deciding whether to request to join a public
+  // trip only ever needs the organizer's name — see toPublicProfile's
+  // doc comment.
+  admin: PublicProfile | null;
   participantCount: number;
   createdAt: Date;
 }
@@ -1118,7 +1128,7 @@ export class ItinerariesService {
       startDate: itinerary.startDate,
       endDate: itinerary.endDate,
       status: this.computeTripStatus(itinerary),
-      admin: owner ? toPublicUser(owner) : null,
+      admin: owner ? toPublicProfile(owner) : null,
       // +1 for the creator themself — collaboratorRepo only tracks
       // everyone *else*, but "8 people are joining this trip" (Section 8)
       // should count the admin too.

@@ -162,6 +162,15 @@ export interface AuthUser {
   pendingActivation: boolean;
 }
 
+// api/src/users/user.serializer.ts's PublicProfile — the shape any
+// genuinely public (unauthenticated) endpoint uses to attribute a trip,
+// place, business, ad, listing, or review to whoever owns/wrote it. See
+// PublicTripSummary.admin's doc comment for why AuthUser is wrong there.
+export interface PublicProfile {
+  id: string;
+  name: string;
+}
+
 export interface PaginatedPlaces {
   data: Place[];
   meta: {
@@ -828,7 +837,12 @@ export interface PublicTripSummary {
   startDate: string | null;
   endDate: string | null;
   status: TripStatus;
-  admin: AuthUser | null;
+  // Security audit (Sep 4, 2026): GET /itineraries/public(/:id) has no
+  // auth guard, so this used to be typed (and shaped) as a full AuthUser
+  // — email, isAdmin/isSuperAdmin, twoFactorEnabled and all — reachable
+  // by anyone on the internet. A stranger deciding whether to request to
+  // join only ever needs the organizer's name.
+  admin: PublicProfile | null;
   participantCount: number;
   createdAt: string;
 }

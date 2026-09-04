@@ -19,7 +19,7 @@ import { QueryCarListingsDto } from "./dto/query-car-listings.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { CarListing } from "./entities/car-listing.entity";
 
 // `owner` (the direct lister) and `business.owner` (eager on Business, for
@@ -41,6 +41,26 @@ function sanitize(listing: CarListing) {
   };
 }
 
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): `findAllApproved`/`findApprovedOne` below have
+// no auth guard — the public /car-rentals directory and detail page —
+// but were reusing `sanitize` above, which leaks the owner's email,
+// isAdmin/isSuperAdmin flags, and 2FA status to any anonymous visitor.
+function sanitizePublic(listing: CarListing) {
+  return {
+    ...listing,
+    owner: listing.owner ? toPublicProfile(listing.owner) : null,
+    business: listing.business
+      ? {
+          ...listing.business,
+          owner: listing.business.owner
+            ? toPublicProfile(listing.business.owner)
+            : null,
+        }
+      : null,
+  };
+}
+
 @ApiTags("Car Rentals")
 @Controller("car-listings")
 export class CarListingsController {
@@ -50,7 +70,7 @@ export class CarListingsController {
   @Get()
   async findAllApproved(@Query() query: QueryCarListingsDto) {
     const result = await this.carListingsService.findAllApproved(query);
-    return { ...result, data: result.data.map(sanitize) };
+    return { ...result, data: result.data.map(sanitizePublic) };
   }
 
   @Post()
@@ -73,7 +93,7 @@ export class CarListingsController {
   // AdvertisementsController's active/active/:id/:id.
   @Get(":id")
   async findApprovedOne(@Param("id") id: string) {
-    return sanitize(await this.carListingsService.findApprovedOne(id));
+    return sanitizePublic(await this.carListingsService.findApprovedOne(id));
   }
 
   @Get("mine/:id")

@@ -19,7 +19,7 @@ import { SetEventRsvpDto } from "./dto/set-event-rsvp.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { Event } from "./entities/event.entity";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
@@ -27,6 +27,18 @@ function sanitize(event: Event) {
   return {
     ...event,
     createdBy: event.createdBy ? toPublicUser(event.createdBy) : null,
+  };
+}
+
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): `findAll`/`findOne` below have no auth guard
+// — this is the public events list and detail page — but were reusing
+// `sanitize` above, which leaks the organizer's email,
+// isAdmin/isSuperAdmin flags, and 2FA status to any anonymous visitor.
+function sanitizePublic(event: Event) {
+  return {
+    ...event,
+    createdBy: event.createdBy ? toPublicProfile(event.createdBy) : null,
   };
 }
 
@@ -45,7 +57,7 @@ export class EventsController {
   @Get()
   async findAll(@Query() query: QueryEventsDto) {
     const result = await this.eventsService.findAll(query);
-    return { ...result, data: result.data.map(sanitize) };
+    return { ...result, data: result.data.map(sanitizePublic) };
   }
 
   // Must come before GET :id — otherwise Nest matches "mine" as an :id.
@@ -58,7 +70,7 @@ export class EventsController {
 
   @Get(":id")
   async findOne(@Param("id") id: string) {
-    return sanitize(await this.eventsService.findOne(id));
+    return sanitizePublic(await this.eventsService.findOne(id));
   }
 
   @Patch(":id")

@@ -18,7 +18,7 @@ import { UpdateAdvertisementDto } from "./dto/update-advertisement.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { Advertisement } from "./entities/advertisement.entity";
 
 // `owner` is `eager: true` on Advertisement (same as Business.owner) —
@@ -27,6 +27,15 @@ import { Advertisement } from "./entities/advertisement.entity";
 // BusinessesController's own `sanitize`.
 function sanitize(ad: Advertisement) {
   return { ...ad, owner: ad.owner ? toPublicUser(ad.owner) : null };
+}
+
+// Security audit (Sep 4, 2026 — CVSS 8.6): `findActive`/`findActiveOne`
+// below have no auth guard at all — anyone on the internet can hit them
+// — but were using `sanitize` above, which leaks the owner's email,
+// isAdmin/isSuperAdmin flags, and 2FA status straight into the JSON
+// response. Owner attribution on a public ad only ever needs a name.
+function sanitizePublic(ad: Advertisement) {
+  return { ...ad, owner: ad.owner ? toPublicProfile(ad.owner) : null };
 }
 
 @ApiTags("Advertisements")
@@ -40,7 +49,7 @@ export class AdvertisementsController {
     const ads = await this.adsService.findActive(
       limit ? parseInt(limit, 10) : undefined,
     );
-    return ads.map(sanitize);
+    return ads.map(sanitizePublic);
   }
 
   // Public — the "See more" detail page a carousel card links to.
@@ -50,7 +59,7 @@ export class AdvertisementsController {
   // with the other "active" (approved-only) endpoint above.
   @Get("active/:id")
   async findActiveOne(@Param("id") id: string) {
-    return sanitize(await this.adsService.findActiveOne(id));
+    return sanitizePublic(await this.adsService.findActiveOne(id));
   }
 
   @Post()
