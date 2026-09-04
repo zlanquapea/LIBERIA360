@@ -24,7 +24,22 @@ export interface PublicUser {
 
 /** Strips passwordHash, twoFactorSecret, twoFactorRecoveryCodes,
  * tokenVersion, verification/reset token hashes (and anything else
- * internal) before a User ever leaves the API. */
+ * internal) before a User ever leaves the API.
+ *
+ * Despite the name, this is NOT safe to hand to an anonymous visitor —
+ * it still carries email, isAdmin/isSuperAdmin, twoFactorEnabled, phone,
+ * and more. It's for a viewer who's already cleared some access check of
+ * their own: the account's own owner, an admin-guarded route, or a
+ * counterparty in an already-authenticated 1:1 context (a booking, a
+ * message thread, a trip's own collaborators). Security audit (Sep 4,
+ * 2026): a handful of genuinely public, unauthenticated endpoints
+ * (`GET /advertisements/active` among others) were passing an owner/
+ * creator/author straight through this function, so any visitor — no
+ * account required — could read an admin's email and confirm their
+ * super-admin status and whether they had 2FA enabled just by finding
+ * something that account happened to own or write. Use
+ * `toPublicProfile` below for any endpoint reachable without
+ * authentication. */
 export function toPublicUser(user: User): PublicUser {
   return {
     id: user.id,
@@ -42,6 +57,22 @@ export function toPublicUser(user: User): PublicUser {
     createdAt: user.createdAt,
     pendingActivation: user.passwordHash === null,
   };
+}
+
+export interface PublicProfile {
+  id: string;
+  name: string;
+}
+
+/** The actually-public shape: just enough to attribute a place, business,
+ * ad, listing, review, or trip to whoever owns/wrote it — a name to show
+ * next to "Organized by" or "Owner" — with nothing an anonymous visitor
+ * could use to profile the account (no email, no admin/super-admin flag,
+ * no 2FA status, no phone). Use this, not `toPublicUser`, in any
+ * controller method that isn't behind `@UseGuards(JwtAuthGuard)` (or
+ * stronger) — see `toPublicUser`'s doc comment for why. */
+export function toPublicProfile(user: User): PublicProfile {
+  return { id: user.id, name: user.name };
 }
 
 export interface InvitableUser {

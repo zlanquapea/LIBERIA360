@@ -17,7 +17,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { SponsoredPlacement } from "./entities/sponsored-placement.entity";
 import { getRequestInfo } from "../common/request-info";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
@@ -26,6 +26,20 @@ function sanitize(placement: SponsoredPlacement) {
   return {
     ...placement,
     createdBy: placement.createdBy ? toPublicUser(placement.createdBy) : null,
+  };
+}
+
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): `findActive` below has no auth guard — it's
+// the public sponsored-placement feed — but was reusing `sanitize`
+// above, which leaks the admin who created the placement's email,
+// isAdmin/isSuperAdmin flags, and 2FA status to any anonymous visitor.
+function sanitizePublic(placement: SponsoredPlacement) {
+  return {
+    ...placement,
+    createdBy: placement.createdBy
+      ? toPublicProfile(placement.createdBy)
+      : null,
   };
 }
 
@@ -39,7 +53,7 @@ export class SponsoredPlacementsController {
   @Get("active")
   async findActive() {
     const placements = await this.sponsoredPlacementsService.findActive();
-    return placements.map(sanitize);
+    return placements.map(sanitizePublic);
   }
 
   @Get()

@@ -15,7 +15,7 @@ import { UpdateBusinessDto } from "./dto/update-business.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { Business } from "./entities/business.entity";
 import { BusinessType } from "./entities/business.enums";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
@@ -24,6 +24,18 @@ function sanitize(business: Business) {
   return {
     ...business,
     owner: business.owner ? toPublicUser(business.owner) : null,
+  };
+}
+
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): `list`/`findBySlug` below have no auth guard
+// — this is the public business directory and profile page — but were
+// reusing `sanitize` above, which leaks the owner's email,
+// isAdmin/isSuperAdmin flags, and 2FA status to any anonymous visitor.
+function sanitizePublic(business: Business) {
+  return {
+    ...business,
+    owner: business.owner ? toPublicProfile(business.owner) : null,
   };
 }
 
@@ -83,7 +95,7 @@ export class BusinessesController {
   ) {
     if (placeId) {
       const business = await this.businessesService.findByPlace(placeId);
-      return business ? sanitize(business) : null;
+      return business ? sanitizePublic(business) : null;
     }
     const result = await this.businessesService.findAllApproved({
       page: page ? parseInt(page, 10) : undefined,
@@ -92,7 +104,7 @@ export class BusinessesController {
       type,
       countyId,
     });
-    return { ...result, data: result.data.map(sanitize) };
+    return { ...result, data: result.data.map(sanitizePublic) };
   }
 
   @Get("slug/:slug")
@@ -101,6 +113,6 @@ export class BusinessesController {
     if (!business) {
       throw new NotFoundException(`Business "${slug}" not found`);
     }
-    return sanitize(business);
+    return sanitizePublic(business);
   }
 }

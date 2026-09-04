@@ -14,7 +14,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { BlogService } from "./blog.service";
 import {
   CreateBlogPostDto,
@@ -39,15 +39,33 @@ const sanitize = (value: any): any =>
         }
       : value;
 
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): BlogController below has no auth guard — it's
+// the public blog — so `sanitize` above still leaked the post author's
+// email, isAdmin/isSuperAdmin flags, and 2FA status (`toPublicUser` was
+// never meant for an anonymous reader, see its doc comment). Only
+// AdminBlogController — its viewer already cleared the AdminGuard — is
+// left on `sanitize`.
+const sanitizePublic = (value: any): any =>
+  Array.isArray(value)
+    ? value.map(sanitizePublic)
+    : value && typeof value === "object"
+      ? {
+          ...value,
+          ...(value.author ? { author: toPublicProfile(value.author) } : {}),
+          ...(value.data ? { data: sanitizePublic(value.data) } : {}),
+        }
+      : value;
+
 @ApiTags("Blog")
 @Controller("blog")
 export class BlogController {
   constructor(private readonly blog: BlogService) {}
   @Get() list(@Query() query: QueryPublicBlogPostsDto) {
-    return this.blog.findPublished(query).then(sanitize);
+    return this.blog.findPublished(query).then(sanitizePublic);
   }
   @Get(":slug") one(@Param("slug") slug: string) {
-    return this.blog.findPublishedBySlug(slug).then(sanitize);
+    return this.blog.findPublishedBySlug(slug).then(sanitizePublic);
   }
 }
 

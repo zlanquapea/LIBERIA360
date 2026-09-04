@@ -619,6 +619,19 @@ describe("AuthService", () => {
         expect.stringContaining("/reset-password?token="),
       );
     });
+
+    // Security audit (Sep 4, 2026 — CVSS 7.2): the pentest observed this
+    // endpoint 500ing instead of resolving. This method's whole contract
+    // is "always resolves the same way regardless of what happened
+    // internally" — assert that holds even when something inside throws
+    // unexpectedly, not just for the two paths above that were already
+    // covered.
+    it("still resolves normally when something inside throws unexpectedly", async () => {
+      usersService.findByEmail.mockRejectedValue(new Error("db exploded"));
+      await expect(
+        service.forgotPassword("x@example.com"),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe("resetPassword", () => {

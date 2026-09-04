@@ -14,7 +14,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import {
   CreateKnowledgeArticleDto,
   QueryAdminArticlesDto,
@@ -46,6 +46,26 @@ const sanitize = (value: any): any =>
         }
       : value;
 
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): KnowledgeBaseController below has no auth
+// guard — it's the public Help Center — so `sanitize` above still leaked
+// the article author's email, isAdmin/isSuperAdmin flags, and 2FA status
+// (`toPublicUser` was never meant for an anonymous reader, see its doc
+// comment). Only AdminKnowledgeBaseController — its viewer already
+// cleared the AdminGuard — is left on `sanitize`.
+const sanitizePublic = (value: any): any =>
+  Array.isArray(value)
+    ? value.map(sanitizePublic)
+    : value && typeof value === "object"
+      ? {
+          ...value,
+          ...(value.author ? { author: toPublicProfile(value.author) } : {}),
+          ...(value.data ? { data: sanitizePublic(value.data) } : {}),
+          ...(value.article ? { article: sanitizePublic(value.article) } : {}),
+          ...(value.related ? { related: sanitizePublic(value.related) } : {}),
+        }
+      : value;
+
 // Public Help Center — no auth at all, same access model as browsing
 // places/events: anyone can read published content, the "Still need help?
 // Contact Support" button is what requires being logged in (it's just a
@@ -59,10 +79,10 @@ export class KnowledgeBaseController {
     return this.kb.listCategoriesWithPublishedCounts();
   }
   @Get("articles") articles(@Query() query: QueryPublicArticlesDto) {
-    return this.kb.findPublicArticles(query).then(sanitize);
+    return this.kb.findPublicArticles(query).then(sanitizePublic);
   }
   @Get("articles/:slug") article(@Param("slug") slug: string) {
-    return this.kb.findPublicArticleBySlug(slug).then(sanitize);
+    return this.kb.findPublicArticleBySlug(slug).then(sanitizePublic);
   }
   @Post("articles/:id/feedback") feedback(
     @Param("id") id: string,

@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -60,6 +61,8 @@ export interface TwoFactorSetupResult {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -115,20 +118,37 @@ export class AuthService {
 
   /** POST /auth/forgot-password. Always resolves the same way regardless
    * of whether the email exists — the controller returns one generic
-   * message either way, so this can't be used to enumerate accounts. */
+   * message either way, so this can't be used to enumerate accounts.
+   *
+   * Security audit (Sep 4, 2026 — CVSS 7.2): the pentest found this
+   * endpoint could come back as an unhandled 500 rather than that
+   * generic message. Wrapped in a catch-all here rather than in the
+   * controller, since resolving no matter what *is* this method's
+   * documented contract — this now actually honors it instead of just
+   * documenting it, whether the failure is a DB hiccup, a bad
+   * `webAppUrl` config value, or anything else unanticipated. */
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user || !user.passwordHash) {
-      return;
+    try {
+      const user = await this.usersService.findByEmail(email);
+      if (!user || !user.passwordHash) {
+        return;
+      }
+      const resetToken = generateToken();
+      await this.usersService.update(user.id, {
+        passwordResetTokenHash: hashToken(resetToken),
+        passwordResetTokenExpiresAt: new Date(
+          Date.now() + PASSWORD_RESET_TTL_MS,
+        ),
+      });
+      await this.mailService
+        .sendPasswordReset(user.email, this.resetPasswordUrl(resetToken))
+        .catch(() => undefined);
+    } catch (err) {
+      this.logger.error(
+        "forgotPassword failed unexpectedly — still resolving normally",
+        err instanceof Error ? err.stack : err,
+      );
     }
-    const resetToken = generateToken();
-    await this.usersService.update(user.id, {
-      passwordResetTokenHash: hashToken(resetToken),
-      passwordResetTokenExpiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
-    });
-    await this.mailService
-      .sendPasswordReset(user.email, this.resetPasswordUrl(resetToken))
-      .catch(() => undefined);
   }
 
   /** POST /auth/reset-password. Also bumps tokenVersion — a password

@@ -21,13 +21,25 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
-import { toPublicUser } from "../users/user.serializer";
+import { toPublicUser, toPublicProfile } from "../users/user.serializer";
 import { Creator } from "./entities/creator.entity";
 import { CreatorCategory } from "./entities/creator.enums";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 function sanitize<T extends Creator>(creator: T) {
   return { ...creator, user: creator.user ? toPublicUser(creator.user) : null };
+}
+
+// Security audit (Sep 4, 2026 — CVSS 8.6, same root cause as the
+// advertisements finding): `findAll`/`findByUsername` below have no auth
+// guard — the public creator directory and profile page — but were
+// reusing `sanitize` above, which leaks the creator's email,
+// isAdmin/isSuperAdmin flags, and 2FA status to any anonymous visitor.
+function sanitizePublic<T extends Creator>(creator: T) {
+  return {
+    ...creator,
+    user: creator.user ? toPublicProfile(creator.user) : null,
+  };
 }
 
 @ApiTags("Creators")
@@ -133,7 +145,7 @@ export class CreatorsController {
       countyId,
       featuredOnly: featuredOnly === "true",
     });
-    return { ...result, data: result.data.map(sanitize) };
+    return { ...result, data: result.data.map(sanitizePublic) };
   }
 
   @Get(":id/follow")
@@ -152,7 +164,7 @@ export class CreatorsController {
 
   @Get(":username")
   async findByUsername(@Param("username") username: string) {
-    return sanitize(
+    return sanitizePublic(
       await this.creatorsService.findByUsernameWithRelated(username),
     );
   }
