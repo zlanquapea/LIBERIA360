@@ -32,21 +32,28 @@ export function transferExpiresAt(): Date {
 /**
  * A pending or resolved "send this ticket to someone else" handoff for one
  * `EventTicketInstance` (the AFCON-style "buy two, send one" feature).
- * Unlike TripInvitation, this deliberately does NOT support inviting a
- * bare email with no account yet — a ticket is a bearer-like credential
- * (whoever holds the QR can be scanned in), so the recipient must already
- * be a known LIBERIA360 account before anything is created: `toUserId` is
- * always resolved and set at creation time, never left null waiting for a
- * registration to link it up later. That keeps the "who currently holds
- * this ticket" question always answerable from `toUserId` alone, with no
- * window where a transfer exists but nobody's account is on the other end
- * of it.
+ *
+ * Same email-only-recipient model as TripInvitation (Sep 5, 2026 —
+ * originally this required an existing account before anything was
+ * created, reasoning that a ticket's QR is a bearer-like credential; that
+ * turned out to be the wrong tradeoff in practice, since "the person I'm
+ * sending this to hasn't signed up yet" is the exact case this feature
+ * exists for): `toUserId` starts null when the address has no account yet
+ * and gets linked up later — either by `AuthService.register` when they
+ * sign up through the emailed link (see
+ * EventTicketsService.linkTicketTransferToNewAccount), or by whoever
+ * accepts/declines while holding the token, if they registered some other
+ * way (see acceptTransferRow/declineTransferRow's `toUserId ?? user.id`
+ * fallback, identical to TripInvitation's). The token itself — not the
+ * `email` column — is what proves someone is the intended recipient once
+ * `toUserId` is unset; `email` is kept for the receipt/history and for
+ * matching the address against whoever's signing up.
  *
  * One row per (ticketInstance, pending-or-not) — a new transfer can't be
  * created for an instance that already has a pending one (see
  * EventTicketsService.transferTicket); accepting flips
- * `EventTicketInstance.currentOwnerUserId` to `toUserId` and leaves this
- * row as a permanent accepted/declined/cancelled receipt.
+ * `EventTicketInstance.currentOwnerUserId` to the accepting account and
+ * leaves this row as a permanent accepted/declined/cancelled receipt.
  */
 @Entity("ticket_transfers")
 @Index(["ticketInstanceId", "status"])
@@ -82,9 +89,10 @@ export class TicketTransfer {
   @Column({ name: "from_user_id", type: "uuid" })
   fromUserId: string;
 
-  // The address the sender typed, kept verbatim for the receipt/history
-  // even though toUserId (resolved from it at creation) is what every
-  // ownership check actually uses.
+  // The address the sender typed, kept verbatim for the receipt/history.
+  // toUserId is resolved from it at creation when an account already
+  // exists for it, but is otherwise linked later (registration or
+  // accept/decline) — see the class doc comment.
   @Column({ type: "varchar", length: 255 })
   email: string;
 

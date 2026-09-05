@@ -75,7 +75,7 @@ export class EventTicketsController {
   }
 
   // "Buy two, send one": whoever currently holds this ticket sends it to
-  // another LIBERIA360 account by email. See EventTicketsService.transferTicket.
+  // someone else by email. See EventTicketsService.transferTicket.
   @Post("ticket-instances/:id/transfer")
   transferTicket(
     @Param("id") id: string,

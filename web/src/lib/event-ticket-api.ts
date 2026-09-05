@@ -78,9 +78,10 @@ export function voidEventTicket(
 }
 
 // "Buy two, send one": whoever currently holds a ticket instance sends it
-// to another LIBERIA360 account by email. The recipient must already have
-// an account (see the backend's TicketTransfer doc comment for why) — a
-// 404 here means "no account uses that email yet".
+// to anyone by email — the recipient doesn't need an account yet (Sep 5,
+// 2026: see the backend's TicketTransfer doc comment for why this no
+// longer requires one), they'll get an emailed link to claim it either
+// way.
 export function transferTicket(
   token: string,
   instanceId: string,

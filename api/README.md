@@ -195,18 +195,18 @@ An event goes through the same review-gate as a self-submitted Place/Advertiseme
 
 Tickets are issued per unit, not per order — a 2-VIP + 3-Regular purchase becomes 5 individually numbered, individually scannable `EventTicketInstance` rows, each with its own AES-GCM-encrypted QR token (see `EventTicketsService.encryptToken`/`decryptToken`) so voiding or redeeming one never touches its siblings.
 
-**Ticket transfers ("buy two, send one")** — the AFCON-style feature letting whoever holds a ticket send it to another LIBERIA360 account:
+**Ticket transfers ("buy two, send one")** — the AFCON-style feature letting whoever holds a ticket send it to anyone by email:
 
 | Method & path | Description | Auth |
 |---|---|---|
-| `POST /ticket-instances/:id/transfer` | Send an active, unused ticket to another account by email | JWT, current ticket holder |
+| `POST /ticket-instances/:id/transfer` | Send an active, unused ticket to anyone by email | JWT, current ticket holder |
 | `POST /ticket-transfers/:id/cancel` | Withdraw a still-pending outgoing transfer | JWT, sender |
 | `POST /ticket-transfers/:id/accept` | Accept a transfer already linked to this account (in-app, no token needed) | JWT, recipient |
 | `POST /ticket-transfers/:id/decline` | Decline it | JWT, recipient |
 | `GET /ticket-transfers/token/:token` | Public preview for the emailed transfer link's landing page | — |
 | `POST /ticket-transfers/token/:token/accept` \| `/decline` | Same accept/decline, via the emailed link | JWT, recipient |
 
-Unlike a trip invitation, a ticket transfer only ever targets an *existing* LIBERIA360 account — `TicketTransfer.toUserId` is resolved and set at creation time, never left waiting for a registration to link it up later, because a ticket's QR is a bearer-like credential that shouldn't sit in a "waiting for someone to sign up" limbo (see `TicketTransfer`'s doc comment). `EventTicketInstance.currentOwnerUserId` names who actually holds a specific ticket once it's been sent onward — `null` simply means "the order's buyer, as always"; nothing else about the order (payment reference, amount, the rest of its tickets) changes hands. Sending a ticket withholds its QR from the sender immediately (rather than leaving both parties holding a working code until the recipient responds) and restores it automatically if the transfer is later declined or cancelled. A received ticket surfaces separately from `orders` in `GET /ticket-orders/mine` (as `receivedTickets`), never spliced into the original buyer's order — that order's payment details belong to whoever paid for it, not the recipient.
+Same email-only-recipient model as a trip invitation (Sep 5, 2026 — this originally required an existing account before anything was created, reasoning that a ticket's QR is a bearer-like credential; that turned out to be the wrong tradeoff, since "the person I'm sending this to hasn't signed up yet" is exactly the case this feature exists for): `TicketTransfer.toUserId` starts `null` when the address has no account yet and gets linked up either at registration (`AuthService.register`'s `ticketTransferToken`, mirroring `inviteToken`) or by whoever accepts/declines while holding the token, if they signed up some other way (see `TicketTransfer`'s doc comment). `EventTicketInstance.currentOwnerUserId` names who actually holds a specific ticket once it's been sent onward — `null` simply means "the order's buyer, as always"; nothing else about the order (payment reference, amount, the rest of its tickets) changes hands. Sending a ticket withholds its QR from the sender immediately (rather than leaving both parties holding a working code until the recipient responds) and restores it automatically if the transfer is later declined or cancelled. A received ticket surfaces separately from `orders` in `GET /ticket-orders/mine` (as `receivedTickets`), never spliced into the original buyer's order — that order's payment details belong to whoever paid for it, not the recipient.
 
 ### Uploads
 

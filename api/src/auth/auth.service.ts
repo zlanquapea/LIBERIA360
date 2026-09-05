@@ -31,6 +31,7 @@ import { LoginActivityService } from "../security/login-activity.service";
 import { RequestInfo } from "../common/request-info";
 import { isIpAllowed } from "./ip-allowlist";
 import { ItinerariesService } from "../itineraries/itineraries.service";
+import { EventTicketsService } from "../event-tickets/event-tickets.service";
 
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1h
@@ -70,6 +71,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly loginActivityService: LoginActivityService,
     private readonly itinerariesService: ItinerariesService,
+    private readonly eventTicketsService: EventTicketsService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResult> {
@@ -110,6 +112,14 @@ export class AuthService {
     if (dto.inviteToken) {
       await this.itinerariesService
         .linkInvitationToNewAccount(dto.inviteToken, user.id)
+        .catch(() => undefined);
+    }
+
+    // Same idea for a ticket-transfer link ("buy two, send one") — see
+    // EventTicketsService.linkTicketTransferToNewAccount.
+    if (dto.ticketTransferToken) {
+      await this.eventTicketsService
+        .linkTicketTransferToNewAccount(dto.ticketTransferToken, user.id)
         .catch(() => undefined);
     }
 

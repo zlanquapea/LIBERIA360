@@ -794,6 +794,9 @@ export interface TicketTransferPreview {
   toEmail: string;
   status: TicketTransferStatus;
   expired: boolean;
+  // Same meaning as InvitationPreview.requiresAccount: true while the
+  // emailed address has no LIBERIA360 account yet.
+  requiresAccount: boolean;
 }
 
 // GET /events/:id/rsvp response.

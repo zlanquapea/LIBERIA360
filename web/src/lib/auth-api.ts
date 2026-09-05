@@ -23,6 +23,9 @@ export interface RegisterInput {
   // account gets linked to the pending trip invitation automatically —
   // see AuthService.register's inviteToken handling.
   inviteToken?: string;
+  // Same idea for a ticket-transfer link (/signup?ticketTransfer=…) — see
+  // AuthService.register's ticketTransferToken handling.
+  ticketTransferToken?: string;
 }
 
 export function register(input: RegisterInput): Promise<AuthResult> {

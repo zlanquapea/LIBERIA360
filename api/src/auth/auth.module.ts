@@ -6,6 +6,7 @@ import { UsersModule } from "../users/users.module";
 import { MailModule } from "../mail/mail.module";
 import { SecurityModule } from "../security/security.module";
 import { ItinerariesModule } from "../itineraries/itineraries.module";
+import { EventTicketsModule } from "../event-tickets/event-tickets.module";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./strategies/jwt.strategy";
@@ -17,6 +18,7 @@ import { AppConfig } from "../config/configuration";
     MailModule,
     SecurityModule,
     ItinerariesModule,
+    EventTicketsModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

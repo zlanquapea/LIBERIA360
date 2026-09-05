@@ -280,26 +280,35 @@ export class MailService {
   }
 
   /** "Buy two, send one" (the AFCON-style ticket transfer feature) — sent
-   * to the recipient, who must already have a LIBERIA360 account (unlike
-   * sendTripInvitation, there's no "you'll need to sign up first" branch
-   * here — see TicketTransfer's doc comment for why). Returns whether it
-   * actually delivered, same as sendTripInvitation, so the caller can
-   * record it on the transfer row. */
+   * to the recipient. Same hasAccount branch as sendTripInvitation (Sep 5,
+   * 2026: a transfer no longer requires the recipient to already have a
+   * LIBERIA360 account — see TicketTransfer's doc comment): the copy and
+   * CTA adjust slightly, but the link always goes to the same
+   * `/ticket-transfer/:token` page, which itself branches on whether an
+   * account is needed. Returns whether it actually delivered, same as
+   * sendTripInvitation, so the caller can record it on the transfer row. */
   async sendTicketTransfer(opts: {
     to: string;
     senderName: string;
     eventName: string;
     ticketTypeName: string;
     transferUrl: string;
+    hasAccount: boolean;
   }): Promise<boolean> {
+    const accountNote = opts.hasAccount
+      ? "Accept it and it's yours — with its own QR pass."
+      : "You'll need a free LIBERIA360 account to claim it — creating one takes under a minute, and you'll land right back on this ticket.";
+
     return this.attempt({
       to: opts.to,
       subject: `${opts.senderName} sent you a ticket to ${opts.eventName}`,
-      text: `${opts.senderName} sent you a ${opts.ticketTypeName} ticket to "${opts.eventName}" on LIBERIA360.\n\nAccept it and it's yours — with its own QR pass.\n\n${opts.transferUrl}\n\nThis transfer link expires in 7 days. If you weren't expecting this, you can safely ignore this email — nothing happens unless you accept it.`,
+      text: `${opts.senderName} sent you a ${opts.ticketTypeName} ticket to "${opts.eventName}" on LIBERIA360.\n\n${accountNote}\n\n${opts.transferUrl}\n\nThis transfer link expires in 7 days. If you weren't expecting this, you can safely ignore this email — nothing happens unless you accept it.`,
       html: this.render({
         heading: "You've been sent a ticket",
-        intro: `<strong>${escapeHtml(opts.senderName)}</strong> sent you a <strong>${escapeHtml(opts.ticketTypeName)}</strong> ticket to <strong>${escapeHtml(opts.eventName)}</strong> on LIBERIA360. Accept it and it's yours — with its own QR pass.`,
-        ctaLabel: "View ticket transfer",
+        intro: `<strong>${escapeHtml(opts.senderName)}</strong> sent you a <strong>${escapeHtml(opts.ticketTypeName)}</strong> ticket to <strong>${escapeHtml(opts.eventName)}</strong> on LIBERIA360. ${accountNote}`,
+        ctaLabel: opts.hasAccount
+          ? "View ticket transfer"
+          : "Create account & claim ticket",
         ctaUrl: opts.transferUrl,
         note: "This transfer link expires in 7 days. If you weren't expecting this, you can safely ignore this email — nothing happens unless you accept it.",
       }),
