@@ -602,6 +602,20 @@ export type EventTicketOrderStatus =
 
 export type EventTicketInstanceStatus = "issued" | "redeemed" | "void";
 
+export type TicketTransferStatus =
+  "pending" | "accepted" | "declined" | "cancelled";
+
+// The sender's own view of a ticket that has (or recently had) an
+// outgoing "buy two, send one" transfer against it — "pending" while the
+// recipient hasn't responded, "sent" once they've accepted. A declined or
+// cancelled transfer leaves no trace here; the ticket just reverts to a
+// normal entry with its QR restored.
+export interface TicketTransferInfo {
+  transferId: string;
+  status: "pending" | "sent";
+  toEmail: string;
+}
+
 // One individually issued, individually verifiable pass — a 2-VIP +
 // 3-Regular order is 5 of these, each with its own type, number, QR, and
 // status, never one shared record for the whole order. `qrDataUrl` is
@@ -616,6 +630,7 @@ export interface EventTicketInstance {
   status: EventTicketInstanceStatus;
   qrDataUrl?: string;
   redeemedAt: string | null;
+  transfer?: TicketTransferInfo;
 }
 
 export type EventTicketScanOutcome =
@@ -724,6 +739,61 @@ export interface EventTicketOrder {
   tickets?: EventTicketInstance[];
   createdAt: string;
   updatedAt: string;
+}
+
+// A ticket someone else sent *to* this account, since accepted — kept
+// separate from EventTicketOrder because the order backing it was paid
+// for by whoever originally bought it, not the recipient; folding it in
+// would leak that buyer's payment reference/amount to the recipient for
+// no reason.
+export interface ReceivedTicketSummary {
+  id: string;
+  ticketNumber: string;
+  ticketTypeName: string;
+  status: EventTicketInstanceStatus;
+  qrDataUrl: string;
+  redeemedAt: string | null;
+  event: {
+    id: string;
+    name: string;
+    startDate: string;
+    locationText: string | null;
+  };
+  fromUserName: string;
+  transferId: string;
+  receivedAt: string;
+}
+
+// A still-open incoming ticket transfer awaiting this account's
+// accept/decline.
+export interface PendingTicketTransferSummary {
+  id: string;
+  ticketInstanceId: string;
+  event: { id: string; name: string; startDate: string };
+  ticketTypeName: string;
+  fromUserName: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+// GET /ticket-orders/mine response.
+export interface MyTicketsResponse {
+  orders: EventTicketOrder[];
+  receivedTickets: ReceivedTicketSummary[];
+  pendingTransfers: PendingTicketTransferSummary[];
+}
+
+// GET /ticket-transfers/token/:token response — the emailed link's
+// public, unauthenticated preview.
+export interface TicketTransferPreview {
+  eventName: string;
+  eventStartDate: string;
+  ticketTypeName: string;
+  ticketNumber: string;
+  fromUserName: string;
+  toEmail: string;
+  status: TicketTransferStatus;
+  expired: boolean;
 }
 
 // GET /events/:id/rsvp response.

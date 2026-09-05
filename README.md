@@ -27,6 +27,7 @@ Component-level documentation: [`api/README.md`](./api/README.md), [`web/README.
 | Content | Reviews with rating aggregation (places and creators), business self-claim and management, business-authored posts (offers, announcements, articles, travel tips, experiences — review-gated before going public), creator profiles, events |
 | Trip planning | "Build My Liberia Trip" itinerary planning, collaborative multi-user trip editing |
 | Marketplace | Request-to-book bookings for businesses and creators, in-booking messaging, restaurant menus with in-platform food ordering and order messaging, business/creator analytics dashboards, sponsored placements, featured creators |
+| Events & ticketing | Event listings with review gating, manual-payment ticket orders with individually-numbered QR passes, door scanning, organizer sales metrics, and sending a purchased ticket to another account by email ("buy two, send one") |
 | Customer support | In-app tickets with image attachments, threaded customer/agent conversations, status and priority tracking, assignment, notifications, resolution confirmation, and satisfaction ratings |
 | Help Center | Self-serve articles by category with search and "was this helpful?" feedback, a FAQ accordion, and a Blog/Updates section — all admin-authored, all separate from the ticket system, with "Still need help?" linking into it |
 | Admin | Content moderation, verification workflows, crowdsourced freshness reporting, B2B aggregate analytics, audit log |

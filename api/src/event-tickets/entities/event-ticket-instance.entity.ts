@@ -104,6 +104,22 @@ export class EventTicketInstance {
   @Column({ name: "last_scanned_by_user_id", type: "uuid", nullable: true })
   lastScannedByUserId: string | null;
 
+  // Who currently holds this specific pass — null means "the order's
+  // buyer, as always" (the overwhelming common case; see
+  // EventTicketsService.ownerIdOf). Only ever set once this ticket has
+  // actually been sent to someone else via a TicketTransfer, at which
+  // point it names the recipient and effectively overrides the order's
+  // buyer for this one instance — the other tickets in the same order are
+  // unaffected. onDelete SET NULL rather than CASCADE: if a recipient's
+  // account is later deleted, the ticket falls back to "owned by the
+  // buyer" instead of vanishing along with them.
+  @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "current_owner_user_id" })
+  currentOwner: User | null;
+
+  @Column({ name: "current_owner_user_id", type: "uuid", nullable: true })
+  currentOwnerUserId: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

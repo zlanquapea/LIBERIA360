@@ -1,5 +1,9 @@
 import { randomUUID } from "crypto";
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { EventTicketsService } from "./event-tickets.service";
 import {
   EventTicketOrder,
@@ -24,8 +28,18 @@ jest.mock("crypto", () => {
   };
 });
 
-const user = { id: "buyer-1", isAdmin: false } as any;
-const organizer = { id: "organizer-1", isAdmin: false } as any;
+const user = {
+  id: "buyer-1",
+  isAdmin: false,
+  name: "Buyer One",
+  email: "buyer@example.com",
+} as any;
+const organizer = {
+  id: "organizer-1",
+  isAdmin: false,
+  name: "Organizer One",
+  email: "organizer@example.com",
+} as any;
 
 // Mimics TypeORM's `where` matching closely enough for these tests: plain
 // value equality, plus the one FindOperator the service actually uses
@@ -35,6 +49,8 @@ function matchesWhere(item: any, where: Record<string, any>): boolean {
     if (value && typeof value === "object" && "_type" in value) {
       if (value._type === "isNull")
         return item[key] === null || item[key] === undefined;
+      if (value._type === "in")
+        return (value._value as any[]).includes(item[key]);
       return true;
     }
     return item[key] === value;
@@ -145,13 +161,84 @@ function setup() {
     }),
   };
 
+  const transfers: any[] = [];
+  const transferRepo = {
+    create: jest.fn((input: any) => ({ id: randomUUID(), ...input })),
+    save: jest.fn((row: any) => {
+      const idx = transfers.findIndex((r) => r.id === row.id);
+      if (idx >= 0) transfers[idx] = row;
+      else transfers.push(row);
+      return Promise.resolve(row);
+    }),
+    find: jest.fn(({ where }: any = {}) =>
+      Promise.resolve(transfers.filter((r) => matchesWhere(r, where))),
+    ),
+    findOne: jest.fn(({ where }: any = {}) =>
+      Promise.resolve(transfers.find((r) => matchesWhere(r, where)) ?? null),
+    ),
+  };
+
+  // Backs both the injected User repository (used directly for the
+  // "look up sender/recipient display names in bulk" queries) and the
+  // mocked UsersService (findByEmail/findById) below, so a test can
+  // register a recipient once via `users.push(...)` and have both paths
+  // see it — same as a real DB would.
+  const users: any[] = [user, organizer];
+  const userRepo = {
+    find: jest.fn(({ where }: any = {}) =>
+      Promise.resolve(users.filter((u) => matchesWhere(u, where))),
+    ),
+    findOne: jest.fn(({ where }: any = {}) =>
+      Promise.resolve(users.find((u) => matchesWhere(u, where)) ?? null),
+    ),
+  };
+  const usersService = {
+    findByEmail: jest.fn((email: string) =>
+      Promise.resolve(
+        users.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ??
+          null,
+      ),
+    ),
+    findById: jest.fn((id: string) =>
+      Promise.resolve(users.find((u) => u.id === id) ?? null),
+    ),
+  };
+  const mailService = {
+    sendTicketTransfer: jest.fn().mockResolvedValue(true),
+    sendTicketTransferAccepted: jest.fn().mockResolvedValue(undefined),
+  };
+  const notificationsService = {
+    create: jest.fn().mockResolvedValue(undefined),
+  };
+  const configService = {
+    get: jest.fn().mockReturnValue("http://localhost:3000"),
+  };
+
   const service = new EventTicketsService(
     eventRepo as any,
-    {} as any,
+    userRepo as any,
     orderRepo as any,
     instanceRepo as any,
+    transferRepo as any,
+    usersService as any,
+    mailService as any,
+    notificationsService as any,
+    configService as any,
   );
-  return { service, eventRepo, orderRepo, saved, instanceRepo, instances };
+  return {
+    service,
+    eventRepo,
+    orderRepo,
+    saved,
+    instanceRepo,
+    instances,
+    transferRepo,
+    transfers,
+    users,
+    usersService,
+    mailService,
+    notificationsService,
+  };
 }
 
 function payloadFor(instanceId: string, token = FIXED_TOKEN) {
@@ -674,6 +761,183 @@ describe("EventTicketsService", () => {
       await expect(service.getMetrics("event-1", user)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('ticket transfers ("buy two, send one")', () => {
+    const recipient = {
+      id: "recipient-1",
+      isAdmin: false,
+      name: "Recipient One",
+      email: "recipient@example.com",
+    } as any;
+
+    // findForBuyer (which transferTicket/acceptTransferById/etc. all
+    // return the fresh result of) filters orders by buyerUserId — the
+    // shared setup()'s orderRepo.find always returns [] (existing tests
+    // only ever need that for the "no reserved orders yet" capacity
+    // check), so real filtering is swapped in once there's an order
+    // whose buyer this describe block's tests actually care about.
+    function withBuyerOrdersFilter(orderRepo: any, saved: any[]) {
+      orderRepo.find = jest.fn(({ where }: any = {}) =>
+        Promise.resolve(
+          saved.filter((o) => {
+            if (where?.buyerUserId && o.buyerUserId !== where.buyerUserId)
+              return false;
+            if (where?.eventId && o.eventId !== where.eventId) return false;
+            if (where?.status) {
+              const matchesStatus =
+                where.status &&
+                typeof where.status === "object" &&
+                "_type" in where.status
+                  ? (where.status._value as any[]).includes(o.status)
+                  : o.status === where.status;
+              if (!matchesStatus) return false;
+            }
+            return true;
+          }),
+        ),
+      );
+    }
+
+    async function issueOneTicket() {
+      const context = setup();
+      const { service, orderRepo, saved } = context;
+      context.users.push(recipient);
+      const order = await service.createOrder("event-1", user, {
+        quantity: 1,
+        paymentReference: "MM-transfer",
+      });
+      await service.reviewOrder(order.id, organizer, {
+        status: EventTicketOrderStatus.APPROVED,
+      });
+      withBuyerOrdersFilter(orderRepo, saved);
+      const instance = context.instances.find((i) => i.orderId === order.id);
+      return { ...context, order, instance };
+    }
+
+    it("sends a ticket to another platform account and withholds its QR from the sender", async () => {
+      const { service, instance } = await issueOneTicket();
+      const result = await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      const myTicket = result.orders[0].tickets[0];
+      expect(myTicket.transfer).toMatchObject({
+        status: "pending",
+        toEmail: recipient.email,
+      });
+      expect(myTicket.qrDataUrl).toBe("");
+    });
+
+    it("rejects a transfer to an email with no LIBERIA360 account", async () => {
+      const { service, instance } = await issueOneTicket();
+      await expect(
+        service.transferTicket(instance.id, user, {
+          email: "nobody@example.com",
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("blocks a non-owner from sending someone else's ticket", async () => {
+      const { service, instance } = await issueOneTicket();
+      await expect(
+        service.transferTicket(instance.id, organizer, {
+          email: recipient.email,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("rejects sending a ticket to yourself", async () => {
+      const { service, instance } = await issueOneTicket();
+      await expect(
+        service.transferTicket(instance.id, user, { email: user.email }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("moves ownership to the recipient once they accept, listing it as a received ticket with a restored QR", async () => {
+      const { service, instance } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+
+      const recipientView = await service.acceptTransferById(
+        recipient,
+        transferId,
+      );
+      expect(recipientView.receivedTickets).toHaveLength(1);
+      expect(recipientView.receivedTickets[0].id).toBe(instance.id);
+      expect(recipientView.receivedTickets[0].qrDataUrl).not.toBe("");
+      expect(recipientView.receivedTickets[0].fromUserName).toBe(user.name);
+
+      const senderView = await service.findForBuyer(user.id);
+      const sentTicket = senderView.orders[0].tickets[0];
+      expect(sentTicket.transfer).toMatchObject({
+        status: "sent",
+        toEmail: recipient.email,
+      });
+      expect(sentTicket.qrDataUrl).toBe("");
+    });
+
+    it("lets the recipient decline, leaving the ticket (and its QR) with the sender", async () => {
+      const { service, instance } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+
+      await service.declineTransferById(recipient, transferId);
+
+      const senderView = await service.findForBuyer(user.id);
+      const ticket = senderView.orders[0].tickets[0];
+      expect(ticket.transfer).toBeUndefined();
+      expect(ticket.qrDataUrl).not.toBe("");
+    });
+
+    it("lets the sender cancel a still-pending transfer, restoring the QR", async () => {
+      const { service, instance } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+
+      const afterCancel = await service.cancelTransfer(transferId, user);
+      const ticket = afterCancel.orders[0].tickets[0];
+      expect(ticket.transfer).toBeUndefined();
+      expect(ticket.qrDataUrl).not.toBe("");
+    });
+
+    it("blocks a second pending transfer while one is already outstanding", async () => {
+      const { service, instance, users } = await issueOneTicket();
+      const other = {
+        id: "other-1",
+        isAdmin: false,
+        name: "Other",
+        email: "other@example.com",
+      };
+      users.push(other);
+      await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      await expect(
+        service.transferTicket(instance.id, user, { email: other.email }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects accepting a transfer addressed to someone else's account", async () => {
+      const { service, instance } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+      const stranger = {
+        id: "stranger-1",
+        isAdmin: false,
+        name: "Stranger",
+      } as any;
+      await expect(
+        service.acceptTransferById(stranger, transferId),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });

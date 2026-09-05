@@ -279,6 +279,56 @@ export class MailService {
     });
   }
 
+  /** "Buy two, send one" (the AFCON-style ticket transfer feature) — sent
+   * to the recipient, who must already have a LIBERIA360 account (unlike
+   * sendTripInvitation, there's no "you'll need to sign up first" branch
+   * here — see TicketTransfer's doc comment for why). Returns whether it
+   * actually delivered, same as sendTripInvitation, so the caller can
+   * record it on the transfer row. */
+  async sendTicketTransfer(opts: {
+    to: string;
+    senderName: string;
+    eventName: string;
+    ticketTypeName: string;
+    transferUrl: string;
+  }): Promise<boolean> {
+    return this.attempt({
+      to: opts.to,
+      subject: `${opts.senderName} sent you a ticket to ${opts.eventName}`,
+      text: `${opts.senderName} sent you a ${opts.ticketTypeName} ticket to "${opts.eventName}" on LIBERIA360.\n\nAccept it and it's yours — with its own QR pass.\n\n${opts.transferUrl}\n\nThis transfer link expires in 7 days. If you weren't expecting this, you can safely ignore this email — nothing happens unless you accept it.`,
+      html: this.render({
+        heading: "You've been sent a ticket",
+        intro: `<strong>${escapeHtml(opts.senderName)}</strong> sent you a <strong>${escapeHtml(opts.ticketTypeName)}</strong> ticket to <strong>${escapeHtml(opts.eventName)}</strong> on LIBERIA360. Accept it and it's yours — with its own QR pass.`,
+        ctaLabel: "View ticket transfer",
+        ctaUrl: opts.transferUrl,
+        note: "This transfer link expires in 7 days. If you weren't expecting this, you can safely ignore this email — nothing happens unless you accept it.",
+      }),
+    });
+  }
+
+  /** Fire-and-forget notice to the sender once the recipient actually
+   * accepts a ticket transfer — same swallow-errors contract as
+   * sendInvitationAccepted, since a failed notice here must never fail
+   * the accept request that triggered it. */
+  async sendTicketTransferAccepted(
+    to: string,
+    accepterName: string,
+    eventName: string,
+    myTicketsUrl: string,
+  ): Promise<void> {
+    await this.send({
+      to,
+      subject: `${accepterName} accepted your ticket transfer`,
+      text: `${accepterName} accepted the ticket you sent for "${eventName}". It's now theirs.\n\n${myTicketsUrl}`,
+      html: this.render({
+        heading: "Ticket transfer accepted",
+        intro: `<strong>${escapeHtml(accepterName)}</strong> accepted the ticket you sent for <strong>${escapeHtml(eventName)}</strong>. It's now theirs.`,
+        ctaLabel: "View my tickets",
+        ctaUrl: myTicketsUrl,
+      }),
+    });
+  }
+
   /** POST /admin/system/test-email — deliberately does NOT swallow the
    * error, unlike every send above: the whole point is letting a super
    * admin tell "SMTP isn't configured" apart from "SMTP is configured but

@@ -12,6 +12,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 import { CreateEventTicketOrderDto } from "./dto/create-event-ticket-order.dto";
+import { CreateTicketTransferDto } from "./dto/create-ticket-transfer.dto";
 import { ReviewEventTicketOrderDto } from "./dto/review-event-ticket-order.dto";
 import { RedeemEventTicketDto } from "./dto/redeem-event-ticket.dto";
 import { EventTicketsService } from "./event-tickets.service";
@@ -71,5 +72,16 @@ export class EventTicketsController {
   @Patch("ticket-instances/:id/void")
   voidTicket(@Param("id") id: string, @CurrentUser() user: User) {
     return this.ticketsService.voidTicket(id, user);
+  }
+
+  // "Buy two, send one": whoever currently holds this ticket sends it to
+  // another LIBERIA360 account by email. See EventTicketsService.transferTicket.
+  @Post("ticket-instances/:id/transfer")
+  transferTicket(
+    @Param("id") id: string,
+    @CurrentUser() user: User,
+    @Body() dto: CreateTicketTransferDto,
+  ) {
+    return this.ticketsService.transferTicket(id, user, dto);
   }
 }
