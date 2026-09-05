@@ -27,5 +27,6 @@ import { TicketTransfer } from "./entities/ticket-transfer.entity";
   ],
   controllers: [EventTicketsController, TicketTransfersController],
   providers: [EventTicketsService],
+  exports: [EventTicketsService],
 })
 export class EventTicketsModule {}

@@ -34,4 +34,12 @@ describe('signupHrefFor', () => {
   it('falls back to a bare /signup for a non-invite destination', () => {
     expect(signupHrefFor('/account')).toBe('/signup');
   });
+
+  it('carries a ticket-transfer token through as ?ticketTransfer=', () => {
+    expect(signupHrefFor('/ticket-transfer/xyz789')).toBe('/signup?ticketTransfer=xyz789');
+  });
+
+  it('strips a trailing query string from a ticket-transfer token', () => {
+    expect(signupHrefFor('/ticket-transfer/xyz789?foo=bar')).toBe('/signup?ticketTransfer=xyz789');
+  });
 });

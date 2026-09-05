@@ -54,4 +54,12 @@ export class RegisterDto {
   @IsString()
   @Length(64, 64)
   inviteToken?: string;
+
+  // Same shape and contract as inviteToken, for a ticket-transfer link
+  // (/signup?ticketTransfer=…) instead of a trip invite — see
+  // EventTicketsService.linkTicketTransferToNewAccount.
+  @IsOptional()
+  @IsString()
+  @Length(64, 64)
+  ticketTransferToken?: string;
 }

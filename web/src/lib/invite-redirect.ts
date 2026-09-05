@@ -9,11 +9,14 @@ export function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/account';
 }
 
-// If `next` points at a trip invitation, "New here?" on the login page
-// should carry the invite token itself (/signup?invite=…, which the
-// signup form links back to the invitation after registering), not a
-// generic `next` redirect the signup form doesn't read.
+// If `next` points at a trip invitation or a ticket transfer, "New here?"
+// on the login page should carry that token itself (/signup?invite=… or
+// /signup?ticketTransfer=…, which the signup form links back to after
+// registering), not a generic `next` redirect the signup form doesn't read.
 export function signupHrefFor(next: string): string {
-  const match = next.match(/^\/invite\/([^/?#]+)/);
-  return match ? `/signup?invite=${match[1]}` : '/signup';
+  const inviteMatch = next.match(/^\/invite\/([^/?#]+)/);
+  if (inviteMatch) return `/signup?invite=${inviteMatch[1]}`;
+  const transferMatch = next.match(/^\/ticket-transfer\/([^/?#]+)/);
+  if (transferMatch) return `/signup?ticketTransfer=${transferMatch[1]}`;
+  return '/signup';
 }

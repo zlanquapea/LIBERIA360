@@ -11,10 +11,13 @@ import type { Category, County, TravelerType } from '@/lib/types';
 
 // useSearchParams opts this page out of static rendering unless it's
 // wrapped in Suspense — same idiom as reset-password/verify-email. The
-// params it reads (`invite`, `email`) come from a trip invitation link
-// (Section 3: "Invitation → Create Account → Confirm Account → Accept
-// Invitation → Join Trip") — signing up this way lands back on the
-// invitation already linked, instead of the generic /account redirect.
+// params it reads (`invite`, `ticketTransfer`, `email`) come from a trip
+// invitation link (Section 3: "Invitation → Create Account → Confirm
+// Account → Accept Invitation → Join Trip") or a ticket-transfer link
+// ("buy two, send one" — Sep 5, 2026: a transfer no longer requires the
+// recipient to already have an account, mirroring the invite flow) —
+// signing up either way lands back on the thing that sent you here,
+// already linked, instead of the generic /account redirect.
 export default function SignupPage() {
   return (
     <Suspense fallback={null}>
@@ -27,6 +30,7 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get('invite') ?? undefined;
+  const ticketTransferToken = searchParams.get('ticketTransfer') ?? undefined;
   const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState(searchParams.get('email') ?? '');
@@ -61,8 +65,15 @@ function SignupForm() {
         travelerType: travelerType || undefined,
         interests: interests.length > 0 ? interests : undefined,
         inviteToken,
+        ticketTransferToken,
       });
-      router.push(inviteToken ? `/invite/${inviteToken}` : '/account');
+      router.push(
+        inviteToken
+          ? `/invite/${inviteToken}`
+          : ticketTransferToken
+            ? `/ticket-transfer/${ticketTransferToken}`
+            : '/account',
+      );
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -77,7 +88,9 @@ function SignupForm() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {inviteToken
             ? "You're almost in — create an account to view and accept your trip invitation."
-            : 'Save trips, write reviews, and claim your place on LIBERIA360.'}
+            : ticketTransferToken
+              ? "You're almost in — create an account to claim the ticket that was sent to you."
+              : 'Save trips, write reviews, and claim your place on LIBERIA360.'}
         </p>
       </div>
 
@@ -177,7 +190,13 @@ function SignupForm() {
       <p className="text-center text-sm text-slate-500 dark:text-slate-400">
         Already have an account?{' '}
         <Link
-          href={inviteToken ? `/login?next=${encodeURIComponent(`/invite/${inviteToken}`)}` : '/login'}
+          href={
+            inviteToken
+              ? `/login?next=${encodeURIComponent(`/invite/${inviteToken}`)}`
+              : ticketTransferToken
+                ? `/login?next=${encodeURIComponent(`/ticket-transfer/${ticketTransferToken}`)}`
+                : '/login'
+          }
           className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
         >
           Log in

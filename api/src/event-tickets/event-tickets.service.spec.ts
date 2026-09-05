@@ -1,9 +1,5 @@
 import { randomUUID } from "crypto";
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { EventTicketsService } from "./event-tickets.service";
 import {
   EventTicketOrder,
@@ -11,6 +7,7 @@ import {
 } from "./entities/event-ticket-order.entity";
 import { EventTicketInstanceStatus } from "./entities/event-ticket-instance.entity";
 import { EventReviewStatus } from "../events/entities/event.enums";
+import { hashToken } from "../auth/token-hash";
 
 // The service's randomBytes(32) generates each ticket's plaintext QR
 // token; pinning it to a known value lets these tests build a valid scan
@@ -829,13 +826,29 @@ describe("EventTicketsService", () => {
       expect(myTicket.qrDataUrl).toBe("");
     });
 
-    it("rejects a transfer to an email with no LIBERIA360 account", async () => {
-      const { service, instance } = await issueOneTicket();
-      await expect(
-        service.transferTicket(instance.id, user, {
-          email: "nobody@example.com",
-        }),
-      ).rejects.toBeInstanceOf(NotFoundException);
+    it("sends a transfer to an email with no LIBERIA360 account yet, leaving it unlinked", async () => {
+      const {
+        service,
+        instance,
+        transfers,
+        mailService,
+        notificationsService,
+      } = await issueOneTicket();
+      const result = await service.transferTicket(instance.id, user, {
+        email: "nobody@example.com",
+      });
+      const myTicket = result.orders[0].tickets[0];
+      expect(myTicket.transfer).toMatchObject({
+        status: "pending",
+        toEmail: "nobody@example.com",
+      });
+      expect(transfers[0].toUserId).toBeNull();
+      // No account to notify in-app yet, but the email still goes out —
+      // with the "you'll need to create an account" copy.
+      expect(notificationsService.create).not.toHaveBeenCalled();
+      expect(mailService.sendTicketTransfer).toHaveBeenCalledWith(
+        expect.objectContaining({ hasAccount: false }),
+      );
     });
 
     it("blocks a non-owner from sending someone else's ticket", async () => {
@@ -938,6 +951,102 @@ describe("EventTicketsService", () => {
       await expect(
         service.acceptTransferById(stranger, transferId),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("flags requiresAccount on the preview while the recipient's email has no account yet", async () => {
+      const { service, instance, transfers } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: "nobody@example.com",
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+      const KNOWN_TOKEN = "known-token";
+      transfers.find((t) => t.id === transferId)!.tokenHash =
+        hashToken(KNOWN_TOKEN);
+
+      const preview = await service.getTransferPreview(KNOWN_TOKEN);
+      expect(preview.requiresAccount).toBe(true);
+      expect(preview.toEmail).toBe("nobody@example.com");
+    });
+
+    it("does not flag requiresAccount once the recipient already has an account", async () => {
+      const { service, instance, transfers } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: recipient.email,
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+      const KNOWN_TOKEN = "known-token";
+      transfers.find((t) => t.id === transferId)!.tokenHash =
+        hashToken(KNOWN_TOKEN);
+
+      const preview = await service.getTransferPreview(KNOWN_TOKEN);
+      expect(preview.requiresAccount).toBe(false);
+    });
+
+    it("lets whoever holds the token claim an unlinked transfer by accepting it", async () => {
+      const { service, instance } = await issueOneTicket();
+      const afterSend = await service.transferTicket(instance.id, user, {
+        email: "nobody@example.com",
+      });
+      const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+      const newAccount = {
+        id: "new-account-1",
+        isAdmin: false,
+        name: "New Account",
+        email: "nobody@example.com",
+      } as any;
+
+      const recipientView = await service.acceptTransferById(
+        newAccount,
+        transferId,
+      );
+      expect(recipientView.receivedTickets).toHaveLength(1);
+    });
+
+    describe("linkTicketTransferToNewAccount", () => {
+      it("silently no-ops for an unknown token", async () => {
+        const { service, transferRepo } = await issueOneTicket();
+        await expect(
+          service.linkTicketTransferToNewAccount("bad-token", "new-user"),
+        ).resolves.toBeUndefined();
+        expect(transferRepo.save).not.toHaveBeenCalledWith(
+          expect.objectContaining({ toUserId: "new-user" }),
+        );
+      });
+
+      it("links a still-pending, unclaimed transfer to the new account", async () => {
+        const { service, instance, transfers } = await issueOneTicket();
+        const afterSend = await service.transferTicket(instance.id, user, {
+          email: "nobody@example.com",
+        });
+        const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+        // transferTicket doesn't hand back its plaintext token (only the
+        // hash is ever persisted), so this test forges a known one onto
+        // the saved row — same technique as
+        // ItinerariesService.spec.ts's linkInvitationToNewAccount tests.
+        const KNOWN_TOKEN = "known-token";
+        const row = transfers.find((t) => t.id === transferId)!;
+        row.tokenHash = hashToken(KNOWN_TOKEN);
+
+        await service.linkTicketTransferToNewAccount(KNOWN_TOKEN, "new-user");
+        expect(row.toUserId).toBe("new-user");
+      });
+
+      it("refuses to hijack a transfer already claimed by a different account", async () => {
+        const { service, instance, transfers } = await issueOneTicket();
+        const afterSend = await service.transferTicket(instance.id, user, {
+          email: recipient.email,
+        });
+        const transferId = afterSend.orders[0].tickets[0].transfer!.transferId;
+        const KNOWN_TOKEN = "known-token";
+        const row = transfers.find((t) => t.id === transferId)!;
+        row.tokenHash = hashToken(KNOWN_TOKEN);
+        // recipient already has an account (toUserId set at send time) —
+        // an attacker registering with the same emailed link can't steal it.
+        expect(row.toUserId).toBe(recipient.id);
+
+        await service.linkTicketTransferToNewAccount(KNOWN_TOKEN, "attacker");
+        expect(row.toUserId).toBe(recipient.id);
+      });
     });
   });
 });

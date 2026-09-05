@@ -119,6 +119,11 @@ export interface TicketTransferPreview {
   toEmail: string;
   status: TicketTransferStatus;
   expired: boolean;
+  // Same meaning as InvitationPreview.requiresAccount: true while
+  // toUserId is still unset, meaning the emailed address has no
+  // LIBERIA360 account yet — the landing page offers "create account" as
+  // well as "log in" in that case.
+  requiresAccount: boolean;
 }
 
 // Lightweight per-ticket status for the organizer's order-management view —
@@ -1042,11 +1047,12 @@ export class EventTicketsService {
 
   // "Buy two, send one" (the AFCON-style feature this whole module exists
   // for): the current holder of an active, unused ticket sends it to
-  // another LIBERIA360 account by email. Deliberately requires an
-  // existing account rather than accepting any address — see
-  // TicketTransfer's doc comment for why a bearer-like credential (a
-  // scannable QR) shouldn't ever sit in a "waiting for someone to sign up"
-  // limbo the way a trip invite can.
+  // anyone by email — same email-only-recipient model as
+  // ItinerariesService.createOrResendInvitation (Sep 5, 2026: this
+  // originally required an existing account before anything was created;
+  // see TicketTransfer's doc comment for why that turned out to be the
+  // wrong tradeoff). If the address has no account yet, toUserId is left
+  // null and gets linked up later — see linkTicketTransferToNewAccount.
   async transferTicket(
     instanceId: string,
     user: User,
@@ -1073,15 +1079,10 @@ export class EventTicketsService {
     }
 
     const email = dto.email.trim().toLowerCase();
-    const recipient = await this.usersService.findByEmail(email);
-    if (!recipient) {
-      throw new NotFoundException(
-        "No LIBERIA360 account uses that email yet. Ask them to create one, then try again.",
-      );
-    }
-    if (recipient.id === user.id) {
+    if (email === user.email.toLowerCase()) {
       throw new BadRequestException("You can't send a ticket to yourself");
     }
+    const recipient = await this.usersService.findByEmail(email);
 
     const existing = await this.transferRepo.findOne({
       where: {
@@ -1101,20 +1102,28 @@ export class EventTicketsService {
         ticketInstanceId: instance.id,
         eventId: instance.eventId,
         fromUserId: user.id,
-        email: recipient.email,
-        toUserId: recipient.id,
+        email,
+        toUserId: recipient?.id ?? null,
         tokenHash: hashToken(token),
         status: TicketTransferStatus.PENDING,
         expiresAt: transferExpiresAt(),
       }),
     );
-    await this.sendTransferEmail(instance, transfer, token, user);
-    await this.notificationsService.create(recipient.id, {
-      type: "ticket.transfer_received",
-      title: "Someone sent you a ticket",
-      body: `${user.name} sent you a ${instance.ticketTypeName} ticket to ${instance.event.name}.`,
-      link: "/account/my-tickets",
-    });
+    await this.sendTransferEmail(
+      instance,
+      transfer,
+      token,
+      user,
+      Boolean(recipient),
+    );
+    if (recipient) {
+      await this.notificationsService.create(recipient.id, {
+        type: "ticket.transfer_received",
+        title: "Someone sent you a ticket",
+        body: `${user.name} sent you a ${instance.ticketTypeName} ticket to ${instance.event.name}.`,
+        link: "/account/my-tickets",
+      });
+    }
     return this.findForBuyer(user.id);
   }
 
@@ -1123,6 +1132,7 @@ export class EventTicketsService {
     transfer: TicketTransfer,
     token: string,
     sender: User,
+    hasAccount: boolean,
   ): Promise<void> {
     const webAppUrl = this.configService.get("webAppUrl", { infer: true });
     const delivered = await this.mailService.sendTicketTransfer({
@@ -1131,8 +1141,40 @@ export class EventTicketsService {
       eventName: instance.event.name,
       ticketTypeName: instance.ticketTypeName,
       transferUrl: `${webAppUrl}/ticket-transfer/${token}`,
+      hasAccount,
     });
     transfer.emailDelivered = delivered;
+    await this.transferRepo.save(transfer);
+  }
+
+  /** Links a still-open, email-only ticket transfer to a brand-new
+   * account — called from AuthService.register right after account
+   * creation, so "click transfer link → create account → land back on the
+   * same ticket, already recognized" doesn't need the recipient to hunt
+   * down the email again or ask the sender to resend. Never throws:
+   * registration must succeed whether or not the transfer token is valid,
+   * stale, or already claimed — this only ever silently no-ops instead.
+   * Identical contract to ItinerariesService.linkInvitationToNewAccount. */
+  async linkTicketTransferToNewAccount(
+    token: string,
+    newUserId: string,
+  ): Promise<void> {
+    let transfer: TicketTransfer;
+    try {
+      transfer = await this.findTransferByToken(token);
+    } catch {
+      return;
+    }
+    if (
+      transfer.status !== TicketTransferStatus.PENDING ||
+      transfer.expiresAt.getTime() < Date.now()
+    ) {
+      return;
+    }
+    if (transfer.toUserId && transfer.toUserId !== newUserId) {
+      return;
+    }
+    transfer.toUserId = newUserId;
     await this.transferRepo.save(transfer);
   }
 
@@ -1162,7 +1204,7 @@ export class EventTicketsService {
     user: User,
     transfer: TicketTransfer,
   ): Promise<MyTicketsResponse> {
-    if (transfer.toUserId !== user.id) {
+    if (transfer.toUserId && transfer.toUserId !== user.id) {
       throw new ForbiddenException(
         "This ticket transfer isn't addressed to your account",
       );
@@ -1190,6 +1232,12 @@ export class EventTicketsService {
     await this.instanceRepo.save(instance);
     transfer.status = TicketTransferStatus.ACCEPTED;
     transfer.respondedAt = new Date();
+    // Whoever accepts while holding the token claims an unlinked
+    // (email-only) transfer, same fallback as
+    // ItinerariesService.acceptInvitationRow — registering through the
+    // emailed link (linkTicketTransferToNewAccount) is the common path,
+    // this only matters when the recipient signed up some other way.
+    transfer.toUserId = transfer.toUserId ?? user.id;
     await this.transferRepo.save(transfer);
 
     const sender = await this.usersService.findById(transfer.fromUserId);
@@ -1217,7 +1265,7 @@ export class EventTicketsService {
     user: User,
     transfer: TicketTransfer,
   ): Promise<void> {
-    if (transfer.toUserId !== user.id) {
+    if (transfer.toUserId && transfer.toUserId !== user.id) {
       throw new ForbiddenException(
         "This ticket transfer isn't addressed to your account",
       );
@@ -1229,6 +1277,7 @@ export class EventTicketsService {
     }
     transfer.status = TicketTransferStatus.DECLINED;
     transfer.respondedAt = new Date();
+    transfer.toUserId = transfer.toUserId ?? user.id;
     await this.transferRepo.save(transfer);
     const sender = await this.usersService.findById(transfer.fromUserId);
     if (sender) {
@@ -1300,6 +1349,7 @@ export class EventTicketsService {
       toEmail: transfer.email,
       status: transfer.status,
       expired: transfer.expiresAt.getTime() < Date.now(),
+      requiresAccount: !transfer.toUserId,
     };
   }
 

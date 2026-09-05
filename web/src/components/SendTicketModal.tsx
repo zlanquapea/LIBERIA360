@@ -9,13 +9,13 @@ import type { MyTicketsResponse } from '@/lib/types';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // "Buy two, send one" (the AFCON-style ticket transfer feature): the
-// current holder of an active, unused ticket sends it to another
-// LIBERIA360 account by email. Deliberately just one plain email field —
-// unlike InvitePeopleModal, there's no "search platform users" picker and
-// no "invite someone who isn't on the platform yet" path, because a
-// ticket transfer requires an existing account (see the backend's
-// TicketTransfer doc comment for why a scannable QR shouldn't ever sit in
-// a "waiting for someone to sign up" limbo).
+// current holder of an active, unused ticket sends it to anyone by email
+// — deliberately just one plain email field, unlike InvitePeopleModal's
+// "search platform users" picker, since there's exactly one way to
+// address a ticket transfer either way. The recipient doesn't need a
+// LIBERIA360 account yet (Sep 5, 2026 — see the backend's TicketTransfer
+// doc comment): they'll get an emailed link either to view/accept
+// directly, or to create an account first, whichever applies.
 export function SendTicketModal({
   token,
   instanceId,
@@ -84,13 +84,13 @@ export function SendTicketModal({
 
         <p className="text-sm text-slate-600 dark:text-slate-300">
           Send your <strong>{ticketTypeName}</strong> ticket to <strong>{eventName}</strong> to
-          someone else&apos;s LIBERIA360 account. Once they accept, it becomes their ticket — with
-          its own QR pass — and stops working for you.
+          someone else by email. Once they accept, it becomes their ticket — with its own QR pass
+          — and stops working for you.
         </p>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Their LIBERIA360 email
+            Their email
           </span>
           <input
             type="email"
@@ -107,7 +107,7 @@ export function SendTicketModal({
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-800"
           />
           <span className="text-xs text-slate-400 dark:text-slate-400">
-            They need an existing LIBERIA360 account for this to work.
+            No LIBERIA360 account yet? They&apos;ll get a link to create one and claim it.
           </span>
         </label>
 

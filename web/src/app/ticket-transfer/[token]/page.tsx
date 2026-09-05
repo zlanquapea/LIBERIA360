@@ -23,11 +23,11 @@ function formatDate(value: string) {
 
 // The emailed ticket-transfer link's landing page ("buy two, send one") —
 // works whether or not the visitor is signed in yet, mirroring
-// /invite/[token]. Unlike a trip invite, there's no "create an account"
-// path here: a transfer is only ever created against an email that
-// already has a LIBERIA360 account (see the backend's TicketTransfer doc
-// comment), so a signed-out visitor is always just asked to log in, never
-// to sign up.
+// /invite/[token] exactly (Sep 5, 2026: a transfer no longer requires the
+// recipient to already have an account — see the backend's TicketTransfer
+// doc comment for why): `requiresAccount` decides whether a signed-out
+// visitor gets a "create account" path alongside "log in", same as
+// InvitationPage's SignedOutActions.
 export default function TicketTransferPage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
@@ -93,7 +93,6 @@ export default function TicketTransferPage() {
   }
 
   const resolved = preview.status !== 'pending' || preview.expired;
-  const next = `/ticket-transfer/${token}`;
 
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
@@ -156,17 +155,7 @@ export default function TicketTransferPage() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          <Link
-            href={`/login?next=${encodeURIComponent(next)}`}
-            className="rounded-full bg-brand-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-800"
-          >
-            Log in to accept
-          </Link>
-          <p className="text-center text-xs text-slate-400 dark:text-slate-400">
-            This ticket was sent to {preview.toEmail} — log in with that account to accept it.
-          </p>
-        </div>
+        <SignedOutActions token={token} preview={preview} />
       )}
 
       {!resolved && !declined && user && authToken && preview.toEmail.toLowerCase() !== user.email.toLowerCase() && (
@@ -183,6 +172,43 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-baseline justify-between gap-3">
       <dt className="shrink-0 text-slate-400 dark:text-slate-500">{label}</dt>
       <dd className="truncate text-right font-medium text-slate-700 dark:text-slate-200">{value}</dd>
+    </div>
+  );
+}
+
+// Mirrors /invite/[token]'s SignedOutActions exactly: requiresAccount
+// decides whether "create an account" is offered alongside "log in".
+function SignedOutActions({ token, preview }: { token: string; preview: TicketTransferPreview }) {
+  const next = `/ticket-transfer/${token}`;
+  if (preview.requiresAccount) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/signup?ticketTransfer=${token}&email=${encodeURIComponent(preview.toEmail)}`}
+          className="rounded-full bg-brand-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-800"
+        >
+          Create account & claim ticket
+        </Link>
+        <p className="text-center text-xs text-slate-400 dark:text-slate-400">
+          Already have an account?{' '}
+          <Link href={`/login?next=${encodeURIComponent(next)}`} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
+            Log in
+          </Link>
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <Link
+        href={`/login?next=${encodeURIComponent(next)}`}
+        className="rounded-full bg-brand-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-800"
+      >
+        Log in to accept
+      </Link>
+      <p className="text-center text-xs text-slate-400 dark:text-slate-400">
+        This ticket was sent to {preview.toEmail} — log in with that account to accept it.
+      </p>
     </div>
   );
 }
