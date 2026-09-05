@@ -13,6 +13,6 @@
 
 ## Remaining live feed play icon
 
-- [ ] Trace the alternate video preview component shown in the latest live screenshot.
-- [ ] Remove only its feed-level centered play affordance.
-- [ ] Validate, deploy, and confirm the live feed no longer shows the icon.
+- [x] Trace the alternate video preview component shown in the latest live screenshot.
+- [x] Remove only its feed-level centered play affordance.
+- [x] Validate, deploy, and confirm the live feed no longer shows the icon.
