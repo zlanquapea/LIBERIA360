@@ -112,10 +112,10 @@ function drawCard(
   const counties = new Set(trip.stops.map((stop) => stop.place.county.name));
   ctx.fillStyle = '#ffc63d';
   ctx.font = `700 38px ${FONT}`;
-  const statLine = `${trip.stops.length} stop${trip.stops.length === 1 ? '' : 's'} · ${counties.size} count${counties.size === 1 ? 'y' : 'ies'}`;
+  const statLine = `${trip.stops.length} place${trip.stops.length === 1 ? '' : 's'} · ${counties.size} count${counties.size === 1 ? 'y' : 'ies'}`;
   ctx.fillText(statLine, pad, y + 90);
 
-  // Stop list
+  // Place list
   let rowY = y + 190;
   const rowHeight = 108;
   const shown = trip.stops.slice(0, MAX_STOPS_SHOWN);

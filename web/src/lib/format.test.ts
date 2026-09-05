@@ -29,7 +29,7 @@ describe('formatPlaceType / formatBusinessType / formatEventCategory / formatBud
     expect(formatBusinessType('tour_operator')).toBe('Tour Operator / Guide');
     expect(formatBusinessType('beach_resort')).toBe('Beach / Resort');
     expect(formatEventCategory('nightlife')).toBe('Nightlife');
-    expect(formatBudgetBand('budget')).toBe('Budget (under $10/stop)');
+    expect(formatBudgetBand('budget')).toBe('Budget (under $10/place)');
     expect(formatBookingStatus('confirmed')).toBe('Confirmed');
   });
 });

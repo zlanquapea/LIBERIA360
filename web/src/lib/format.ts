@@ -254,8 +254,8 @@ export function formatEventReviewStatus(status: EventReviewStatus): string {
 }
 
 const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
-  budget: 'Budget (under $10/stop)',
-  moderate: 'Moderate (under $50/stop)',
+  budget: 'Budget (under $10/place)',
+  moderate: 'Moderate (under $50/place)',
   premium: 'Premium (no limit)',
 };
 
