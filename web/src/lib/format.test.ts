@@ -29,7 +29,7 @@ describe('formatPlaceType / formatBusinessType / formatEventCategory / formatBud
     expect(formatBusinessType('tour_operator')).toBe('Tour Operator / Guide');
     expect(formatBusinessType('beach_resort')).toBe('Beach / Resort');
     expect(formatEventCategory('nightlife')).toBe('Nightlife');
-    expect(formatBudgetBand('budget')).toBe('Budget (under $10/place)');
+    expect(formatBudgetBand('budget')).toBe('Budget (under US$10/place)');
     expect(formatBookingStatus('confirmed')).toBe('Confirmed');
   });
 });
@@ -92,8 +92,8 @@ describe('formatCost', () => {
     expect(formatCost(0)).toBe('Free');
   });
 
-  it('formats a positive amount to two decimals', () => {
-    expect(formatCost(12.5)).toBe('$12.50');
+  it('formats a positive amount to two decimals, with an explicit US$ label', () => {
+    expect(formatCost(12.5)).toBe('US$12.50');
   });
 
   it('labels null as Not listed', () => {
@@ -121,11 +121,11 @@ describe('formatPriceFrom', () => {
   });
 
   it('drops trailing decimals for whole-dollar amounts', () => {
-    expect(formatPriceFrom(120)).toBe('From $120');
+    expect(formatPriceFrom(120)).toBe('From US$120');
   });
 
   it('keeps two decimals for a fractional amount', () => {
-    expect(formatPriceFrom(49.5)).toBe('From $49.50');
+    expect(formatPriceFrom(49.5)).toBe('From US$49.50');
   });
 });
 

@@ -6,18 +6,27 @@ import type { ComponentType, SVGProps } from "react";
 import {
   HomeIcon,
   MapPinIcon,
+  BookmarkIcon,
   UserGroupIcon,
   CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
   MapPinIcon as MapPinIconSolid,
+  BookmarkIcon as BookmarkIconSolid,
   UserGroupIcon as UserGroupIconSolid,
   CalendarDaysIcon as CalendarDaysIconSolid,
 } from "@heroicons/react/24/solid";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
+// UX audit (Sep 5, 2026): "Saved" used to have exactly one link to it
+// anywhere in the app — inside /account, which itself sends a signed-out
+// visitor straight to /login. Saved places are explicitly device-local
+// and need no account (see saved/page.tsx), so a guest who'd tapped
+// "Save" on several place cards had no way back to that list at all.
+// Added here so it's reachable regardless of sign-in state, same as
+// every other tab.
 const TABS: {
   href: string;
   label: string;
@@ -25,6 +34,12 @@ const TABS: {
   activeIcon: IconComponent;
 }[] = [
   { href: "/", label: "Home", icon: HomeIcon, activeIcon: HomeIconSolid },
+  {
+    href: "/saved",
+    label: "Saved",
+    icon: BookmarkIcon,
+    activeIcon: BookmarkIconSolid,
+  },
   {
     href: "/counties",
     label: "Counties",

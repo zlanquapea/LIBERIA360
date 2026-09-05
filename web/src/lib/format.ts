@@ -219,10 +219,15 @@ export function estimateTravelTime(km: number | null): string | null {
 // a JSON response (rather than sending an explicit `null`) comes through
 // as `undefined` at runtime — treat that the same as "not listed" rather
 // than crashing on `undefined.toFixed`.
+// UX audit (Sep 5, 2026): a bare "$" is genuinely ambiguous in Liberia,
+// where both US dollars and Liberian dollars circulate day to day (and
+// "$" alone is used for both locally) — unlike in the US, where it only
+// ever means one thing. Every catalog price here is in US dollars, so
+// spelling that out removes the ambiguity instead of relying on context.
 export function formatCost(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return 'Not listed';
   if (amount === 0) return 'Free';
-  return `$${amount.toFixed(2)}`;
+  return `US$${amount.toFixed(2)}`;
 }
 
 export function formatRating(rating: number, reviewCount: number): string {
@@ -254,8 +259,8 @@ export function formatEventReviewStatus(status: EventReviewStatus): string {
 }
 
 const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
-  budget: 'Budget (under $10/place)',
-  moderate: 'Moderate (under $50/place)',
+  budget: 'Budget (under US$10/place)',
+  moderate: 'Moderate (under US$50/place)',
   premium: 'Premium (no limit)',
 };
 
@@ -378,7 +383,7 @@ export function formatCreatorCategory(category: CreatorCategory): string {
 // formatCost's 0-means-Free places/activities use).
 export function formatPriceFrom(amount: number | null): string | null {
   if (amount === null) return null;
-  return `From $${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+  return `From US$${amount % 1 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
 }
 
 // A "Happening now" status beats a plain date for an event already in
