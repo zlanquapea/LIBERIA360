@@ -560,9 +560,6 @@ export function CreatorPostViewerVideoPreview({
         aria-hidden
         className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10"
       />
-      <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-brand-950 shadow-lg transition-transform group-hover:scale-105">
-        <PlayIcon aria-hidden className="h-8 w-8 translate-x-0.5" />
-      </span>
       <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
         Watch video
       </span>
