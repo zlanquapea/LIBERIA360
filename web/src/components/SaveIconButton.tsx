@@ -6,7 +6,8 @@ import { useSavedPlaces } from '@/hooks/useSavedPlaces';
 import { recordAnalyticsEvent } from '@/lib/analytics-api';
 
 // Icon-only save toggle for the corner of a place card's image — same
-// save/unsave mechanism as SaveButton (device-local, no account required),
+// save/unsave mechanism as SaveButton (device-local first, mirrored to a
+// signed-in visitor's account in the background — see useSavedPlaces),
 // just the compact badge treatment a card thumbnail needs instead of a
 // full labeled pill (SaveButton stays in use on the Destination Profile,
 // where there's room for one). Always rendered as a SIBLING of the card's
@@ -27,7 +28,7 @@ export function SaveIconButton({
   const saved = isSaved(slug);
 
   function handleClick() {
-    const nowSaved = toggle(slug);
+    const nowSaved = toggle(slug, placeId);
     if (nowSaved && placeId) {
       recordAnalyticsEvent(placeId, 'save');
     }

@@ -13,6 +13,7 @@ import {
   setStoredAuth,
   subscribeToAuth,
 } from "@/lib/auth-storage";
+import { clearSavedPlacesOnLogout } from "@/lib/saved-places";
 import type { AuthUser } from "@/lib/types";
 
 export function useAuth() {
@@ -102,6 +103,11 @@ export function useAuth() {
   const logout = useCallback(() => {
     void authApi.logout();
     clearStoredAuth();
+    // A different account signing in on the same device next shouldn't
+    // inherit (and, via useSavedPlaces' login merge, silently re-upload
+    // into its own account) whatever this one had saved — see
+    // clearSavedPlacesOnLogout's doc comment.
+    clearSavedPlacesOnLogout();
   }, []);
 
   // No token involved — these three run before/without a session
@@ -152,6 +158,7 @@ export function useAuth() {
       if (!token) throw new Error("Not signed in");
       await authApi.deleteAccount(token, password);
       clearStoredAuth();
+      clearSavedPlacesOnLogout();
     },
     [token],
   );

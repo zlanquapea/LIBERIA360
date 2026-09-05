@@ -121,6 +121,17 @@ Base path `/api/v1` unless noted otherwise. Auth column: `—` public, `JWT` any
 
 `GET /places`/`GET /places/:slug` only ever return an `approved` place — the same `reviewStatus` gate as `Business` (see the Businesses section below), reusing its exact enum shape (`draft`/`submitted_for_review`/`under_review`/`approved`/`rejected`/`suspended`). Every place created directly through the admin catalog (`POST /admin/places`, and every pre-existing row) defaults to `approved` — only self-service submissions start out unlisted.
 
+### Saved Places
+
+| Method & path | Description | Auth |
+|---|---|---|
+| `GET /saved-places` | The account's saved places, as slugs (newest first) | JWT |
+| `POST /saved-places/:placeId` | Save a place to the account | JWT |
+| `DELETE /saved-places/:placeId` | Unsave it | JWT |
+| `POST /saved-places/sync` | Fold a device's local (pre-login) saved-slugs list into the account, once per login; returns the merged list | JWT |
+
+Save/unsave itself is still `localStorage`-only and account-free (Tech Spec §3.1) — saving a place never requires signing in, and `useSavedPlaces` on the frontend keeps the device-local list as the fast path (and offline fallback) it's always been. This table exists so a signed-in visitor's saves also survive switching devices: `useSavedPlaces` calls `POST /saved-places/sync` once per login with whatever the device's local slug list held at the time, merges the result back into `localStorage`, and mirrors every subsequent toggle here in the background — a failed sync call never blocks or reverts the local toggle, same "account-adjacent bookkeeping never fails the flow that touched it" tolerance as `TripInvitation`/`TicketTransfer` elsewhere in this doc. `POST`/`DELETE`/`POST .../sync` are all idempotent (`.upsert()` on a `(userId, placeId)` unique constraint, and a plain delete-if-exists) so a double-click, a retried request, or a merge re-run on the same device can never error or duplicate a row.
+
 ### Reviews
 
 | Method & path | Description | Auth |

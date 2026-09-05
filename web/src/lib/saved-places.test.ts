@@ -1,8 +1,12 @@
 import {
   cachePlaceSnapshot,
+  clearSavedPlacesOnLogout,
   getCachedPlaceSnapshot,
   getSavedSlugs,
+  hasSyncedSavedPlacesForUser,
   isPlaceSaved,
+  markSavedPlacesSyncedForUser,
+  setSavedSlugs,
   subscribeToSavedPlaces,
   toggleSavedPlace,
 } from './saved-places';
@@ -99,6 +103,52 @@ describe('saved-places (slugs)', () => {
     unsubscribe();
     toggleSavedPlace('test-beach');
     expect(callback).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('saved-places (cross-device sync)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    markSavedPlacesSyncedForUser(null);
+  });
+
+  it('setSavedSlugs overwrites the whole list at once, de-duplicated', () => {
+    toggleSavedPlace('test-beach');
+    setSavedSlugs(['ceecee-beach', 'ceecee-beach', 'sapo-national-park']);
+    expect(getSavedSlugs().sort()).toEqual(['ceecee-beach', 'sapo-national-park']);
+  });
+
+  it('setSavedSlugs notifies same-tab subscribers, same as toggling', () => {
+    const callback = jest.fn();
+    const unsubscribe = subscribeToSavedPlaces(callback);
+    setSavedSlugs(['ceecee-beach']);
+    expect(callback).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('clearSavedPlacesOnLogout wipes both the slug list and the offline snapshot cache', () => {
+    toggleSavedPlace('test-beach');
+    cachePlaceSnapshot(PLACE);
+
+    clearSavedPlacesOnLogout();
+
+    expect(getSavedSlugs()).toEqual([]);
+    expect(getCachedPlaceSnapshot('test-beach')).toBeNull();
+  });
+
+  it('clearSavedPlacesOnLogout resets the once-per-login sync guard', () => {
+    markSavedPlacesSyncedForUser('user-1');
+    expect(hasSyncedSavedPlacesForUser('user-1')).toBe(true);
+
+    clearSavedPlacesOnLogout();
+
+    expect(hasSyncedSavedPlacesForUser('user-1')).toBe(false);
+  });
+
+  it('the sync guard tracks the current user only — logging in as someone else needs its own sync', () => {
+    markSavedPlacesSyncedForUser('user-1');
+    expect(hasSyncedSavedPlacesForUser('user-1')).toBe(true);
+    expect(hasSyncedSavedPlacesForUser('user-2')).toBe(false);
   });
 });
 
