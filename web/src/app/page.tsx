@@ -516,7 +516,7 @@ export default async function Home() {
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Plan a Trip</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Pick your dates and destination — add stops as you go</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Pick your dates and destination — add places as you go</p>
             </div>
             <BriefcaseIcon
               aria-hidden

@@ -51,7 +51,7 @@ export function AddTripStop({
       setResults((prev) => prev.filter((p) => p.id !== placeId));
       onAdded();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not add this stop.');
+      setError(err instanceof HttpError ? err.message : 'Could not add this place.');
     } finally {
       setAddingId(null);
     }
@@ -59,7 +59,7 @@ export function AddTripStop({
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Add a stop</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Add a place</p>
       <div className="flex gap-2">
         <input
           type="text"

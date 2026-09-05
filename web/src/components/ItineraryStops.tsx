@@ -10,6 +10,16 @@ import type { ItineraryStopWithPlace } from '@/lib/types';
 // shape). `onRemove` is only passed for a
 // collaborative trip's detail view where the viewer can actually edit it —
 // the read-only generation-result views leave it undefined.
+//
+// Product feedback (Sep 5, 2026): "in Liberia we plan a trip to a place...
+// no one talks about stop." The word "stop" — clear enough to someone
+// picturing a multi-leg road trip — doesn't match how a Liberian traveler
+// actually describes this ("a trip to Nimba Ecolodge"). Kept the
+// underlying `stops` data model as-is (a trip can still bundle more than
+// one place across days if someone wants that); only the user-facing
+// copy changed here and everywhere else it showed up ("place"/"places"
+// instead of "stop"/"stops" — see AddTripStop, TripPlannerForm, the
+// homepage/trips/new blurbs, and the stat line drawn onto TripShareCard).
 export function ItineraryStops({
   stops,
   onRemove,
@@ -28,7 +38,7 @@ export function ItineraryStops({
   if (days.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-        No stops in this itinerary.
+        No places in this itinerary.
       </p>
     );
   }

@@ -180,7 +180,7 @@ export function TripPlannerForm() {
         </div>
 
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-          This is a preview — nothing&apos;s saved yet. Log in to save it, then add your own stops for each day.
+          This is a preview — nothing&apos;s saved yet. Log in to save it, then add your own places for each day.
         </p>
 
         {error && (
@@ -312,7 +312,7 @@ export function TripPlannerForm() {
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         {user
-          ? "You'll add your own stops next — as few or as many as this trip actually needs, on whichever day(s) you choose."
+          ? "You'll add your own places next — as few or as many as this trip actually needs, on whichever day(s) you choose."
           : "No account needed to plan — you'll only be asked to log in when you're ready to save this trip."}
       </p>
 
