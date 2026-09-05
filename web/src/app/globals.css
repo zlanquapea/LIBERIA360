@@ -804,6 +804,35 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-order-foot span, .ticket-order-foot a { align-items: center; display: inline-flex; gap: .35rem; }
 .ticket-order-foot a { color: var(--ticket-ink); font-weight: 700; }
 .dark .ticket-order-foot a { color: var(--ticket-yellow); }
+
+/* "Buy two, send one" ticket transfer feature. */
+.issued-pass-send { align-items: center; background: transparent; border: 1px solid var(--ticket-ink); color: var(--ticket-ink); display: flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .72rem; font-weight: 700; gap: .45rem; justify-content: center; margin-top: .6rem; min-height: 2.6rem; transition: background 160ms ease, color 160ms ease; width: 100%; }
+.issued-pass-send:hover { background: var(--ticket-ink); color: white; }
+.dark .issued-pass-send { border-color: var(--ticket-yellow); color: var(--ticket-yellow); }
+.dark .issued-pass-send:hover { background: var(--ticket-yellow); color: var(--ticket-deep); }
+.ticket-transfer-status-block { align-items: center; background: rgb(255 198 61 / .14); border: 1px dashed rgb(160 115 17 / .5); display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; padding: 1rem .9rem; text-align: center; }
+.ticket-transfer-status-block svg { color: #a07311; }
+.ticket-transfer-status-block p { color: var(--ticket-ink); font-size: .78rem; line-height: 1.4; margin: 0; }
+.dark .ticket-transfer-status-block p { color: #f4f5ed; }
+.ticket-transfer-cancel-link { color: #a84432; font-size: .72rem; font-weight: 700; text-decoration: underline; }
+.ticket-transfer-cancel-link:hover { color: #822f22; }
+.ticket-transfer-inbox { background: rgb(255 198 61 / .12); border: 1px solid rgb(160 115 17 / .35); margin-bottom: 1.6rem; padding: 1.1rem 1.3rem; }
+.ticket-transfer-inbox h2, .ticket-received-section h2 { align-items: center; color: var(--ticket-ink); display: flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .95rem; gap: .5rem; margin: 0 0 .9rem; }
+.dark .ticket-transfer-inbox h2, .dark .ticket-received-section h2 { color: #f4f5ed; }
+.ticket-transfer-inbox ul { display: grid; gap: .7rem; list-style: none; margin: 0; padding: 0; }
+.ticket-transfer-inbox-row { align-items: center; background: var(--ticket-paper); display: flex; flex-wrap: wrap; gap: .8rem; justify-content: space-between; padding: .8rem .9rem; }
+.ticket-transfer-inbox-title { color: var(--ticket-ink); font-weight: 700; font-size: .85rem; margin: 0; }
+.dark .ticket-transfer-inbox-title { color: #f4f5ed; }
+.ticket-transfer-inbox-meta { color: var(--ticket-slate); font-size: .72rem; margin: .25rem 0 0; }
+.ticket-transfer-inbox-actions { display: flex; gap: .5rem; }
+.ticket-transfer-accept, .ticket-transfer-decline { align-items: center; border-radius: 999px; display: inline-flex; font-size: .72rem; font-weight: 700; gap: .3rem; padding: .5rem .85rem; }
+.ticket-transfer-accept { background: var(--ticket-ink); color: white; }
+.ticket-transfer-accept:hover { background: var(--ticket-deep); }
+.ticket-transfer-decline { background: transparent; border: 1px solid var(--ticket-line); color: var(--ticket-slate); }
+.ticket-transfer-decline:hover { border-color: #a84432; color: #a84432; }
+.ticket-received-section { margin-top: 2rem; }
+.ticket-received-section .issued-pass-grid { border-top: 0; padding: 0; }
+
 .ticket-empty-state,
 .ticket-page-state {
   align-items: center;

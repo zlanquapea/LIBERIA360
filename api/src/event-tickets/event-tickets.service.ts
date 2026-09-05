@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
   createCipheriv,
@@ -15,10 +16,16 @@ import {
 } from "crypto";
 import * as QRCode from "qrcode";
 import { In, IsNull, Repository } from "typeorm";
+import { generateToken, hashToken } from "../auth/token-hash";
+import { AppConfig } from "../config/configuration";
 import { Event } from "../events/entities/event.entity";
 import { EventReviewStatus } from "../events/entities/event.enums";
+import { MailService } from "../mail/mail.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { User } from "../users/entities/user.entity";
+import { UsersService } from "../users/users.service";
 import { CreateEventTicketOrderDto } from "./dto/create-event-ticket-order.dto";
+import { CreateTicketTransferDto } from "./dto/create-ticket-transfer.dto";
 import { RedeemEventTicketDto } from "./dto/redeem-event-ticket.dto";
 import { ReviewEventTicketOrderDto } from "./dto/review-event-ticket-order.dto";
 import {
@@ -29,6 +36,23 @@ import {
   EventTicketOrder,
   EventTicketOrderStatus,
 } from "./entities/event-ticket-order.entity";
+import {
+  TicketTransfer,
+  TicketTransferStatus,
+  transferExpiresAt,
+} from "./entities/ticket-transfer.entity";
+
+// The sender's own view of a ticket that currently has (or recently had) an
+// outgoing transfer against it — "pending" while the recipient hasn't
+// responded yet (QR withheld: see transferTicket's doc comment for why),
+// "sent" once they've accepted (the ticket is now genuinely theirs). A
+// declined or cancelled transfer leaves no trace here — the ticket simply
+// reverts to a normal, un-transferred entry.
+export interface TicketTransferInfo {
+  transferId: string;
+  status: "pending" | "sent";
+  toEmail: string;
+}
 
 export interface BuyerTicketQr {
   id: string;
@@ -38,11 +62,64 @@ export interface BuyerTicketQr {
   status: EventTicketInstanceStatus;
   qrDataUrl: string;
   redeemedAt: Date | null;
+  transfer?: TicketTransferInfo;
 }
 
 export type BuyerEventTicketOrder = EventTicketOrder & {
   tickets: BuyerTicketQr[];
 };
+
+// A ticket someone else sent *to* this account and that has since been
+// accepted — deliberately not folded into BuyerEventTicketOrder, since the
+// order backing it belongs to (and was paid for by) whoever originally
+// bought it, not the recipient; showing them that order's payment details
+// would leak the original buyer's payment reference/amount for no reason.
+export interface ReceivedTicketSummary {
+  id: string;
+  ticketNumber: string;
+  ticketTypeName: string;
+  status: EventTicketInstanceStatus;
+  qrDataUrl: string;
+  redeemedAt: Date | null;
+  event: {
+    id: string;
+    name: string;
+    startDate: Date;
+    locationText: string | null;
+  };
+  fromUserName: string;
+  transferId: string;
+  receivedAt: Date;
+}
+
+// A still-open incoming transfer awaiting this account's accept/decline —
+// the "My Tickets" page's action-needed list.
+export interface PendingTicketTransferSummary {
+  id: string;
+  ticketInstanceId: string;
+  event: { id: string; name: string; startDate: Date };
+  ticketTypeName: string;
+  fromUserName: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+export interface MyTicketsResponse {
+  orders: BuyerEventTicketOrder[];
+  receivedTickets: ReceivedTicketSummary[];
+  pendingTransfers: PendingTicketTransferSummary[];
+}
+
+export interface TicketTransferPreview {
+  eventName: string;
+  eventStartDate: Date;
+  ticketTypeName: string;
+  ticketNumber: string;
+  fromUserName: string;
+  toEmail: string;
+  status: TicketTransferStatus;
+  expired: boolean;
+}
 
 // Lightweight per-ticket status for the organizer's order-management view —
 // enough to list and cancel individual passes without handing back QR
@@ -152,7 +229,13 @@ export class EventTicketsService {
     @InjectRepository(EventTicketOrder)
     private readonly orderRepo: Repository<EventTicketOrder>,
     @InjectRepository(EventTicketInstance)
-    private readonly instanceRepo?: Repository<EventTicketInstance>,
+    private readonly instanceRepo: Repository<EventTicketInstance>,
+    @InjectRepository(TicketTransfer)
+    private readonly transferRepo: Repository<TicketTransfer>,
+    private readonly usersService: UsersService,
+    private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   private async getEvent(id: string): Promise<Event> {
@@ -258,38 +341,66 @@ export class EventTicketsService {
     return { instanceId: match[1], token: match[2] };
   }
 
+  // Shared by the buyer's own tickets and a recipient's received tickets:
+  // the QR is withheld (empty string) both for a voided ticket (existing
+  // behavior) and for one currently in the middle of being sent elsewhere
+  // (see transferTicket's doc comment) — `withheld` covers the latter so
+  // callers don't need to duplicate that "pending transfer" check.
+  private async buildTicketQr(
+    instance: EventTicketInstance,
+    withheld = false,
+  ): Promise<Omit<BuyerTicketQr, "transfer">> {
+    let qrDataUrl = "";
+    if (instance.status !== EventTicketInstanceStatus.VOID && !withheld) {
+      const token = this.decryptToken(instance.tokenCiphertext);
+      qrDataUrl = await QRCode.toDataURL(
+        this.ticketPayload(instance.id, token),
+        {
+          errorCorrectionLevel: "H",
+          margin: 2,
+          width: 640,
+          color: { dark: "#071a52", light: "#ffffff" },
+        },
+      );
+    }
+    return {
+      id: instance.id,
+      sequence: instance.sequence,
+      ticketNumber: instance.ticketNumber,
+      ticketTypeName: instance.ticketTypeName,
+      status: instance.status,
+      qrDataUrl,
+      redeemedAt: instance.redeemedAt,
+    };
+  }
+
+  // `outgoingTransfers` maps ticketInstanceId -> this buyer's own most
+  // recent pending/accepted outgoing transfer for it (see findForBuyer,
+  // which is the only caller and the only place that map is built) — a
+  // ticket with no entry here was never sent anywhere and serializes
+  // exactly as before this feature existed.
   private async serializeBuyerOrder(
     order: EventTicketOrder,
+    outgoingTransfers: Map<string, TicketTransfer>,
   ): Promise<BuyerEventTicketOrder> {
-    if (!this.instanceRepo)
-      throw new Error("Ticket instance repository is unavailable");
     const instances = await this.instanceRepo.find({
       where: { orderId: order.id },
       order: { sequence: "ASC" },
     });
     const tickets = await Promise.all(
       instances.map(async (instance) => {
-        let qrDataUrl = "";
-        if (instance.status !== EventTicketInstanceStatus.VOID) {
-          const token = this.decryptToken(instance.tokenCiphertext);
-          qrDataUrl = await QRCode.toDataURL(
-            this.ticketPayload(instance.id, token),
-            {
-              errorCorrectionLevel: "H",
-              margin: 2,
-              width: 640,
-              color: { dark: "#071a52", light: "#ffffff" },
-            },
-          );
-        }
+        const outgoing = outgoingTransfers.get(instance.id);
+        const ticket = await this.buildTicketQr(instance, Boolean(outgoing));
+        if (!outgoing) return ticket;
         return {
-          id: instance.id,
-          sequence: instance.sequence,
-          ticketNumber: instance.ticketNumber,
-          ticketTypeName: instance.ticketTypeName,
-          status: instance.status,
-          qrDataUrl,
-          redeemedAt: instance.redeemedAt,
+          ...ticket,
+          transfer: {
+            transferId: outgoing.id,
+            status: (outgoing.status === TicketTransferStatus.ACCEPTED
+              ? "sent"
+              : "pending") as "pending" | "sent",
+            toEmail: outgoing.email,
+          },
         };
       }),
     );
@@ -299,8 +410,6 @@ export class EventTicketsService {
   private async serializeOrganizerOrder(
     order: EventTicketOrder,
   ): Promise<OrganizerEventTicketOrder> {
-    if (!this.instanceRepo)
-      throw new Error("Ticket instance repository is unavailable");
     const instances = await this.instanceRepo.find({
       where: { orderId: order.id },
       order: { sequence: "ASC" },
@@ -464,12 +573,164 @@ export class EventTicketsService {
     return this.orderRepo.save(order);
   }
 
-  async findForBuyer(userId: string): Promise<BuyerEventTicketOrder[]> {
+  // GET /ticket-orders/mine — three distinct things this account can see:
+  // orders it bought (each ticket showing its own send state, if any),
+  // tickets someone else sent *to* it that it has accepted, and incoming
+  // transfers still awaiting its accept/decline. Deliberately not folded
+  // into one flat ticket list — see ReceivedTicketSummary's doc comment
+  // for why a received ticket can't just be spliced into its original
+  // order (that order's payment details belong to whoever bought it).
+  async findForBuyer(userId: string): Promise<MyTicketsResponse> {
     const orders = await this.orderRepo.find({
       where: { buyerUserId: userId },
       order: { createdAt: "DESC" },
     });
-    return Promise.all(orders.map((order) => this.serializeBuyerOrder(order)));
+    const orderIds = orders.map((order) => order.id);
+    const myInstances = orderIds.length
+      ? await this.instanceRepo.find({ where: { orderId: In(orderIds) } })
+      : [];
+    const myInstanceIds = myInstances.map((instance) => instance.id);
+
+    // The most recent pending/accepted transfer THIS account itself sent
+    // for each of its own tickets — see serializeBuyerOrder's doc comment
+    // for why that's the only lookup needed to know whether (and to whom)
+    // one of this buyer's own tickets left their hands.
+    const outgoing = myInstanceIds.length
+      ? await this.transferRepo.find({
+          where: {
+            ticketInstanceId: In(myInstanceIds),
+            fromUserId: userId,
+            status: In([
+              TicketTransferStatus.PENDING,
+              TicketTransferStatus.ACCEPTED,
+            ]),
+          },
+          order: { createdAt: "DESC" },
+        })
+      : [];
+    const outgoingByInstance = new Map<string, TicketTransfer>();
+    for (const transfer of outgoing) {
+      if (!outgoingByInstance.has(transfer.ticketInstanceId)) {
+        outgoingByInstance.set(transfer.ticketInstanceId, transfer);
+      }
+    }
+
+    const buyerOrders = await Promise.all(
+      orders.map((order) =>
+        this.serializeBuyerOrder(order, outgoingByInstance),
+      ),
+    );
+
+    // Tickets this account now holds because someone else sent them over
+    // (excludes an instance from its own order — see the doc comment
+    // above on why that case renders through the normal order path
+    // instead).
+    const receivedInstances = (
+      await this.instanceRepo.find({
+        where: { currentOwnerUserId: userId },
+        relations: { order: true, event: true },
+      })
+    ).filter((instance) => instance.order.buyerUserId !== userId);
+    const receivedIds = receivedInstances.map((instance) => instance.id);
+    const incoming = receivedIds.length
+      ? await this.transferRepo.find({
+          where: {
+            ticketInstanceId: In(receivedIds),
+            toUserId: userId,
+            status: TicketTransferStatus.ACCEPTED,
+          },
+          order: { createdAt: "DESC" },
+        })
+      : [];
+    const incomingByInstance = new Map<string, TicketTransfer>();
+    for (const transfer of incoming) {
+      if (!incomingByInstance.has(transfer.ticketInstanceId)) {
+        incomingByInstance.set(transfer.ticketInstanceId, transfer);
+      }
+    }
+    const fromUsers = incoming.length
+      ? await this.userRepo.find({
+          where: { id: In(incoming.map((transfer) => transfer.fromUserId)) },
+        })
+      : [];
+    const fromUserNameById = new Map(
+      fromUsers.map((sender) => [sender.id, sender.name]),
+    );
+    const receivedTickets: ReceivedTicketSummary[] = await Promise.all(
+      receivedInstances.map(async (instance) => {
+        const transfer = incomingByInstance.get(instance.id);
+        const ticket = await this.buildTicketQr(instance);
+        return {
+          ...ticket,
+          event: {
+            id: instance.event.id,
+            name: instance.event.name,
+            startDate: instance.event.startDate,
+            locationText: instance.event.locationText,
+          },
+          fromUserName: transfer
+            ? (fromUserNameById.get(transfer.fromUserId) ??
+              "A LIBERIA360 traveler")
+            : "A LIBERIA360 traveler",
+          transferId: transfer?.id ?? "",
+          receivedAt: transfer?.respondedAt ?? instance.updatedAt,
+        };
+      }),
+    );
+
+    // Incoming transfers still waiting on this account's accept/decline —
+    // the "My Tickets" action-needed list. Resolved via explicit batched
+    // lookups (same pattern as receivedTickets above) rather than nested
+    // relations, so this stays independent of how deep a single query can
+    // eagerly join.
+    const pendingRows = (
+      await this.transferRepo.find({
+        where: { toUserId: userId, status: TicketTransferStatus.PENDING },
+        order: { createdAt: "DESC" },
+      })
+    ).filter((row) => row.expiresAt.getTime() >= Date.now());
+    const pendingInstanceIds = pendingRows.map((row) => row.ticketInstanceId);
+    const pendingInstances = pendingInstanceIds.length
+      ? await this.instanceRepo.find({
+          where: { id: In(pendingInstanceIds) },
+          relations: { event: true },
+        })
+      : [];
+    const pendingInstanceById = new Map(
+      pendingInstances.map((instance) => [instance.id, instance]),
+    );
+    const pendingSenderIds = [
+      ...new Set(pendingRows.map((row) => row.fromUserId)),
+    ];
+    const pendingSenders = pendingSenderIds.length
+      ? await this.userRepo.find({ where: { id: In(pendingSenderIds) } })
+      : [];
+    const pendingSenderNameById = new Map(
+      pendingSenders.map((sender) => [sender.id, sender.name]),
+    );
+    const pendingTransfers: PendingTicketTransferSummary[] = pendingRows
+      .map((row): PendingTicketTransferSummary | null => {
+        const instance = pendingInstanceById.get(row.ticketInstanceId);
+        if (!instance) return null;
+        return {
+          id: row.id,
+          ticketInstanceId: row.ticketInstanceId,
+          event: {
+            id: instance.event.id,
+            name: instance.event.name,
+            startDate: instance.event.startDate,
+          },
+          ticketTypeName: instance.ticketTypeName,
+          fromUserName:
+            pendingSenderNameById.get(row.fromUserId) ??
+            "A LIBERIA360 traveler",
+          createdAt: row.createdAt,
+          expiresAt: row.expiresAt,
+        };
+      })
+      .filter((row): row is PendingTicketTransferSummary => row !== null);
+
+    return { orders: buyerOrders, receivedTickets, pendingTransfers };
   }
 
   async findForOrganizer(
@@ -607,10 +868,7 @@ export class EventTicketsService {
         ),
       );
     }
-    return saveApproved(
-      this.orderRepo,
-      this.instanceRepo as Repository<EventTicketInstance>,
-    );
+    return saveApproved(this.orderRepo, this.instanceRepo);
   }
 
   // Scanning always returns 200 with an `outcome` — never throws for a bad
@@ -636,8 +894,6 @@ export class EventTicketsService {
     if (event.createdByUserId !== user.id) {
       throw new ForbiddenException("Only the event organizer can scan tickets");
     }
-    if (!this.instanceRepo)
-      throw new Error("Ticket instance repository is unavailable");
 
     let parsed: { instanceId: string; token: string };
     try {
@@ -759,8 +1015,6 @@ export class EventTicketsService {
     instanceId: string,
     user: User,
   ): Promise<OrganizerTicketSummary> {
-    if (!this.instanceRepo)
-      throw new Error("Ticket instance repository is unavailable");
     const instance = await this.instanceRepo.findOne({
       where: { id: instanceId },
       relations: { order: true },
@@ -784,6 +1038,282 @@ export class EventTicketsService {
       status: saved.status,
       redeemedAt: saved.redeemedAt,
     };
+  }
+
+  // "Buy two, send one" (the AFCON-style feature this whole module exists
+  // for): the current holder of an active, unused ticket sends it to
+  // another LIBERIA360 account by email. Deliberately requires an
+  // existing account rather than accepting any address — see
+  // TicketTransfer's doc comment for why a bearer-like credential (a
+  // scannable QR) shouldn't ever sit in a "waiting for someone to sign up"
+  // limbo the way a trip invite can.
+  async transferTicket(
+    instanceId: string,
+    user: User,
+    dto: CreateTicketTransferDto,
+  ): Promise<MyTicketsResponse> {
+    const instance = await this.instanceRepo.findOne({
+      where: { id: instanceId },
+      relations: { order: true, event: true },
+    });
+    if (!instance) throw new NotFoundException("Ticket not found");
+    const ownerId = instance.currentOwnerUserId ?? instance.order.buyerUserId;
+    if (ownerId !== user.id) {
+      throw new ForbiddenException("You don't own this ticket");
+    }
+    if (instance.status === EventTicketInstanceStatus.REDEEMED) {
+      throw new BadRequestException(
+        "This ticket has already been used and can't be sent to someone else",
+      );
+    }
+    if (instance.status === EventTicketInstanceStatus.VOID) {
+      throw new BadRequestException(
+        "This ticket has been cancelled and can't be sent to someone else",
+      );
+    }
+
+    const email = dto.email.trim().toLowerCase();
+    const recipient = await this.usersService.findByEmail(email);
+    if (!recipient) {
+      throw new NotFoundException(
+        "No LIBERIA360 account uses that email yet. Ask them to create one, then try again.",
+      );
+    }
+    if (recipient.id === user.id) {
+      throw new BadRequestException("You can't send a ticket to yourself");
+    }
+
+    const existing = await this.transferRepo.findOne({
+      where: {
+        ticketInstanceId: instance.id,
+        status: TicketTransferStatus.PENDING,
+      },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        `This ticket already has a pending transfer to ${existing.email}. Cancel it before sending it elsewhere.`,
+      );
+    }
+
+    const token = generateToken();
+    const transfer = await this.transferRepo.save(
+      this.transferRepo.create({
+        ticketInstanceId: instance.id,
+        eventId: instance.eventId,
+        fromUserId: user.id,
+        email: recipient.email,
+        toUserId: recipient.id,
+        tokenHash: hashToken(token),
+        status: TicketTransferStatus.PENDING,
+        expiresAt: transferExpiresAt(),
+      }),
+    );
+    await this.sendTransferEmail(instance, transfer, token, user);
+    await this.notificationsService.create(recipient.id, {
+      type: "ticket.transfer_received",
+      title: "Someone sent you a ticket",
+      body: `${user.name} sent you a ${instance.ticketTypeName} ticket to ${instance.event.name}.`,
+      link: "/account/my-tickets",
+    });
+    return this.findForBuyer(user.id);
+  }
+
+  private async sendTransferEmail(
+    instance: EventTicketInstance,
+    transfer: TicketTransfer,
+    token: string,
+    sender: User,
+  ): Promise<void> {
+    const webAppUrl = this.configService.get("webAppUrl", { infer: true });
+    const delivered = await this.mailService.sendTicketTransfer({
+      to: transfer.email,
+      senderName: sender.name,
+      eventName: instance.event.name,
+      ticketTypeName: instance.ticketTypeName,
+      transferUrl: `${webAppUrl}/ticket-transfer/${token}`,
+    });
+    transfer.emailDelivered = delivered;
+    await this.transferRepo.save(transfer);
+  }
+
+  // Sender-side "I sent it to the wrong person" / "I want it back" escape
+  // hatch — only while the recipient hasn't responded yet.
+  async cancelTransfer(
+    transferId: string,
+    user: User,
+  ): Promise<MyTicketsResponse> {
+    const transfer = await this.transferRepo.findOne({
+      where: { id: transferId },
+    });
+    if (!transfer) throw new NotFoundException("Transfer not found");
+    if (transfer.fromUserId !== user.id) {
+      throw new ForbiddenException("Only the sender can cancel this transfer");
+    }
+    if (transfer.status !== TicketTransferStatus.PENDING) {
+      throw new BadRequestException("Only a pending transfer can be cancelled");
+    }
+    transfer.status = TicketTransferStatus.CANCELLED;
+    transfer.respondedAt = new Date();
+    await this.transferRepo.save(transfer);
+    return this.findForBuyer(user.id);
+  }
+
+  private async acceptTransferRow(
+    user: User,
+    transfer: TicketTransfer,
+  ): Promise<MyTicketsResponse> {
+    if (transfer.toUserId !== user.id) {
+      throw new ForbiddenException(
+        "This ticket transfer isn't addressed to your account",
+      );
+    }
+    if (transfer.status !== TicketTransferStatus.PENDING) {
+      throw new BadRequestException(
+        "This ticket transfer is no longer pending",
+      );
+    }
+    if (transfer.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException("This ticket transfer has expired");
+    }
+    const instance = await this.instanceRepo.findOne({
+      where: { id: transfer.ticketInstanceId },
+      relations: { event: true },
+    });
+    if (!instance) throw new NotFoundException("This ticket no longer exists");
+    if (instance.status !== EventTicketInstanceStatus.ISSUED) {
+      throw new BadRequestException(
+        "This ticket is no longer available to receive",
+      );
+    }
+
+    instance.currentOwnerUserId = user.id;
+    await this.instanceRepo.save(instance);
+    transfer.status = TicketTransferStatus.ACCEPTED;
+    transfer.respondedAt = new Date();
+    await this.transferRepo.save(transfer);
+
+    const sender = await this.usersService.findById(transfer.fromUserId);
+    if (sender) {
+      const webAppUrl = this.configService.get("webAppUrl", { infer: true });
+      await this.mailService
+        .sendTicketTransferAccepted(
+          sender.email,
+          user.name,
+          instance.event.name,
+          `${webAppUrl}/account/my-tickets`,
+        )
+        .catch(() => undefined);
+      await this.notificationsService.create(sender.id, {
+        type: "ticket.transfer_accepted",
+        title: "Ticket transfer accepted",
+        body: `${user.name} accepted the ticket you sent for ${instance.event.name}.`,
+        link: "/account/my-tickets",
+      });
+    }
+    return this.findForBuyer(user.id);
+  }
+
+  private async declineTransferRow(
+    user: User,
+    transfer: TicketTransfer,
+  ): Promise<void> {
+    if (transfer.toUserId !== user.id) {
+      throw new ForbiddenException(
+        "This ticket transfer isn't addressed to your account",
+      );
+    }
+    if (transfer.status !== TicketTransferStatus.PENDING) {
+      throw new BadRequestException(
+        "This ticket transfer is no longer pending",
+      );
+    }
+    transfer.status = TicketTransferStatus.DECLINED;
+    transfer.respondedAt = new Date();
+    await this.transferRepo.save(transfer);
+    const sender = await this.usersService.findById(transfer.fromUserId);
+    if (sender) {
+      await this.notificationsService.create(sender.id, {
+        type: "ticket.transfer_declined",
+        title: "Ticket transfer declined",
+        body: `${user.name} declined the ticket you sent.`,
+        link: "/account/my-tickets",
+      });
+    }
+  }
+
+  /** In-app flow: accept/decline a transfer already linked to this account
+   * (no token in hand needed). */
+  acceptTransferById(
+    user: User,
+    transferId: string,
+  ): Promise<MyTicketsResponse> {
+    return this.getTransferOrThrow(transferId).then((row) =>
+      this.acceptTransferRow(user, row),
+    );
+  }
+
+  declineTransferById(user: User, transferId: string): Promise<void> {
+    return this.getTransferOrThrow(transferId).then((row) =>
+      this.declineTransferRow(user, row),
+    );
+  }
+
+  private async getTransferOrThrow(
+    transferId: string,
+  ): Promise<TicketTransfer> {
+    const row = await this.transferRepo.findOne({ where: { id: transferId } });
+    if (!row) throw new NotFoundException("Transfer not found");
+    return row;
+  }
+
+  private async findTransferByToken(token: string): Promise<TicketTransfer> {
+    const transfer = await this.transferRepo.findOne({
+      where: { tokenHash: hashToken(token) },
+    });
+    if (!transfer) {
+      throw new NotFoundException(
+        "This ticket transfer link is invalid or has expired",
+      );
+    }
+    return transfer;
+  }
+
+  /** GET /ticket-transfers/token/:token — public, unauthenticated preview
+   * for the emailed link's landing page. Doesn't require an account to
+   * view (only to act on it), mirroring the trip-invitation preview. */
+  async getTransferPreview(token: string): Promise<TicketTransferPreview> {
+    const transfer = await this.findTransferByToken(token);
+    const [instance, sender] = await Promise.all([
+      this.instanceRepo.findOne({
+        where: { id: transfer.ticketInstanceId },
+        relations: { event: true },
+      }),
+      this.usersService.findById(transfer.fromUserId),
+    ]);
+    if (!instance) throw new NotFoundException("This ticket no longer exists");
+    return {
+      eventName: instance.event.name,
+      eventStartDate: instance.event.startDate,
+      ticketTypeName: instance.ticketTypeName,
+      ticketNumber: instance.ticketNumber,
+      fromUserName: sender?.name ?? "A LIBERIA360 traveler",
+      toEmail: transfer.email,
+      status: transfer.status,
+      expired: transfer.expiresAt.getTime() < Date.now(),
+    };
+  }
+
+  /** Emailed-link flow: accept/decline while holding the token. */
+  acceptTransferByToken(user: User, token: string): Promise<MyTicketsResponse> {
+    return this.findTransferByToken(token).then((row) =>
+      this.acceptTransferRow(user, row),
+    );
+  }
+
+  declineTransferByToken(user: User, token: string): Promise<void> {
+    return this.findTransferByToken(token).then((row) =>
+      this.declineTransferRow(user, row),
+    );
   }
 
   // Organizer Metrics dashboard: everything needed to answer "how many
@@ -852,9 +1382,6 @@ export class EventTicketsService {
         },
       };
     }
-
-    if (!this.instanceRepo)
-      throw new Error("Ticket instance repository is unavailable");
 
     const [orders, instances] = await Promise.all([
       this.orderRepo.find({
