@@ -93,7 +93,7 @@ describe('PlaceCard', () => {
 
   it('shows the entry cost when the place has one on file', () => {
     render(<PlaceCard place={{ ...BASE_PLACE, estimatedCostEntry: 5 }} />);
-    expect(screen.getByText('$5.00')).toBeInTheDocument();
+    expect(screen.getByText('US$5.00')).toBeInTheDocument();
   });
 
   it('shows "Free" rather than "$0.00" for a zero entry cost', () => {

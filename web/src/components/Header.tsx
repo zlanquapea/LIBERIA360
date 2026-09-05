@@ -11,6 +11,11 @@ const desktopNavigation = [
   { href: "/events", label: "Events" },
   { href: "/car-rentals", label: "Car Rentals" },
   { href: "/creators", label: "Creators" },
+  // UX audit (Sep 5, 2026): the only link to /saved anywhere in the app
+  // used to live inside /account — unreachable for a signed-out guest,
+  // even though saved places are explicitly account-free. See
+  // BottomNav.tsx's matching comment for the full story.
+  { href: "/saved", label: "Saved" },
   { href: "/help", label: "Help" },
 ];
 
