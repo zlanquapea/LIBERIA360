@@ -5,16 +5,18 @@ import { BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { useSavedPlaces } from '@/hooks/useSavedPlaces';
 import { recordAnalyticsEvent } from '@/lib/analytics-api';
 
-// placeId is optional because most callers (PlaceCard grids) only have the
-// slug-keyed localStorage save state to toggle; the Destination Profile is
-// the one place that also has the id to attribute a "save" analytics event
-// to (Tech Spec §3.3) — no id, no event, save still works either way.
+// placeId is optional in the type only because a couple of call sites
+// historically only had the slug; every real caller today passes it, and
+// it's what lets toggle() both attribute a "save" analytics event
+// (Tech Spec §3.3) and mirror the save/unsave to a signed-in visitor's
+// account in the background (see useSavedPlaces' doc comment) — no id,
+// neither happens, but the device-local save itself still works either way.
 export function SaveButton({ slug, placeId, className = '' }: { slug: string; placeId?: string; className?: string }) {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(slug);
 
   function handleClick() {
-    const nowSaved = toggle(slug);
+    const nowSaved = toggle(slug, placeId);
     if (nowSaved && placeId) {
       recordAnalyticsEvent(placeId, 'save');
     }
