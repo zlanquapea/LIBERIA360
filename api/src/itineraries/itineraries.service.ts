@@ -1011,6 +1011,19 @@ export class ItinerariesService {
     if (itinerary.stops.some((s) => s.placeId === dto.placeId)) {
       throw new ConflictException("This place is already on the trip");
     }
+    // durationDays is derived from the trip's own start/end date (see
+    // resolveDurationDays above) and must stay that way — a stop's day
+    // can't silently stretch it past what the traveler actually chose, or
+    // the "X days" summary and the date-range badge would show two
+    // different trip lengths. AddStopDto already caps `day` at 30 for
+    // shape validation; this is the real, trip-specific ceiling.
+    if (dto.day > itinerary.durationDays) {
+      throw new BadRequestException(
+        itinerary.durationDays === 1
+          ? "This trip is only 1 day — add the place to day 1."
+          : `This trip is only ${itinerary.durationDays} days — pick a day between 1 and ${itinerary.durationDays}.`,
+      );
+    }
     const stopsForDay = itinerary.stops.filter((s) => s.day === dto.day);
     const order = stopsForDay.length
       ? Math.max(...stopsForDay.map((s) => s.order)) + 1
@@ -1019,7 +1032,6 @@ export class ItinerariesService {
       ...itinerary.stops,
       { day: dto.day, order, placeId: dto.placeId, notes: dto.notes ?? null },
     ];
-    itinerary.durationDays = Math.max(itinerary.durationDays, dto.day);
     const saved = await this.itineraryRepo.save(itinerary);
     return this.findOne(userId, saved.id);
   }

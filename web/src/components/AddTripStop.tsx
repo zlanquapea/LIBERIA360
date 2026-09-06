@@ -77,9 +77,9 @@ export function AddTripStop({
         <input
           type="number"
           min={1}
-          max={Math.max(durationDays, 30)}
+          max={durationDays}
           value={day}
-          onChange={(e) => setDay(Math.max(1, Number(e.target.value) || 1))}
+          onChange={(e) => setDay(Math.min(durationDays, Math.max(1, Number(e.target.value) || 1)))}
           aria-label="Day"
           className="w-16 shrink-0 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
