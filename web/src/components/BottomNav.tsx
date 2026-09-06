@@ -6,16 +6,16 @@ import type { ComponentType, SVGProps } from "react";
 import {
   HomeIcon,
   MapPinIcon,
-  BookmarkIcon,
-  UserGroupIcon,
+  MapIcon,
   CalendarDaysIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
   MapPinIcon as MapPinIconSolid,
-  BookmarkIcon as BookmarkIconSolid,
-  UserGroupIcon as UserGroupIconSolid,
+  MapIcon as MapIconSolid,
   CalendarDaysIcon as CalendarDaysIconSolid,
+  UserGroupIcon as UserGroupIconSolid,
 } from "@heroicons/react/24/solid";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -27,6 +27,22 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // "Save" on several place cards had no way back to that list at all.
 // Added here so it's reachable regardless of sign-in state, same as
 // every other tab.
+//
+// UX audit follow-up (Sep 6, 2026): Trip Planner — collaboration, chat,
+// sharing, community trips, its own homepage hero tile — had no slot
+// here at all despite being the flagship feature, reachable only via the
+// homepage tile or buried in Account > My Trips. Creators, a materially
+// smaller vertical, had held a permanent tab the whole time. Swapped:
+// Creators is still reachable from the desktop header nav and its own
+// homepage section, just no longer competing for one of five thumb-reach
+// slots on mobile against the thing most worth returning to.
+//
+// Product decision (Sep 6, 2026): Saved pulled back out again — it's now
+// surfaced as a quick-access tile on /account instead (grouped with the
+// other "your stuff" links rather than sitting alone in the tab bar), and
+// Creators is back, moved to the last slot rather than reclaiming its old
+// third position. Net effect: four steady discovery/planning tabs up
+// front (Home, Counties, Trips, Events) with Creators anchoring the end.
 const TABS: {
   href: string;
   label: string;
@@ -35,28 +51,28 @@ const TABS: {
 }[] = [
   { href: "/", label: "Home", icon: HomeIcon, activeIcon: HomeIconSolid },
   {
-    href: "/saved",
-    label: "Saved",
-    icon: BookmarkIcon,
-    activeIcon: BookmarkIconSolid,
-  },
-  {
     href: "/counties",
     label: "Counties",
     icon: MapPinIcon,
     activeIcon: MapPinIconSolid,
   },
   {
-    href: "/creators",
-    label: "Creators",
-    icon: UserGroupIcon,
-    activeIcon: UserGroupIconSolid,
+    href: "/trips",
+    label: "Trips",
+    icon: MapIcon,
+    activeIcon: MapIconSolid,
   },
   {
     href: "/events",
     label: "Events",
     icon: CalendarDaysIcon,
     activeIcon: CalendarDaysIconSolid,
+  },
+  {
+    href: "/creators",
+    label: "Creators",
+    icon: UserGroupIcon,
+    activeIcon: UserGroupIconSolid,
   },
 ];
 

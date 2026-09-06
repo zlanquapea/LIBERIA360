@@ -75,6 +75,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
     heading: "Trips & Bookings",
     actions: [
       {
+        href: "/saved",
+        label: "Saved places",
+        description: "Destinations you've saved on this device",
+        icon: BookmarkIcon,
+      },
+      {
         href: "/trips",
         label: "My Trips",
         description: "Your saved itineraries",
@@ -253,27 +259,6 @@ export default function AccountPage() {
             </Link>
           )}
       </section>
-
-      <Link
-        href="/saved"
-        className="flex items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-brand-900 hover:border-brand-400 hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-900 dark:bg-brand-950/30 dark:text-brand-100 dark:hover:bg-brand-950/50"
-      >
-        <span className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white">
-            <BookmarkIcon aria-hidden className="h-5 w-5" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold">Saved places</span>
-            <span className="mt-0.5 block truncate text-xs text-slate-600 dark:text-slate-300">
-              Return to destinations saved on this device.
-            </span>
-          </span>
-        </span>
-        <ChevronRightIcon
-          aria-hidden
-          className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
-        />
-      </Link>
 
       <RecentlyViewedSection />
 
