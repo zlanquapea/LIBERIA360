@@ -123,7 +123,7 @@ export class CreatorFeedService {
 
   async findPublicFeedForCreator(
     username: string,
-    params: { page?: number; limit?: number } = {},
+    params: { page?: number; limit?: number; userId?: string } = {},
   ) {
     const creator = await this.creatorRepo.findOne({ where: { username } });
     if (!creator)

@@ -15,6 +15,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle, seconds } from "@nestjs/throttler";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 import { CreateCreatorPostCommentDto } from "./dto/create-creator-post-comment.dto";
 import { CreateCreatorPostDto } from "./dto/create-creator-post.dto";
@@ -26,9 +27,24 @@ import { CreatorFeedService } from "./creator-feed.service";
 export class CreatorFeedController {
   constructor(private readonly feedService: CreatorFeedService) {}
 
+  // Public — no login required to browse — but decorated with
+  // OptionalJwtAuthGuard (not left bare) so a signed-in caller's
+  // per-post viewerLiked/viewerSaved still comes back correct instead
+  // of every post silently reading as not-liked/not-saved on every
+  // reload. See that guard's doc comment for why a bare @CurrentUser()
+  // here would never populate `user` at all (bug fix, Sep 6, 2026: this
+  // is why "Save" on a creator post looked like it wasn't working —
+  // it *was* saving, but the button reset to its unsaved look on every
+  // feed reload, and the next click undid the save it can't see it already made).
   @Get("feed")
-  findPublicFeed(@Query("page") page?: string, @Query("limit") limit?: string) {
+  @UseGuards(OptionalJwtAuthGuard)
+  findPublicFeed(
+    @CurrentUser() user: User | undefined,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
     return this.feedService.findPublicFeed({
+      userId: user?.id,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
@@ -49,12 +65,15 @@ export class CreatorFeedController {
   }
 
   @Get("feed/creator/:username")
+  @UseGuards(OptionalJwtAuthGuard)
   findCreatorFeed(
+    @CurrentUser() user: User | undefined,
     @Param("username") username: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
   ) {
     return this.feedService.findPublicFeedForCreator(username, {
+      userId: user?.id,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
@@ -113,8 +132,18 @@ export class CreatorFeedController {
     return this.feedService.recordShare(postId);
   }
 
+  // Same OptionalJwtAuthGuard fix as findPublicFeed above — this was
+  // already written assuming `user` could come back undefined (guest)
+  // or populated (signed in), but with no guard at all @CurrentUser()
+  // never actually ran the "jwt" strategy, so it was always undefined
+  // regardless: a signed-in caller's own comment likes never reflected
+  // as liked on load either.
   @Get("posts/:postId/comments")
-  findComments(@Param("postId") postId: string, @CurrentUser() user?: User) {
+  @UseGuards(OptionalJwtAuthGuard)
+  findComments(
+    @Param("postId") postId: string,
+    @CurrentUser() user: User | undefined,
+  ) {
     return this.feedService.findComments(postId, user?.id);
   }
 
