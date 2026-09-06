@@ -21,6 +21,7 @@ import { ContactLink } from './ContactLink';
 import { SaveButton } from './SaveButton';
 import { ReportButton } from './ReportButton';
 import { BookingRequestSection } from './BookingRequestSection';
+import { StickyBookingBar } from './StickyBookingBar';
 import { ShareMenu } from './ShareMenu';
 import { VerificationBadge } from './VerificationBadge';
 import { VerificationTrustInfo } from './VerificationTrustInfo';
@@ -82,6 +83,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
     `${actionClass} border border-slate-200 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30`;
 
   return (
+    <>
     <section className="flex flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-6">
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -261,6 +263,10 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         )}
       </div>
     </section>
+    {effectiveBusiness && (
+      <StickyBookingBar business={effectiveBusiness} name={place.name} />
+    )}
+    </>
   );
 }
 

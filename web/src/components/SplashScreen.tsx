@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
-const SPLASH_SESSION_KEY = 'liberia360:splash-seen';
-const SPLASH_DISPLAY_MS = 2500;
+// Exported so OnboardingTour can wait out the same display window before
+// showing its own full-screen moment on a first-ever visit, instead of
+// the two stacking.
+export const SPLASH_SESSION_KEY = 'liberia360:splash-seen';
+export const SPLASH_DISPLAY_MS = 2500;
 const SPLASH_EXIT_MS = 400;
 
 export function SplashScreen() {

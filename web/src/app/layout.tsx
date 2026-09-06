@@ -9,6 +9,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { Footer } from "@/components/Footer";
 import { Liberia360Assistant } from "@/components/Liberia360Assistant";
 import { SplashScreen } from "@/components/SplashScreen";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export const metadata: Metadata = {
   title: "LIBERIA360 — Everything Liberia. One Place.",
@@ -77,6 +78,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <SplashScreen />
+        <OnboardingTour />
         <Header />
         <div
           id="main-content"

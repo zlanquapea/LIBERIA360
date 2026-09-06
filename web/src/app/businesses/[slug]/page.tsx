@@ -25,6 +25,7 @@ import { ReportButton } from '@/components/ReportButton';
 import { ShareMenu } from '@/components/ShareMenu';
 import { SaveButton } from '@/components/SaveButton';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
+import { StickyBookingBar } from '@/components/StickyBookingBar';
 import { MenuSection } from '@/components/MenuSection';
 import { JsonLd } from '@/components/JsonLd';
 import { businessJsonLd } from '@/lib/structured-data';
@@ -306,6 +307,8 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
           <ReportButton targetType="business" targetId={business.id} label="Report an update" />
         </div>
       </section>
+
+      <StickyBookingBar business={business} name={business.name} />
 
       <Section eyebrow="Discover the business" title="About this business">
         <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
