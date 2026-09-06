@@ -6,16 +6,16 @@ import type { ComponentType, SVGProps } from "react";
 import {
   HomeIcon,
   MapPinIcon,
-  BookmarkIcon,
   MapIcon,
   CalendarDaysIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
   MapPinIcon as MapPinIconSolid,
-  BookmarkIcon as BookmarkIconSolid,
   MapIcon as MapIconSolid,
   CalendarDaysIcon as CalendarDaysIconSolid,
+  UserGroupIcon as UserGroupIconSolid,
 } from "@heroicons/react/24/solid";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -36,6 +36,13 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // Creators is still reachable from the desktop header nav and its own
 // homepage section, just no longer competing for one of five thumb-reach
 // slots on mobile against the thing most worth returning to.
+//
+// Product decision (Sep 6, 2026): Saved pulled back out again — it's now
+// surfaced as a quick-access tile on /account instead (grouped with the
+// other "your stuff" links rather than sitting alone in the tab bar), and
+// Creators is back, moved to the last slot rather than reclaiming its old
+// third position. Net effect: four steady discovery/planning tabs up
+// front (Home, Counties, Trips, Events) with Creators anchoring the end.
 const TABS: {
   href: string;
   label: string;
@@ -43,12 +50,6 @@ const TABS: {
   activeIcon: IconComponent;
 }[] = [
   { href: "/", label: "Home", icon: HomeIcon, activeIcon: HomeIconSolid },
-  {
-    href: "/saved",
-    label: "Saved",
-    icon: BookmarkIcon,
-    activeIcon: BookmarkIconSolid,
-  },
   {
     href: "/counties",
     label: "Counties",
@@ -66,6 +67,12 @@ const TABS: {
     label: "Events",
     icon: CalendarDaysIcon,
     activeIcon: CalendarDaysIconSolid,
+  },
+  {
+    href: "/creators",
+    label: "Creators",
+    icon: UserGroupIcon,
+    activeIcon: UserGroupIconSolid,
   },
 ];
 
