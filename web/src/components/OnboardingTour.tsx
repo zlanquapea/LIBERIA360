@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapIcon, SparklesIcon, BookmarkIcon } from "@heroicons/react/24/outline";
 import { SPLASH_DISPLAY_MS, SPLASH_SESSION_KEY } from "./SplashScreen";
+import { SafeImage } from "./SafeImage";
+import { gradientForCategory } from "@/lib/category-colors";
+import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
+import type { Place } from "@/lib/types";
 
 const ONBOARDING_STORAGE_KEY = "liberia360:onboarding-seen";
 
@@ -11,7 +15,9 @@ const ONBOARDING_STORAGE_KEY = "liberia360:onboarding-seen";
 // own icon in lib/site-nav.ts, BookmarkIcon is Saved's) so a visitor who
 // remembers this tour gets a small head start recognizing them again in
 // the nav — SparklesIcon for the trip planner is the one exception, since
-// that page doesn't have a single fixed icon of its own to match.
+// that page doesn't have a single fixed icon of its own to match. Doubles
+// as each step's fallback badge when no real photo is available (see
+// showcasePlaces below).
 const STEPS = [
   {
     icon: MapIcon,
@@ -41,9 +47,28 @@ const STEPS = [
 // AdvertisementBanner (see EventCarousel's doc comment) — rather than a
 // hand-rolled touch-drag handler, plus Next/Skip buttons for anyone who
 // isn't swiping.
+//
+// Visual pass (Sep 6, 2026): "show the beauty of Liberia, not just text."
+// This app has a deliberate no-*stock*-photography rule (see the
+// layout-pass note atop app/page.tsx) — a generic tourism stock photo
+// behind an onboarding step would look exactly as fake as it is. The fix
+// used there for the homepage hero (HeroPhotoMosaic) is the same fix
+// here: pull a handful of genuine catalog photos — real places already
+// listed on the platform — and let each step's own photo carry the
+// visual weight instead of a plain icon-in-a-circle. Fetched once, lazily,
+// only at the moment the tour is actually about to open (never on a page
+// load that won't show it), and each step falls back to its icon badge on
+// the same colored-gradient treatment as PlaceCard/HeroPhotoMosaic if the
+// catalog doesn't have enough photographed places yet — never a fake
+// photo standing in for a real one.
 export function OnboardingTour() {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showcasePlaces, setShowcasePlaces] = useState<(Place | null)[]>([
+    null,
+    null,
+    null,
+  ]);
   const trackRef = useRef<HTMLDivElement>(null);
   const slideEls = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -72,6 +97,28 @@ export function OnboardingTour() {
       return;
     }
     if (seen) return;
+
+    // Best-effort, never blocks opening the tour — a slow/failed fetch
+    // just means every step falls back to its icon badge instead of a
+    // photo (see the component doc comment above). featured-first (the
+    // API's own default sort) so this leans toward the catalog's best
+    // photographed places rather than whatever happens to be newest.
+    fetch("/api/v1/places?limit=8")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { data?: Place[] } | null) => {
+        const withPhotos = (body?.data ?? []).filter(
+          (place) => place.images.length > 0,
+        );
+        if (withPhotos.length === 0) return;
+        setShowcasePlaces([
+          withPhotos[0] ?? null,
+          withPhotos[1] ?? null,
+          withPhotos[2] ?? null,
+        ]);
+      })
+      .catch(() => {
+        // Fallback icon badges cover this — nothing else to do.
+      });
 
     // Splash already ran this session (a later page load, same tab) →
     // show immediately. Otherwise splash is about to run for the first
@@ -176,7 +223,7 @@ export function OnboardingTour() {
       <button
         type="button"
         onClick={dismiss}
-        className="absolute right-3 top-3 z-10 rounded-full px-3 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-400 dark:hover:text-slate-100"
+        className="absolute right-3 top-3 z-10 rounded-full bg-black/25 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         Skip
       </button>
@@ -187,31 +234,78 @@ export function OnboardingTour() {
       >
         {STEPS.map((step, i) => {
           const Icon = step.icon;
+          const place = showcasePlaces[i];
+          const cover = place?.images[0] ? resolveImageUrl(place.images[0]) : null;
+          const coverThumb = place?.images[0]
+            ? resolveThumbUrl(place.images[0])
+            : null;
+
           return (
             <div
               key={step.title}
               ref={(el) => {
                 slideEls.current[i] = el;
               }}
-              className="flex w-full shrink-0 snap-center flex-col items-center justify-center gap-6 px-8 pt-16 text-center"
+              className="relative flex w-full shrink-0 snap-center flex-col overflow-hidden"
             >
-              <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
-                <Icon aria-hidden className="h-10 w-10" />
-              </span>
-              <div className="max-w-sm">
-                <h2 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-                  {step.title}
-                </h2>
-                <p className="mt-3 leading-6 text-slate-600 dark:text-slate-300">
-                  {step.description}
-                </p>
-              </div>
+              {cover ? (
+                <>
+                  <SafeImage
+                    src={cover}
+                    thumbSrc={coverThumb}
+                    alt=""
+                    loading={i === 0 ? "eager" : "lazy"}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    fallback={
+                      <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{ backgroundImage: gradientForCategory(place!.category.slug) }}
+                      />
+                    }
+                  />
+                  {/* Bottom-anchored scrim so the title/description stay
+                      legible over any photo, same purpose as the dark
+                      gradient under the homepage hero's own imagery. */}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent"
+                  />
+                  <div className="relative mt-auto flex flex-col gap-3 px-8 pb-40 pt-16 text-center sm:pb-44">
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm">
+                      <Icon aria-hidden className="h-7 w-7" />
+                    </span>
+                    <div className="mx-auto max-w-sm">
+                      <h2 className="font-display text-2xl font-bold text-white">
+                        {step.title}
+                      </h2>
+                      <p className="mt-3 leading-6 text-white/85">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 pb-40 pt-16 text-center sm:pb-44">
+                  <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+                    <Icon aria-hidden className="h-10 w-10" />
+                  </span>
+                  <div className="max-w-sm">
+                    <h2 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
+                      {step.title}
+                    </h2>
+                    <p className="mt-3 leading-6 text-slate-600 dark:text-slate-300">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      <div className="flex flex-col gap-4 px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
+      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 bg-white px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 dark:bg-slate-950">
         <div className="flex items-center justify-center gap-1.5">
           {STEPS.map((step, i) => (
             <button
