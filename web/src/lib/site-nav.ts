@@ -7,7 +7,6 @@ import {
   UserGroupIcon,
   BookmarkIcon,
   LifebuoyIcon,
-  BuildingStorefrontIcon,
   ViewfinderCircleIcon,
   StarIcon,
 } from "@heroicons/react/24/outline";
@@ -42,15 +41,16 @@ export const SITE_NAVIGATION: SiteNavItem[] = [
 // crowding out room for things with no other way in on mobile at all.
 // Dropped those three (still one tap away via BottomNav) and used the
 // freed slots for real sections that otherwise have zero mobile
-// entry point: Businesses and Featured have no nav presence anywhere
-// below lg, and Near Me's radius search is exactly the kind of
-// "quick access" this drawer exists for.
+// entry point: Featured Destination has no nav presence anywhere below
+// lg, and Near Me's radius search is exactly the kind of "quick access"
+// this drawer exists for. Businesses was here too in the first pass but
+// dropped per product direction — "Businesses" read as a lower-priority
+// destination for this particular drawer than the others.
 export const MOBILE_MENU_NAVIGATION: SiteNavItem[] = [
   { href: "/explore", label: "Explore", icon: MapIcon },
-  { href: "/businesses", label: "Businesses", icon: BuildingStorefrontIcon },
   { href: "/car-rentals", label: "Car Rentals", icon: TruckIcon },
   { href: "/near-me", label: "Near Me", icon: ViewfinderCircleIcon },
-  { href: "/featured", label: "Featured", icon: StarIcon },
+  { href: "/featured", label: "Featured Destination", icon: StarIcon },
   // UX audit (Sep 5, 2026): the only link to /saved anywhere in the app
   // used to live inside /account — unreachable for a signed-out guest,
   // even though saved places are explicitly account-free. Still true
