@@ -1,74 +1,16 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { OnboardingTour } from "./OnboardingTour";
-import type { Place } from "@/lib/types";
-
-function fetchResponse(body: unknown) {
-  return { ok: true, json: async () => body } as Response;
-}
-
-const PLACE_WITH_PHOTO: Place = {
-  id: "p1",
-  name: "Sunset Beach",
-  slug: "sunset-beach",
-  description: "A beach.",
-  type: "nature_site",
-  category: { id: "c1", name: "Nature", slug: "nature", description: null, icon: "MapIcon" },
-  tags: [],
-  county: {
-    id: "co1",
-    name: "Montserrado",
-    slug: "montserrado",
-    rolloutStage: 1,
-    icon: null,
-    emergencyNumber: null,
-    safetyTips: [],
-    localCustoms: null,
-  },
-  city: "Monrovia",
-  latitude: 6.3,
-  longitude: -10.8,
-  distanceFromMonroviaKm: 5,
-  recommendedVisitLength: null,
-  estimatedCostEntry: null,
-  estimatedCostGuide: null,
-  estimatedCostTransport: null,
-  images: ["/uploads/beach.jpg"],
-  videos: [],
-  openingHours: null,
-  structuredHours: null,
-  contactPhone: null,
-  whatsapp: null,
-  website: null,
-  instagram: null,
-  facebook: null,
-  rating: 4.5,
-  reviewCount: 3,
-  verificationStatus: "verified",
-  featured: true,
-  reviewStatus: "approved",
-  ownerUserId: null,
-  rejectionReason: null,
-  submittedAt: null,
-  reviewedAt: null,
-  reviewedByUserId: null,
-};
 
 describe("OnboardingTour", () => {
-  const originalFetch = global.fetch;
-
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
     jest.useFakeTimers();
-    // Empty catalog by default — every step falls back to its icon badge,
-    // matching the pre-photo test expectations below.
-    global.fetch = jest.fn().mockResolvedValue(fetchResponse({ data: [] }));
   });
 
   afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
-    global.fetch = originalFetch;
   });
 
   it("shows nothing until the splash screen's own display window has passed on a first-ever visit", () => {
@@ -136,39 +78,23 @@ describe("OnboardingTour", () => {
   });
 
   // Visual pass (Sep 6, 2026): "show the beauty of Liberia, not just
-  // text" — steps now show a real catalog photo behind their title when
-  // the platform has one, instead of always falling back to a plain icon
-  // badge.
-  it("shows a real catalog photo behind a step when the platform has one", async () => {
-    global.fetch = jest.fn().mockResolvedValue(fetchResponse({ data: [PLACE_WITH_PHOTO] }));
-
+  // text" — each step shows one of three hand-picked photos bundled under
+  // public/onboarding (see the component doc comment for why these
+  // replaced the earlier live-catalog-photo fetch).
+  it("shows each step's own bundled photo", () => {
     render(<OnboardingTour />);
-    // Flush the fetch → res.json() → setState promise chain's several
-    // microtask hops under fake timers (real Promise microtasks aren't
-    // affected by jest's fake timers, only setTimeout/setInterval are).
-    await act(async () => {
-      for (let i = 0; i < 10; i += 1) {
-        await Promise.resolve();
-      }
-    });
     act(() => jest.advanceTimersByTime(2650));
 
-    expect(screen.getByText("Discover all of Liberia")).toBeInTheDocument();
     // The dialog renders via a portal to document.body, so it's a sibling
     // of RTL's own `container` div, not a descendant of it — query the
-    // document directly. `alt=""` marks the photo decorative (the title/
-    // description already carry the meaning), so it has no accessible
-    // "img" role to query by — check the rendered <img> element itself.
-    const img = document.querySelector("img");
-    expect(img).toHaveAttribute("src", expect.stringContaining("beach.jpg"));
-  });
-
-  it("falls back to the icon badge when the catalog has no photographed places", () => {
-    render(<OnboardingTour />);
-    act(() => jest.advanceTimersByTime(2650));
-
-    expect(screen.getByText("Discover all of Liberia")).toBeInTheDocument();
-    expect(document.querySelector("img")).not.toBeInTheDocument();
+    // document directly. `alt=""` marks each photo decorative (the title/
+    // description already carry the meaning), so there's no accessible
+    // "img" role to query by — check the rendered <img> elements directly.
+    const images = document.querySelectorAll("img");
+    expect(images).toHaveLength(3);
+    expect(images[0]).toHaveAttribute("src", expect.stringContaining("discover.jpg"));
+    expect(images[1]).toHaveAttribute("src", expect.stringContaining("plan-trip.jpg"));
+    expect(images[2]).toHaveAttribute("src", expect.stringContaining("save-places.jpg"));
   });
 
   // Regression (Sep 6, 2026): this modal is a real, clickable overlay —
