@@ -24,6 +24,7 @@ import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon, iconSvgMarkup } from '@/lib/icons';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
+import { DropdownOption, MobileFilterSheet, PRICE_BUCKETS } from './MobileFilterSheet';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
 
@@ -42,19 +43,6 @@ const USER_LOCATION_ICON = L.divIcon({
   iconSize: [20, 20],
   iconAnchor: [10, 10],
 });
-
-// Single-select price buckets — same ranges SearchFilters offers, reused
-// here so "Under $10" means the same thing everywhere. `id: ''` is the
-// "Any price" reset state; a place with no listed cost never matches a
-// specific bucket (there's nothing to confirm it against), same as the
-// backend's own priceMin/priceMax filtering.
-const PRICE_BUCKETS: { id: string; label: string; min?: number; max?: number }[] = [
-  { id: '', label: 'Any price' },
-  { id: 'free', label: 'Free', min: 0, max: 0 },
-  { id: 'under10', label: 'Under $10', min: 0, max: 10 },
-  { id: '10-50', label: '$10 – $50', min: 10, max: 50 },
-  { id: '50plus', label: '$50+', min: 50 },
-];
 
 function pinIcon(color: string, icon: string | null, categorySlug: string, selected: boolean) {
   return L.divIcon({
@@ -177,22 +165,6 @@ function FilterPopover({
   );
 }
 
-function DropdownOption({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${
-        selected
-          ? 'font-semibold text-brand-700 dark:text-brand-300'
-          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
 // Result card for the sheet below the map — a fuller preview than a map
 // popup (image, category, county, rating) with its own "View details" link
 // alongside the row's own link, so either the whole row or just that button
@@ -262,6 +234,15 @@ function ExploreResultRow({ place, selected }: { place: Place; selected: boolean
 // against the places this page already fetched), the map filling the
 // space between, and a real results sheet below it instead of a thumbnail
 // strip pinned to the map's bottom edge.
+//
+// Mobile filter UX pass (Sep 6, 2026): below lg, the row of FilterPopover
+// dropdowns above is hidden in favor of a single "Filters" button that
+// opens MobileFilterSheet — a full-width slide-up sheet, the idiomatic
+// mobile pattern, in place of several small dropdowns anchored under
+// filter pills (workable on desktop's wider, mouse-driven layout, awkward
+// one-handed on a phone). Both surfaces drive the exact same filter
+// state, so switching between a wide and narrow viewport never loses or
+// duplicates a selection.
 export function ExploreMapClient({
   places,
   categories,
@@ -278,6 +259,7 @@ export function ExploreMapClient({
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const priceBucket = PRICE_BUCKETS.find((bucket) => bucket.id === priceBucketId);
 
@@ -341,11 +323,13 @@ export function ExploreMapClient({
           />
         </div>
 
-        {/* flex-wrap, not overflow-x-auto — a scrolling row would force
-            overflow-y to `auto` too (CSS computes a `visible` axis to `auto`
-            once the other axis is non-visible), clipping each dropdown's
-            panel exactly where it needs to overflow downward. */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* lg+ only — see MobileFilterSheet's doc comment for the
+            mobile-width replacement below. flex-wrap, not overflow-x-auto —
+            a scrolling row would force overflow-y to `auto` too (CSS
+            computes a `visible` axis to `auto` once the other axis is
+            non-visible), clipping each dropdown's panel exactly where it
+            needs to overflow downward. */}
+        <div className="hidden flex-wrap items-center gap-2 lg:flex">
           <FilterPopover label="Category" icon={AdjustmentsHorizontalIcon} active={!allCategoriesActive}>
             {() => (
               <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
@@ -430,7 +414,54 @@ export function ExploreMapClient({
             </button>
           )}
         </div>
+
+        {/* Mobile only — a single trigger opening MobileFilterSheet in
+            place of the dropdown row above. */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setFilterSheetOpen(true)}
+            aria-haspopup="dialog"
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors ${
+              hasActiveFilters
+                ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-900/40 dark:text-brand-300'
+                : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+            }`}
+          >
+            <AdjustmentsHorizontalIcon aria-hidden className="h-4 w-4" />
+            Filters
+          </button>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="shrink-0 whitespace-nowrap px-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
+
+      <MobileFilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        categories={categories}
+        activeSlugs={activeSlugs}
+        allCategoriesActive={allCategoriesActive}
+        onToggleCategory={toggleCategory}
+        onSelectAllCategories={() => setActiveSlugs(new Set(categories.map((c) => c.slug)))}
+        counties={counties}
+        countySlug={countySlug}
+        onSelectCounty={setCountySlug}
+        openNowOnly={openNowOnly}
+        onToggleOpenNow={() => setOpenNowOnly((value) => !value)}
+        priceBucketId={priceBucketId}
+        onSelectPriceBucket={setPriceBucketId}
+        hasActiveFilters={hasActiveFilters}
+        onClear={clearFilters}
+        resultCount={visiblePlaces.length}
+      />
 
       <div className="relative min-h-[220px] flex-1">
         <MapContainer center={MONROVIA_CENTER} zoom={11} scrollWheelZoom className="h-full w-full">
