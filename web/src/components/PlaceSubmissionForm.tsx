@@ -8,7 +8,7 @@ import { HttpError } from '@/lib/http';
 import { formatDailyHours, parseDailyHours } from '@/lib/opening-hours';
 import { PhotoManager } from './PhotoManager';
 import { DailyHoursPicker } from './DailyHoursPicker';
-import { PlaceLocationPickerLoader } from '@/app/admin/content/PlaceLocationPickerLoader';
+import { PlaceLocationPickerLoader } from '@/app/(no-locale)/admin/content/PlaceLocationPickerLoader';
 import type { Category, County, Place, PlaceType } from '@/lib/types';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];

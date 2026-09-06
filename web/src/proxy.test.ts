@@ -4,8 +4,23 @@
 // next/server's NextRequest needs the platform Request/Response/fetch
 // globals, which jsdom (this project's default test environment) doesn't
 // implement — Node's own globals (Node 18+) do.
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { proxy } from "./proxy";
+
+// next-intl (and its /middleware and /routing entry points) ship an ESM
+// build that Jest's default transform (node_modules is untransformed)
+// can't parse, and none of these tests exercise locale detection anyway —
+// they're all about the auth gate that runs before it (see proxy.ts's own
+// doc comment). Pass-through stubs keep this file focused on what it
+// actually tests.
+jest.mock("next-intl/middleware", () => ({
+  __esModule: true,
+  default: () => () => NextResponse.next(),
+}));
+jest.mock("next-intl/routing", () => ({
+  __esModule: true,
+  defineRouting: (config: unknown) => config,
+}));
 
 // This regression pins the fix itself: proxy() used to validate the session
 // cookie by fetching new URL("/api/v1/auth/me", request.url) — this app's
@@ -110,6 +125,37 @@ describe("proxy", () => {
       }),
     );
     const request = requestWithSessionCookie("https://app.example.com/admin");
+
+    const response = await proxy(request);
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  // i18n (Sep 2026): /account lives inside the [locale] segment
+  // (src/app/[locale]/account), so it's reachable as /fr/account,
+  // /zh/account, /ar/account too — not just the unprefixed English form
+  // the tests above cover. A French visitor with no session hitting
+  // /fr/account must still be redirected, and back to /fr/login (not the
+  // bare /login the unprefixed tests expect), or the locale is lost right
+  // where a visitor most needs to stay oriented.
+  it("redirects a locale-prefixed /account the same way as the unprefixed form", async () => {
+    const fetchSpy = jest.spyOn(global, "fetch");
+    const request = new NextRequest("https://app.example.com/fr/account");
+
+    const response = await proxy(request);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://app.example.com/fr/login?next=%2Ffr%2Faccount",
+    );
+  });
+
+  it("lets a valid session through on a locale-prefixed /account", async () => {
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+    const request = requestWithSessionCookie("https://app.example.com/zh/account");
 
     const response = await proxy(request);
 

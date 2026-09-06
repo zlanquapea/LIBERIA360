@@ -11,7 +11,7 @@ import { HttpError } from '@/lib/http';
 import { formatEventCategory, toDatetimeLocalInput } from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
 import { BrandLoader } from './BrandLoader';
-import { PlaceLocationPickerLoader } from '@/app/admin/content/PlaceLocationPickerLoader';
+import { PlaceLocationPickerLoader } from '@/app/(no-locale)/admin/content/PlaceLocationPickerLoader';
 import type { County, Event, EventCategory, EventTicketType } from '@/lib/types';
 
 const EVENT_CATEGORIES: EventCategory[] = ['concert', 'festival', 'sports', 'nightlife', 'seasonal', 'other'];
