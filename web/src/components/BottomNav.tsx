@@ -7,14 +7,14 @@ import {
   HomeIcon,
   MapPinIcon,
   BookmarkIcon,
-  UserGroupIcon,
+  MapIcon,
   CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
   MapPinIcon as MapPinIconSolid,
   BookmarkIcon as BookmarkIconSolid,
-  UserGroupIcon as UserGroupIconSolid,
+  MapIcon as MapIconSolid,
   CalendarDaysIcon as CalendarDaysIconSolid,
 } from "@heroicons/react/24/solid";
 
@@ -27,6 +27,15 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // "Save" on several place cards had no way back to that list at all.
 // Added here so it's reachable regardless of sign-in state, same as
 // every other tab.
+//
+// UX audit follow-up (Sep 6, 2026): Trip Planner — collaboration, chat,
+// sharing, community trips, its own homepage hero tile — had no slot
+// here at all despite being the flagship feature, reachable only via the
+// homepage tile or buried in Account > My Trips. Creators, a materially
+// smaller vertical, had held a permanent tab the whole time. Swapped:
+// Creators is still reachable from the desktop header nav and its own
+// homepage section, just no longer competing for one of five thumb-reach
+// slots on mobile against the thing most worth returning to.
 const TABS: {
   href: string;
   label: string;
@@ -47,10 +56,10 @@ const TABS: {
     activeIcon: MapPinIconSolid,
   },
   {
-    href: "/creators",
-    label: "Creators",
-    icon: UserGroupIcon,
-    activeIcon: UserGroupIconSolid,
+    href: "/trips",
+    label: "Trips",
+    icon: MapIcon,
+    activeIcon: MapIconSolid,
   },
   {
     href: "/events",
