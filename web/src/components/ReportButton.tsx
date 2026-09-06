@@ -87,6 +87,7 @@ export function ReportButton({
       className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-2 text-xs"
     >
       <select
+        aria-label="Report reason"
         value={reason}
         onChange={(e) => setReason(e.target.value as ReportReason)}
         className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
