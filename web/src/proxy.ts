@@ -37,6 +37,20 @@ function stripLocalePrefix(pathname: string): { prefix: string; rest: string } {
   return { prefix: "", rest: pathname };
 }
 
+// Everything physically under src/app/(no-locale) — a route group, so
+// none of this appears in the URL. These pages have no [locale] segment
+// and render no NextIntlClientProvider, so next-intl's middleware must
+// never touch them: it doesn't know these routes are locale-less and
+// will rewrite e.g. /admin/content/moderation to /en/admin/content/moderation
+// to satisfy the [locale] segment convention — a path with no matching
+// page (src/app/[locale]/admin/... doesn't exist), which 404s. Keep this
+// list in sync with (no-locale)'s actual top-level entries.
+const NO_LOCALE_ROUTES = ["/admin", "/privacy", "/terms"];
+
+function isNoLocaleRoute(pathname: string): boolean {
+  return NO_LOCALE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 // This regression pins the fix itself: proxy() used to validate the session
 // cookie by fetching new URL("/api/v1/auth/me", request.url) — this app's
 // own public URL, which then has to round-trip back out through its own
@@ -78,6 +92,12 @@ export async function proxy(request: NextRequest) {
     } catch {
       return NextResponse.redirect(loginUrl);
     }
+  }
+
+  // (no-locale) routes (admin/privacy/terms) never go through next-intl —
+  // see isNoLocaleRoute's doc comment for why that would break them.
+  if (isNoLocaleRoute(request.nextUrl.pathname)) {
+    return NextResponse.next();
   }
 
   // Authenticated (or not a protected route at all) — hand off to
