@@ -24,7 +24,7 @@ import { AddTripStop } from '@/components/AddTripStop';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
 import { ShareMenu } from '@/components/ShareMenu';
-import { TripShareCard } from '@/components/TripShareCard';
+import { TripShareCard, tripHasShareableContent } from '@/components/TripShareCard';
 import type { ItineraryDetail, Place, PublicTripDetail, TripStatus, TripVisibility } from '@/lib/types';
 
 // Kept in sync with the same threshold on the trips list page — a trip
@@ -253,7 +253,7 @@ export function TripDetailClient({ id }: { id: string }) {
           <div className="h-10 w-10">
             <ShareMenu placeName={trip.title} contentType="trip" />
           </div>
-          {trip.stops.length > 0 && (
+          {tripHasShareableContent(trip) && (
             <div className="h-10 w-10">
               <TripShareCard trip={trip} />
             </div>
@@ -499,7 +499,7 @@ function MemberTripView({
           <div className="h-10 w-10">
             <ShareMenu placeName={itinerary.title} contentType="trip" />
           </div>
-          {itinerary.stops.length > 0 && (
+          {tripHasShareableContent(itinerary) && (
             <div className="h-10 w-10">
               <TripShareCard trip={itinerary} />
             </div>
