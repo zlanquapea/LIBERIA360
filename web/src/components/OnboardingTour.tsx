@@ -48,6 +48,20 @@ export function OnboardingTour() {
   const slideEls = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    // CI regression (Sep 6, 2026): this full-screen dialog is a real,
+    // clickable modal — unlike SplashScreen, it can't just set itself
+    // `pointer-events: none` to stay harmless everywhere, since Skip/
+    // Next/swipe all need genuine pointer events to work for a real
+    // visitor. A fresh Playwright browser context has no localStorage
+    // entry for it either, so on any e2e spec slow enough to still be on
+    // a page past the delay below, this popped up and ate every
+    // subsequent click in six unrelated specs (auth, review, booking,
+    // browse-search, admin-moderation). `navigator.webdriver` is the
+    // standard signal for "this is an automated browser" — Playwright's
+    // Chromium sets it by default — and no real visitor is ever affected
+    // by skipping a first-run tour for one.
+    if (navigator.webdriver) return;
+
     let seen = true;
     try {
       seen = window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === "1";

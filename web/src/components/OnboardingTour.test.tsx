@@ -76,4 +76,26 @@ describe("OnboardingTour", () => {
     ).not.toBeInTheDocument();
     expect(localStorage.getItem("liberia360:onboarding-seen")).toBe("1");
   });
+
+  // Regression (Sep 6, 2026): this modal is a real, clickable overlay —
+  // unlike SplashScreen it can't set itself `pointer-events: none` (Skip/
+  // Next/swipe need genuine pointer events) — so a fresh Playwright
+  // browser context with no localStorage entry for it popped up mid-test
+  // and ate every subsequent click across six unrelated e2e specs.
+  it("never shows under an automated browser (navigator.webdriver)", () => {
+    const originalWebdriver = Object.getOwnPropertyDescriptor(window.navigator, "webdriver");
+    Object.defineProperty(window.navigator, "webdriver", { value: true, configurable: true });
+
+    render(<OnboardingTour />);
+    act(() => jest.advanceTimersByTime(5000));
+    expect(
+      screen.queryByRole("dialog", { name: "Welcome to LIBERIA360" }),
+    ).not.toBeInTheDocument();
+
+    if (originalWebdriver) {
+      Object.defineProperty(window.navigator, "webdriver", originalWebdriver);
+    } else {
+      delete (window.navigator as { webdriver?: boolean }).webdriver;
+    }
+  });
 });
