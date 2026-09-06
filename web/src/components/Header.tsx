@@ -1,55 +1,49 @@
 import Image from "next/image";
 import Link from "next/link";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { SITE_NAVIGATION } from "@/lib/site-nav";
 import { AccountLink } from "./AccountLink";
+import { MobileMenu } from "./MobileMenu";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
-
-const desktopNavigation = [
-  { href: "/explore", label: "Explore" },
-  { href: "/counties", label: "Counties" },
-  { href: "/events", label: "Events" },
-  { href: "/car-rentals", label: "Car Rentals" },
-  { href: "/creators", label: "Creators" },
-  // UX audit (Sep 5, 2026): the only link to /saved anywhere in the app
-  // used to live inside /account — unreachable for a signed-out guest,
-  // even though saved places are explicitly account-free. See
-  // BottomNav.tsx's matching comment for the full story.
-  { href: "/saved", label: "Saved" },
-  { href: "/help", label: "Help" },
-];
 
 export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-brand-900/95 text-white shadow-[0_8px_24px_rgba(8,26,80,0.16)] backdrop-blur-xl supports-[backdrop-filter]:bg-brand-900/90">
       <div className="mx-auto flex min-h-[4.5rem] max-w-[90rem] items-center justify-between gap-3 px-3 py-1.5 sm:px-6 lg:px-10">
-        <Link
-          href="/"
-          className="group flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
-          aria-label="LIBERIA360 home"
-        >
-          <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20 sm:h-14 sm:w-14">
-          <Image
-            src="/logo.png"
-            alt="LIBERIA360"
-            width={160}
-            height={160}
-            priority
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-          />
-          </span>
-          <span className="ml-2 hidden font-display text-sm font-extrabold tracking-[0.05em] sm:inline">
-            LIBERIA<span className="text-gold-400">360</span>
-          </span>
-          <span className="sr-only">
-            LIBERIA360 — Everything Liberia. One Place.
-          </span>
-        </Link>
+        <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+          {/* Below lg, this is the only way to reach SITE_NAVIGATION at
+              all — the inline nav to its right only renders at lg+. See
+              MobileMenu's own doc comment for why. */}
+          <MobileMenu />
+          <Link
+            href="/"
+            className="group flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+            aria-label="LIBERIA360 home"
+          >
+            <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-white/20 sm:h-14 sm:w-14">
+            <Image
+              src="/logo.png"
+              alt="LIBERIA360"
+              width={160}
+              height={160}
+              priority
+              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+            </span>
+            <span className="ml-2 hidden font-display text-sm font-extrabold tracking-[0.05em] sm:inline">
+              LIBERIA<span className="text-gold-400">360</span>
+            </span>
+            <span className="sr-only">
+              LIBERIA360 — Everything Liberia. One Place.
+            </span>
+          </Link>
+        </div>
         <nav
           aria-label="Main navigation"
           className="hidden min-w-0 items-center justify-center gap-1 lg:flex"
         >
-          {desktopNavigation.map((item) => (
+          {SITE_NAVIGATION.map((item) => (
             <Link
               key={item.href}
               href={item.href}
