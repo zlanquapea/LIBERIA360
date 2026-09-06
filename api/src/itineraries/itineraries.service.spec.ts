@@ -732,6 +732,18 @@ describe("ItinerariesService (collaboration)", () => {
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
+    // durationDays is derived from the trip's own start/end date
+    // (resolveDurationDays) — it must never drift away from that range
+    // just because a stop landed on a day past it, or the "X days"
+    // summary line and the date-range badge would disagree about how
+    // long the trip actually is.
+    it("rejects a day beyond the trip's own duration instead of silently extending it", async () => {
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, { placeId: "place-2", day: 3 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(itineraryRepo.save).not.toHaveBeenCalled();
+    });
+
     it("removes a stop", async () => {
       await service.removeStop(OWNER_ID, ITINERARY_ID, "place-1");
       expect(itineraryRepo.save).toHaveBeenCalledWith(

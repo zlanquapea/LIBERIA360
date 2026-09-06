@@ -1019,6 +1019,15 @@ describe("Phase 2 (e2e)", () => {
         ),
       ).toBe(false);
 
+      // This trip only spans one day (startDate === endDate above) — a
+      // day beyond that is rejected rather than silently stretching
+      // durationDays out of sync with the trip's own date range.
+      await request(app.getHttpServer())
+        .post(`/api/v1/itineraries/${tripId}/stops`)
+        .set("Cookie", userAToken)
+        .send({ placeId: hotelPlace.id, day: 2 })
+        .expect(400);
+
       // Stop mutations stay off-limits to a non-member.
       await request(app.getHttpServer())
         .post(`/api/v1/itineraries/${tripId}/stops`)
