@@ -5,17 +5,20 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
-import { SITE_NAVIGATION } from "@/lib/site-nav";
+import { MOBILE_MENU_NAVIGATION } from "@/lib/site-nav";
 
 // Facebook-style hamburger drawer (product note, Sep 6, 2026): Header's
 // full section list (Explore, Car Rentals, Saved, Help, ...) only ever
 // rendered in the lg+ inline nav row — a mobile visitor had no way to
 // reach any of those short of already knowing the URL or landing on a
-// homepage tile for it. BottomNav's five slots are reserved for what's
-// worth a permanent tab (see its own doc comment on that tradeoff);
-// everything else in SITE_NAVIGATION just needed *a* way in on mobile,
-// not a dedicated slot — this is that way in, sitting left of the logo
+// homepage tile for it. This is that way in, sitting left of the logo
 // exactly where Facebook's own app puts its equivalent.
+//
+// Renders MOBILE_MENU_NAVIGATION, not SITE_NAVIGATION — this drawer only
+// exists alongside BottomNav, so it deliberately skips whatever's already
+// a bottom tab (Counties/Events/Creators) rather than listing the same
+// destination twice on one screen; see that list's own doc comment for
+// what took their place.
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
   const { user, ready } = useAuth();
@@ -97,7 +100,7 @@ export function MobileMenu() {
               </div>
 
               <nav aria-label="Site sections" className="flex flex-col gap-1 p-3">
-                {SITE_NAVIGATION.map(({ href, label, icon: Icon }) => (
+                {MOBILE_MENU_NAVIGATION.map(({ href, label, icon: Icon }) => (
                   <Link
                     key={href}
                     href={href}
