@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Category, County } from '@/lib/types';
 import { colorForCategory } from '@/lib/category-colors';
@@ -12,13 +13,30 @@ import { CategoryIcon } from '@/lib/icons';
 // state; a place with no listed cost never matches a specific bucket
 // (there's nothing to confirm it against), same as the backend's own
 // priceMin/priceMax filtering.
-export const PRICE_BUCKETS: { id: string; label: string; min?: number; max?: number }[] = [
-  { id: '', label: 'Any price' },
-  { id: 'free', label: 'Free', min: 0, max: 0 },
-  { id: 'under10', label: 'Under $10', min: 0, max: 10 },
-  { id: '10-50', label: '$10 – $50', min: 10, max: 50 },
-  { id: '50plus', label: '$50+', min: 50 },
+//
+// No `label` field (i18n, Sep 2026) — each bucket's display text now comes
+// from `common.priceBucket*` via priceBucketLabelKey below, so it renders
+// in the visitor's locale wherever it's shown, instead of a single
+// hardcoded English string baked into this data.
+export const PRICE_BUCKETS: { id: string; min?: number; max?: number }[] = [
+  { id: '' },
+  { id: 'free', min: 0, max: 0 },
+  { id: 'under10', min: 0, max: 10 },
+  { id: '10-50', min: 10, max: 50 },
+  { id: '50plus', min: 50 },
 ];
+
+const PRICE_BUCKET_LABEL_KEYS: Record<string, string> = {
+  '': 'priceBucketAny',
+  free: 'priceBucketFree',
+  under10: 'priceBucketUnder10',
+  '10-50': 'priceBucket10To50',
+  '50plus': 'priceBucket50Plus',
+};
+
+export function priceBucketLabelKey(bucketId: string): string {
+  return PRICE_BUCKET_LABEL_KEYS[bucketId] ?? 'priceBucketAny';
+}
 
 export function DropdownOption({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
@@ -93,6 +111,7 @@ export function MobileFilterSheet({
   onClear: () => void;
   resultCount: number;
 }) {
+  const t = useTranslations();
   // Same lock-scroll + Escape-to-close pattern as the app's other
   // full-screen overlays (MobileMenu, OnboardingTour).
   useEffect(() => {
@@ -112,16 +131,16 @@ export function MobileFilterSheet({
   if (!open) return null;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Filter places" className="fixed inset-0 z-[150] flex flex-col justify-end lg:hidden">
+    <div role="dialog" aria-modal="true" aria-label={t('explore.filterPlacesDialogLabel')} className="fixed inset-0 z-[150] flex flex-col justify-end lg:hidden">
       <button type="button" aria-hidden tabIndex={-1} onClick={onClose} className="absolute inset-0 cursor-default bg-black/40" />
       <div className="relative flex max-h-[85vh] flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
         <div className="flex shrink-0 items-center justify-between px-5 pt-3">
-          <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-50">Filters</h2>
+          <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-50">{t('explore.filters')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close filters"
+            aria-label={t('explore.closeFilters')}
             className="rounded-full p-2 text-slate-500 transition-colors hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
           >
             <XMarkIcon aria-hidden className="h-5 w-5" />
@@ -129,7 +148,7 @@ export function MobileFilterSheet({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5">
-          <FilterSection title="Category">
+          <FilterSection title={t('explore.filterCategory')}>
             <div className="flex flex-col gap-0.5">
               <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                 <input
@@ -138,7 +157,7 @@ export function MobileFilterSheet({
                   onChange={onSelectAllCategories}
                   className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-600"
                 />
-                All categories
+                {t('explore.filterAllCategories')}
               </label>
               {categories.map((category) => (
                 <label
@@ -160,9 +179,9 @@ export function MobileFilterSheet({
             </div>
           </FilterSection>
 
-          <FilterSection title="County">
+          <FilterSection title={t('explore.filterCounty')}>
             <div className="flex flex-col gap-0.5">
-              <DropdownOption label="All counties" selected={countySlug === null} onClick={() => onSelectCounty(null)} />
+              <DropdownOption label={t('explore.filterAllCounties')} selected={countySlug === null} onClick={() => onSelectCounty(null)} />
               {counties.map((county) => (
                 <DropdownOption
                   key={county.id}
@@ -174,7 +193,7 @@ export function MobileFilterSheet({
             </div>
           </FilterSection>
 
-          <FilterSection title="Hours">
+          <FilterSection title={t('explore.filterHours')}>
             <button
               type="button"
               onClick={onToggleOpenNow}
@@ -186,16 +205,16 @@ export function MobileFilterSheet({
               }`}
             >
               <ClockIcon aria-hidden className="h-4 w-4" />
-              Open now
+              {t('explore.filterOpenNow')}
             </button>
           </FilterSection>
 
-          <FilterSection title="Price">
+          <FilterSection title={t('explore.filterPrice')}>
             <div className="flex flex-col gap-0.5">
               {PRICE_BUCKETS.map((bucket) => (
                 <DropdownOption
                   key={bucket.id}
-                  label={bucket.label}
+                  label={t(`common.${priceBucketLabelKey(bucket.id)}`)}
                   selected={priceBucketId === bucket.id}
                   onClick={() => onSelectPriceBucket(bucket.id)}
                 />
@@ -207,15 +226,15 @@ export function MobileFilterSheet({
         <div className="flex shrink-0 items-center gap-3 border-t border-slate-100 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-slate-800">
           {hasActiveFilters && (
             <button type="button" onClick={onClear} className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
-              Clear all
+              {t('explore.clearAll')}
             </button>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+            className="ms-auto flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
           >
-            Show {resultCount} {resultCount === 1 ? 'place' : 'places'}
+            {t('explore.showResults', { count: resultCount })}
           </button>
         </div>
       </div>

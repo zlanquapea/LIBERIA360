@@ -1,9 +1,12 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { Category, County } from '@/lib/types';
 
 export function SearchFilters({ categories, counties }: { categories: Category[]; counties: County[] }) {
+  const t = useTranslations('search');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -35,12 +38,12 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
   return (
     <div className="flex flex-wrap gap-2">
       <select
-        aria-label="Category"
+        aria-label={t('categoryAriaLabel')}
         className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
         value={searchParams.get('category') ?? ''}
         onChange={(e) => updateParam('category', e.target.value)}
       >
-        <option value="">All categories</option>
+        <option value="">{t('allCategories')}</option>
         {categories.map((c) => (
           <option key={c.id} value={c.slug}>
             {c.name}
@@ -49,12 +52,12 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
       </select>
 
       <select
-        aria-label="County"
+        aria-label={t('countyAriaLabel')}
         className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
         value={searchParams.get('county') ?? ''}
         onChange={(e) => updateParam('county', e.target.value)}
       >
-        <option value="">All counties</option>
+        <option value="">{t('allCounties')}</option>
         {counties.map((c) => (
           <option key={c.id} value={c.slug}>
             {c.name}
@@ -63,19 +66,19 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
       </select>
 
       <select
-        aria-label="Sort by"
+        aria-label={t('sortByAriaLabel')}
         className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
         value={searchParams.get('sort') ?? 'featured'}
         onChange={(e) => updateParam('sort', e.target.value)}
       >
-        <option value="featured">Featured</option>
-        <option value="rating">Highest rated</option>
-        <option value="distance">Closest to Monrovia</option>
-        <option value="name">Name (A–Z)</option>
+        <option value="featured">{t('sortFeatured')}</option>
+        <option value="rating">{t('sortRating')}</option>
+        <option value="distance">{t('sortDistance')}</option>
+        <option value="name">{t('sortName')}</option>
       </select>
 
       <select
-        aria-label="Price"
+        aria-label={t('priceAriaLabel')}
         className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200"
         value={priceBucket}
         onChange={(e) => {
@@ -83,11 +86,11 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
           updateParams({ priceMin: priceMin ?? '', priceMax: priceMax ?? '' });
         }}
       >
-        <option value="">Any price</option>
-        <option value="0-0">Free</option>
-        <option value="0-10">Under $10</option>
-        <option value="10-50">$10 – $50</option>
-        <option value="50-">$50+</option>
+        <option value="">{tCommon('priceBucketAny')}</option>
+        <option value="0-0">{tCommon('priceBucketFree')}</option>
+        <option value="0-10">{tCommon('priceBucketUnder10')}</option>
+        <option value="10-50">{tCommon('priceBucket10To50')}</option>
+        <option value="50-">{tCommon('priceBucket50Plus')}</option>
       </select>
 
       <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200">
@@ -97,7 +100,7 @@ export function SearchFilters({ categories, counties }: { categories: Category[]
           onChange={(e) => updateParam('openNow', e.target.checked ? 'true' : '')}
           className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-600"
         />
-        Open now
+        {t('openNow')}
       </label>
     </div>
   );

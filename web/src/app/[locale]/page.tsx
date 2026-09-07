@@ -154,6 +154,7 @@ import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
 import { PublicTripCard } from '@/components/PublicTripCard';
 import { HeroPhotoMosaic } from '@/components/HeroPhotoMosaic';
 import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
+import { getTranslations } from 'next-intl/server';
 
 const TRENDING_PLACES_LIMIT = 10;
 const DISCOVER_THIS_WEEK_LIMIT = 8;
@@ -162,7 +163,13 @@ const COMMUNITY_TRIPS_LIMIT = 6;
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
+//
+// i18n Phase 3 (I18N_PLAN.md): a plain `getTranslations` call (not scoped
+// to a namespace) is used below so this one Server Component can pull
+// from both `home` (its own copy) and `nav`/`common` (a few strings this
+// page reuses rather than duplicating, e.g. "Near Me" and "View all").
 export default async function Home() {
+  const t = await getTranslations();
   const [categories, counties, trending, discoverThisWeek, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips] = await Promise.all([
     getCategories(),
     getCounties(),
@@ -231,11 +238,11 @@ export default async function Home() {
             they read as ambient light rather than crowding the card. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full bg-gold-400/20 blur-3xl sm:h-40 sm:w-40 lg:h-48 lg:w-48"
+          className="pointer-events-none absolute -end-10 -top-16 h-32 w-32 rounded-full bg-gold-400/20 blur-3xl sm:h-40 sm:w-40 lg:h-48 lg:w-48"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-6 -left-8 h-28 w-28 rounded-full bg-accent-400/20 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
+          className="pointer-events-none absolute -bottom-6 -start-8 h-28 w-28 rounded-full bg-accent-400/20 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
         />
         {/* Stylized night skyline standing in for the mock-up's photo — see
             the layout-pass note above for why there's no stock image here. */}
@@ -279,13 +286,16 @@ export default async function Home() {
                 visitor reads is a one-line answer to "what is this",
                 reusing established brand copy instead of inventing new. */}
             <p className="inline-flex w-fit items-center rounded-full border border-gold-400/40 bg-gold-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold-400 sm:text-xs">
-              Everything Liberia. One place.
+              {t('home.eyebrow')}
             </p>
             <h1 className="mt-3 max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
-              Discover <span className="text-gold-400">Liberia</span>.<br />Find your next place.
+              {t.rich('home.headline', {
+                highlight: (chunks) => <span className="text-gold-400">{chunks}</span>,
+                br: () => <br />,
+              })}
             </h1>
           <p className="max-w-xl text-brand-100 sm:text-lg sm:leading-7">
-            Real places, real reviews — across all 15 counties.
+            {t('home.subheadline')}
           </p>
 
           {/* Co-primary discovery tools, front and center with nothing
@@ -301,14 +311,14 @@ export default async function Home() {
               className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-accent-300/50 bg-accent-600 px-4 py-3 text-sm font-semibold shadow-lg transition-colors hover:bg-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               <ViewfinderCircleIcon aria-hidden className="h-5 w-5 text-white" />
-              Near Me
+              {t('nav.nearMe')}
             </Link>
             <Link
               href="/explore"
               className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <MapIcon aria-hidden className="h-5 w-5" />
-              Explore Map
+              {t('home.exploreMap')}
             </Link>
           </div>
 
@@ -317,7 +327,7 @@ export default async function Home() {
             className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-brand-100 transition-colors hover:text-white"
           >
             <MagnifyingGlassIcon aria-hidden className="h-4 w-4" />
-            Search for something specific
+            {t('home.searchSomethingSpecific')}
             <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
           </Link>
 
@@ -326,20 +336,20 @@ export default async function Home() {
               catalog actually has. Condensed from three separate chips into
               one quiet line so it reads as a footnote, not a fourth CTA. */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-5 text-xs font-medium text-brand-200/80 sm:text-sm">
-            <span>{counties.length} counties</span>
+            <span>{t('home.statsCounties', { count: counties.length })}</span>
             <span aria-hidden>·</span>
-            <span>{categories.length}+ categories</span>
+            <span>{t('home.statsCategories', { count: categories.length })}</span>
             <span aria-hidden>·</span>
-            <span>{trending.meta.total}+ places</span>
+            <span>{t('home.statsPlaces', { count: trending.meta.total })}</span>
           </div>
           </div>
           {heroShowcasePlaces.length > 0 && (
             <aside className="hidden flex-col gap-4 lg:flex">
               <HeroPhotoMosaic places={heroShowcasePlaces} />
               <div className="text-center">
-                <p className="font-display text-base font-semibold text-white">Real places, ready to explore</p>
+                <p className="font-display text-base font-semibold text-white">{t('home.mosaicHeading')}</p>
                 <p className="mx-auto mt-1 max-w-sm text-sm leading-5 text-brand-100">
-                  Search, explore, and save what matters — starting with what other travelers are already discovering.
+                  {t('home.mosaicCaption')}
                 </p>
               </div>
             </aside>
@@ -351,9 +361,9 @@ export default async function Home() {
         {quickCounties.length > 0 && (
           <section aria-labelledby="counties-heading" className="hidden flex-col gap-3 lg:flex">
             <div className="flex items-center justify-between gap-3">
-              <h2 id="counties-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">Browse counties</h2>
+              <h2 id="counties-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">{t('home.browseCounties')}</h2>
               <Link href="/counties" className="hidden items-center gap-1 text-sm font-semibold text-brand-700 hover:underline sm:flex dark:text-brand-300">
-                View all <ArrowRightIcon aria-hidden className="h-4 w-4" />
+                {t('common.viewAll')} <ArrowRightIcon aria-hidden className="h-4 w-4" />
               </Link>
             </div>
             <CountyGrid counties={quickCounties} />
@@ -362,7 +372,7 @@ export default async function Home() {
 
         <section aria-labelledby="categories-heading" className="flex flex-col gap-3">
           <h2 id="categories-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
-            Browse categories
+            {t('home.browseCategories')}
           </h2>
           <CategoryGrid categories={categories} />
         </section>
@@ -375,14 +385,14 @@ export default async function Home() {
                 className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
               >
                 <StarIcon aria-hidden className="h-5 w-5 text-gold-500" />
-                Featured Places
+                {t('home.featuredPlaces')}
               </h2>
               {featuredPlacements.length > 1 && (
                 <Link
                   href="/featured"
                   className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
                 >
-                  View all
+                  {t('common.viewAll')}
                   <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
                 </Link>
               )}
@@ -404,13 +414,13 @@ export default async function Home() {
         <section aria-labelledby="trending-heading" className="flex flex-col gap-3 border-t border-slate-100 pt-8 dark:border-slate-800/70">
           <div className="flex items-center justify-between">
             <h2 id="trending-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
-              Trending places
+              {t('home.trendingPlaces')}
             </h2>
             <Link
               href="/search"
               className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
             >
-              See all
+              {t('common.seeAll')}
               <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -430,13 +440,13 @@ export default async function Home() {
           <section aria-labelledby="community-trips-heading" className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 id="community-trips-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
-                Trips you can join
+                {t('home.tripsYouCanJoin')}
               </h2>
               <Link
                 href="/trips/community"
                 className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
               >
-                See all
+                {t('common.seeAll')}
                 <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -463,13 +473,13 @@ export default async function Home() {
               className="flex items-center gap-1.5 font-display text-lg font-semibold text-slate-900 dark:text-slate-50"
             >
               <SparklesIcon aria-hidden className="h-5 w-5 text-gold-500" />
-              Discover this week
+              {t('home.discoverThisWeek')}
             </h2>
             <Link
               href="/search"
               className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
             >
-              See all
+              {t('common.seeAll')}
               <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -504,8 +514,8 @@ export default async function Home() {
               <PlusIcon className="h-6 w-6" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-base font-bold">Add a place</span>
-              <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">Help others discover great places in Liberia.</span>
+              <span className="block font-display text-base font-bold">{t('home.addPlace')}</span>
+              <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{t('home.addPlaceDescription')}</span>
             </span>
             <ArrowRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-700 transition-transform group-hover:translate-x-1" />
           </Link>
@@ -515,8 +525,8 @@ export default async function Home() {
             className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Plan a Trip</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Pick your dates and destination — add places as you go</p>
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{t('home.planATrip')}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{t('home.planATripDescription')}</p>
             </div>
             <BriefcaseIcon
               aria-hidden
@@ -529,8 +539,8 @@ export default async function Home() {
             className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Meet Liberia&apos;s creators</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Videos, photos, and guides from local storytellers</p>
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{t('home.meetCreators')}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{t('home.meetCreatorsDescription')}</p>
             </div>
             <VideoCameraIcon
               aria-hidden
@@ -543,8 +553,8 @@ export default async function Home() {
             className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card sm:col-span-2"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">Rent a car for your trip</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">Hire a vehicle, with or without a driver, from a local operator</p>
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{t('home.rentCar')}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{t('home.rentCarDescription')}</p>
             </div>
             <TruckIcon
               aria-hidden

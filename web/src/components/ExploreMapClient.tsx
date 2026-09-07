@@ -4,6 +4,7 @@ import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   AdjustmentsHorizontalIcon,
   ArrowRightIcon,
@@ -24,7 +25,7 @@ import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon, iconSvgMarkup } from '@/lib/icons';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
-import { DropdownOption, MobileFilterSheet, PRICE_BUCKETS } from './MobileFilterSheet';
+import { DropdownOption, MobileFilterSheet, PRICE_BUCKETS, priceBucketLabelKey } from './MobileFilterSheet';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
 
@@ -64,6 +65,7 @@ function pinIcon(color: string, icon: string | null, categorySlug: string, selec
 // come for free. `onLocated` hands the found coordinates up to the parent —
 // drives both the "you are here" marker and the within-5km filter.
 function LocateControl({ located, onLocated }: { located: boolean; onLocated: (coords: Coordinates) => void }) {
+  const t = useTranslations('explore');
   const map = useMap();
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +77,12 @@ function LocateControl({ located, onLocated }: { located: boolean; onLocated: (c
     },
     locationerror: () => {
       setLocating(false);
-      setError("Couldn't get your location.");
+      setError(t('locationError'));
     },
   });
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] flex flex-col items-start gap-1.5">
+    <div className="pointer-events-none absolute bottom-3 start-3 z-[1000] flex flex-col items-start gap-1.5">
       {error && (
         <span className="pointer-events-auto max-w-[10rem] rounded-lg bg-white/95 px-2 py-1 text-xs text-flag-700 shadow dark:bg-slate-800/95 dark:text-flag-300">
           {error}
@@ -97,7 +99,7 @@ function LocateControl({ located, onLocated }: { located: boolean; onLocated: (c
         className="pointer-events-auto flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-md transition-colors hover:text-brand-700 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-brand-300"
       >
         <LocateIcon aria-hidden className="h-5 w-5" />
-        {locating ? 'Locating…' : located ? 'Update my location' : 'Use my location'}
+        {locating ? t('locating') : located ? t('updateLocation') : t('useMyLocation')}
       </button>
     </div>
   );
@@ -172,6 +174,7 @@ function FilterPopover({
 // clicked on the map, so the two stay in sync without the row needing to
 // drive navigation itself.
 function ExploreResultRow({ place, selected }: { place: Place; selected: boolean }) {
+  const t = useTranslations('explore');
   const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
   const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
 
@@ -217,7 +220,7 @@ function ExploreResultRow({ place, selected }: { place: Place; selected: boolean
           href={`/places/${place.slug}`}
           className="whitespace-nowrap rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-800"
         >
-          View details
+          {t('viewDetails')}
         </Link>
       </div>
     </div>
@@ -252,6 +255,8 @@ export function ExploreMapClient({
   categories: Category[];
   counties: County[];
 }) {
+  const t = useTranslations('explore');
+  const tCommon = useTranslations('common');
   const [activeSlugs, setActiveSlugs] = useState<Set<string>>(new Set(categories.map((c) => c.slug)));
   const [countySlug, setCountySlug] = useState<string | null>(null);
   const [openNowOnly, setOpenNowOnly] = useState(false);
@@ -309,17 +314,17 @@ export function ExploreMapClient({
   return (
     <div className="flex h-full w-full flex-col bg-white dark:bg-slate-950">
       <div className="flex shrink-0 flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
-        <h1 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50 sm:text-2xl">Explore Liberia</h1>
+        <h1 className="font-display text-xl font-bold text-slate-900 dark:text-slate-50 sm:text-2xl">{t('title')}</h1>
 
         <div className="relative">
-          <MagnifyingGlassIcon aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <MagnifyingGlassIcon aria-hidden className="pointer-events-none absolute start-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search places"
-            aria-label="Search places"
-            className="w-full rounded-full border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition-shadow focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:ring-brand-900/40"
+            placeholder={t('searchPlaces')}
+            aria-label={t('searchPlaces')}
+            className="w-full rounded-full border border-slate-300 bg-white py-3 ps-11 pe-4 text-sm text-slate-900 outline-none transition-shadow focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:ring-brand-900/40"
           />
         </div>
 
@@ -330,11 +335,11 @@ export function ExploreMapClient({
             non-visible), clipping each dropdown's panel exactly where it
             needs to overflow downward. */}
         <div className="hidden flex-wrap items-center gap-2 lg:flex">
-          <FilterPopover label="Category" icon={AdjustmentsHorizontalIcon} active={!allCategoriesActive}>
+          <FilterPopover label={t('filterCategory')} icon={AdjustmentsHorizontalIcon} active={!allCategoriesActive}>
             {() => (
               <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
                 <DropdownOption
-                  label="All categories"
+                  label={t('filterAllCategories')}
                   selected={allCategoriesActive}
                   onClick={() => setActiveSlugs(new Set(categories.map((c) => c.slug)))}
                 />
@@ -359,10 +364,10 @@ export function ExploreMapClient({
             )}
           </FilterPopover>
 
-          <FilterPopover label="County" icon={LocateIcon} active={countySlug !== null}>
+          <FilterPopover label={t('filterCounty')} icon={LocateIcon} active={countySlug !== null}>
             {(close) => (
               <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
-                <DropdownOption label="All counties" selected={countySlug === null} onClick={() => { setCountySlug(null); close(); }} />
+                <DropdownOption label={t('filterAllCounties')} selected={countySlug === null} onClick={() => { setCountySlug(null); close(); }} />
                 {counties.map((county) => (
                   <DropdownOption
                     key={county.id}
@@ -386,16 +391,16 @@ export function ExploreMapClient({
             }`}
           >
             <ClockIcon aria-hidden className="h-4 w-4" />
-            Open now
+            {t('filterOpenNow')}
           </button>
 
-          <FilterPopover label="Price" icon={TagIcon} active={priceBucketId !== ''}>
+          <FilterPopover label={t('filterPrice')} icon={TagIcon} active={priceBucketId !== ''}>
             {(close) => (
               <div className="flex flex-col gap-0.5">
                 {PRICE_BUCKETS.map((bucket) => (
                   <DropdownOption
                     key={bucket.id}
-                    label={bucket.label}
+                    label={tCommon(priceBucketLabelKey(bucket.id))}
                     selected={priceBucketId === bucket.id}
                     onClick={() => { setPriceBucketId(bucket.id); close(); }}
                   />
@@ -410,7 +415,7 @@ export function ExploreMapClient({
               onClick={clearFilters}
               className="shrink-0 whitespace-nowrap px-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
             >
-              Clear
+              {t('clear')}
             </button>
           )}
         </div>
@@ -429,7 +434,7 @@ export function ExploreMapClient({
             }`}
           >
             <AdjustmentsHorizontalIcon aria-hidden className="h-4 w-4" />
-            Filters
+            {t('filters')}
           </button>
           {hasActiveFilters && (
             <button
@@ -437,7 +442,7 @@ export function ExploreMapClient({
               onClick={clearFilters}
               className="shrink-0 whitespace-nowrap px-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
             >
-              Clear
+              {t('clear')}
             </button>
           )}
         </div>
@@ -495,7 +500,7 @@ export function ExploreMapClient({
                     href={`/places/${place.slug}`}
                     className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
                   >
-                    View details
+                    {t('viewDetails')}
                     <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -513,16 +518,16 @@ export function ExploreMapClient({
         <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />
         <div className="flex shrink-0 items-center justify-between">
           <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-50">
-            {userLocation ? `Within ${NEARBY_RADIUS_KM} km of you` : 'Results near you'}{' '}
+            {userLocation ? t('resultsWithinKm', { km: NEARBY_RADIUS_KM }) : t('resultsNearYou')}{' '}
             <span className="font-normal text-slate-400 dark:text-slate-500">· {visiblePlaces.length}</span>
           </h2>
           <Link href="/search" className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300">
-            See all
+            {tCommon('seeAll')}
           </Link>
         </div>
         <div className="flex flex-col divide-y divide-slate-100 overflow-y-auto pb-3 dark:divide-slate-800">
           {visiblePlaces.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No places match your filters.</p>
+            <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('noResultsMatchFilters')}</p>
           ) : (
             visiblePlaces.map((place) => <ExploreResultRow key={place.id} place={place} selected={place.id === selectedId} />)
           )}

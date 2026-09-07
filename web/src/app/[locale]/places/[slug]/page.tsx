@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { getTranslations } from "next-intl/server";
 import {
   ApiError,
   getBusinessByPlace,
@@ -35,10 +37,14 @@ import { JsonLd } from "@/components/JsonLd";
 import { placeJsonLd } from "@/lib/structured-data";
 import type { BusinessType, Place, PlaceType } from "@/lib/types";
 
-const NEARBY_TYPE_LABELS: Partial<Record<PlaceType, string>> = {
-  hotel: "Accommodation",
-  restaurant: "Restaurants",
-  activity_provider: "Tour guides & activities",
+// Keys into placeDetail.nearby* — see NEARBY_TYPE_LABELS's usage below.
+// lib/format.ts's own formatPlaceType() (used as this map's fallback) is
+// not yet translated — a broader, cross-cutting change deferred past this
+// phase since it's called from many components beyond this page.
+const NEARBY_TYPE_LABEL_KEYS: Partial<Record<PlaceType, string>> = {
+  hotel: "nearbyAccommodation",
+  restaurant: "nearbyRestaurants",
+  activity_provider: "nearbyTourGuides",
 };
 
 // Loose mapping from the catalog's PlaceType to the claim form's
@@ -78,6 +84,7 @@ export default async function PlaceProfilePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const t = await getTranslations("placeDetail");
   const { slug } = await params;
 
   const place = await getPlaceBySlug(slug).catch((error) => {
@@ -145,7 +152,7 @@ export default async function PlaceProfilePage({
         </div>
 
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-          {place.city}, {place.county.name} County
+          {t("cityCounty", { city: place.city, county: place.county.name })}
         </p>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-700 dark:text-slate-200">
@@ -191,10 +198,10 @@ export default async function PlaceProfilePage({
         className="scroll-mt-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7"
       >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-          Discover the place
+          {t("discoverThePlace")}
         </p>
         <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-          About this place
+          {t("aboutThisPlace")}
         </h2>
         <p className="mt-4 max-w-3xl leading-8 text-slate-700 dark:text-slate-200">
           {place.description}
@@ -206,10 +213,10 @@ export default async function PlaceProfilePage({
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-            Find your way
+            {t("findYourWay")}
           </p>
           <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-            Location
+            {t("location")}
           </h2>
         </div>
         <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
@@ -222,29 +229,28 @@ export default async function PlaceProfilePage({
           />
         </div>
         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          Getting there: private car, taxi, tour operator arrangement, or
-          shared/bus transport where available.
+          {t("gettingThere")}
         </p>
       </section>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-          Budget planning
+          {t("budgetPlanning")}
         </p>
         <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-          Estimated cost
+          {t("estimatedCost")}
         </h2>
         <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">
           <CostItem
-            label="Entry"
+            label={t("costEntry")}
             value={formatCost(place.estimatedCostEntry)}
           />
           <CostItem
-            label="Guide"
+            label={t("costGuide")}
             value={formatCost(place.estimatedCostGuide)}
           />
           <CostItem
-            label="Transport"
+            label={t("costTransport")}
             value={formatCost(place.estimatedCostTransport)}
           />
         </dl>
@@ -254,10 +260,10 @@ export default async function PlaceProfilePage({
         <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-              Make the most of it
+              {t("makeTheMostOfIt")}
             </p>
             <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-              Things to do
+              {t("thingsToDo")}
             </h2>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
@@ -283,7 +289,7 @@ export default async function PlaceProfilePage({
                   {[
                     activity.duration,
                     activity.difficulty,
-                    activity.guideRequired ? "Guide required" : null,
+                    activity.guideRequired ? t("guideRequired") : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -305,10 +311,10 @@ export default async function PlaceProfilePage({
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-            Visitor notes
+            {t("visitorNotes")}
           </p>
           <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-            Reviews
+            {t("reviews")}
           </h2>
         </div>
         <ReviewsSection
@@ -322,17 +328,18 @@ export default async function PlaceProfilePage({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-                Travel together
+                {t("travelTogether")}
               </p>
               <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-                Trips heading here
+                {t("tripsHeadingHere")}
               </h2>
             </div>
             <Link
               href="/trips/community"
               className="flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
             >
-              See all community trips →
+              {t("seeAllCommunityTrips")}
+              <ArrowRightIcon aria-hidden className="h-3.5 w-3.5 rtl:-scale-x-100" />
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -347,17 +354,19 @@ export default async function PlaceProfilePage({
         <section className="flex flex-col gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-              Keep exploring
+              {t("keepExploring")}
             </p>
             <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-              Nearby in {place.county.name}
+              {t("nearbyInCounty", { county: place.county.name })}
             </h2>
           </div>
           {Object.entries(nearbyByType).map(([type, places]) => (
             <div key={type} className="flex flex-col gap-2">
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                {NEARBY_TYPE_LABELS[type as PlaceType] ??
-                  formatPlaceType(type as PlaceType)}
+                {(() => {
+                  const labelKey = NEARBY_TYPE_LABEL_KEYS[type as PlaceType];
+                  return labelKey ? t(labelKey) : formatPlaceType(type as PlaceType);
+                })()}
               </h3>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {places.map((nearbyPlace) => (
@@ -376,7 +385,7 @@ export default async function PlaceProfilePage({
           href="/trips/new"
           className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
         >
-          Plan a trip with this place
+          {t("planTripWithPlace")}
         </Link>
       </section>
     </main>
