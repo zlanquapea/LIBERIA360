@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { getTranslations } from 'next-intl/server';
 import { getActiveAdvertisements, getCategories, getCounties, getPlaces } from '@/lib/api';
 import { findMatchingCategory } from '@/lib/category-match';
 import { PlaceCard } from '@/components/PlaceCard';
@@ -18,6 +19,7 @@ function first(value: string | string[] | undefined): string | undefined {
 
 // Search Results screen — filterable, sortable list (Tech Spec §4.1).
 export default async function SearchPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const t = await getTranslations('search');
   const params = await searchParams;
   const q = first(params.q);
   const category = first(params.category);
@@ -73,13 +75,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           type="search"
           name="q"
           defaultValue={q}
-          placeholder="Try 'restaurant in Bong' or 'things to do tonight'..."
+          placeholder={t('searchPlaceholder')}
           className="w-full px-4 py-2.5 text-sm outline-none"
         />
         <button
           type="submit"
           className="flex items-center px-4 text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
-          aria-label="Search"
+          aria-label={t('searchAriaLabel')}
         >
           <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
         </button>
@@ -89,8 +91,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <SearchFilters categories={categories} counties={counties} />
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {result.meta.total} result{result.meta.total === 1 ? '' : 's'}
-        {q && ` for "${q}"`}
+        {t('resultCount', { count: result.meta.total })}
+        {q && ` ${t('resultCountForQuery', { query: q })}`}
       </p>
 
       {result.data.length === 0 ? (
@@ -98,6 +100,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           q={q}
           categories={categories}
           hasFilters={Boolean(category || county || openNow || priceMinRaw !== undefined || priceMaxRaw !== undefined)}
+          t={t}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -110,9 +113,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       {page === 1 && <AdvertisementBanner ads={ads} />}
 
       <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
-        Don&apos;t see your destination?{' '}
+        {t('dontSeeDestination')}{' '}
         <Link href="/places/submit" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          Add it to LIBERIA360
+          {t('addToLiberia360')}
         </Link>
       </p>
 
@@ -121,21 +124,23 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <Link
             href={pageHref(page - 1)}
             aria-disabled={page <= 1}
-            className={`text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'}`}
+            className={`flex items-center gap-1 text-sm font-medium ${page <= 1 ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'}`}
           >
-            ← Previous
+            <ArrowLeftIcon aria-hidden className="h-3.5 w-3.5 rtl:-scale-x-100" />
+            {t('previous')}
           </Link>
           <span className="text-sm text-slate-500 dark:text-slate-400">
-            Page {result.meta.page} of {result.meta.totalPages}
+            {t('pageOf', { page: result.meta.page, totalPages: result.meta.totalPages })}
           </span>
           <Link
             href={pageHref(page + 1)}
             aria-disabled={page >= result.meta.totalPages}
-            className={`text-sm font-medium ${
+            className={`flex items-center gap-1 text-sm font-medium ${
               page >= result.meta.totalPages ? 'pointer-events-none text-slate-300 dark:text-slate-700' : 'text-brand-700 dark:text-brand-300 hover:underline'
             }`}
           >
-            Next →
+            {t('next')}
+            <ArrowRightIcon aria-hidden className="h-3.5 w-3.5 rtl:-scale-x-100" />
           </Link>
         </div>
       )}
@@ -149,20 +154,23 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 // help: the matching category if the query is close to one (or already
 // filtered), a link to browse everything, and a way to clear an
 // over-narrow filter combination.
-function ZeroResultsRecovery({ q, categories, hasFilters }: { q?: string; categories: Category[]; hasFilters: boolean }) {
+function ZeroResultsRecovery({
+  q,
+  categories,
+  hasFilters,
+  t,
+}: {
+  q?: string;
+  categories: Category[];
+  hasFilters: boolean;
+  t: Awaited<ReturnType<typeof getTranslations>>;
+}) {
   const suggestedCategory = q ? findMatchingCategory(categories, q) : null;
 
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center">
       <p className="text-slate-500 dark:text-slate-400">
-        {q ? (
-          <>
-            No places match &ldquo;{q}&rdquo;
-            {hasFilters ? ' with these filters' : ''}.
-          </>
-        ) : (
-          'No places match these filters.'
-        )}
+        {q ? (hasFilters ? t('noResultsQueryFiltered', { query: q }) : t('noResultsQuery', { query: q })) : t('noResultsFiltered')}
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
         {suggestedCategory && (
@@ -170,7 +178,7 @@ function ZeroResultsRecovery({ q, categories, hasFilters }: { q?: string; catego
             href={`/search?category=${suggestedCategory.slug}`}
             className="rounded-full bg-brand-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
           >
-            Browse {suggestedCategory.name}
+            {t('browseCategoryName', { name: suggestedCategory.name })}
           </Link>
         )}
         {(q || hasFilters) && (
@@ -178,7 +186,7 @@ function ZeroResultsRecovery({ q, categories, hasFilters }: { q?: string; catego
             href="/search"
             className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
           >
-            Clear search
+            {t('clearSearch')}
           </Link>
         )}
       </div>
