@@ -131,7 +131,15 @@ export function MobileFilterSheet({
   if (!open) return null;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={t('explore.filterPlacesDialogLabel')} className="fixed inset-0 z-[150] flex flex-col justify-end lg:hidden">
+    // z-[9999] (bug fix, Sep 2026), not the z-[150] this shipped with:
+    // this sheet's whole job is to cover the Leaflet map behind it, but
+    // Leaflet's own panes/controls carry z-index values up to 1000 (see
+    // FilterPopover's doc comment in ExploreMapClient.tsx, which already
+    // learned this lesson for the desktop dropdowns) — at z-150 the map's
+    // zoom buttons, "Use my location" pill, and marker pins all rendered
+    // straight through this sheet's backdrop and panel. Matches
+    // FilterPopover's own z-[9999] for the same reason.
+    <div role="dialog" aria-modal="true" aria-label={t('explore.filterPlacesDialogLabel')} className="fixed inset-0 z-[9999] flex flex-col justify-end lg:hidden">
       <button type="button" aria-hidden tabIndex={-1} onClick={onClose} className="absolute inset-0 cursor-default bg-black/40" />
       <div className="relative flex max-h-[85vh] flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700" />

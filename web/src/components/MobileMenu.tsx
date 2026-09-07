@@ -74,7 +74,15 @@ export function MobileMenu() {
         // pinned to the header instead of a full-height panel). Same fix
         // CreatorPostMedia already uses for its viewer overlay.
         createPortal(
-          <div role="dialog" aria-modal="true" aria-label={t("siteMenu")} className="fixed inset-0 z-[120] lg:hidden">
+          // z-[9999] (bug fix, Sep 2026), not the z-[120] this shipped
+          // with: rendered globally from Header, this drawer can open over
+          // any page — including /explore, whose Leaflet map's own panes/
+          // controls carry z-index values up to 1000 (see FilterPopover's
+          // doc comment in ExploreMapClient.tsx). At z-120 the map's zoom
+          // buttons, "Use my location" pill, and marker pins rendered
+          // straight through this drawer and its backdrop. Matches
+          // MobileFilterSheet's own z-[9999] for the same reason.
+          <div role="dialog" aria-modal="true" aria-label={t("siteMenu")} className="fixed inset-0 z-[9999] lg:hidden">
             <div aria-hidden className="absolute inset-0 bg-black/50" onClick={close} />
             <div className="relative flex h-full w-[82%] max-w-xs flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
               <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4 dark:border-slate-800">
