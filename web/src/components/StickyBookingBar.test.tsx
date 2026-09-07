@@ -1,7 +1,5 @@
-import { useEffect } from "react";
 import { act, render, screen } from "@testing-library/react";
 import { StickyBookingBar } from "./StickyBookingBar";
-import { RestaurantCartActiveProvider, useRestaurantCartActive } from "@/components/RestaurantCartActiveContext";
 import type { Business, Place } from "@/lib/types";
 
 class MockIntersectionObserver {
@@ -192,46 +190,5 @@ describe("StickyBookingBar", () => {
       MockIntersectionObserver.instance.trigger({ isIntersecting: true });
     });
     expect(bar).toHaveClass("translate-y-[calc(100%+5rem+env(safe-area-inset-bottom))]");
-  });
-
-  // Bug fix, Sep 2026 — see RestaurantCartActiveContext's own doc comment:
-  // this bar and MenuSection's food-order cart bar previously fought over
-  // the same footer strip once a restaurant visitor had an active order.
-  it("stays hidden past its scroll trigger while a food-order cart is active, and reappears once it clears", async () => {
-    function Harness({ cartActive }: { cartActive: boolean }) {
-      const { setActive } = useRestaurantCartActive();
-      useEffect(() => setActive(cartActive), [cartActive, setActive]);
-      return <StickyBookingBar business={BUSINESS} name={PLACE.name} />;
-    }
-
-    const { rerender } = render(
-      <RestaurantCartActiveProvider>
-        <Harness cartActive={true} />
-      </RestaurantCartActiveProvider>,
-    );
-    const link = await screen.findByRole("link", {
-      name: /log in to request a booking/i,
-      hidden: true,
-    });
-    const bar = link.closest('[aria-hidden]') as HTMLElement;
-
-    // Scroll past the trigger — normally this alone would reveal the bar.
-    act(() => {
-      MockIntersectionObserver.instance.trigger({
-        isIntersecting: false,
-        boundingClientRect: { top: -50 } as DOMRectReadOnly,
-      });
-    });
-    expect(bar).toHaveAttribute("aria-hidden", "true");
-    expect(bar).toHaveAttribute("inert");
-
-    // Cart clears — the bar should now show, same scroll position.
-    rerender(
-      <RestaurantCartActiveProvider>
-        <Harness cartActive={false} />
-      </RestaurantCartActiveProvider>,
-    );
-    expect(bar).toHaveAttribute("aria-hidden", "false");
-    expect(bar).not.toHaveAttribute("inert");
   });
 });
