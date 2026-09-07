@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -9,14 +10,16 @@ import { useTheme } from '@/hooks/useTheme';
 // markup, and the correct icon is just a CSS class away once the client
 // figures out the real theme in its first effect.
 export function ThemeToggle() {
+  const t = useTranslations('common');
   const { theme, toggleTheme } = useTheme();
+  const label = theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode');
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={label}
+      title={label}
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/5 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       <SunIcon aria-hidden className={`h-5 w-5 ${theme === 'dark' ? 'hidden' : 'block'}`} />

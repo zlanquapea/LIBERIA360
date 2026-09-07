@@ -1,4 +1,5 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import { renderWithMessages } from '@/test/render-with-messages';
 import userEvent from '@testing-library/user-event';
 import { TripChatPanel } from './TripChatPanel';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
@@ -98,7 +99,7 @@ describe('TripChatPanel', () => {
     setStoredAuth({ token: 'tok', user: ME });
     mockFetch(baseHandlers([]));
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
 
     expect(await screen.findByText(/say hello/i)).toBeInTheDocument();
   });
@@ -107,7 +108,7 @@ describe('TripChatPanel', () => {
     setStoredAuth({ token: 'tok', user: ME });
     mockFetch(baseHandlers([tripMessage({ id: 'm1', sender: OTHER, body: 'Hi everyone' })]));
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
 
     await screen.findByText('Hi everyone');
     expect(screen.getByText('Other Member')).toBeInTheDocument();
@@ -124,7 +125,7 @@ describe('TripChatPanel', () => {
       ]),
     );
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
 
     expect(await screen.findByText('Other Member joined the trip.')).toBeInTheDocument();
   });
@@ -133,7 +134,7 @@ describe('TripChatPanel', () => {
     setStoredAuth({ token: 'tok', user: ME });
     const calls = mockFetch(baseHandlers([tripMessage({ sender: OTHER })]));
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText('Hello trip!');
 
     await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.url.includes('/delivered'))).toBe(true));
@@ -145,7 +146,7 @@ describe('TripChatPanel', () => {
     const sent = tripMessage({ id: 'm-new', body: 'What time do we leave?' });
     mockFetch([...baseHandlers([]), { method: 'POST', path: '/messages', body: sent, delayMs: 30 }]);
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText(/say hello/i);
 
     await userEvent.type(screen.getByPlaceholderText(/message the trip/i), 'What time do we leave?');
@@ -166,7 +167,7 @@ describe('TripChatPanel', () => {
     const reply = tripMessage({ id: 'm2', body: 'Will do!', replyTo: { id: 'm1', senderName: 'Other Member', body: 'Pack sunscreen', imageUrl: null, deleted: false } });
     const calls = mockFetch([...baseHandlers([original]), { method: 'POST', path: '/messages', body: reply }]);
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText('Pack sunscreen');
 
     await userEvent.click(screen.getByRole('button', { name: /reply/i }));
@@ -193,7 +194,7 @@ describe('TripChatPanel', () => {
       ]),
     );
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
 
     await screen.findByText('Will do!');
     expect(screen.getByText(/pack sunscreen/i)).toBeInTheDocument();
@@ -208,7 +209,7 @@ describe('TripChatPanel', () => {
       ]),
     );
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText('Mine');
     await screen.findByText('Theirs');
 
@@ -225,7 +226,7 @@ describe('TripChatPanel', () => {
       { method: 'PATCH', path: '/messages/m1', body: edited },
     ]);
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText('Original plan');
 
     await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
@@ -247,7 +248,7 @@ describe('TripChatPanel', () => {
       { method: 'DELETE', path: '/messages/m1', body: tripMessage({ id: 'm1', body: null, deletedAt: '2026-01-02T03:00:00.000Z' }) },
     ]);
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText('Oops wrong trip');
 
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
@@ -266,7 +267,7 @@ describe('TripChatPanel', () => {
       { method: 'POST', path: '/messages/m1/reactions', body: reacted },
     ]);
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText('Hello trip!');
 
     await userEvent.click(screen.getByRole('button', { name: /react/i }));
@@ -298,7 +299,7 @@ describe('TripChatPanel', () => {
       return { ok: true, status: 200, json: () => Promise.resolve(null) };
     }) as unknown as typeof fetch;
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText(/say hello/i);
 
     await userEvent.type(screen.getByPlaceholderText(/message the trip/i), 'Retry me');
@@ -333,7 +334,7 @@ describe('TripChatPanel', () => {
       return { ok: true, status: 200, json: () => Promise.resolve(null) };
     }) as unknown as typeof fetch;
 
-    render(<TripChatPanel itineraryId="trip-1" />);
+    renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
     await screen.findByText(/say hello/i);
 
     const file = new File(['fake-bytes'], 'photo.jpg', { type: 'image/jpeg' });
@@ -366,7 +367,7 @@ describe('TripChatPanel', () => {
         return { ok: true, status: 200, json: () => Promise.resolve(null) };
       }) as unknown as typeof fetch;
 
-      render(<TripChatPanel itineraryId="trip-1" />);
+      renderWithMessages(<TripChatPanel itineraryId="trip-1" />);
       // Advance past the initial load's own scrollToBottom (queued via
       // requestAnimationFrame) so it can't fire later, mid-assertion, once
       // the "scrolled up" geometry below is in place.

@@ -1,4 +1,5 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import { renderWithMessages } from '@/test/render-with-messages';
 import userEvent from '@testing-library/user-event';
 import { NearMeClient } from './NearMeClient';
 import type { Category, Place } from '@/lib/types';
@@ -110,7 +111,7 @@ describe('NearMeClient', () => {
   });
 
   it('prompts for location before showing any filters', () => {
-    render(<NearMeClient categories={CATEGORIES} />);
+    renderWithMessages(<NearMeClient categories={CATEGORIES} />);
     expect(screen.getByRole('button', { name: /use my location/i })).toBeInTheDocument();
     expect(screen.queryByText('Everything')).not.toBeInTheDocument();
   });
@@ -119,7 +120,7 @@ describe('NearMeClient', () => {
     mockGeolocationSuccess();
     mockFetchJson(page([BASE_PLACE]));
 
-    render(<NearMeClient categories={CATEGORIES} />);
+    renderWithMessages(<NearMeClient categories={CATEGORIES} />);
     await userEvent.click(screen.getByRole('button', { name: /use my location/i }));
 
     expect(await screen.findByRole('button', { name: 'Everything' })).toBeInTheDocument();
@@ -132,7 +133,7 @@ describe('NearMeClient', () => {
     mockGeolocationSuccess();
     mockFetchJson(page([BASE_PLACE]));
 
-    render(<NearMeClient categories={CATEGORIES} />);
+    renderWithMessages(<NearMeClient categories={CATEGORIES} />);
     await userEvent.click(screen.getByRole('button', { name: /use my location/i }));
     await screen.findByText('CeeCee Beach');
 
@@ -158,7 +159,7 @@ describe('NearMeClient', () => {
       .mockResolvedValueOnce(fetchResponse(page([])))
       .mockResolvedValueOnce(fetchResponse(page([BASE_PLACE]))) as unknown as typeof fetch;
 
-    render(<NearMeClient categories={CATEGORIES} />);
+    renderWithMessages(<NearMeClient categories={CATEGORIES} />);
     await userEvent.click(screen.getByRole('button', { name: /use my location/i }));
     await screen.findByText('CeeCee Beach');
     await userEvent.click(screen.getByRole('button', { name: /food & dining/i }));
@@ -189,7 +190,7 @@ describe('NearMeClient', () => {
       .mockResolvedValueOnce(fetchResponse(page([]))) // category selected, fallback radius
       .mockResolvedValueOnce(fetchResponse(page([BASE_PLACE]))) as unknown as typeof fetch; // category cleared
 
-    render(<NearMeClient categories={CATEGORIES} />);
+    renderWithMessages(<NearMeClient categories={CATEGORIES} />);
     await userEvent.click(screen.getByRole('button', { name: /use my location/i }));
     await screen.findByText('CeeCee Beach');
     await userEvent.click(screen.getByRole('button', { name: /food & dining/i }));
@@ -214,7 +215,7 @@ describe('NearMeClient', () => {
       mockGeolocationPending();
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
-      render(<NearMeClient categories={CATEGORIES} />);
+      renderWithMessages(<NearMeClient categories={CATEGORIES} />);
       await user.click(screen.getByRole('button', { name: /use my location/i }));
 
       // Two matches expected: BrandLoader's sr-only status text plus the
@@ -238,7 +239,7 @@ describe('NearMeClient', () => {
   it('ignores a location fix that arrives after the user already cancelled the search', async () => {
     const geo = mockGeolocationCapture();
 
-    render(<NearMeClient categories={CATEGORIES} />);
+    renderWithMessages(<NearMeClient categories={CATEGORIES} />);
     await userEvent.click(screen.getByRole('button', { name: /use my location/i }));
     await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
     expect(screen.getByRole('button', { name: /use my location/i })).toBeInTheDocument();

@@ -1,3 +1,57 @@
 {
-  "_comment": "Phase 1 (infra) seeds these files empty on purpose — see I18N_PLAN.md. Phase 2 populates the shell-chrome namespaces (nav, common, ...) here and in fr.json/zh.json/ar.json."
+  "nav": {
+    "explore": "استكشاف",
+    "counties": "المقاطعات",
+    "events": "الفعاليات",
+    "carRentals": "تأجير السيارات",
+    "creators": "المبدعون",
+    "saved": "المحفوظات",
+    "help": "المساعدة",
+    "nearMe": "بالقرب مني",
+    "featured": "وجهة مميزة",
+    "home": "الرئيسية",
+    "trips": "الرحلات",
+    "search": "بحث",
+    "mainNavigation": "التنقل الرئيسي",
+    "primaryNavigation": "التنقل الرئيسي",
+    "siteSections": "أقسام الموقع",
+    "siteMenu": "قائمة الموقع",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة",
+    "homeLink": "الصفحة الرئيسية لـ LIBERIA360",
+    "logInSignUp": "تسجيل الدخول / إنشاء حساب",
+    "viewAccount": "عرض الحساب",
+    "logIn": "تسجيل الدخول",
+    "accountAriaLabel": "الحساب — مسجّل الدخول باسم {name}"
+  },
+  "footer": {
+    "tagline": "اكتشف أماكن وتجارب وأعمالًا وقصصًا موثوقة في جميع أنحاء ليبيريا.",
+    "addPlace": "إضافة مكان",
+    "privacy": "الخصوصية",
+    "terms": "الشروط",
+    "footerNavigation": "روابط التذييل",
+    "copyright": "© {year} LIBERIA360. كل ليبيريا، في مكان واحد."
+  },
+  "common": {
+    "loading": "جارٍ التحميل…",
+    "loadingSite": "جارٍ تحميل LIBERIA360",
+    "switchToLightMode": "التبديل إلى الوضع الفاتح",
+    "switchToDarkMode": "التبديل إلى الوضع الداكن",
+    "delete": "حذف",
+    "cancel": "إلغاء",
+    "deleting": "جارٍ الحذف…",
+    "cannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
+    "typeToConfirm": "للتأكيد، اكتب <b>{phrase}</b> أدناه.",
+    "notifications": "الإشعارات",
+    "notificationsUnread": "الإشعارات — {count} غير مقروءة",
+    "markAllRead": "تحديد الكل كمقروء",
+    "notificationsEmpty": "لا يوجد شيء بعد — أنت على اطلاع بكل شيء.",
+    "viewAll": "عرض الكل",
+    "tripInvitation": "{count, plural, one {لديك دعوة رحلة واحدة} other {لديك # دعوات رحلات}}",
+    "tapToRespond": "اضغط للعرض والرد.",
+    "somethingWentWrong": "حدث خطأ ما",
+    "errorDescription": "عذرًا، واجهت هذه الصفحة خطأً غير متوقعًا. يمكنك المحاولة مرة أخرى أو العودة إلى الرئيسية.",
+    "tryAgain": "إعادة المحاولة",
+    "goHome": "العودة إلى الرئيسية"
+  }
 }

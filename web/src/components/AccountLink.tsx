@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -13,7 +14,11 @@ import { useAuth } from '@/hooks/useAuth';
 // notification, so this link goes back to doing one thing, always to
 // /account, which itself decides whether to show the profile or redirect
 // to /login.
+//
+// Plain next/link, not @/i18n/navigation's locale-aware Link — see
+// Header.tsx's doc comment for why (renders in both root layouts).
 export function AccountLink() {
+  const t = useTranslations('nav');
   const { user, ready } = useAuth();
 
   // Before the client-side localStorage check has run, render the
@@ -25,7 +30,7 @@ export function AccountLink() {
         className="flex items-center gap-1.5 rounded-full border border-white/30 bg-white/5 px-3 py-1.5 text-sm text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
       >
         <UserCircleIcon aria-hidden className="h-4 w-4" />
-        Log in
+        {t('logIn')}
       </Link>
     );
   }
@@ -35,7 +40,7 @@ export function AccountLink() {
   return (
     <Link
       href="/account"
-      aria-label={`Account — signed in as ${user.name}`}
+      aria-label={t('accountAriaLabel', { name: user.name })}
       className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       {initial}

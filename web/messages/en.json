@@ -1,3 +1,57 @@
 {
-  "_comment": "Phase 1 (infra) seeds these files empty on purpose — see I18N_PLAN.md. Phase 2 populates the shell-chrome namespaces (nav, common, ...) here and in fr.json/zh.json/ar.json."
+  "nav": {
+    "explore": "Explore",
+    "counties": "Counties",
+    "events": "Events",
+    "carRentals": "Car Rentals",
+    "creators": "Creators",
+    "saved": "Saved",
+    "help": "Help",
+    "nearMe": "Near Me",
+    "featured": "Featured Destination",
+    "home": "Home",
+    "trips": "Trips",
+    "search": "Search",
+    "mainNavigation": "Main navigation",
+    "primaryNavigation": "Primary navigation",
+    "siteSections": "Site sections",
+    "siteMenu": "Site menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "homeLink": "LIBERIA360 home",
+    "logInSignUp": "Log in / Sign up",
+    "viewAccount": "View account",
+    "logIn": "Log in",
+    "accountAriaLabel": "Account — signed in as {name}"
+  },
+  "footer": {
+    "tagline": "Discover trusted places, experiences, businesses, and stories across Liberia.",
+    "addPlace": "Add a place",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "footerNavigation": "Footer navigation",
+    "copyright": "© {year} LIBERIA360. Everything Liberia. One place."
+  },
+  "common": {
+    "loading": "Loading…",
+    "loadingSite": "Loading LIBERIA360",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "deleting": "Deleting…",
+    "cannotBeUndone": "This action cannot be undone.",
+    "typeToConfirm": "To confirm, type <b>{phrase}</b> below.",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications — {count} unread",
+    "markAllRead": "Mark all read",
+    "notificationsEmpty": "Nothing yet — you're all caught up.",
+    "viewAll": "View all",
+    "tripInvitation": "{count, plural, one {You have a trip invitation} other {You have # trip invitations}}",
+    "tapToRespond": "Tap to view and respond.",
+    "somethingWentWrong": "Something went wrong",
+    "errorDescription": "Sorry about that — this page hit an unexpected error. You can try again, or head back home.",
+    "tryAgain": "Try again",
+    "goHome": "Go home"
+  }
 }

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderWithMessages } from '@/test/render-with-messages';
 import userEvent from '@testing-library/user-event';
 import { TripPlannerForm } from './TripPlannerForm';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
@@ -119,7 +120,7 @@ describe('TripPlannerForm', () => {
       stops: [],
     });
 
-    render(<TripPlannerForm />);
+    renderWithMessages(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
 
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
@@ -149,7 +150,7 @@ describe('TripPlannerForm', () => {
       stops: [],
     });
 
-    render(<TripPlannerForm />);
+    renderWithMessages(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     await screen.findByRole('button', { name: /log in to save this trip/i });
@@ -183,7 +184,7 @@ describe('TripPlannerForm', () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-1', title: 'My Trip' });
 
-    render(<TripPlannerForm />);
+    renderWithMessages(<TripPlannerForm />);
 
     expect(await screen.findByText(/saving your trip/i)).toBeInTheDocument();
     await waitFor(() => expect(push).toHaveBeenCalledWith('/trips/itin-1'));
@@ -204,7 +205,7 @@ describe('TripPlannerForm', () => {
   });
 
   it('requires a trip name, destination, and a valid date range before it can be created', async () => {
-    render(<TripPlannerForm />);
+    renderWithMessages(<TripPlannerForm />);
 
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/give your trip a name/i);
@@ -230,7 +231,7 @@ describe('TripPlannerForm', () => {
     setStoredAuth({ token: 'tok', user: USER });
     mockFetchOnce(201, { id: 'itin-2', title: '3-Day Liberia Trip' });
 
-    render(<TripPlannerForm />);
+    renderWithMessages(<TripPlannerForm />);
     await fillRequiredFields('3-Day Liberia Trip');
     expect(await screen.findByRole('button', { name: /^start planning$/i })).toBeInTheDocument();
 
