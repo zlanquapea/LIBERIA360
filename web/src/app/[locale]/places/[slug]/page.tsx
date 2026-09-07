@@ -26,7 +26,7 @@ import { PlaceCardCompact } from "@/components/PlaceCardCompact";
 import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
 import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
-import { MenuSection } from "@/components/MenuSection";
+import { MenuPreviewSection } from "@/components/MenuPreviewSection";
 import { ShareMenu } from "@/components/ShareMenu";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { BusinessClaimSection } from "@/components/BusinessClaimSection";
@@ -208,7 +208,7 @@ export default async function PlaceProfilePage({
         </p>
       </section>
 
-      <MenuSection items={menuItems} businessId={business?.id} />
+      {business && <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} />}
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>

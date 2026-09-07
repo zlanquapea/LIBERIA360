@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BookingRequestSection } from "./BookingRequestSection";
-import { useRestaurantCartActive } from "@/components/RestaurantCartActiveContext";
 import type { Business } from "@/lib/types";
 
 // UX audit (Sep 6, 2026): the primary "Book"/"Request to book" action only
@@ -37,15 +36,6 @@ import type { Business } from "@/lib/types";
 // this contextual, user-triggered bar win the strip while it's visible;
 // the switcher/launcher are still there and reappear the moment this bar
 // hides again on scroll-up, so nothing is lost — just briefly deferred to.
-//
-// Bug fix, Sep 2026: on a restaurant's business page, MenuSection mounts
-// its own fixed order-summary bar in the same reserved strip once a
-// visitor has food-order items in their cart — see
-// RestaurantCartActiveContext's doc comment for how the two collided.
-// useRestaurantCartActive() suppresses this bar entirely while that cart
-// is active, deferring to the visitor's in-progress order instead of
-// fighting it for the same pixels; it's a no-op (`active` stays false) on
-// any page that doesn't wrap this in a RestaurantCartActiveProvider.
 export function StickyBookingBar({
   business,
   name,
@@ -54,9 +44,7 @@ export function StickyBookingBar({
   name: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [scrolledPast, setScrolledPast] = useState(false);
-  const { active: cartActive } = useRestaurantCartActive();
-  const visible = scrolledPast && !cartActive;
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -66,7 +54,7 @@ export function StickyBookingBar({
         // Only care about "scrolled past above" (boundingClientRect.top <
         // 0), not the initial "hasn't been reached yet" state below the
         // fold, which also reports isIntersecting: false.
-        setScrolledPast(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+        setVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
       },
       { threshold: 0 },
     );
