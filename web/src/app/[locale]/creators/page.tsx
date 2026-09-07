@@ -221,7 +221,7 @@ export default async function CreatorsPage({
                   No creators match these filters.
                 </p>
               ) : (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200 bg-white px-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:px-5">
                   {result.data.map((creator, i) => (
                     <CreatorCard key={creator.id} creator={creator} index={i} />
                   ))}
