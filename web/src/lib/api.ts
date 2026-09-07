@@ -95,6 +95,7 @@ async function apiFetch<T>(
   path: string,
   params?: Record<string, string | number | boolean | undefined>,
   buildFallback?: T,
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
   // API_URL is a bare relative path ("/api/v1") in the browser — the
   // one-argument `new URL(...)` form requires an absolute string and
@@ -131,6 +132,7 @@ async function apiFetch<T>(
       // `cache: 'no-store'` opts every catalog read out of Next's Data
       // Cache entirely — no window to wait out, on any topology.
       cache: "no-store",
+      headers: extraHeaders,
     });
   } catch (err) {
     if (IS_BUILD_PHASE && buildFallback !== undefined) {
@@ -324,24 +326,44 @@ export function getCreatorByUsername(username: string): Promise<Creator> {
   return apiFetch<Creator>(`/creators/${username}`);
 }
 
+// `cookieHeader` (the raw incoming `Cookie` header, forwarded by the
+// calling Server Component via `(await cookies()).toString()`) lets this
+// server-side fetch tell the API who's asking, the same way a browser's
+// own request would. Without it, every post in the feed comes back with
+// `viewerLiked`/`viewerSaved` hardcoded to false — not because the like
+// or save didn't persist, but because this fetch runs on the Next.js
+// server, which has no browser cookie jar of its own to carry the
+// visitor's session forward. That's what made a previously-liked post's
+// heart look unliked again after a plain page reload, and made a second
+// "Save" tap on a post you'd already saved silently toggle it back off
+// (the button had no way to know it was already on) instead of ever
+// showing up on the Saved page. Both endpoints already read this cookie
+// correctly (OptionalJwtAuthGuard) once it arrives — the fetch itself was
+// the missing link. Cookie forwarding costs nothing for static generation
+// here since both callers (/creators, /creators/[username]) are already
+// fully dynamic routes.
 export function getCreatorFeed(
   query: { page?: number; limit?: number } = {},
+  cookieHeader?: string,
 ): Promise<PaginatedCreatorPosts> {
   return apiFetch<PaginatedCreatorPosts>(
     "/creators/feed",
     query,
     emptyPage(query.limit),
+    cookieHeader ? { Cookie: cookieHeader } : undefined,
   );
 }
 
 export function getCreatorFeedForCreator(
   username: string,
   query: { page?: number; limit?: number } = {},
+  cookieHeader?: string,
 ): Promise<PaginatedCreatorPosts> {
   return apiFetch<PaginatedCreatorPosts>(
     `/creators/feed/creator/${encodeURIComponent(username)}`,
     query,
     emptyPage(query.limit),
+    cookieHeader ? { Cookie: cookieHeader } : undefined,
   );
 }
 

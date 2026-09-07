@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import {
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
@@ -200,9 +201,15 @@ export default async function CreatorProfilePage({
     notFound();
   }
 
+  // Forwarded so the feed's per-post viewerLiked/viewerSaved reflect this
+  // visitor's own likes/saves on first load — see getCreatorFeed's doc
+  // comment in lib/api.ts for why that's otherwise always false from a
+  // server fetch.
+  const cookieHeader = (await cookies()).toString();
+
   const [reviewsResult, creatorFeedResult] = await Promise.all([
     getCreatorReviews(creator.id, { limit: 20 }),
-    getCreatorFeedForCreator(creator.username, { limit: 20 }),
+    getCreatorFeedForCreator(creator.username, { limit: 20 }, cookieHeader),
   ]);
   const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
   const coverThumb = creator.coverImage

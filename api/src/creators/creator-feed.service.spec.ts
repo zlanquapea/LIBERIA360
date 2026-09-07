@@ -184,3 +184,99 @@ describe("CreatorFeedService public feed viewer state", () => {
     expect(result.data.find((p) => p.id === "post-1")?.viewerLiked).toBe(true);
   });
 });
+
+// Bug fix (Sep 7, 2026): the Saved page listed a post a viewer had both
+// liked and saved with an unfilled heart, because findSaved() hardcoded
+// viewerLiked to false regardless of the caller's actual like history —
+// unlike the discover feed, which already computed it correctly. Fixed by
+// looking up the caller's likes for the saved posts the same way the
+// public feed does.
+describe("CreatorFeedService findSaved viewer state", () => {
+  let service: CreatorFeedService;
+  let likeRepo: { find: jest.Mock };
+  let saveRepo: { createQueryBuilder: jest.Mock };
+  let qb: {
+    innerJoinAndSelect: jest.Mock;
+    leftJoinAndSelect: jest.Mock;
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    orderBy: jest.Mock;
+    getMany: jest.Mock;
+  };
+
+  const savedPost1 = {
+    post: {
+      id: "post-1",
+      creatorId: "creator-1",
+      mediaType: "image",
+      mediaUrl: "https://example.com/1.jpg",
+      caption: null,
+      status: "published",
+      likeCount: 0,
+      commentCount: 0,
+      saveCount: 0,
+      shareCount: 0,
+      creator: { id: "creator-1", county: null },
+      createdAt: new Date("2026-01-01"),
+      updatedAt: new Date("2026-01-01"),
+    },
+  };
+  const savedPost2 = {
+    post: { ...savedPost1.post, id: "post-2" },
+  };
+
+  beforeEach(async () => {
+    qb = {
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([savedPost1, savedPost2]),
+    };
+    likeRepo = { find: jest.fn().mockResolvedValue([]) };
+    saveRepo = { createQueryBuilder: jest.fn().mockReturnValue(qb) };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CreatorFeedService,
+        { provide: getRepositoryToken(Creator), useValue: {} },
+        { provide: getRepositoryToken(CreatorPost), useValue: {} },
+        { provide: getRepositoryToken(CreatorPostLike), useValue: likeRepo },
+        { provide: getRepositoryToken(CreatorPostSave), useValue: saveRepo },
+        { provide: getRepositoryToken(CreatorPostComment), useValue: {} },
+        { provide: getRepositoryToken(CreatorPostCommentLike), useValue: {} },
+        { provide: getRepositoryToken(CreatorFollow), useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get(CreatorFeedService);
+  });
+
+  it("marks a saved post as viewerLiked when the caller also liked it", async () => {
+    likeRepo.find.mockResolvedValue([{ postId: "post-1" }]);
+
+    const result = await service.findSaved("viewer-1");
+
+    expect(likeRepo.find).toHaveBeenCalledWith({
+      where: { userId: "viewer-1", postId: expect.anything() },
+    });
+    expect(result.find((p) => p.id === "post-1")).toMatchObject({
+      viewerLiked: true,
+      viewerSaved: true,
+    });
+    expect(result.find((p) => p.id === "post-2")).toMatchObject({
+      viewerLiked: false,
+      viewerSaved: true,
+    });
+  });
+
+  it("skips the like lookup entirely when there are no saved posts", async () => {
+    qb.getMany.mockResolvedValue([]);
+
+    const result = await service.findSaved("viewer-1");
+
+    expect(likeRepo.find).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+});
