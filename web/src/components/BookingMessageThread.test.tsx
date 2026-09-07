@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithMessages } from '@/test/render-with-messages';
 import userEvent from '@testing-library/user-event';
 import BookingMessageThread from './BookingMessageThread';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
@@ -71,7 +72,7 @@ describe('BookingMessageThread', () => {
     setStoredAuth({ token: 'tok', user: ME });
     mockFetch([{ method: 'GET', path: '/messages', body: [] }]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
 
     expect(await screen.findByText(/say hello/i)).toBeInTheDocument();
   });
@@ -89,7 +90,7 @@ describe('BookingMessageThread', () => {
       },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
 
     await screen.findByText('Not read yet');
     expect(screen.getByText('Already seen')).toBeInTheDocument();
@@ -103,7 +104,7 @@ describe('BookingMessageThread', () => {
       { method: 'GET', path: '/messages', body: [message({ id: 'm1', senderUserId: OTHER.id, sender: OTHER })] },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
 
     await screen.findByText('Hello');
     expect(screen.queryByText('Delivered')).not.toBeInTheDocument();
@@ -117,7 +118,7 @@ describe('BookingMessageThread', () => {
       { method: 'PATCH', path: '/messages/read', body: { success: true } },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
     await screen.findByText('Hello');
 
     await waitFor(() => expect(calls.some((c) => c.method === 'PATCH' && c.url.includes('/messages/read'))).toBe(true));
@@ -131,7 +132,7 @@ describe('BookingMessageThread', () => {
       { method: 'POST', path: '/messages', body: sentMessage, delayMs: 30 },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
     await screen.findByText(/say hello/i);
 
     await userEvent.type(screen.getByPlaceholderText(/write a message/i), 'What time is check-in?');
@@ -155,7 +156,7 @@ describe('BookingMessageThread', () => {
       },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
     await screen.findByText('Mine');
     await screen.findByText('Theirs');
 
@@ -171,7 +172,7 @@ describe('BookingMessageThread', () => {
       { method: 'PATCH', path: '/messages/m1', body: edited },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
     await screen.findByText('Original text');
 
     await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
@@ -193,7 +194,7 @@ describe('BookingMessageThread', () => {
       { method: 'DELETE', path: '/messages/m1', body: { success: true } },
     ]);
 
-    render(<BookingMessageThread bookingId="booking-1" />);
+    renderWithMessages(<BookingMessageThread bookingId="booking-1" />);
     await screen.findByText('Oops, wrong booking');
 
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));

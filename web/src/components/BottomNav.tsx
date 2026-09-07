@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ComponentType, SVGProps } from "react";
 import {
   HomeIcon,
@@ -43,40 +44,48 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // Creators is back, moved to the last slot rather than reclaiming its old
 // third position. Net effect: four steady discovery/planning tabs up
 // front (Home, Counties, Trips, Events) with Creators anchoring the end.
+//
+// labelKey (i18n, Sep 2026): a key into the `nav` message namespace — see
+// site-nav.ts's SiteNavItem for why this list carries no literal English
+// copy for any locale.
 const TABS: {
   href: string;
-  label: string;
+  labelKey: string;
   icon: IconComponent;
   activeIcon: IconComponent;
 }[] = [
-  { href: "/", label: "Home", icon: HomeIcon, activeIcon: HomeIconSolid },
+  { href: "/", labelKey: "home", icon: HomeIcon, activeIcon: HomeIconSolid },
   {
     href: "/counties",
-    label: "Counties",
+    labelKey: "counties",
     icon: MapPinIcon,
     activeIcon: MapPinIconSolid,
   },
   {
     href: "/trips",
-    label: "Trips",
+    labelKey: "trips",
     icon: MapIcon,
     activeIcon: MapIconSolid,
   },
   {
     href: "/events",
-    label: "Events",
+    labelKey: "events",
     icon: CalendarDaysIcon,
     activeIcon: CalendarDaysIconSolid,
   },
   {
     href: "/creators",
-    label: "Creators",
+    labelKey: "creators",
     icon: UserGroupIcon,
     activeIcon: UserGroupIconSolid,
   },
 ];
 
+// Plain next/link, not @/i18n/navigation's locale-aware Link — see
+// Header.tsx's doc comment for why (this renders in both root layouts,
+// only one of which has real i18n behind its provider).
 export function BottomNav() {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const activeIndex = TABS.findIndex((tab) =>
     tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href),
@@ -84,7 +93,7 @@ export function BottomNav() {
 
   return (
     <nav
-      aria-label="Primary navigation"
+      aria-label={t("primaryNavigation")}
       className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-brand-900/95 pt-1 text-white shadow-[0_-8px_24px_rgba(8,26,80,0.16)] backdrop-blur supports-[backdrop-filter]:bg-brand-900/85 lg:hidden"
     >
       <div className="relative mx-auto flex w-full max-w-md pb-[env(safe-area-inset-bottom)]">
@@ -123,7 +132,7 @@ export function BottomNav() {
                 aria-hidden
                 className={`h-5 w-5 shrink-0 transition-transform ${active ? "scale-110" : ""}`}
               />
-              <span className="truncate">{tab.label}</span>
+              <span className="truncate">{t(tab.labelKey)}</span>
             </Link>
           );
         })}

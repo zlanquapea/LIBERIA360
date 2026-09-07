@@ -1,4 +1,7 @@
+'use client';
+
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
 // The brand's own "still loading" moment — shown by app/loading.tsx on
 // every route transition (and available for any page's own Suspense/loading
@@ -11,8 +14,14 @@ import Image from 'next/image';
 // time this can ever mount: Header renders the exact same image, and
 // Header persists across every client-side navigation — only `{children}`
 // swaps — so this never triggers its own image fetch.
+//
+// 'use client' (i18n, Sep 2026): the default label is translated via
+// useTranslations('common'), which needs a NextIntlClientProvider
+// ancestor — present in both root layouts (see (no-locale)/layout.tsx's
+// doc comment for why that tree's is pinned to English). `label` can
+// still be overridden by any caller that needs a more specific string.
 export function BrandLoader({
-  label = 'Loading…',
+  label,
   size = 'md',
 }: {
   label?: string;
@@ -21,13 +30,16 @@ export function BrandLoader({
   // 5.5rem mark would overwhelm the surrounding content.
   size?: 'md' | 'sm';
 }) {
+  const t = useTranslations('common');
+  const resolvedLabel = label ?? t('loading');
+
   return (
     <div
       role="status"
       aria-live="polite"
       className={size === 'sm' ? 'brand-loader brand-loader--sm' : 'brand-loader'}
     >
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{resolvedLabel}</span>
       <span className="brand-loader__halo" aria-hidden />
       <span className="brand-loader__ring brand-loader__ring--outer" aria-hidden />
       <span className="brand-loader__ring brand-loader__ring--inner" aria-hidden />

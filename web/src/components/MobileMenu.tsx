@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { MOBILE_MENU_NAVIGATION } from "@/lib/site-nav";
@@ -19,7 +20,12 @@ import { MOBILE_MENU_NAVIGATION } from "@/lib/site-nav";
 // a bottom tab (Counties/Events/Creators) rather than listing the same
 // destination twice on one screen; see that list's own doc comment for
 // what took their place.
+//
+// Plain next/link, not @/i18n/navigation's locale-aware Link — see
+// Header.tsx's doc comment for why (this renders in both root layouts,
+// only one of which has real i18n behind its provider).
 export function MobileMenu() {
+  const t = useTranslations("nav");
   const [open, setOpen] = useState(false);
   const { user, ready } = useAuth();
 
@@ -50,7 +56,7 @@ export function MobileMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Open menu"
+        aria-label={t("openMenu")}
         aria-expanded={open}
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 lg:hidden"
       >
@@ -68,7 +74,7 @@ export function MobileMenu() {
         // pinned to the header instead of a full-height panel). Same fix
         // CreatorPostMedia already uses for its viewer overlay.
         createPortal(
-          <div role="dialog" aria-modal="true" aria-label="Site menu" className="fixed inset-0 z-[120] lg:hidden">
+          <div role="dialog" aria-modal="true" aria-label={t("siteMenu")} className="fixed inset-0 z-[120] lg:hidden">
             <div aria-hidden className="absolute inset-0 bg-black/50" onClick={close} />
             <div className="relative flex h-full w-[82%] max-w-xs flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
               <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4 dark:border-slate-800">
@@ -81,26 +87,26 @@ export function MobileMenu() {
                       <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
                         {user.name}
                       </span>
-                      <span className="block text-xs text-slate-500 dark:text-slate-400">View account</span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">{t("viewAccount")}</span>
                     </span>
                   </Link>
                 ) : (
                   <Link href="/login" onClick={close} className="text-sm font-semibold text-brand-700 dark:text-brand-300">
-                    Log in / Sign up
+                    {t("logInSignUp")}
                   </Link>
                 )}
                 <button
                   type="button"
                   onClick={close}
-                  aria-label="Close menu"
+                  aria-label={t("closeMenu")}
                   className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 >
                   <XMarkIcon aria-hidden className="h-5 w-5" />
                 </button>
               </div>
 
-              <nav aria-label="Site sections" className="flex flex-col gap-1 p-3">
-                {MOBILE_MENU_NAVIGATION.map(({ href, label, icon: Icon }) => (
+              <nav aria-label={t("siteSections")} className="flex flex-col gap-1 p-3">
+                {MOBILE_MENU_NAVIGATION.map(({ href, labelKey, icon: Icon }) => (
                   <Link
                     key={href}
                     href={href}
@@ -108,7 +114,7 @@ export function MobileMenu() {
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     <Icon aria-hidden className="h-5 w-5 text-brand-700 dark:text-brand-300" />
-                    {label}
+                    {t(labelKey)}
                   </Link>
                 ))}
               </nav>

@@ -1,3 +1,57 @@
 {
-  "_comment": "Phase 1 (infra) seeds these files empty on purpose — see I18N_PLAN.md. Phase 2 populates the shell-chrome namespaces (nav, common, ...) here and in fr.json/zh.json/ar.json."
+  "nav": {
+    "explore": "探索",
+    "counties": "郡县",
+    "events": "活动",
+    "carRentals": "租车",
+    "creators": "创作者",
+    "saved": "已收藏",
+    "help": "帮助",
+    "nearMe": "附近",
+    "featured": "精选目的地",
+    "home": "首页",
+    "trips": "行程",
+    "search": "搜索",
+    "mainNavigation": "主导航",
+    "primaryNavigation": "主导航",
+    "siteSections": "网站板块",
+    "siteMenu": "网站菜单",
+    "openMenu": "打开菜单",
+    "closeMenu": "关闭菜单",
+    "homeLink": "LIBERIA360 首页",
+    "logInSignUp": "登录 / 注册",
+    "viewAccount": "查看账户",
+    "logIn": "登录",
+    "accountAriaLabel": "账户 — 已登录为 {name}"
+  },
+  "footer": {
+    "tagline": "发现利比里亚各地值得信赖的景点、体验、商家和故事。",
+    "addPlace": "添加地点",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "footerNavigation": "页脚导航",
+    "copyright": "© {year} LIBERIA360。畅游利比里亚，尽在此处。"
+  },
+  "common": {
+    "loading": "加载中…",
+    "loadingSite": "正在加载 LIBERIA360",
+    "switchToLightMode": "切换到浅色模式",
+    "switchToDarkMode": "切换到深色模式",
+    "delete": "删除",
+    "cancel": "取消",
+    "deleting": "正在删除…",
+    "cannotBeUndone": "此操作无法撤销。",
+    "typeToConfirm": "请在下方输入 <b>{phrase}</b> 以确认。",
+    "notifications": "通知",
+    "notificationsUnread": "通知 — {count} 条未读",
+    "markAllRead": "全部标记为已读",
+    "notificationsEmpty": "暂时没有新通知，一切都已处理。",
+    "viewAll": "查看全部",
+    "tripInvitation": "{count, plural, other {您有 # 个行程邀请}}",
+    "tapToRespond": "点按查看并回复。",
+    "somethingWentWrong": "出错了",
+    "errorDescription": "抱歉，此页面遇到意外错误。您可以重试，或返回首页。",
+    "tryAgain": "重试",
+    "goHome": "返回首页"
+  }
 }

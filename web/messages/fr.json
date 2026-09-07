@@ -1,3 +1,57 @@
 {
-  "_comment": "Phase 1 (infra) seeds these files empty on purpose — see I18N_PLAN.md. Phase 2 populates the shell-chrome namespaces (nav, common, ...) here and in fr.json/zh.json/ar.json."
+  "nav": {
+    "explore": "Explorer",
+    "counties": "Comtés",
+    "events": "Événements",
+    "carRentals": "Location de voitures",
+    "creators": "Créateurs",
+    "saved": "Enregistrés",
+    "help": "Aide",
+    "nearMe": "Près de moi",
+    "featured": "Destination en vedette",
+    "home": "Accueil",
+    "trips": "Voyages",
+    "search": "Rechercher",
+    "mainNavigation": "Navigation principale",
+    "primaryNavigation": "Navigation principale",
+    "siteSections": "Sections du site",
+    "siteMenu": "Menu du site",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "homeLink": "Accueil LIBERIA360",
+    "logInSignUp": "Connexion / Inscription",
+    "viewAccount": "Voir le compte",
+    "logIn": "Connexion",
+    "accountAriaLabel": "Compte — connecté en tant que {name}"
+  },
+  "footer": {
+    "tagline": "Découvrez des lieux, expériences, entreprises et récits fiables à travers le Liberia.",
+    "addPlace": "Ajouter un lieu",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "footerNavigation": "Navigation du pied de page",
+    "copyright": "© {year} LIBERIA360. Tout le Liberia. En un seul endroit."
+  },
+  "common": {
+    "loading": "Chargement…",
+    "loadingSite": "Chargement de LIBERIA360",
+    "switchToLightMode": "Passer au mode clair",
+    "switchToDarkMode": "Passer au mode sombre",
+    "delete": "Supprimer",
+    "cancel": "Annuler",
+    "deleting": "Suppression…",
+    "cannotBeUndone": "Cette action est irréversible.",
+    "typeToConfirm": "Pour confirmer, tapez <b>{phrase}</b> ci-dessous.",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications — {count} non lues",
+    "markAllRead": "Tout marquer comme lu",
+    "notificationsEmpty": "Rien pour l'instant — vous êtes à jour.",
+    "viewAll": "Tout voir",
+    "tripInvitation": "{count, plural, one {Vous avez une invitation de voyage} other {Vous avez # invitations de voyage}}",
+    "tapToRespond": "Appuyez pour voir et répondre.",
+    "somethingWentWrong": "Une erreur s'est produite",
+    "errorDescription": "Désolé — cette page a rencontré une erreur inattendue. Vous pouvez réessayer ou retourner à l'accueil.",
+    "tryAgain": "Réessayer",
+    "goHome": "Retour à l'accueil"
+  }
 }

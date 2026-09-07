@@ -9,6 +9,29 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
+  // next-intl and its whole ICU-formatting dependency chain ship ESM-only
+  // builds. This isn't needed for Next's own build (webpack/Turbopack
+  // already handle ESM packages fine), but next/jest's
+  // transformIgnorePatterns is hardcoded to skip all of node_modules
+  // except this exact list (see node_modules/next/dist/build/jest/jest.js's
+  // own comment: "Custom config can append to transformIgnorePatterns but
+  // not modify it") — so this is the only supported way to get Jest to
+  // actually transform these instead of choking on `export` syntax the
+  // moment a translated component (most shell chrome, Phase 2) is
+  // imported in a test. Full list found by chasing each "Unexpected token
+  // 'export'" back to its importer: next-intl -> use-intl ->
+  // intl-messageformat -> @formatjs/icu-messageformat-parser ->
+  // @formatjs/icu-skeleton-parser, plus use-intl's other two direct deps.
+  transpilePackages: [
+    'next-intl',
+    'use-intl',
+    '@formatjs/fast-memoize',
+    '@formatjs/icu-messageformat-parser',
+    '@formatjs/icu-skeleton-parser',
+    '@schummar/icu-type-parser',
+    'icu-minify',
+    'intl-messageformat',
+  ],
   experimental: {
     // The proxy rewrites below (added for the same-origin reverse-proxy —
     // see the /api rewrite) buffer the whole request body in memory, and

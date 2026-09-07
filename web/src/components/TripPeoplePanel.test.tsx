@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithMessages } from '@/test/render-with-messages';
 import userEvent from '@testing-library/user-event';
 import { TripPeoplePanel } from './TripPeoplePanel';
 import { setStoredAuth, clearStoredAuth } from '@/lib/auth-storage';
@@ -70,7 +71,7 @@ describe('TripPeoplePanel', () => {
       { method: 'DELETE', path: `/collaborators/${COLLABORATOR.id}`, body: [] },
     ]);
 
-    render(
+    renderWithMessages(
       <TripPeoplePanel
         itineraryId="trip-1"
         admin={OWNER}
@@ -100,7 +101,7 @@ describe('TripPeoplePanel', () => {
       { method: 'DELETE', path: `/invitations/${invitation.id}`, body: [] },
     ]);
 
-    render(
+    renderWithMessages(
       <TripPeoplePanel itineraryId="trip-1" admin={OWNER} collaborators={[]} isOwner onChange={() => undefined} />,
     );
     await screen.findByText(invitation.email);
@@ -121,7 +122,7 @@ describe('TripPeoplePanel', () => {
       { method: 'GET', path: '/join-requests', body: [] },
     ]);
 
-    render(
+    renderWithMessages(
       <TripPeoplePanel itineraryId="trip-1" admin={OWNER} collaborators={[]} isOwner onChange={() => undefined} />,
     );
     await screen.findByText(invitation.email);

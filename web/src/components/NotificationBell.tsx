@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { BellIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { BrandLoader } from './BrandLoader';
@@ -30,6 +31,7 @@ const VIEWPORT_MARGIN = 8;
 // indicator next to this one — one bell for everything worth surfacing,
 // not two competing ones.
 export function NotificationBell() {
+  const t = useTranslations('common');
   const { user, token, ready } = useAuth();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -138,7 +140,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={toggleOpen}
-        aria-label={badgeCount > 0 ? `Notifications — ${badgeCount} unread` : 'Notifications'}
+        aria-label={badgeCount > 0 ? t('notificationsUnread', { count: badgeCount }) : t('notifications')}
         aria-expanded={open}
         className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/5 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
       >
@@ -159,14 +161,14 @@ export function NotificationBell() {
           className="z-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
         >
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 dark:border-slate-800">
-            <span className="text-sm font-semibold text-slate-900 dark:text-white">Notifications</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white">{t('notifications')}</span>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={handleMarkAllRead}
                 className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"
               >
-                Mark all read
+                {t('markAllRead')}
               </button>
             )}
           </div>
@@ -179,24 +181,22 @@ export function NotificationBell() {
                 className="block border-b border-slate-100 bg-brand-50/60 px-4 py-3 text-sm hover:bg-brand-50 dark:border-slate-800 dark:bg-brand-900/10 dark:hover:bg-brand-900/20"
               >
                 <p className="font-medium text-slate-900 dark:text-white">
-                  {pendingInvitationCount === 1
-                    ? 'You have a trip invitation'
-                    : `You have ${pendingInvitationCount} trip invitations`}
+                  {t('tripInvitation', { count: pendingInvitationCount })}
                 </p>
-                <p className="mt-0.5 text-slate-500 dark:text-slate-400">Tap to view and respond.</p>
+                <p className="mt-0.5 text-slate-500 dark:text-slate-400">{t('tapToRespond')}</p>
               </Link>
             )}
 
             {loadingFeed && (
               <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
                 <BrandLoader size="sm" />
-                Loading…
+                {t('loading')}
               </div>
             )}
 
             {isEmpty && (
               <p className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-                Nothing yet — you&apos;re all caught up.
+                {t('notificationsEmpty')}
               </p>
             )}
 
@@ -215,7 +215,7 @@ export function NotificationBell() {
             onClick={() => setOpen(false)}
             className="block border-t border-slate-100 px-4 py-2.5 text-center text-sm font-medium text-brand-700 hover:bg-slate-50 dark:border-slate-800 dark:text-brand-300 dark:hover:bg-slate-800/60"
           >
-            View all
+            {t('viewAll')}
           </Link>
         </div>
       )}

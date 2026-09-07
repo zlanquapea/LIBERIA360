@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { renderWithMessages } from '@/test/render-with-messages';
 import userEvent from "@testing-library/user-event";
 import { CreatorPostCard } from "./CreatorPostCard";
 import type { CreatorPost } from "../lib/types";
@@ -74,7 +75,7 @@ beforeEach(() => {
 describe("CreatorPostCard actions", () => {
   it("opens the two-item overflow menu and dismisses it outside or with Escape", async () => {
     const user = userEvent.setup();
-    render(<CreatorPostCard post={post} />);
+    renderWithMessages(<CreatorPostCard post={post} />);
 
     await user.click(screen.getByRole("button", { name: "More post actions" }));
     expect(screen.getByRole("menu")).toBeInTheDocument();
@@ -93,7 +94,7 @@ describe("CreatorPostCard actions", () => {
   it("calls onEdit with the post and closes the menu", async () => {
     const user = userEvent.setup();
     const onEdit = jest.fn();
-    render(<CreatorPostCard post={post} onEdit={onEdit} />);
+    renderWithMessages(<CreatorPostCard post={post} onEdit={onEdit} />);
 
     await user.click(screen.getByRole("button", { name: "More post actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Edit" }));
@@ -105,7 +106,7 @@ describe("CreatorPostCard actions", () => {
   it("requires confirmation before calling onDelete and shows destructive loading state", async () => {
     const user = userEvent.setup();
     const onDelete = jest.fn().mockResolvedValue(undefined);
-    render(<CreatorPostCard post={post} onDelete={onDelete} />);
+    renderWithMessages(<CreatorPostCard post={post} onDelete={onDelete} />);
 
     await user.click(screen.getByRole("button", { name: "More post actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
@@ -122,7 +123,7 @@ describe("CreatorPostCard actions", () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue(undefined);
     const onUnsave = jest.fn().mockResolvedValue(undefined);
-    render(<CreatorPostCard post={post} onSave={onSave} onUnsave={onUnsave} />);
+    renderWithMessages(<CreatorPostCard post={post} onSave={onSave} onUnsave={onUnsave} />);
 
     const saveButton = screen.getByRole("button", { name: "Save post" });
     expect(saveButton).toHaveTextContent("Save");

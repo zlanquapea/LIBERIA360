@@ -15,7 +15,11 @@ export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface SiteNavItem {
   href: string;
-  label: string;
+  // Key into the `nav` message namespace (messages/*.json) — Header and
+  // MobileMenu translate via useTranslations('nav')(labelKey) rather than
+  // rendering a hardcoded English string, so this list itself carries no
+  // literal copy for any locale (see I18N_PLAN.md, Phase 2).
+  labelKey: string;
   icon: IconComponent;
 }
 
@@ -25,13 +29,13 @@ export interface SiteNavItem {
 // below) — desktop has no BottomNav at all, so Counties/Events/Creators
 // still need a way in here even though mobile already has them as tabs.
 export const SITE_NAVIGATION: SiteNavItem[] = [
-  { href: "/explore", label: "Explore", icon: MapIcon },
-  { href: "/counties", label: "Counties", icon: MapPinIcon },
-  { href: "/events", label: "Events", icon: CalendarDaysIcon },
-  { href: "/car-rentals", label: "Car Rentals", icon: TruckIcon },
-  { href: "/creators", label: "Creators", icon: UserGroupIcon },
-  { href: "/saved", label: "Saved", icon: BookmarkIcon },
-  { href: "/help", label: "Help", icon: LifebuoyIcon },
+  { href: "/explore", labelKey: "explore", icon: MapIcon },
+  { href: "/counties", labelKey: "counties", icon: MapPinIcon },
+  { href: "/events", labelKey: "events", icon: CalendarDaysIcon },
+  { href: "/car-rentals", labelKey: "carRentals", icon: TruckIcon },
+  { href: "/creators", labelKey: "creators", icon: UserGroupIcon },
+  { href: "/saved", labelKey: "saved", icon: BookmarkIcon },
+  { href: "/help", labelKey: "help", icon: LifebuoyIcon },
 ];
 
 // MobileMenu's drawer content (Sep 6, 2026 revision): the first version
@@ -47,10 +51,10 @@ export const SITE_NAVIGATION: SiteNavItem[] = [
 // dropped per product direction — "Businesses" read as a lower-priority
 // destination for this particular drawer than the others.
 export const MOBILE_MENU_NAVIGATION: SiteNavItem[] = [
-  { href: "/explore", label: "Explore", icon: MapIcon },
-  { href: "/car-rentals", label: "Car Rentals", icon: TruckIcon },
-  { href: "/near-me", label: "Near Me", icon: ViewfinderCircleIcon },
-  { href: "/featured", label: "Featured Destination", icon: StarIcon },
+  { href: "/explore", labelKey: "explore", icon: MapIcon },
+  { href: "/car-rentals", labelKey: "carRentals", icon: TruckIcon },
+  { href: "/near-me", labelKey: "nearMe", icon: ViewfinderCircleIcon },
+  { href: "/featured", labelKey: "featured", icon: StarIcon },
   // UX audit (Sep 5, 2026): the only link to /saved anywhere in the app
   // used to live inside /account — unreachable for a signed-out guest,
   // even though saved places are explicitly account-free. Still true
@@ -58,6 +62,6 @@ export const MOBILE_MENU_NAVIGATION: SiteNavItem[] = [
   // quick-access grid (Sep 6, 2026): /account itself redirects a
   // signed-out visitor to /login before that grid ever renders, so this
   // drawer is the only guest-reachable path to Saved on a small screen.
-  { href: "/saved", label: "Saved", icon: BookmarkIcon },
-  { href: "/help", label: "Help", icon: LifebuoyIcon },
+  { href: "/saved", labelKey: "saved", icon: BookmarkIcon },
+  { href: "/help", labelKey: "help", icon: LifebuoyIcon },
 ];

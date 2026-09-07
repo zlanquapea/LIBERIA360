@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 // Reusable destructive-action confirmation — replaces window.confirm()
@@ -45,14 +46,22 @@ export function ConfirmDialog({
   description,
   consequences,
   confirmationPhrase,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
-  loadingLabel = 'Deleting…',
+  confirmLabel,
+  cancelLabel,
+  loadingLabel,
   isLoading = false,
   error,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  // Defaults come from the `common` namespace rather than prop defaults —
+  // useTranslations() can only be called in the component body, not in a
+  // default-parameter expression — but every caller's own override
+  // (`confirmLabel="Remove"`, etc.) still wins via `??`.
+  const t = useTranslations('common');
+  const resolvedConfirmLabel = confirmLabel ?? t('delete');
+  const resolvedCancelLabel = cancelLabel ?? t('cancel');
+  const resolvedLoadingLabel = loadingLabel ?? t('deleting');
   const [typedValue, setTypedValue] = useState('');
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -117,13 +126,17 @@ export function ConfirmDialog({
           </ul>
         )}
 
-        <p className="text-xs font-medium text-flag-700 dark:text-flag-300">This action cannot be undone.</p>
+        <p className="text-xs font-medium text-flag-700 dark:text-flag-300">{t('cannotBeUndone')}</p>
 
-        {needsTypedConfirmation && (
+        {confirmationPhrase && (
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              To confirm, type <span className="font-semibold text-slate-700 dark:text-slate-200">{confirmationPhrase}</span>{' '}
-              below.
+              {t.rich('typeToConfirm', {
+                phrase: confirmationPhrase,
+                b: (chunks) => (
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{chunks}</span>
+                ),
+              })}
             </span>
             <input
               type="text"
@@ -150,7 +163,7 @@ export function ConfirmDialog({
             disabled={isLoading}
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-500"
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             type="button"
@@ -158,7 +171,7 @@ export function ConfirmDialog({
             disabled={!canConfirm}
             className="rounded-full bg-flag-600 px-4 py-2 text-sm font-semibold text-white hover:bg-flag-700 disabled:opacity-60"
           >
-            {isLoading ? loadingLabel : confirmLabel}
+            {isLoading ? resolvedLoadingLabel : resolvedConfirmLabel}
           </button>
         </div>
       </div>

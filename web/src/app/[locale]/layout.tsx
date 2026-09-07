@@ -24,13 +24,15 @@ import { routing, RTL_LOCALES } from "@/i18n/routing";
 // on. Admin and the legal pages are deliberately elsewhere and never see
 // this file.
 //
-// Phase 1 (infra only, no shell-chrome translation yet): Header, Footer,
-// BottomNav, etc. below are byte-for-byte the same hardcoded-English
-// components as the (no-locale) tree renders — only the <html lang/dir>
-// attributes and the NextIntlClientProvider wrapper (needed so Client
-// Components like LanguageSwitcher can call next-intl's hooks) are new.
-// Phase 2 is what actually translates Header's own text; until then this
-// layout's chrome looks identical in all four locales.
+// Phase 2 (Sep 2026, I18N_PLAN.md): Header, Footer, BottomNav, MobileMenu,
+// AccountLink, ThemeToggle, NotificationBell, ConfirmDialog, and
+// BrandLoader now translate their own copy via next-intl's
+// useTranslations() (see the `nav`/`footer`/`common` namespaces in
+// messages/*.json). Those components still render in BOTH root layouts —
+// the (no-locale) tree gets the same translated components, just pinned
+// to English via a static NextIntlClientProvider there (see that layout's
+// own doc comment) — and they still use plain next/link, not
+// @/i18n/navigation's locale-aware Link, for the same reason.
 
 export const metadata: Metadata = {
   title: "LIBERIA360 — Everything Liberia. One Place.",

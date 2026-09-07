@@ -1,16 +1,17 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithMessages } from '@/test/render-with-messages';
 import { ConfirmDialog } from './ConfirmDialog';
 
 describe('ConfirmDialog', () => {
   it('renders nothing when closed', () => {
-    const { container } = render(
+    const { container } = renderWithMessages(
       <ConfirmDialog open={false} title="Delete this?" onConfirm={jest.fn()} onCancel={jest.fn()} />,
     );
     expect(container).toBeEmptyDOMElement();
   });
 
   it('shows the title, description, consequences, and the irreversible warning', () => {
-    render(
+    renderWithMessages(
       <ConfirmDialog
         open
         title='Delete "Liberia Adventure 2026"?'
@@ -28,14 +29,14 @@ describe('ConfirmDialog', () => {
 
   it('calls onConfirm when the destructive button is clicked, with no typed confirmation required', () => {
     const onConfirm = jest.fn();
-    render(<ConfirmDialog open title="Delete this?" confirmLabel="Delete Trip" onConfirm={onConfirm} onCancel={jest.fn()} />);
+    renderWithMessages(<ConfirmDialog open title="Delete this?" confirmLabel="Delete Trip" onConfirm={onConfirm} onCancel={jest.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Delete Trip' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it('calls onCancel when Cancel is clicked, when Escape is pressed, and when the backdrop is clicked', () => {
     const onCancel = jest.fn();
-    render(<ConfirmDialog open title="Delete this?" onConfirm={jest.fn()} onCancel={onCancel} />);
+    renderWithMessages(<ConfirmDialog open title="Delete this?" onConfirm={jest.fn()} onCancel={onCancel} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -49,7 +50,7 @@ describe('ConfirmDialog', () => {
 
   it('does not dismiss via Escape or backdrop while a request is in flight', () => {
     const onCancel = jest.fn();
-    render(<ConfirmDialog open isLoading title="Delete this?" onConfirm={jest.fn()} onCancel={onCancel} />);
+    renderWithMessages(<ConfirmDialog open isLoading title="Delete this?" onConfirm={jest.fn()} onCancel={onCancel} />);
 
     fireEvent.keyDown(window, { key: 'Escape' });
     fireEvent.click(screen.getByRole('alertdialog'));
@@ -57,7 +58,7 @@ describe('ConfirmDialog', () => {
   });
 
   it('disables both buttons and shows the loading label while isLoading', () => {
-    render(
+    renderWithMessages(
       <ConfirmDialog open isLoading title="Delete this?" loadingLabel="Deleting trip…" onConfirm={jest.fn()} onCancel={jest.fn()} />,
     );
     expect(screen.getByRole('button', { name: 'Deleting trip…' })).toBeDisabled();
@@ -66,7 +67,7 @@ describe('ConfirmDialog', () => {
 
   it('shows an inline error and lets the user retry without losing the dialog', () => {
     const onConfirm = jest.fn();
-    render(
+    renderWithMessages(
       <ConfirmDialog
         open
         title="Delete this?"
@@ -83,7 +84,7 @@ describe('ConfirmDialog', () => {
   describe('type-to-confirm safeguard', () => {
     it('keeps the confirm button disabled until the typed value matches exactly', () => {
       const onConfirm = jest.fn();
-      render(
+      renderWithMessages(
         <ConfirmDialog
           open
           title="Delete this?"
@@ -109,7 +110,7 @@ describe('ConfirmDialog', () => {
     });
 
     it('resets the typed value each time the dialog reopens', () => {
-      const { rerender } = render(
+      const { rerender } = renderWithMessages(
         <ConfirmDialog open title="Delete this?" confirmationPhrase="Trip Name" onConfirm={jest.fn()} onCancel={jest.fn()} />,
       );
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Trip Name' } });
