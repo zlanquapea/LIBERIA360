@@ -30,7 +30,15 @@ const POSITION_STORAGE_KEY = "liberia360:assistant-position";
 const CHAT_STORAGE_KEY = "liberia360:assistant-chat";
 const LAUNCHER_SIZE = 58;
 const SAFE_EDGE = 10;
-const MOBILE_BOTTOM_CLEARANCE = 92;
+// On mobile the launcher's resting spot shares the strip between BottomNav
+// (5rem/80px) and the true safe area with the standalone LanguageSwitcher
+// (see app/[locale]/layout.tsx), which sits right on top of BottomNav and
+// is itself ~36px tall. 92px only cleared BottomNav, so the 58px launcher
+// button — both its unmoved default position below and the lowest point
+// clampPosition allowed while dragging — sat directly on top of the
+// switcher, hiding it under the launcher's higher z-index and making it
+// untappable. 140px clears BottomNav + the switcher + a small gap.
+const MOBILE_BOTTOM_CLEARANCE = 140;
 
 const QUICK_PROMPTS = [
   "What can I do on LIBERIA360?",
@@ -358,12 +366,16 @@ export function Liberia360Assistant() {
 
   if (pathname.startsWith("/admin")) return null;
 
-  const launcherStyle = position
-    ? { left: position.x, top: position.y }
-    : {
-        right: "1rem",
-        bottom: "calc(5.6rem + env(safe-area-inset-bottom))",
-      };
+  // Once dragged, the launcher's position is a literal pixel left/top (set
+  // by handlePointerMove/finishDrag above) — no responsive variants needed
+  // since clampPosition already keeps it clear of both BottomNav and the
+  // LanguageSwitcher at the viewport width the user dragged it at. Before
+  // any drag, though, it has to rest somewhere by default, and that default
+  // has to clear the LanguageSwitcher itself (see MOBILE_BOTTOM_CLEARANCE's
+  // comment) — a plain inline `bottom` value can't vary by breakpoint the
+  // way a `lg:` Tailwind class can, so the undragged rest position is
+  // expressed as classes on the button below instead of here.
+  const launcherStyle = position ? { left: position.x, top: position.y } : undefined;
 
   return (
     <>
@@ -568,6 +580,10 @@ export function Liberia360Assistant() {
         title="LIBERIA360 Assistant — drag to move"
         tabIndex={open ? -1 : 0}
         className={`fixed z-[80] flex h-[58px] w-[58px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-[0_10px_30px_rgba(8,26,80,0.35)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
+          position
+            ? ""
+            : "right-4 bottom-[calc(8.75rem+env(safe-area-inset-bottom))] lg:bottom-[calc(5.6rem+env(safe-area-inset-bottom))]"
+        } ${
           open
             ? "pointer-events-none scale-90 opacity-0"
             : "opacity-100 hover:scale-105 hover:shadow-[0_14px_34px_rgba(8,26,80,0.45)] active:scale-95"

@@ -24,6 +24,18 @@ import type { Business } from "@/lib/types";
 // `5rem + env(safe-area-inset-bottom)` at the page bottom (see
 // app/layout.tsx's `#main-content` padding) — and flush to the viewport
 // bottom on desktop, where BottomNav doesn't render at all.
+//
+// z-[85] (bug fix, Sep 2026): that same reserved strip above BottomNav is
+// also where the global LanguageSwitcher (z-40) and Liberia360Assistant
+// launcher (z-[80]) rest by default — both render on every page, this bar
+// only on a business/place page once scrolled. At the old z-20 this bar's
+// own primary "Book"/"Log in to book" button sat *underneath* both of
+// them, so the language switcher's pill (and, depending on scroll
+// position, the assistant bubble) visually covered and intercepted every
+// tap meant for the page's actual conversion CTA. Outranking both makes
+// this contextual, user-triggered bar win the strip while it's visible;
+// the switcher/launcher are still there and reappear the moment this bar
+// hides again on scroll-up, so nothing is lost — just briefly deferred to.
 export function StickyBookingBar({
   business,
   name,
@@ -56,7 +68,7 @@ export function StickyBookingBar({
       <div
         aria-hidden={!visible}
         inert={visible ? undefined : true}
-        className={`fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur transition-transform duration-200 ease-out supports-[backdrop-filter]:bg-white/85 dark:border-slate-800 dark:bg-slate-900/95 lg:bottom-0 ${
+        className={`fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[85] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur transition-transform duration-200 ease-out supports-[backdrop-filter]:bg-white/85 dark:border-slate-800 dark:bg-slate-900/95 lg:bottom-0 ${
           visible ? "translate-y-0" : "pointer-events-none translate-y-full"
         }`}
       >
