@@ -2,15 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AdjustmentsHorizontalIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { formatCreatorCategory } from '@/lib/format';
 import { CREATOR_CATEGORIES } from '@/lib/creator-categories';
 import type { County } from '@/lib/types';
 
+// LinkedIn-style search bar + filter-chip row for the creator directory
+// (redesign, Sep 2026). The category `<select>` this replaced hid all 8
+// options behind one tap and a scroll; LinkedIn's own people-search puts
+// its handful of common filters as a horizontally scrollable chip row
+// right under the search box instead, so every category is visible and
+// one tap away. County stays a `<select>` — with ~15 counties a chip row
+// would just wrap into its own multi-line mess — but is now styled to
+// match the chips instead of looking like a leftover form control.
 export function CreatorFilters({ counties }: { counties: County[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
+  const activeCategory = searchParams.get('category') ?? '';
+  const activeCountyId = searchParams.get('countyId') ?? '';
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -51,48 +61,53 @@ export function CreatorFilters({ counties }: { counties: County[] }) {
         />
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="relative block">
-          <span className="sr-only">Creator category</span>
-          <select
-            aria-label="Category"
-            className="h-11 w-full appearance-none rounded-full border border-slate-200 bg-white px-4 pr-10 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-brand-950"
-            value={searchParams.get('category') ?? ''}
-            onChange={(e) => updateParam('category', e.target.value)}
+      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by category">
+        <button
+          type="button"
+          onClick={() => updateParam('category', '')}
+          aria-pressed={activeCategory === ''}
+          className={`inline-flex h-9 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-colors ${
+            activeCategory === ''
+              ? 'bg-brand-700 text-white'
+              : 'border border-slate-200 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30'
+          }`}
+        >
+          All
+        </button>
+        {CREATOR_CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => updateParam('category', activeCategory === c ? '' : c)}
+            aria-pressed={activeCategory === c}
+            className={`inline-flex h-9 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-colors ${
+              activeCategory === c
+                ? 'bg-brand-700 text-white'
+                : 'border border-slate-200 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30'
+            }`}
           >
-            <option value="">All categories</option>
-            {CREATOR_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {formatCreatorCategory(c)}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-        </label>
-
-        <label className="relative block">
-          <span className="sr-only">Creator county</span>
-          <select
-            aria-label="County"
-            className="h-11 w-full appearance-none rounded-full border border-slate-200 bg-white px-4 pr-10 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-brand-950"
-            value={searchParams.get('countyId') ?? ''}
-            onChange={(e) => updateParam('countyId', e.target.value)}
-          >
-            <option value="">All counties</option>
-            {counties.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-        </label>
+            {formatCreatorCategory(c)}
+          </button>
+        ))}
       </div>
 
-      <p className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-        <AdjustmentsHorizontalIcon aria-hidden className="h-4 w-4 text-accent-600 dark:text-accent-400" />
-        Filter by the creator&apos;s real category or county.
-      </p>
+      <label className="relative block w-full sm:w-64">
+        <span className="sr-only">Creator county</span>
+        <select
+          aria-label="County"
+          className="h-10 w-full appearance-none rounded-full border border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:focus:ring-brand-950"
+          value={activeCountyId}
+          onChange={(e) => updateParam('countyId', e.target.value)}
+        >
+          <option value="">All counties</option>
+          {counties.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <ChevronDownIcon aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+      </label>
     </div>
   );
 }

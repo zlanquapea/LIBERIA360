@@ -1,11 +1,12 @@
 import Link from "next/link";
 import {
   CheckBadgeIcon,
+  ChatBubbleOvalLeftIcon,
   MapPinIcon,
   StarIcon,
 } from "@heroicons/react/24/solid";
 import type { Creator } from "@/lib/types";
-import { colorForCreator, gradientForCategory } from "@/lib/category-colors";
+import { colorForCreator } from "@/lib/category-colors";
 import { formatCreatorCategory, formatRating } from "@/lib/format";
 import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import { whatsappLink } from "@/lib/contact";
@@ -14,27 +15,20 @@ import { ContactLink } from "./ContactLink";
 import { SafeImage } from "./SafeImage";
 import { ShareMenu } from "./ShareMenu";
 
-// Compact social-style creator preview for the public directory. The card uses
-// only data available on the paginated creator response; full portfolio media
-// and request booking remain on the creator profile. `index` staggers the
-// entrance fade — see PlaceCard's own doc comment.
-//
-// Motion consistency pass ("make it amazing," Sep 3, 2026): every sibling
-// discovery card (PlaceCard, BusinessCard, CarListingCard, PublicTripCard)
-// lifts on hover; this one only changed its shadow, the one card in the
-// set that didn't match. `active:scale-[0.98]` stays off, unlike those
-// siblings — this card has several independent clickable children (the
-// profile link, Follow/Message, ShareMenu), not one whole-card link, so a
-// press-scale on the container would visually fight whichever button was
-// actually clicked.
+// LinkedIn-style compact search-result row for the public creator directory
+// (redesign, Sep 2026 — "the page where we search for creators is not well
+// organized, make it like LinkedIn"). The previous card spent most of its
+// height on a decorative cover photo, so a phone screen showed barely one
+// full profile at a time with no real sense of how many results existed.
+// This drops the cover photo and per-card box (border/shadow) in favor of
+// the dense list pattern LinkedIn's own people-search results use: a small
+// circular avatar, a stacked name/headline/stat block, a slim divider
+// between rows, and a "View profile" + message action pair — closer to
+// scanning a results list than swiping through profile cards. `index`
+// still staggers the entrance fade, same recipe as every sibling
+// discovery card (see staggerDelay's own doc comment).
 export function CreatorCard({ creator, index }: { creator: Creator; index?: number }) {
-  const cover = creator.coverImage ? resolveImageUrl(creator.coverImage) : null;
-  const coverThumb = creator.coverImage
-    ? resolveThumbUrl(creator.coverImage)
-    : null;
-  const avatar = creator.profileImage
-    ? resolveImageUrl(creator.profileImage)
-    : null;
+  const avatar = creator.profileImage ? resolveImageUrl(creator.profileImage) : null;
   const avatarThumb = creator.profileImage
     ? resolveThumbUrl(creator.profileImage)
     : null;
@@ -45,106 +39,71 @@ export function CreatorCard({ creator, index }: { creator: Creator; index?: numb
     : creator.contactEmail
       ? `mailto:${creator.contactEmail}`
       : null;
+  // A one-line "headline" under the category/location, the way LinkedIn
+  // shows a person's current role — only rendered when there's real
+  // content, unlike the old card's "Explore their work…" filler text.
+  const headline = creator.bio?.trim() || creator.specialties.slice(0, 3).join(" · ") || null;
 
   return (
     <article
-      className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:bg-slate-900 ${
-        creator.featured
-          ? "border-gold-400 dark:border-gold-500"
-          : "border-slate-200 dark:border-slate-800"
-      } ${index != null ? 'animate-fade-in-up' : ''}`}
+      className={`flex gap-3 border-b border-slate-100 py-4 last:border-b-0 dark:border-slate-800 ${index != null ? "animate-fade-in-up" : ""}`}
       style={index != null ? staggerDelay(index) : undefined}
     >
-      <div className="flex items-start gap-3 p-4 pb-3">
-        <Link
-          href={profileHref}
-          aria-label={`View ${creator.name}'s profile`}
-          className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white text-base font-semibold text-white shadow-sm ring-1 ring-slate-200 dark:border-slate-900 dark:ring-slate-700"
-          style={{ backgroundColor: colorForCreator(creator.username) }}
-        >
-          <SafeImage
-            src={avatar}
-            thumbSrc={avatarThumb}
-            alt=""
-            className="h-full w-full object-cover"
-            fallback={<>{creator.name.trim().charAt(0).toUpperCase() || "?"}</>}
-          />
-        </Link>
-
-        <div className="min-w-0 flex-1">
-          <Link href={profileHref} className="group block min-w-0">
-            <h3 className="flex min-w-0 flex-wrap items-center gap-1.5 font-display text-lg font-bold leading-tight text-slate-950 group-hover:text-brand-700 dark:text-slate-50 dark:group-hover:text-brand-300">
-              <span className="truncate">{creator.name}</span>
-              {creator.verificationStatus === "verified" && (
-                <span
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold text-white"
-                  title="Verified creator"
-                >
-                  <CheckBadgeIcon aria-hidden className="h-3.5 w-3.5" />
-                  <span className="sr-only">Verified creator</span>
-                </span>
-              )}
-            </h3>
-            <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              <span>{formatCreatorCategory(creator.category)}</span>
-              {location && (
-                <>
-                  <span aria-hidden>·</span>
-                  <MapPinIcon
-                    aria-hidden
-                    className="h-3.5 w-3.5 shrink-0 text-sky-500"
-                  />
-                  <span className="truncate">{location}</span>
-                </>
-              )}
-            </p>
-          </Link>
-          <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-            @{creator.username}
-          </p>
-        </div>
-      </div>
-
       <Link
         href={profileHref}
-        aria-label={`Open ${creator.name}'s profile`}
-        className="group relative block h-44 overflow-hidden bg-slate-100 dark:bg-slate-800 sm:h-48"
+        aria-label={`View ${creator.name}'s profile`}
+        className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full text-base font-semibold text-white ring-1 ring-slate-200 dark:ring-slate-700"
+        style={{ backgroundColor: colorForCreator(creator.username) }}
       >
         <SafeImage
-          src={cover}
-          thumbSrc={coverThumb}
+          src={avatar}
+          thumbSrc={avatarThumb}
           alt=""
-          className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] sm:h-48"
-          fallback={
-            <div
-              aria-hidden
-              className="flex h-full w-full items-center justify-center"
-              style={{ backgroundImage: gradientForCategory(creator.category) }}
-            />
-          }
+          className="h-full w-full object-cover"
+          fallback={<>{creator.name.trim().charAt(0).toUpperCase() || "?"}</>}
         />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/5"
-        />
+        {creator.featured && (
+          <span
+            aria-hidden
+            className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold-400 text-brand-950 ring-2 ring-white dark:ring-slate-950"
+          >
+            <StarIcon className="h-3 w-3" />
+          </span>
+        )}
       </Link>
 
-      <div className="flex flex-col gap-3 p-4 pt-3">
-        {creator.bio ? (
-          <p className="line-clamp-2 text-sm leading-5 text-slate-700 dark:text-slate-200">
-            {creator.bio}
+      <div className="min-w-0 flex-1">
+        <Link href={profileHref} className="group block min-w-0">
+          <h3 className="flex min-w-0 items-center gap-1 font-display text-base font-bold leading-tight text-slate-950 group-hover:text-brand-700 dark:text-slate-50 dark:group-hover:text-brand-300">
+            <span className="truncate">{creator.name}</span>
+            {creator.verificationStatus === "verified" && (
+              <CheckBadgeIcon
+                aria-hidden
+                className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400"
+              />
+            )}
+            {creator.verificationStatus === "verified" && (
+              <span className="sr-only">Verified creator</span>
+            )}
+          </h3>
+          <p className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-sm text-slate-600 dark:text-slate-300">
+            <span>{formatCreatorCategory(creator.category)}</span>
+            {location && (
+              <>
+                <span aria-hidden>·</span>
+                <MapPinIcon aria-hidden className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                <span className="truncate">{location}</span>
+              </>
+            )}
           </p>
-        ) : creator.specialties.length > 0 ? (
-          <p className="line-clamp-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
-            {creator.specialties.join(" · ")}
-          </p>
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Explore their work on LIBERIA360.
-          </p>
-        )}
+          {headline && (
+            <p className="mt-0.5 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
+              {headline}
+            </p>
+          )}
+        </Link>
 
-        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
           {creator.reviewCount > 0 ? (
             <>
               <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
@@ -153,14 +112,14 @@ export function CreatorCard({ creator, index }: { creator: Creator; index?: numb
           ) : creator.followerCount > 0 ? (
             `${creator.followerCount.toLocaleString()} followers`
           ) : (
-            "New creator"
+            `@${creator.username}`
           )}
-        </div>
+        </p>
 
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <div className="mt-3 flex items-center gap-2">
           <Link
             href={profileHref}
-            className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-full bg-brand-700 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-full border border-brand-700 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-brand-400 dark:text-brand-300 dark:hover:bg-brand-950/30"
           >
             View profile
           </Link>
@@ -170,9 +129,10 @@ export function CreatorCard({ creator, index }: { creator: Creator; index?: numb
               href={messageHref}
               target={creator.whatsapp ? "_blank" : undefined}
               rel={creator.whatsapp ? "noopener noreferrer" : undefined}
-              className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30"
+              aria-label={`Message ${creator.name}`}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-brand-950/30"
             >
-              Message
+              <ChatBubbleOvalLeftIcon aria-hidden className="h-5 w-5" />
             </ContactLink>
           )}
           <ShareMenu placeName={creator.name} contentType="creator" />
