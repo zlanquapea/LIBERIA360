@@ -16,3 +16,9 @@
 - [x] Trace the alternate video preview component shown in the latest live screenshot.
 - [x] Remove only its feed-level centered play affordance.
 - [x] Validate, deploy, and confirm the live feed no longer shows the icon.
+
+## Saved posts feature
+
+- [ ] Map the existing save action, API support, and Saved route.
+- [ ] Implement visible save/unsave state with persistence.
+- [ ] Add a Saved posts section and verify the end-to-end flow before deployment.

@@ -143,6 +143,26 @@ export class CreatorFeedService {
     return posts.map((post) => this.serializePost(post));
   }
 
+  async findSaved(
+    userId: string,
+  ): Promise<ReturnType<CreatorFeedService["serializePost"]>[]> {
+    const savedPosts = await this.saveRepo
+      .createQueryBuilder("saved")
+      .innerJoinAndSelect("saved.post", "post")
+      .innerJoinAndSelect("post.creator", "creator")
+      .leftJoinAndSelect("creator.county", "county")
+      .where("saved.user_id = :userId", { userId })
+      .andWhere("post.status = :status", {
+        status: CreatorPostStatus.PUBLISHED,
+      })
+      .orderBy("saved.created_at", "DESC")
+      .getMany();
+
+    return savedPosts.map((saved) =>
+      this.serializePost(saved.post, false, true),
+    );
+  }
+
   async create(userId: string, dto: CreateCreatorPostDto) {
     const creator = await this.getOwnedCreator(userId);
     const mediaUrl = dto.mediaUrl.trim();

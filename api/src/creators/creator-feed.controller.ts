@@ -86,6 +86,13 @@ export class CreatorFeedController {
     return this.feedService.findMine(user.id);
   }
 
+  @Get("saved/posts")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  findSavedPosts(@CurrentUser() user: User) {
+    return this.feedService.findSaved(user.id);
+  }
+
   @Post("me/posts")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

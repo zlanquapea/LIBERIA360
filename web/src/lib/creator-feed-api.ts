@@ -120,6 +120,12 @@ export function toggleCreatorPostSave(
   );
 }
 
+export function getSavedCreatorPosts(token: string): Promise<CreatorPost[]> {
+  return apiRequest<CreatorPost[]>("/creators/saved/posts", {
+    headers: authHeader(token),
+  });
+}
+
 export function recordCreatorPostShare(
   postId: string,
 ): Promise<{ shareCount: number }> {
