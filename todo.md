@@ -19,6 +19,6 @@
 
 ## Saved posts feature
 
-- [ ] Map the existing save action, API support, and Saved route.
-- [ ] Implement visible save/unsave state with persistence.
-- [ ] Add a Saved posts section and verify the end-to-end flow before deployment.
+- [x] Map the existing save action, API support, and Saved route.
+- [x] Implement visible save/unsave state with persistence.
+- [x] Add a Saved posts section and verify the end-to-end flow before deployment.
