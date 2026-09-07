@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRightIcon, CheckCircleIcon, ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { formatCost } from "@/lib/format";
 import { resolveImageUrl } from "@/lib/images";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { createFoodOrder } from "@/lib/food-orders-api";
 import { HttpError } from "@/lib/http";
 import type { FoodOrder, MenuItem } from "@/lib/types";
+import { useRestaurantCartActive } from "@/components/RestaurantCartActiveContext";
 
 // Groups a business's menu into its sections in the order the backend
 // already returns them (category ASC, then sortOrder — see
@@ -101,8 +102,27 @@ function MenuItemRow({
 // cart: quantity steppers appear on every in-stock item, and a running
 // order summary lets the visitor place the order without leaving the page.
 // Omit it (or pass no items) to fall back to the plain read-only menu.
-export function MenuSection({ items, businessId }: { items: MenuItem[]; businessId?: string }) {
+//
+// Bug fix, Sep 2026: the business page also mounts StickyBookingBar, its
+// own fixed footer CTA — both bars anchor to roughly the same spot above
+// BottomNav, and a visitor who'd started an order could scroll to a
+// position where StickyBookingBar's higher z-index rendered directly over
+// this cart bar, hiding the "Review order" button (and the price) it had
+// no way to see or tap. useRestaurantCartActive() reports "an order is in
+// progress" to StickyBookingBar (via RestaurantCartActiveContext, shared
+// through the page wrapping both components), which skips rendering for
+// as long as that's true, so the two never fight over the same pixels.
+// It's a no-op on pages that don't wrap this in a provider (e.g. the
+// Place page, which has no StickyBookingBar to coordinate with).
+export function MenuSection({
+  items,
+  businessId,
+}: {
+  items: MenuItem[];
+  businessId?: string;
+}) {
   const { user, token } = useAuth();
+  const { setActive: setCartActive } = useRestaurantCartActive();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [notes, setNotes] = useState("");
@@ -110,14 +130,22 @@ export function MenuSection({ items, businessId }: { items: MenuItem[]; business
   const [error, setError] = useState<string | null>(null);
   const [submittedOrder, setSubmittedOrder] = useState<FoodOrder | null>(null);
 
-  if (items.length === 0) return null;
-
   const cartEntries = Object.entries(quantities).filter(([, qty]) => qty > 0);
   const cartCount = cartEntries.reduce((sum, [, qty]) => sum + qty, 0);
   const cartTotal = cartEntries.reduce((sum, [itemId, qty]) => {
     const item = items.find((i) => i.id === itemId);
     return sum + (item ? item.price * qty : 0);
   }, 0);
+
+  useEffect(() => {
+    setCartActive(cartCount > 0);
+    // Also clear the flag on unmount, so navigating away never leaves the
+    // sibling StickyBookingBar permanently suppressed.
+    return () => setCartActive(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartCount > 0]);
+
+  if (items.length === 0) return null;
 
   function resetCart() {
     setQuantities({});
