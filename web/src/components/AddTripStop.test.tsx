@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { renderWithMessages } from "@/test/render-with-messages";
 import { AddTripStop } from "./AddTripStop";
 import type { Place } from "@/lib/types";
 
@@ -77,19 +78,19 @@ describe("AddTripStop", () => {
   // "X days" summary and the date-range badge disagreeing about how long
   // the trip was. The day picker is now bounded to the trip's real length.
   it("caps the day input at the trip's own duration, not a fixed 30", () => {
-    render(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
     expect(screen.getByLabelText("Day")).toHaveAttribute("max", "3");
   });
 
   it("clamps a typed day back down to the trip's duration", () => {
-    render(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
     const dayInput = screen.getByLabelText("Day");
     fireEvent.change(dayInput, { target: { value: "10" } });
     expect(dayInput).toHaveValue(3);
   });
 
   it("adds a found place to the currently selected day", async () => {
-    render(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
     fireEvent.change(screen.getByPlaceholderText("Search places…"), {
       target: { value: "beach" },
     });

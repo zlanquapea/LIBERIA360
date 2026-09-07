@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowDownTrayIcon, PhotoIcon, ShareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { colorForCategory } from '@/lib/category-colors';
 import { formatTripDateRange } from '@/lib/format';
@@ -96,6 +97,12 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Note: the labels drawn onto the canvas below (wordmark, "DESTINATION",
+// "ALSO VISITING", footer tagline) are deliberately left hardcoded English,
+// unlike the surrounding modal UI. Canvas text has no CSS `dir` support and
+// needs its own font-loading/glyph-coverage handling per script (Arabic
+// shaping, CJK), which is a separate piece of work from translating JSX —
+// tracked as a follow-up alongside lib/format.ts's other deferred strings.
 function drawCard(
   canvas: HTMLCanvasElement,
   trip: {
@@ -283,6 +290,7 @@ export function TripShareCard({
     stops: ItineraryStopWithPlace[];
   };
 }) {
+  const t = useTranslations('trips');
   const [open, setOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canShareFile, setCanShareFile] = useState(false);
@@ -336,8 +344,8 @@ export function TripShareCard({
         type="button"
         onClick={() => setOpen(true)}
         className="flex h-12 w-12 min-w-0 items-center justify-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
-        aria-label="Share your trip experience"
-        title="Share your trip experience"
+        aria-label={t('shareYourTripExperience')}
+        title={t('shareYourTripExperience')}
       >
         <PhotoIcon aria-hidden className="h-6 w-6" />
       </button>
@@ -346,7 +354,7 @@ export function TripShareCard({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Shareable trip card"
+          aria-label={t('shareableTripCard')}
           className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4"
           onClick={() => setOpen(false)}
         >
@@ -355,11 +363,11 @@ export function TripShareCard({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <p className="font-display text-sm font-bold text-slate-900 dark:text-slate-50">Share your experience</p>
+              <p className="font-display text-sm font-bold text-slate-900 dark:text-slate-50">{t('shareYourExperience')}</p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t('close')}
                 className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <XMarkIcon aria-hidden className="h-5 w-5" />
@@ -380,7 +388,7 @@ export function TripShareCard({
                 className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <ArrowDownTrayIcon aria-hidden className="h-4 w-4" />
-                Download
+                {t('download')}
               </button>
               {canShareFile ? (
                 <button
@@ -389,11 +397,11 @@ export function TripShareCard({
                   className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-3 text-sm font-semibold text-white hover:bg-brand-800"
                 >
                   <ShareIcon aria-hidden className="h-4 w-4" />
-                  Share
+                  {t('share')}
                 </button>
               ) : (
                 <p className="flex items-center justify-center text-center text-xs text-slate-400 dark:text-slate-500">
-                  Download, then share from your photos
+                  {t('downloadThenShare')}
                 </p>
               )}
             </div>

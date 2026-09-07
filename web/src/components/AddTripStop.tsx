@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
 import { getPlaces } from '@/lib/api';
 import { addItineraryStop } from '@/lib/itinerary-api';
@@ -19,6 +20,7 @@ export function AddTripStop({
   durationDays: number;
   onAdded: () => void;
 }) {
+  const t = useTranslations('trips');
   const { token } = useAuth();
   const [query, setQuery] = useState('');
   const [day, setDay] = useState(1);
@@ -36,7 +38,7 @@ export function AddTripStop({
       const res = await getPlaces({ q, limit: 5 });
       setResults(res.data);
     } catch {
-      setError('Search failed — try again.');
+      setError(t('searchFailed'));
     } finally {
       setSearching(false);
     }
@@ -51,7 +53,7 @@ export function AddTripStop({
       setResults((prev) => prev.filter((p) => p.id !== placeId));
       onAdded();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not add this place.');
+      setError(err instanceof HttpError ? err.message : t('couldNotAddPlace'));
     } finally {
       setAddingId(null);
     }
@@ -59,7 +61,7 @@ export function AddTripStop({
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Add a place</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('addAPlace')}</p>
       <div className="flex gap-2">
         <input
           type="text"
@@ -71,7 +73,7 @@ export function AddTripStop({
               search();
             }
           }}
-          placeholder="Search places…"
+          placeholder={t('searchPlacesPlaceholder')}
           className="min-w-0 flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <input
@@ -80,7 +82,7 @@ export function AddTripStop({
           max={durationDays}
           value={day}
           onChange={(e) => setDay(Math.min(durationDays, Math.max(1, Number(e.target.value) || 1)))}
-          aria-label="Day"
+          aria-label={t('day')}
           className="w-16 shrink-0 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
@@ -89,7 +91,7 @@ export function AddTripStop({
           onClick={search}
           className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 disabled:opacity-60"
         >
-          {searching ? 'Searching…' : 'Search'}
+          {searching ? t('searching') : t('search')}
         </button>
       </div>
 
@@ -107,7 +109,7 @@ export function AddTripStop({
               >
                 <span className="truncate">{place.name}</span>
                 <span className="shrink-0 text-xs font-medium text-brand-700 dark:text-brand-300">
-                  {addingId === place.id ? 'Adding…' : `+ Day ${day}`}
+                  {addingId === place.id ? t('adding') : t('addToDay', { day })}
                 </span>
               </button>
             </li>

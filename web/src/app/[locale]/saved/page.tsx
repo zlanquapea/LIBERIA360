@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ApiError, getPlaceBySlug } from '@/lib/api';
 import { CreatorPostCard } from '@/components/CreatorPostCard';
 import { PlaceCard } from '@/components/PlaceCard';
@@ -18,6 +19,8 @@ interface ResolvedPlace {
 }
 
 function SavedPostsSection() {
+  const t = useTranslations('saved');
+  const tNav = useTranslations('nav');
   const { token, ready } = useAuth();
   const [posts, setPosts] = useState<CreatorPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,7 @@ function SavedPostsSection() {
         if (!cancelled) setPosts(result);
       })
       .catch(() => {
-        if (!cancelled) setError('Saved posts could not be loaded. Please try again.');
+        if (!cancelled) setError(t('savedPostsLoadError'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -48,6 +51,7 @@ function SavedPostsSection() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, token]);
 
   async function unsavePost(postId: string) {
@@ -60,26 +64,24 @@ function SavedPostsSection() {
     <section aria-labelledby="saved-posts-heading" className="flex flex-col gap-4">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-          Your collection
+          {t('yourCollection')}
         </p>
         <h2 id="saved-posts-heading" className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">
-          Saved posts
+          {t('savedPosts')}
         </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Keep creator stories here so you can return to them later.
-        </p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('savedPostsDescription')}</p>
       </div>
 
       {!ready || loading ? (
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
           <BrandLoader />
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading saved posts…</p>
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('loadingSavedPosts')}</p>
         </div>
       ) : !token ? (
         <div className="rounded-3xl border border-dashed border-slate-300 px-5 py-8 text-center dark:border-slate-700">
-          <p className="font-semibold text-slate-900 dark:text-white">Sign in to save creator posts.</p>
+          <p className="font-semibold text-slate-900 dark:text-white">{t('signInToSavePosts')}</p>
           <Link href="/login" className="mt-3 inline-flex min-h-11 items-center rounded-full bg-brand-700 px-5 text-sm font-semibold text-white hover:bg-brand-800">
-            Log in
+            {tNav('logIn')}
           </Link>
         </div>
       ) : error ? (
@@ -88,7 +90,7 @@ function SavedPostsSection() {
         </p>
       ) : posts.length === 0 ? (
         <p className="rounded-3xl border border-dashed border-slate-300 px-5 py-8 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          Nothing saved yet. Tap the bookmark on a creator post to keep it here.
+          {t('noSavedPostsYet')}
         </p>
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
@@ -107,6 +109,7 @@ function SavedPostsSection() {
 // than a 404 (removed from the catalog) falls back to the last snapshot
 // cached the previous time it loaded successfully — see lib/saved-places.ts.
 export default function SavedPage() {
+  const t = useTranslations('saved');
   const { savedSlugs } = useSavedPlaces();
   const [resolved, setResolved] = useState<ResolvedPlace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,28 +157,28 @@ export default function SavedPage() {
       <section aria-labelledby="saved-places-heading" className="flex flex-col gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-            Your collection
+            {t('yourCollection')}
           </p>
           <h1 id="saved-places-heading" className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">
-            Saved places
+            {t('savedPlaces')}
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Stored on this device — no account needed.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('storedOnDevice')}</p>
         </div>
 
         {anyOffline && (
           <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-            You&apos;re offline — showing the last saved copy for some places. Details may be out of date.
+            {t('offlineNotice')}
           </p>
         )}
 
         {loading ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
             <BrandLoader />
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading saved places…</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('loadingSavedPlaces')}</p>
           </div>
         ) : resolved.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            Nothing saved yet — tap “Save” on a destination profile to add it here.
+            {t('noSavedPlacesYet')}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -183,7 +186,7 @@ export default function SavedPage() {
               <div key={place.id} className="relative">
                 {offline && (
                   <span className="absolute right-2 top-2 z-10 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-medium text-white">
-                    Offline copy
+                    {t('offlineCopy')}
                   </span>
                 )}
                 <PlaceCard place={place} index={i} />

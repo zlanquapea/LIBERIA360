@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { MapPinIcon, UserGroupIcon } from '@heroicons/react/20/solid';
 import type { PublicTripSummary } from '@/lib/types';
 import { formatTripDateRange, formatTripStatus } from '@/lib/format';
@@ -10,6 +11,7 @@ import { SafeImage } from './SafeImage';
 // social-trip spec) — mirrors PlaceCard's shape (cover image, tap-through,
 // key facts row) since a trip card lives in the same kind of grid.
 export function PublicTripCard({ trip }: { trip: PublicTripSummary }) {
+  const t = useTranslations('trips');
   const cover = trip.coverImage ? resolveImageUrl(trip.coverImage) : null;
   const coverThumb = trip.coverImage ? resolveThumbUrl(trip.coverImage) : null;
   const dateRange = formatTripDateRange(trip.startDate, trip.endDate);
@@ -55,12 +57,12 @@ export function PublicTripCard({ trip }: { trip: PublicTripSummary }) {
         <div className="mt-auto flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1">
             <UserGroupIcon aria-hidden className="h-3.5 w-3.5" />
-            {trip.participantCount} going
+            {t('going', { count: trip.participantCount })}
           </span>
           {dateRange && <span>{dateRange}</span>}
         </div>
         {trip.admin && (
-          <p className="text-xs text-slate-400 dark:text-slate-500">Organized by {trip.admin.name}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">{t('organizedBy', { name: trip.admin.name })}</p>
         )}
       </div>
     </Link>

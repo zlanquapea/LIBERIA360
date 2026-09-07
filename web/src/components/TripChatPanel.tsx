@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ArrowUturnLeftIcon,
   ChatBubbleLeftRightIcon,
@@ -61,6 +62,8 @@ interface PendingMessage {
 // known to be the trip admin or a collaborator (the backend enforces the
 // same boundary regardless).
 export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
+  const t = useTranslations('trips');
+  const tCommon = useTranslations('common');
   const { user, token } = useAuth();
   const [messages, setMessages] = useState<TripMessage[]>([]);
   const [pending, setPending] = useState<PendingMessage[]>([]);
@@ -123,7 +126,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
         markTripChatRead(token as string, itineraryId).catch(() => undefined);
       } catch (err) {
         if (!cancelled && initial) {
-          setLoadError(err instanceof HttpError ? err.message : 'Could not load the trip chat.');
+          setLoadError(err instanceof HttpError ? err.message : t('couldNotLoadChat'));
         }
       } finally {
         if (!cancelled && initial) setLoading(false);
@@ -260,7 +263,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
             ? {
                 ...p,
                 failed: true,
-                errorMessage: err instanceof HttpError ? err.message : 'Could not send.',
+                errorMessage: err instanceof HttpError ? err.message : t('couldNotSendMessage'),
               }
             : p,
         ),
@@ -294,7 +297,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
       setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       cancelEdit();
     } catch (err) {
-      setEditError(err instanceof HttpError ? err.message : 'Could not save the edit.');
+      setEditError(err instanceof HttpError ? err.message : t('couldNotSaveEdit'));
     } finally {
       setSavingEdit(false);
     }
@@ -309,7 +312,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
       setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
       setPendingDeleteId(null);
     } catch (err) {
-      setDeleteError(err instanceof HttpError ? err.message : 'Could not delete the message.');
+      setDeleteError(err instanceof HttpError ? err.message : t('couldNotDeleteMessage'));
     } finally {
       setDeleting(false);
     }
@@ -333,13 +336,13 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
     <section className="flex flex-col rounded-xl border border-slate-200 dark:border-slate-800">
       <div className="flex items-center gap-1.5 border-b border-slate-100 px-3 py-2.5 dark:border-slate-800">
         <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4 text-brand-600 dark:text-brand-300" />
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Trip chat</p>
+        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('tripChat')}</p>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-slate-500 dark:text-slate-400">
           <BrandLoader size="sm" />
-          Loading…
+          {tCommon('loading')}
         </div>
       ) : loadError && messages.length === 0 ? (
         <p className="mx-3 my-3 rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">{loadError}</p>
@@ -351,7 +354,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
               onClick={() => requestAnimationFrame(scrollToBottom)}
               className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white shadow-lg hover:bg-brand-800"
             >
-              ↓ New messages
+              {t('newMessagesBelow')}
             </button>
           )}
           <div
@@ -366,12 +369,12 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
               disabled={loadingOlder}
               className="mx-auto rounded-full px-3 py-1 text-xs font-medium text-brand-700 hover:underline disabled:opacity-50 dark:text-brand-300"
             >
-              {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+              {loadingOlder ? tCommon('loading') : t('loadEarlierMessages')}
             </button>
           )}
 
           {messages.length === 0 && pending.length === 0 ? (
-            <p className="my-auto text-center text-xs text-slate-500 dark:text-slate-400">No messages yet — say hello 👋</p>
+            <p className="my-auto text-center text-xs text-slate-500 dark:text-slate-400">{t('noMessagesYet')}</p>
           ) : (
             messages.map((message) =>
               message.type === 'system' ? (
@@ -415,13 +418,13 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
       {replyingTo && (
         <div className="mx-3 mb-2 flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-xs dark:bg-slate-800/60">
           <span className="min-w-0 truncate text-slate-500 dark:text-slate-400">
-            Replying to <span className="font-medium text-slate-700 dark:text-slate-200">{replyingTo.sender?.name ?? 'a message'}</span>
-            {replyingTo.body ? `: ${replyingTo.body}` : replyingTo.imageUrl ? ' (photo)' : ''}
+            {t('replyingTo', { name: replyingTo.sender?.name ?? t('someone') })}
+            {replyingTo.body ? `: ${replyingTo.body}` : replyingTo.imageUrl ? ` ${t('photoLabel')}` : ''}
           </span>
           <button
             type="button"
             onClick={() => setReplyingTo(null)}
-            aria-label="Cancel reply"
+            aria-label={t('cancelReply')}
             className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           >
             <XMarkIcon aria-hidden className="h-3.5 w-3.5" />
@@ -433,11 +436,11 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
         <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1.5 dark:bg-slate-800/60">
           {/* eslint-disable-next-line @next/next/no-img-element -- a local blob: preview, not a network image SafeImage is built for */}
           <img src={imagePreview} alt="" className="h-10 w-10 rounded object-cover" />
-          <span className="text-xs text-slate-500 dark:text-slate-400">Photo attached</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{t('photoAttached')}</span>
           <button
             type="button"
             onClick={() => pickImage(null)}
-            aria-label="Remove photo"
+            aria-label={t('removePhoto')}
             className="ml-auto text-slate-400 hover:text-flag-700 dark:hover:text-flag-300"
           >
             <XMarkIcon aria-hidden className="h-3.5 w-3.5" />
@@ -456,7 +459,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          aria-label="Attach a photo"
+          aria-label={t('attachAPhoto')}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
         >
           <PhotoIcon aria-hidden className="h-5 w-5" />
@@ -471,13 +474,13 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
               send();
             }
           }}
-          placeholder="Message the trip…"
+          placeholder={t('messagePlaceholder')}
           maxLength={4000}
           className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
-          aria-label="Send message"
+          aria-label={t('sendMessage')}
           disabled={!draft.trim() && !imageFile}
           onClick={send}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white transition-transform hover:bg-brand-800 disabled:opacity-40 disabled:hover:bg-brand-700 enabled:active:scale-90"
@@ -488,11 +491,11 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
 
       <ConfirmDialog
         open={pendingDeleteId !== null}
-        title="Delete this message?"
-        description="It'll be replaced with a 'message deleted' notice for everyone on this trip."
-        confirmLabel="Delete message"
-        cancelLabel="Keep message"
-        loadingLabel="Deleting…"
+        title={t('deleteMessageTitle')}
+        description={t('deleteMessageDescription')}
+        confirmLabel={t('deleteMessageConfirm')}
+        cancelLabel={t('keepMessage')}
+        loadingLabel={t('deletingMessage')}
         isLoading={deleting}
         error={deleteError}
         onConfirm={confirmDelete}
@@ -507,13 +510,13 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Photo"
+          aria-label={t('photoAriaLabel')}
           className="fixed inset-0 z-[2100] flex min-h-[100dvh] items-center justify-center bg-black/95 p-4"
           onClick={() => setLightboxSrc(null)}
         >
           <button
             type="button"
-            aria-label="Close photo viewer"
+            aria-label={t('closePhotoViewer')}
             onClick={() => setLightboxSrc(null)}
             className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
@@ -564,6 +567,8 @@ function MessageRow({
   onOpenImage: (src: string) => void;
   currentUserId?: string;
 }) {
+  const t = useTranslations('trips');
+  const tCommon = useTranslations('common');
   const deleted = Boolean(message.deletedAt);
   const hasImage = !deleted && Boolean(message.imageUrl);
   const hasCaption = !deleted && Boolean(message.body);
@@ -573,9 +578,11 @@ function MessageRow({
     <div className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
       {message.replyTo && (
         <div className="mb-0.5 max-w-[85%] rounded-lg border-l-2 border-slate-300 bg-slate-50 px-2 py-1 text-[11px] text-slate-500 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
-          <span className="font-medium">{message.replyTo.deleted ? 'Deleted message' : message.replyTo.senderName ?? 'Someone'}</span>
+          <span className="font-medium">
+            {message.replyTo.deleted ? t('deletedMessage') : message.replyTo.senderName ?? t('someone')}
+          </span>
           {!message.replyTo.deleted && message.replyTo.body && `: ${message.replyTo.body}`}
-          {!message.replyTo.deleted && !message.replyTo.body && message.replyTo.imageUrl && ' 📷 Photo'}
+          {!message.replyTo.deleted && !message.replyTo.body && message.replyTo.imageUrl && ` ${t('photoEmoji')}`}
         </div>
       )}
 
@@ -592,7 +599,7 @@ function MessageRow({
           {editError && <p className="text-[11px] text-flag-700 dark:text-flag-300">{editError}</p>}
           <div className="flex justify-end gap-3 text-[11px] font-medium">
             <button type="button" onClick={onCancelEdit} disabled={savingEdit} className="text-slate-500 hover:underline dark:text-slate-400">
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               type="button"
@@ -600,7 +607,7 @@ function MessageRow({
               disabled={savingEdit || !editDraft.trim()}
               className="text-brand-700 hover:underline disabled:opacity-50 dark:text-brand-300"
             >
-              {savingEdit ? 'Saving…' : 'Save'}
+              {savingEdit ? t('saving') : t('save')}
             </button>
           </div>
         </div>
@@ -610,9 +617,9 @@ function MessageRow({
             mine ? 'rounded-br-sm bg-brand-700 text-white' : 'rounded-bl-sm bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'
           }`}
         >
-          {!mine && !deleted && <p className="px-3 pt-1.5 text-[11px] font-semibold opacity-70">{message.sender?.name ?? 'Unknown'}</p>}
+          {!mine && !deleted && <p className="px-3 pt-1.5 text-[11px] font-semibold opacity-70">{message.sender?.name ?? t('unknownSender')}</p>}
           {deleted ? (
-            <p className="px-3 py-1.5 italic opacity-70">This message was deleted</p>
+            <p className="px-3 py-1.5 italic opacity-70">{t('thisMessageWasDeleted')}</p>
           ) : (
             <>
               {hasImage && (
@@ -621,7 +628,7 @@ function MessageRow({
                     src={resolveImageUrl(message.imageUrl as string)}
                     alt=""
                     className="max-h-64 w-full object-cover"
-                    fallback={<div className="flex h-32 items-center justify-center text-xs text-slate-400">Photo unavailable</div>}
+                    fallback={<div className="flex h-32 items-center justify-center text-xs text-slate-400">{t('photoUnavailable')}</div>}
                   />
                 </button>
               )}
@@ -629,7 +636,7 @@ function MessageRow({
                 <p className="px-3 py-1.5">
                   {message.body}
                   {message.editedAt && (
-                    <span className={`ml-1 text-[10px] ${mine ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>(edited)</span>
+                    <span className={`ml-1 text-[10px] ${mine ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>{t('edited')}</span>
                   )}
                 </p>
               )}
@@ -662,7 +669,7 @@ function MessageRow({
         <div className="relative mt-0.5 flex items-center gap-2.5 text-[11px] text-slate-400 dark:text-slate-500">
           <button type="button" onClick={onReply} className="flex items-center gap-0.5 hover:text-brand-600 hover:underline dark:hover:text-brand-300">
             <ArrowUturnLeftIcon aria-hidden className="h-3 w-3" />
-            Reply
+            {t('reply')}
           </button>
           <button
             type="button"
@@ -670,18 +677,18 @@ function MessageRow({
             className="flex items-center gap-0.5 hover:text-brand-600 hover:underline dark:hover:text-brand-300"
           >
             <FaceSmileIcon aria-hidden className="h-3 w-3" />
-            React
+            {t('react')}
           </button>
           {canEditOrDelete && hasCaption && (
             <button type="button" onClick={onStartEdit} className="flex items-center gap-0.5 hover:text-brand-600 hover:underline dark:hover:text-brand-300">
               <PencilSquareIcon aria-hidden className="h-3 w-3" />
-              Edit
+              {t('edit')}
             </button>
           )}
           {canEditOrDelete && (
             <button type="button" onClick={onDelete} className="flex items-center gap-0.5 hover:text-flag-600 hover:underline dark:hover:text-flag-400">
               <TrashIcon aria-hidden className="h-3 w-3" />
-              Delete
+              {tCommon('delete')}
             </button>
           )}
           {mine && <MessageStatus status={message.status} />}
@@ -717,6 +724,7 @@ function PendingMessageRow({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
+  const t = useTranslations('trips');
   return (
     <div className="flex flex-col items-end">
       <div className={`max-w-[85%] overflow-hidden rounded-2xl rounded-br-sm text-sm text-white shadow-sm ${item.failed ? 'bg-flag-600/80' : 'bg-brand-700/70'}`}>
@@ -731,13 +739,13 @@ function PendingMessageRow({
           <>
             <span className="flex items-center gap-1 text-flag-700 dark:text-flag-300">
               <ExclamationCircleIcon aria-hidden className="h-3.5 w-3.5" />
-              {item.errorMessage ?? 'Failed to send'}
+              {item.errorMessage ?? t('failedToSend')}
             </span>
             <button type="button" onClick={onRetry} className="font-medium text-brand-700 hover:underline dark:text-brand-300">
-              Retry
+              {t('retry')}
             </button>
             <button type="button" onClick={onDiscard} className="hover:text-flag-700 dark:hover:text-flag-300">
-              Discard
+              {t('discard')}
             </button>
           </>
         ) : (
