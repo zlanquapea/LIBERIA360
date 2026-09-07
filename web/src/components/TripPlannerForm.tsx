@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/useAuth';
 import { generateTrip, previewTrip, type CreateTripInput } from '@/lib/itinerary-api';
 import { savePendingTripDraft, takePendingTripDraft } from '@/lib/pending-trip-draft';
@@ -46,6 +47,7 @@ function durationDaysFromRange(startDate: string, endDate: string): number {
 // afterward (see pending-trip-draft.ts), so what they see here is what
 // they get.
 export function TripPlannerForm() {
+  const t = useTranslations('trips');
   const router = useRouter();
   const { user, token, ready } = useAuth();
 
@@ -88,8 +90,9 @@ export function TripPlannerForm() {
       .then((itinerary) => router.push(`/trips/${itinerary.id}`))
       .catch((err) => {
         setResuming(false);
-        setError(err instanceof HttpError ? err.message : 'Something went wrong saving your trip. Please try again.');
+        setError(err instanceof HttpError ? err.message : t('savingTripError'));
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, user, token, router]);
 
   // Shared by both the submit and "log in to save" paths — a trip isn't
@@ -113,23 +116,23 @@ export function TripPlannerForm() {
     e.preventDefault();
     setError(null);
     if (!title.trim()) {
-      setError('Give your trip a name.');
+      setError(t('nameYourTrip'));
       return;
     }
     if (!destination) {
-      setError('Choose a destination.');
+      setError(t('chooseDestination'));
       return;
     }
     if (!startDate || !endDate) {
-      setError('Choose a start and end date.');
+      setError(t('chooseDates'));
       return;
     }
     if (endDate < startDate) {
-      setError("The end date can't be before the start date.");
+      setError(t('endBeforeStart'));
       return;
     }
     if ((durationDays ?? 0) > MAX_TRIP_DURATION_DAYS) {
-      setError(`Trips can be at most ${MAX_TRIP_DURATION_DAYS} days — pick a shorter date range.`);
+      setError(t('maxDurationError', { max: MAX_TRIP_DURATION_DAYS }));
       return;
     }
     const input = buildInput();
@@ -144,7 +147,7 @@ export function TripPlannerForm() {
       const result = await previewTrip(input);
       setPreview(result);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof HttpError ? err.message : t('genericError'));
     } finally {
       setSubmitting(false);
     }
@@ -157,30 +160,185 @@ export function TripPlannerForm() {
     router.push('/login?next=/trips/new');
   }
 
+  // The "Plan a Trip" title/subtitle used to live in the page.tsx wrapper
+  // (a plain sync Server Component, statically prerenderable per locale).
+  // It's rendered here instead — in every branch below — because giving
+  // that wrapper its own `await getTranslations()` call turned the whole
+  // route dynamic (Next couldn't tell the translated title was locale-only,
+  // constant content, and stopped prerendering it per locale at build
+  // time). TripPlannerForm is already client-side and already pays for
+  // useTranslations, so the header rides along for free without costing
+  // the route its static generation.
+  const header = (
+    <div>
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('planATripTitle')}</h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{t('planATripSubtitle')}</p>
+    </div>
+  );
+
   if (!ready || resuming) {
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-5">
-        <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
-          {resuming ? 'Saving your trip…' : 'Loading…'}
-        </p>
-      </div>
+      <>
+        {header}
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-5">
+          <BrandLoader />
+          <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+            {resuming ? t('savingYourTrip') : t('oneMoment')}
+          </p>
+        </div>
+      </>
     );
   }
 
   if (preview) {
     return (
-      <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{preview.title}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {destination?.name} · {formatTripDateRange(preview.startDate, preview.endDate)} · {preview.durationDays} day
-            {preview.durationDays === 1 ? '' : 's'} · {formatBudgetBand(preview.budgetBand)}
-          </p>
-        </div>
+      <>
+        {header}
+        <div className="flex flex-col gap-5">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50">{preview.title}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {destination?.name} · {formatTripDateRange(preview.startDate, preview.endDate)} ·{' '}
+              {t('days', { count: preview.durationDays })} · {formatBudgetBand(preview.budgetBand)}
+            </p>
+          </div>
 
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
-          This is a preview — nothing&apos;s saved yet. Log in to save it, then add your own places for each day.
+          <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+            {t('previewNotice')}
+          </p>
+
+          {error && (
+            <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
+              {error}
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleLoginToSave}
+              className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              {t('logInToSaveTrip')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
+            >
+              {t('planADifferentTrip')}
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {header}
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+          {t('tripName')}
+          <input
+            type="text"
+            required
+            maxLength={200}
+            placeholder={t('tripNamePlaceholder')}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          />
+        </label>
+
+        <DestinationAutocomplete value={destination} onChange={setDestination} />
+
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('whoCanSee')}</legend>
+          <div className="flex gap-2">
+            {(
+              [
+                { value: 'private' as TripVisibility, label: t('visibilityPrivate'), hint: t('visibilityPrivateHint') },
+                { value: 'public' as TripVisibility, label: t('visibilityPublic'), hint: t('visibilityPublicHint') },
+              ]
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setVisibility(option.value)}
+                aria-pressed={visibility === option.value}
+                className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm ${
+                  visibility === option.value
+                    ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
+                    : 'border-slate-300 dark:border-slate-700 hover:border-brand-500'
+                }`}
+              >
+                <span className="block font-medium text-slate-900 dark:text-slate-50">{option.label}</span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400">{option.hint}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('whenAreYouGoing')}</legend>
+          <div className="flex gap-2">
+            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+              {t('startDate')}
+              <input
+                type="date"
+                required
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:text-slate-50"
+              />
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+              {t('endDate')}
+              <input
+                type="date"
+                required
+                min={startDate || undefined}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:text-slate-50"
+              />
+            </label>
+          </div>
+          {durationDays !== null && (
+            <p
+              className={`text-xs ${
+                durationDays < 1 || durationDays > MAX_TRIP_DURATION_DAYS
+                  ? 'text-flag-700 dark:text-flag-300'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              {durationDays < 1
+                ? t('endBeforeStart')
+                : durationDays > MAX_TRIP_DURATION_DAYS
+                  ? t('tooManyDaysHint', { count: durationDays, max: MAX_TRIP_DURATION_DAYS })
+                  : t('days', { count: durationDays })}
+            </p>
+          )}
+        </fieldset>
+
+        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+          {t('budget')}
+          <select
+            value={budgetBand}
+            onChange={(e) => setBudgetBand(e.target.value as BudgetBand)}
+            className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          >
+            {BUDGET_BANDS.map((b) => (
+              <option key={b} value={b}>
+                {formatBudgetBand(b)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {user ? t('continueUserHint') : t('continueGuestHint')}
         </p>
 
         {error && (
@@ -189,146 +347,14 @@ export function TripPlannerForm() {
           </p>
         )}
 
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleLoginToSave}
-            className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
-          >
-            Log in to save this trip
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreview(null)}
-            className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
-          >
-            Plan a different trip
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Trip name
-        <input
-          type="text"
-          required
-          maxLength={200}
-          placeholder="My Liberia Trip"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
-
-      <DestinationAutocomplete value={destination} onChange={setDestination} />
-
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">Who can see this trip?</legend>
-        <div className="flex gap-2">
-          {(
-            [
-              { value: 'private' as TripVisibility, label: 'Private', hint: 'Only people you invite' },
-              { value: 'public' as TripVisibility, label: 'Public', hint: 'Anyone can find & request to join' },
-            ]
-          ).map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setVisibility(option.value)}
-              aria-pressed={visibility === option.value}
-              className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm ${
-                visibility === option.value
-                  ? 'border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/30'
-                  : 'border-slate-300 dark:border-slate-700 hover:border-brand-500'
-              }`}
-            >
-              <span className="block font-medium text-slate-900 dark:text-slate-50">{option.label}</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400">{option.hint}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">When are you going?</legend>
-        <div className="flex gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            Start date
-            <input
-              type="date"
-              required
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:text-slate-50"
-            />
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            End date
-            <input
-              type="date"
-              required
-              min={startDate || undefined}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:text-slate-50"
-            />
-          </label>
-        </div>
-        {durationDays !== null && (
-          <p
-            className={`text-xs ${
-              durationDays < 1 || durationDays > MAX_TRIP_DURATION_DAYS
-                ? 'text-flag-700 dark:text-flag-300'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            {durationDays < 1
-              ? "The end date can't be before the start date."
-              : durationDays > MAX_TRIP_DURATION_DAYS
-                ? `That's ${durationDays} days — trips can be at most ${MAX_TRIP_DURATION_DAYS}.`
-                : `${durationDays} day${durationDays === 1 ? '' : 's'}`}
-          </p>
-        )}
-      </fieldset>
-
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Budget
-        <select
-          value={budgetBand}
-          onChange={(e) => setBudgetBand(e.target.value as BudgetBand)}
-          className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
         >
-          {BUDGET_BANDS.map((b) => (
-            <option key={b} value={b}>
-              {formatBudgetBand(b)}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <p className="text-xs text-slate-500 dark:text-slate-400">
-        {user
-          ? "You'll add your own places next — as few or as many as this trip actually needs, on whichever day(s) you choose."
-          : "No account needed to plan — you'll only be asked to log in when you're ready to save this trip."}
-      </p>
-
-      {error && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
-          {error}
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-      >
-        {submitting ? 'One moment…' : user ? 'Start planning' : 'Continue'}
-      </button>
-    </form>
+          {submitting ? t('oneMoment') : user ? t('startPlanning') : t('continue')}
+        </button>
+      </form>
+    </>
   );
 }

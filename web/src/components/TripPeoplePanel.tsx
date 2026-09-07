@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { approveJoinRequest, declineJoinRequest, listJoinRequests, removeCollaborator } from '@/lib/itinerary-api';
@@ -18,12 +19,12 @@ const STATUS_STYLES: Record<InvitationDisplayStatus, string> = {
   expired: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
 };
 
-const STATUS_LABELS: Record<InvitationDisplayStatus, string> = {
-  pending: 'Pending',
-  viewed: 'Viewed',
-  accepted: 'Accepted',
-  declined: 'Declined',
-  expired: 'Expired',
+const STATUS_LABEL_KEYS: Record<InvitationDisplayStatus, string> = {
+  pending: 'invitationPending',
+  viewed: 'invitationViewed',
+  accepted: 'accepted',
+  declined: 'invitationDeclined',
+  expired: 'invitationExpired',
 };
 
 // Trip People/Participants (Section 4/6/7): confirmed collaborators plus
@@ -46,6 +47,7 @@ export function TripPeoplePanel({
   isOwner: boolean;
   onChange: () => void;
 }) {
+  const t = useTranslations('trips');
   const { user, token } = useAuth();
   const [invitations, setInvitations] = useState<InvitationSummary[]>([]);
   const [joinRequests, setJoinRequests] = useState<TripJoinRequestSummary[]>([]);
@@ -181,7 +183,9 @@ export function TripPeoplePanel({
     <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-          Who&apos;s going{collaborators.length + (admin ? 1 : 0) > 0 && ` (${collaborators.length + (admin ? 1 : 0)})`}
+          {collaborators.length + (admin ? 1 : 0) > 0
+            ? t('whosGoingCount', { count: collaborators.length + (admin ? 1 : 0) })
+            : t('whosGoing')}
         </p>
         {isOwner && (
           <button
@@ -190,19 +194,19 @@ export function TripPeoplePanel({
             className="flex items-center gap-1 rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <UserPlusIcon aria-hidden className="h-3.5 w-3.5" />
-            Invite people
+            {t('invitePeople')}
           </button>
         )}
       </div>
 
       {collaborators.length === 0 && !admin ? (
-        <p className="text-xs text-slate-500 dark:text-slate-400">Just you so far — invite someone to plan this trip together.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t('onlyYouSoFar')}</p>
       ) : (
         <ul className="flex flex-wrap gap-2">
           {admin && (
             <li className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
               {admin.name}
-              <span className="rounded-full bg-brand-700 px-1.5 py-0.5 text-[10px] font-semibold text-white">Trip Admin</span>
+              <span className="rounded-full bg-brand-700 px-1.5 py-0.5 text-[10px] font-semibold text-white">{t('tripAdmin')}</span>
             </li>
           )}
           {collaborators.map((c) => (
@@ -211,12 +215,12 @@ export function TripPeoplePanel({
               className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               {c.name}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES.accepted}`}>Accepted</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES.accepted}`}>{t('accepted')}</span>
               {(isOwner || c.id === user?.id) && (
                 <button
                   type="button"
                   onClick={() => setPendingRemove(c)}
-                  aria-label={`Remove ${c.name}`}
+                  aria-label={t('removeAriaLabel', { name: c.name })}
                   className="text-slate-400 hover:text-flag-700 dark:hover:text-flag-300"
                 >
                   ×
@@ -239,14 +243,14 @@ export function TripPeoplePanel({
               </span>
               <span className="flex shrink-0 items-center gap-1.5">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[invitation.status]}`}>
-                  {STATUS_LABELS[invitation.status]}
+                  {t(STATUS_LABEL_KEYS[invitation.status])}
                 </span>
                 {!invitation.emailDelivered && invitation.status === 'pending' && (
                   <span
-                    title="This invitation's email may not have been delivered"
+                    title={t('notDeliveredTitle')}
                     className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                   >
-                    Not delivered
+                    {t('notDelivered')}
                   </span>
                 )}
                 {(invitation.status === 'pending' || invitation.status === 'viewed') && (
@@ -256,13 +260,13 @@ export function TripPeoplePanel({
                     onClick={() => handleResend(invitation.id)}
                     className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-50 dark:text-brand-300"
                   >
-                    Resend
+                    {t('resend')}
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setPendingCancelInvitation(invitation)}
-                  aria-label={`Cancel invitation to ${invitation.email}`}
+                  aria-label={t('cancelInvitationAriaLabel', { email: invitation.email })}
                   className="text-slate-400 hover:text-flag-700 dark:hover:text-flag-300"
                 >
                   ×
@@ -276,7 +280,7 @@ export function TripPeoplePanel({
       {isOwner && pendingJoinRequests.length > 0 && (
         <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Requests to join ({pendingJoinRequests.length})
+            {t('requestsToJoin', { count: pendingJoinRequests.length })}
           </p>
           <ul className="flex flex-col gap-1.5">
             {pendingJoinRequests.map((request) => (
@@ -290,21 +294,21 @@ export function TripPeoplePanel({
                     type="button"
                     disabled={busyId === request.id}
                     onClick={() => handleApproveJoinRequest(request.id)}
-                    aria-label={`Approve ${request.user.name}'s request to join`}
+                    aria-label={t('approveAriaLabel', { name: request.user.name })}
                     className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     <CheckIcon aria-hidden className="h-3 w-3" />
-                    Approve
+                    {t('approve')}
                   </button>
                   <button
                     type="button"
                     disabled={busyId === request.id}
                     onClick={() => handleDeclineJoinRequest(request.id)}
-                    aria-label={`Decline ${request.user.name}'s request to join`}
+                    aria-label={t('declineAriaLabel', { name: request.user.name })}
                     className="flex items-center gap-1 rounded-full border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:border-flag-400 hover:text-flag-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
                   >
                     <XMarkIcon aria-hidden className="h-3 w-3" />
-                    Decline
+                    {t('decline')}
                   </button>
                 </span>
               </li>
@@ -331,16 +335,16 @@ export function TripPeoplePanel({
         open={pendingRemove != null}
         title={
           pendingRemove && pendingRemove.id === user?.id
-            ? 'Leave this trip?'
-            : `Remove ${pendingRemove?.name ?? 'this person'} from this trip?`
+            ? t('leaveThisTripQuestion')
+            : t('removePersonTitle', { name: pendingRemove?.name ?? t('removePersonGeneric') })
         }
         description={
           pendingRemove && pendingRemove.id === user?.id
-            ? "You'll lose access to this trip's itinerary unless the owner invites you again."
-            : "They'll lose access to this trip's itinerary unless invited again."
+            ? t('leaveTripPanelDescription')
+            : t('removePersonDescription')
         }
-        confirmLabel={pendingRemove && pendingRemove.id === user?.id ? 'Leave Trip' : 'Remove'}
-        loadingLabel={pendingRemove && pendingRemove.id === user?.id ? 'Leaving…' : 'Removing…'}
+        confirmLabel={pendingRemove && pendingRemove.id === user?.id ? t('leaveTripConfirm') : t('remove')}
+        loadingLabel={pendingRemove && pendingRemove.id === user?.id ? t('leavingTrip') : t('removing')}
         isLoading={removing}
         error={removeError}
         onConfirm={confirmRemove}
@@ -353,11 +357,13 @@ export function TripPeoplePanel({
 
       <ConfirmDialog
         open={pendingCancelInvitation != null}
-        title={`Cancel the invitation to ${pendingCancelInvitation?.invitee?.name ?? pendingCancelInvitation?.email ?? 'this person'}?`}
-        description="They'll need a brand-new invitation to join this trip."
-        confirmLabel="Cancel Invitation"
-        cancelLabel="Keep It"
-        loadingLabel="Cancelling…"
+        title={t('cancelInvitationTitle', {
+          name: pendingCancelInvitation?.invitee?.name ?? pendingCancelInvitation?.email ?? t('removePersonGeneric'),
+        })}
+        description={t('cancelInvitationDescription')}
+        confirmLabel={t('cancelInvitationConfirm')}
+        cancelLabel={t('keepIt')}
+        loadingLabel={t('cancellingTrip')}
         isLoading={cancelling}
         error={cancelError}
         onConfirm={confirmCancelInvitation}

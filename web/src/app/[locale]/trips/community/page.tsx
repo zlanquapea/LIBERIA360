@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getPublicTrips } from '@/lib/itinerary-api';
 import { getFriendlyErrorMessage } from '@/lib/errors';
 import { PublicTripCard } from '@/components/PublicTripCard';
@@ -14,6 +15,8 @@ import type { PublicTripSummary } from '@/lib/types';
 // no server-side auth to key a server component off of, though this page
 // itself needs none — GET /itineraries/public is always unauthenticated.
 export default function CommunityTripsPage() {
+  const t = useTranslations('trips');
+  const tCommon = useTranslations('common');
   const [trips, setTrips] = useState<PublicTripSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -39,24 +42,24 @@ export default function CommunityTripsPage() {
     <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Community Trips</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('communityTrips')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Public trips other travelers are planning — ask to join one, or{' '}
+            {t('communityTripsSubtitlePrefix')}{' '}
             <Link href="/trips/new" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">
-              build your own
+              {t('buildYourOwn')}
             </Link>
             .
           </p>
         </div>
         <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          My Trips →
+          {t('myTripsLink')} →
         </Link>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
           <BrandLoader />
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading…</p>
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{tCommon('loading')}</p>
         </div>
       ) : loadError ? (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
@@ -64,7 +67,7 @@ export default function CommunityTripsPage() {
         </p>
       ) : trips.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-          No public trips yet — be the first to make one and invite others to join.
+          {t('noPublicTrips')}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
