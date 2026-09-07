@@ -1,0 +1,3 @@
+{
+  "_comment": "Phase 1 (infra) seeds these files empty on purpose — see I18N_PLAN.md. Phase 2 populates the shell-chrome namespaces (nav, common, ...) here and in fr.json/zh.json/ar.json."
+}

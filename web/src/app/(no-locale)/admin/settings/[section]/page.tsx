@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { SuperAdminGate } from '@/components/SuperAdminGate';
 import { useAuth } from '@/hooks/useAuth';
@@ -436,9 +437,9 @@ function NotificationsSettingsPanel() {
           <p className="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
             Failed-login threshold alerts aren&apos;t configured here — they already go to every super admin
             automatically (see{' '}
-            <a href="/admin/security/alerts" className="underline hover:text-slate-600 dark:hover:text-slate-300">
+            <Link href="/admin/security/alerts" className="underline hover:text-slate-600 dark:hover:text-slate-300">
               Security &gt; Security Alerts
-            </a>{' '}
+            </Link>{' '}
             and the two thresholds on Application).
           </p>
 

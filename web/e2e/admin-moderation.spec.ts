@@ -44,7 +44,10 @@ test('admin sees a review flagged after 3 independent reports, and can remove it
     await expect(reviewItem).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 65_000, intervals: [5_000] });
   await reviewItem.getByRole('button', { name: /report/i }).click();
-  await page.getByRole('combobox').selectOption('fake');
+  // Scoped by label, not just role='combobox' — the page also carries the
+  // i18n language switcher's own <select> (LanguageSwitcher.tsx), so an
+  // unscoped combobox locator matches two elements here.
+  await page.getByRole('combobox', { name: 'Report reason' }).selectOption('fake');
   await page.getByRole('button', { name: 'Submit report' }).click();
   await expect(page.getByText(/thanks — sent to the team/i)).toBeVisible();
 

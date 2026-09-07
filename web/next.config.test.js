@@ -1,5 +1,13 @@
 const ORIGINAL_ENV = process.env;
 
+// next-intl/plugin locates its request-config file relative to the caller
+// (next.config.js) using Node internals that assume they're being invoked
+// by Next's own config loader — requiring next.config.js directly from
+// Jest, as this file does, trips that up. None of these tests touch i18n
+// at all (just the API proxy rewrite destinations), so a pass-through
+// identity plugin sidesteps it entirely.
+jest.mock('next-intl/plugin', () => () => (config) => config);
+
 async function destinations(env) {
   process.env = { ...ORIGINAL_ENV, ...env };
   jest.resetModules();

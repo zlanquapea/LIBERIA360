@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { AuthRefresher } from "@/components/AuthRefresher";
 import { ErrorReportingInit } from "@/components/ErrorReportingInit";
@@ -10,6 +10,17 @@ import { Footer } from "@/components/Footer";
 import { Liberia360Assistant } from "@/components/Liberia360Assistant";
 import { SplashScreen } from "@/components/SplashScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
+
+// i18n (Sep 2026, I18N_PLAN.md): this is one of TWO root layouts, using
+// Next.js's "multiple root layouts via route groups" pattern — the other
+// is src/app/[locale]/layout.tsx. Admin and the legal pages (Privacy,
+// Terms) live in THIS group specifically because product decided they
+// stay English-only regardless of how many locales the tourist-facing
+// side of the app eventually supports: no [locale] segment, no
+// NextIntlClientProvider, nothing here ever changes based on a visitor's
+// language choice. Content below is otherwise unchanged from before the
+// split — same chrome, same behavior, just now duplicated by necessity
+// into the other root layout too (see that file's own doc comment).
 
 export const metadata: Metadata = {
   title: "LIBERIA360 — Everything Liberia. One Place.",
@@ -50,17 +61,6 @@ const themeInitScript = `(function(){try{var t=localStorage.getItem('liberia360:
 // deliberately keep the splash visible in the server HTML so page content
 // cannot flash before the branded reveal begins.
 const splashInitScript = `(function(){try{if(sessionStorage.getItem('liberia360:splash-seen')==='1')document.documentElement.dataset.splashSeen='1';}catch(e){}})();`;
-
-// Splash screen removed (Aug 27, 2026): product feedback — "remove the
-// fade in and out... causing the page to fade in color off and on...
-// it looks playful, not professional." The old <SplashScreen /> covered
-// the whole viewport with a solid brand-color overlay on every hard
-// load, held it for a fixed 500ms even though nothing real was loading,
-// then faded it out over another 500ms — a full-screen color fade with
-// no functional purpose (it never gated on any real resource; see its
-// removed doc comment). That's a native-app affectation, not something a
-// web app benefits from: real content now paints as soon as it's ready,
-// with no artificial delay or overlay in front of it.
 
 export default function RootLayout({
   children,
