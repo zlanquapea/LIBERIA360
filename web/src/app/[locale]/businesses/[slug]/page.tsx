@@ -27,6 +27,7 @@ import { SaveButton } from '@/components/SaveButton';
 import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { StickyBookingBar } from '@/components/StickyBookingBar';
 import { MenuSection } from '@/components/MenuSection';
+import { RestaurantCartActiveProvider } from '@/components/RestaurantCartActiveContext';
 import { JsonLd } from '@/components/JsonLd';
 import { businessJsonLd } from '@/lib/structured-data';
 import type { BusinessContent } from '@/lib/types';
@@ -141,6 +142,10 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
+      {/* Spans everything between StickyBookingBar and MenuSection below so
+          the two independent footer CTAs can coordinate — see
+          RestaurantCartActiveContext's own doc comment for why. */}
+      <RestaurantCartActiveProvider>
       <JsonLd data={businessJsonLd(business)} />
 
       <PlaceGallery
@@ -357,6 +362,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
       <Section eyebrow="Visitor notes" title="Reviews">
         <ReviewsSection placeId={business.linkedPlaceId} initialReviews={reviewsResult.data} />
       </Section>
+      </RestaurantCartActiveProvider>
     </main>
   );
 }

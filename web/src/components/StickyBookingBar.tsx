@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BookingRequestSection } from "./BookingRequestSection";
+import { useRestaurantCartActive } from "@/components/RestaurantCartActiveContext";
 import type { Business } from "@/lib/types";
 
 // UX audit (Sep 6, 2026): the primary "Book"/"Request to book" action only
@@ -36,6 +37,15 @@ import type { Business } from "@/lib/types";
 // this contextual, user-triggered bar win the strip while it's visible;
 // the switcher/launcher are still there and reappear the moment this bar
 // hides again on scroll-up, so nothing is lost — just briefly deferred to.
+//
+// Bug fix, Sep 2026: on a restaurant's business page, MenuSection mounts
+// its own fixed order-summary bar in the same reserved strip once a
+// visitor has food-order items in their cart — see
+// RestaurantCartActiveContext's doc comment for how the two collided.
+// useRestaurantCartActive() suppresses this bar entirely while that cart
+// is active, deferring to the visitor's in-progress order instead of
+// fighting it for the same pixels; it's a no-op (`active` stays false) on
+// any page that doesn't wrap this in a RestaurantCartActiveProvider.
 export function StickyBookingBar({
   business,
   name,
@@ -44,7 +54,9 @@ export function StickyBookingBar({
   name: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [scrolledPast, setScrolledPast] = useState(false);
+  const { active: cartActive } = useRestaurantCartActive();
+  const visible = scrolledPast && !cartActive;
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -54,7 +66,7 @@ export function StickyBookingBar({
         // Only care about "scrolled past above" (boundingClientRect.top <
         // 0), not the initial "hasn't been reached yet" state below the
         // fold, which also reports isIntersecting: false.
-        setVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+        setScrolledPast(!entry.isIntersecting && entry.boundingClientRect.top < 0);
       },
       { threshold: 0 },
     );
@@ -69,7 +81,20 @@ export function StickyBookingBar({
         aria-hidden={!visible}
         inert={visible ? undefined : true}
         className={`fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[85] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] backdrop-blur transition-transform duration-200 ease-out supports-[backdrop-filter]:bg-white/85 dark:border-slate-800 dark:bg-slate-900/95 lg:bottom-0 ${
-          visible ? "translate-y-0" : "pointer-events-none translate-y-full"
+          // Bug fix, Sep 2026: `translate-y-full` only shifts an element by
+          // its own rendered height, which is only enough to fully clear
+          // the viewport when the element's untransformed edge already
+          // sits flush against it (true on lg+, where this bar sits at
+          // bottom-0). On mobile it sits at bottom-[5rem+safe-area] to
+          // clear BottomNav, so translating by just 100% left a ~5rem
+          // sliver of this bar — including its "Ready to book your
+          // visit?" text — visibly sitting over BottomNav in every
+          // "hidden" state (confirmed live: present right on page load,
+          // before ever scrolling, not just while food-order-cart
+          // coordination hides this bar). Translating by the bar's own
+          // offset too, in addition to its height, is what actually
+          // clears it off-screen.
+          visible ? "translate-y-0" : "pointer-events-none translate-y-[calc(100%+5rem+env(safe-area-inset-bottom))] lg:translate-y-full"
         }`}
       >
         <div className="mx-auto flex max-w-3xl items-center gap-3 lg:max-w-6xl">
