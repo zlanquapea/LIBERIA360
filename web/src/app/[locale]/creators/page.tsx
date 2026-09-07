@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { getCounties, getCreators, getCreatorFeed } from "@/lib/api";
 import { CreatorCard } from "@/components/CreatorCard";
 import { CreatorFeed } from "@/components/CreatorFeed";
@@ -35,10 +36,15 @@ export default async function CreatorsPage({
   const isFollowing = view === "following";
   const isDirectory = view === "directory";
 
+  // Forwarded so the feed's per-post viewerLiked/viewerSaved reflect this
+  // visitor's own likes/saves on first load — see getCreatorFeed's doc
+  // comment for why that's otherwise always false from a server fetch.
+  const cookieHeader = (await cookies()).toString();
+
   const [counties, result, feed] = await Promise.all([
     getCounties(),
     getCreators({ page, limit: 20, search, category, countyId }),
-    getCreatorFeed({ page: 1, limit: 20 }),
+    getCreatorFeed({ page: 1, limit: 20 }, cookieHeader),
   ]);
 
   function pageHref(targetPage: number) {

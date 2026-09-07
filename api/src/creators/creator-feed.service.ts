@@ -158,8 +158,18 @@ export class CreatorFeedService {
       .orderBy("saved.created_at", "DESC")
       .getMany();
 
+    // A post can be both liked and saved — `viewerLiked` was previously
+    // hardcoded false here regardless, so a post you'd liked showed an
+    // unfilled heart the moment it appeared on the Saved page.
+    const postIds = savedPosts.map((saved) => saved.post.id);
+    const likes =
+      postIds.length > 0
+        ? await this.likeRepo.find({ where: { userId, postId: In(postIds) } })
+        : [];
+    const likedIds = new Set(likes.map((like) => like.postId));
+
     return savedPosts.map((saved) =>
-      this.serializePost(saved.post, false, true),
+      this.serializePost(saved.post, likedIds.has(saved.post.id), true),
     );
   }
 
