@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import type { TouchEvent } from "react";
 import {
   BookmarkIcon,
   ChatBubbleOvalLeftIcon,
@@ -354,6 +355,8 @@ export function CreatorPostViewer({
   onSave,
   onShare,
   onClose,
+  onPrevious,
+  onNext,
 }: {
   post: CreatorPost;
   mode: "video" | "image";
@@ -368,19 +371,46 @@ export function CreatorPostViewer({
   onSave: () => void;
   onShare: () => void;
   onClose: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
 }) {
+  const touchStartY = useRef<number | null>(null);
+  const touchDeltaY = useRef(0);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
+      if (event.key === "ArrowUp" || event.key === "PageUp") onPrevious?.();
+      if (event.key === "ArrowDown" || event.key === "PageDown") onNext?.();
     }
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [onClose]);
+  }, [onClose, onNext, onPrevious]);
+
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+    touchDeltaY.current = 0;
+  }
+
+  function handleTouchMove(event: TouchEvent<HTMLDivElement>) {
+    if (touchStartY.current === null) return;
+    touchDeltaY.current =
+      (event.touches[0]?.clientY ?? touchStartY.current) - touchStartY.current;
+    if (Math.abs(touchDeltaY.current) > 24) event.preventDefault();
+  }
+
+  function handleTouchEnd() {
+    const delta = touchDeltaY.current;
+    touchStartY.current = null;
+    touchDeltaY.current = 0;
+    if (delta <= -56) onNext?.();
+    if (delta >= 56) onPrevious?.();
+  }
 
   if (mode === "image") {
     return (
@@ -441,13 +471,36 @@ export function CreatorPostViewer({
       role="dialog"
       aria-modal="true"
       aria-label={`${post.creator.name}'s video post`}
-      className="fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col bg-black text-white"
+      className="fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col overscroll-contain bg-black text-white"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div className="relative min-h-0 flex-1 overflow-hidden">
+        {onPrevious && (
+          <button
+            type="button"
+            onClick={onPrevious}
+            aria-label="Previous video"
+            className="absolute left-1/2 top-4 z-20 hidden -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/65 sm:block"
+          >
+            Previous video
+          </button>
+        )}
+        {onNext && (
+          <button
+            type="button"
+            onClick={onNext}
+            aria-label="Next video"
+            className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/65 sm:block"
+          >
+            Next video
+          </button>
+        )}
         {isDirectVideoFile(post.mediaUrl) ? (
-          <DirectVideoViewer post={post} />
+          <DirectVideoViewer key={post.id} post={post} />
         ) : (
-          <EmbedVideoViewer post={post} />
+          <EmbedVideoViewer key={post.id} post={post} />
         )}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent px-4 pb-12 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <button
@@ -458,7 +511,14 @@ export function CreatorPostViewer({
           >
             <ChevronLeftIcon aria-hidden className="h-8 w-8" />
           </button>
-          <p className="text-base font-bold">Creator video</p>
+          <div>
+            <p className="text-base font-bold">Creator video</p>
+            {(onPrevious || onNext) && (
+              <p className="text-xs text-white/65">
+                Swipe up or down for more videos
+              </p>
+            )}
+          </div>
         </div>
         <div className="absolute bottom-32 right-3">
           <ViewerActions
@@ -560,6 +620,9 @@ export function CreatorPostViewerVideoPreview({
         aria-hidden
         className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10"
       />
+      <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-brand-950 shadow-lg transition-transform group-hover:scale-105">
+        <PlayIcon aria-hidden className="h-8 w-8 translate-x-0.5" />
+      </span>
       <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
         Watch video
       </span>

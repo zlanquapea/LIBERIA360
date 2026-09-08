@@ -108,6 +108,10 @@ export function CreatorFeed({
       ),
     [ads, mode, posts],
   );
+  const videoPosts = useMemo(
+    () => posts.filter((post) => post.mediaType === "video"),
+    [posts],
+  );
 
   useEffect(() => {
     if (mode !== "discover") return;
@@ -369,7 +373,11 @@ export function CreatorFeed({
                 ad={item.ad}
               />
             ) : (
-              <CreatorPostCard key={item.post.id} post={item.post} />
+              <CreatorPostCard
+                key={item.post.id}
+                post={item.post}
+                videoPosts={videoPosts}
+              />
             ),
           )}
         </div>

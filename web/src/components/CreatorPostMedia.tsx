@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CreatorPost } from "@/lib/types";
 import {
@@ -11,6 +11,7 @@ import {
 
 type CreatorPostMediaProps = {
   post: CreatorPost;
+  videoPosts?: CreatorPost[];
   liked: boolean;
   saved: boolean;
   likeCount: number;
@@ -23,13 +24,13 @@ type CreatorPostMediaProps = {
 };
 
 /**
- * The feed keeps a compact preview, but tapping that preview opens a
- * post-focused viewer. Video uses a full-screen Reels-style surface; image
- * uses a dark Facebook-style photo surface. The viewer receives the card's
- * current engagement state so actions remain synchronized with the post card.
+ * Feed media opens a post-focused viewer. Video posts can optionally share a
+ * Reels-style playlist supplied by the feed, while image posts remain single
+ * item viewers.
  */
 export function CreatorPostMedia({
   post,
+  videoPosts = [],
   liked,
   saved,
   likeCount,
@@ -41,7 +42,29 @@ export function CreatorPostMedia({
   onShare,
 }: CreatorPostMediaProps) {
   const [open, setOpen] = useState(false);
-  const mode = post.mediaType === "video" ? "video" : "image";
+  const [activePostId, setActivePostId] = useState(post.id);
+  const activePost = useMemo(
+    () => videoPosts.find((item) => item.id === activePostId) ?? post,
+    [activePostId, post, videoPosts],
+  );
+  const activeIndex = videoPosts.findIndex((item) => item.id === activePost.id);
+  const hasPlaylist = post.mediaType === "video" && videoPosts.length > 1;
+  const mode = activePost.mediaType === "video" ? "video" : "image";
+  const isInitialPost = activePost.id === post.id;
+
+  useEffect(() => {
+    if (!open) setActivePostId(post.id);
+  }, [open, post.id]);
+
+  function openViewer() {
+    setActivePostId(post.id);
+    setOpen(true);
+  }
+
+  function navigateTo(index: number) {
+    if (!hasPlaylist || index < 0 || index >= videoPosts.length) return;
+    setActivePostId(videoPosts[index].id);
+  }
 
   if (post.mediaType === "text") {
     return (
@@ -55,42 +78,52 @@ export function CreatorPostMedia({
 
   return (
     <>
-      {mode === "video" ? (
-        <CreatorPostViewerVideoPreview
-          post={post}
-          onOpen={() => setOpen(true)}
-        />
+      {post.mediaType === "video" ? (
+        <CreatorPostViewerVideoPreview post={post} onOpen={openViewer} />
       ) : (
-        <CreatorPostViewerImagePreview
-          post={post}
-          onOpen={() => setOpen(true)}
-        />
+        <CreatorPostViewerImagePreview post={post} onOpen={openViewer} />
       )}
-      {open && typeof document !== "undefined" && createPortal(
-        <CreatorPostViewer
-          post={post}
-          mode={mode}
-          shareUrl={
-            typeof window !== "undefined"
-              ? `${window.location.origin}/creators/${post.creator.username}#post-${post.id}`
-              : `/creators/${post.creator.username}#post-${post.id}`
-          }
-          liked={liked}
-          saved={saved}
-          likeCount={likeCount}
-          commentCount={commentCount}
-          shareCount={shareCount}
-          onLike={onLike}
-          onComment={() => {
-            setOpen(false);
-            onComment();
-          }}
-          onSave={onSave}
-          onShare={onShare}
-          onClose={() => setOpen(false)}
-        />,
-        document.body,
-      )}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <CreatorPostViewer
+            post={activePost}
+            mode={mode}
+            shareUrl={
+              typeof window !== "undefined"
+                ? `${window.location.origin}/creators/${activePost.creator.username}#post-${activePost.id}`
+                : `/creators/${activePost.creator.username}#post-${activePost.id}`
+            }
+            liked={isInitialPost ? liked : Boolean(activePost.viewerLiked)}
+            saved={isInitialPost ? saved : Boolean(activePost.viewerSaved)}
+            likeCount={isInitialPost ? likeCount : activePost.likeCount}
+            commentCount={
+              isInitialPost ? commentCount : activePost.commentCount
+            }
+            shareCount={isInitialPost ? shareCount : activePost.shareCount}
+            onLike={isInitialPost ? onLike : () => undefined}
+            onComment={() => {
+              setOpen(false);
+              onComment();
+            }}
+            onSave={isInitialPost ? onSave : () => undefined}
+            onShare={isInitialPost ? onShare : () => undefined}
+            onClose={() => setOpen(false)}
+            onPrevious={
+              hasPlaylist && activeIndex > 0
+                ? () => navigateTo(activeIndex - 1)
+                : undefined
+            }
+            onNext={
+              hasPlaylist &&
+              activeIndex >= 0 &&
+              activeIndex < videoPosts.length - 1
+                ? () => navigateTo(activeIndex + 1)
+                : undefined
+            }
+          />,
+          document.body,
+        )}
     </>
   );
 }
