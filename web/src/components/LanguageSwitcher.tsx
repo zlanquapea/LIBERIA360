@@ -23,7 +23,11 @@ const LOCALE_LABELS: Record<string, string> = {
 // being touched for translation anyway). It's only ever rendered from
 // src/app/[locale]/layout.tsx, never from the (no-locale) tree — admin and
 // the legal pages have no locale to switch.
-export function LanguageSwitcher() {
+type LanguageSwitcherProps = {
+  variant?: "floating" | "menu";
+};
+
+export function LanguageSwitcher({ variant = "floating" }: LanguageSwitcherProps) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -39,8 +43,16 @@ export function LanguageSwitcher() {
     });
   }
 
+  const menuVariant = variant === "menu";
+
   return (
-    <label className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+    <label
+      className={
+        menuVariant
+          ? "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          : "inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+      }
+    >
       <GlobeAltIcon aria-hidden className="h-4 w-4 shrink-0" />
       <span className="sr-only">Choose a language</span>
       <select
@@ -48,7 +60,7 @@ export function LanguageSwitcher() {
         onChange={handleChange}
         disabled={isPending}
         aria-label="Choose a language"
-        className="bg-transparent outline-none disabled:opacity-60"
+        className="min-w-0 flex-1 bg-transparent outline-none disabled:opacity-60"
       >
         {routing.locales.map((code) => (
           <option key={code} value={code}>

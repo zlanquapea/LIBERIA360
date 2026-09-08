@@ -13,7 +13,6 @@ import { Footer } from "@/components/Footer";
 import { Liberia360Assistant } from "@/components/Liberia360Assistant";
 import { SplashScreen } from "@/components/SplashScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { routing, RTL_LOCALES } from "@/i18n/routing";
 
 // i18n (Sep 2026, I18N_PLAN.md): this is one of TWO root layouts (see
@@ -112,18 +111,6 @@ export default async function LocaleLayout({
             <Footer />
           </div>
           <BottomNav />
-          {/* Standalone for Phase 1 — see LanguageSwitcher's own doc
-              comment for why this isn't woven into Header's nav yet.
-              left-3, not right-3 (bug fix, Sep 2026): Liberia360Assistant's
-              launcher anchors bottom-right by default, so pinning this
-              widget to the same side crowded the two together in the same
-              corner. Moved to the opposite corner to give each its own
-              space — mirrors the assistant's bottom offset rather than
-              matching it exactly since this control has no expanding
-              panel of its own to clear BottomNav for. */}
-          <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+0.75rem)] left-3 z-40 lg:bottom-3">
-            <LanguageSwitcher />
-          </div>
           <Liberia360Assistant />
           <ServiceWorkerRegister />
           <AuthRefresher />

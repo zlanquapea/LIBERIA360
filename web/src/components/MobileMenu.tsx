@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { MOBILE_MENU_NAVIGATION } from "@/lib/site-nav";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 // Facebook-style hamburger drawer (product note, Sep 6, 2026): Header's
 // full section list (Explore, Car Rentals, Saved, Help, ...) only ever
@@ -125,6 +126,7 @@ export function MobileMenu() {
                     {t(labelKey)}
                   </Link>
                 ))}
+                <LanguageSwitcher variant="menu" />
               </nav>
             </div>
           </div>,
