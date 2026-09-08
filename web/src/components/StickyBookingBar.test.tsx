@@ -88,6 +88,7 @@ const BUSINESS: Business = {
     name: "Lodge Owner",
     email: "owner@example.com",
     phone: null,
+    profileImage: null,
     authProvider: "local",
     homeCounty: null,
     isAdmin: false,

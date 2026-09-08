@@ -10,6 +10,7 @@ const ME: AuthUser = {
   name: 'Trip Member',
   email: 'member@example.com',
   phone: null,
+  profileImage: null,
   authProvider: 'email',
   homeCounty: null,
   isAdmin: false,

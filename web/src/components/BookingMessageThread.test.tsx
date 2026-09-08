@@ -10,6 +10,7 @@ const ME: AuthUser = {
   name: 'Guest User',
   email: 'guest@example.com',
   phone: null,
+  profileImage: null,
   authProvider: 'email',
   homeCounty: null,
   isAdmin: false,

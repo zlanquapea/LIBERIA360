@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { SafeImage } from './SafeImage';
 
 // Header account affordance — signed out shows "Log in", signed in shows
 // the user's initial as a small avatar pill. Used to also carry its own
@@ -41,9 +43,19 @@ export function AccountLink() {
     <Link
       href="/account"
       aria-label={t('accountAriaLabel', { name: user.name })}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+      className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/15 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
-      {initial}
+      {user.profileImage ? (
+        <SafeImage
+          src={resolveImageUrl(user.profileImage)}
+          thumbSrc={resolveThumbUrl(user.profileImage)}
+          alt=""
+          className="h-full w-full object-cover"
+          fallback={<>{initial}</>}
+        />
+      ) : (
+        initial
+      )}
     </Link>
   );
 }

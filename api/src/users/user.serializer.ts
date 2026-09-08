@@ -5,6 +5,7 @@ export interface PublicUser {
   name: string;
   email: string;
   phone: string | null;
+  profileImage: string | null;
   authProvider: string;
   homeCounty: User["homeCounty"];
   isAdmin: boolean;
@@ -46,6 +47,7 @@ export function toPublicUser(user: User): PublicUser {
     name: user.name,
     email: user.email,
     phone: user.phone,
+    profileImage: user.profileImage,
     authProvider: user.authProvider,
     homeCounty: user.homeCounty,
     isAdmin: user.isAdmin,
