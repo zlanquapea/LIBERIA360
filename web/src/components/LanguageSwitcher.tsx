@@ -60,7 +60,7 @@ export function LanguageSwitcher({ variant = "floating" }: LanguageSwitcherProps
         onChange={handleChange}
         disabled={isPending}
         aria-label="Choose a language"
-        className="min-w-0 flex-1 bg-transparent outline-none disabled:opacity-60"
+        className="min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-60"
       >
         {routing.locales.map((code) => (
           <option key={code} value={code}>
