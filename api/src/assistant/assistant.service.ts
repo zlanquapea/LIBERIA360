@@ -287,6 +287,54 @@ ${matchedEntry.answer}`;
     const normalized = this.normalize(message);
     const directRules: Array<[RegExp, string]> = [
       [
+        /transfer.*(ticket|pass)|send.*(ticket|pass).*?(friend|someone)|friend.*use.*ticket|someone else.*use.*ticket|claim.*(transferred|transfer).*ticket/,
+        "ticket-transfer",
+      ],
+      [
+        /add.*(food|menu|menu item)|manage.*menu|customer.*order|food.*order|incoming.*order|order.*from.*menu/,
+        "business-menus-orders",
+      ],
+      [
+        /invite.*(someone|people|friend).*trip|accept.*trip.*invitation|request.*join.*trip|plan.*(a )?liberia.*together|trip.*(collaborat|community|chat)/,
+        "trip-collaboration",
+      ],
+      [
+        /event.*(today|weekend|month)|this weekend.*event|filter.*event|event.*(category|county)|interested.*event|share.*event|free.*event|post.*event/,
+        "event-discovery-actions",
+      ],
+      [
+        /where.*places.*near.*me|places.*near.*me|nearby.*places|explore.*map|map.*place|location.*permission|current.*location/,
+        "near-me-map",
+      ],
+      [
+        /difference.*(help|faq).*support|help.*center|help.*guide|faq|blog.*update|where.*report.*(problem|issue)/,
+        "help-faq-blog-support",
+      ],
+      [
+        /business.*(owner|tools)|manage.*business.*(profile|content|booking|menu|order|analytics)|owner.*account/,
+        "business-owner-tools",
+      ],
+      [
+        /ticket.*(statistic|analytics|metric|performance)|event.*(insight|metric)|see.*ticket.*stat/,
+        "event-ticket-analytics",
+      ],
+      [
+        /where.*(notification|invitation)|where.*trip.*invitation|trip.*invitation|booking.*update|support.*update|account.*alert/,
+        "notifications-invitations",
+      ],
+      [
+        /creator.*stories?|how.*stories.*work|publish.*story|view.*story|story.*(24|hour|follower)|report.*story/,
+        "creator-stories",
+      ],
+      [
+        /car.*filter|vehicle.*(category|filter)|maximum.*price|minimum.*seat|pickup.*detail/,
+        "car-rental-filters-booking",
+      ],
+      [
+        /onboarding|getting started|where.*saved.*items|offline.*(save|sync)|saved.*offline|offline.*saved/,
+        "onboarding-saved-places",
+      ],
+      [
         /like.*comment|comment.*like|reply.*comment|comment.*reply|respond.*comment/,
         "comment-interactions",
       ],

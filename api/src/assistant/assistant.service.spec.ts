@@ -284,6 +284,128 @@ describe("AssistantService", () => {
     );
   });
 
+  it("routes ticket transfer questions with QR and credential safety guidance", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "How do I send my ticket to someone else?",
+    });
+    expect(response.answer).toContain("transfer option");
+    expect(response.answer).toContain("Never share a QR payload");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ticketTransfer",
+          href: "/ticket-transfer",
+        }),
+      ]),
+    );
+  });
+
+  it("explains conditional business menu ordering without claiming every business supports it", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "Can customers order from my menu?",
+    });
+    expect(response.answer).toContain("not supported by every business");
+    expect(response.answer).toContain("incoming orders");
+  });
+
+  it("routes collaborative trip questions and distinguishes access levels", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "Can we plan a Liberia trip together?",
+    });
+    expect(response.answer).toContain("Public trips");
+    expect(response.answer).toContain("private trips");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "tripCommunity",
+          href: "/trips/community",
+        }),
+      ]),
+    );
+  });
+
+  it("routes event filter questions to event discovery guidance", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "How do I find events this weekend?",
+    });
+    expect(response.answer).toContain("This weekend");
+    expect(response.answer).toContain("Interested");
+  });
+
+  it("routes Near Me questions with a location-permission fallback", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "Where can I find places near me?",
+    });
+    expect(response.answer).toContain("location permission");
+    expect(response.answer).toContain("Search");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "nearMe", href: "/near-me" }),
+        expect.objectContaining({ id: "map", href: "/explore" }),
+      ]),
+    );
+  });
+
+  it("distinguishes Help Center, FAQ, Blog, and Customer Support", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "What is the difference between Help and Customer Support?",
+    });
+    expect(response.answer).toContain("Help Center guides");
+    expect(response.answer).toContain("Customer Support");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "help", href: "/help" }),
+        expect.objectContaining({ id: "faq", href: "/faq" }),
+        expect.objectContaining({ id: "support", href: "/account/support" }),
+      ]),
+    );
+  });
+
+  it("routes ticket analytics without exposing attendee information", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "How do I see my ticket statistics?",
+    });
+    expect(response.answer).toContain("orders, attendance, scans");
+    expect(response.answer).toContain("private attendee information");
+  });
+
+  it("routes Creator Stories with availability and approval caveats", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "How do Creator Stories work?",
+    });
+    expect(response.answer).toContain("When Creator Stories are available");
+    expect(response.answer).toContain("approved creators");
+    expect(response.answer).toContain("24 hours");
+  });
+
+  it("routes car filter and hourly driver questions safely", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "Can I rent a car by the hour with a driver?",
+    });
+    expect(response.answer).toContain("hourly rental is available");
+    expect(response.answer).toContain("owner for approval");
+  });
+
+  it("routes saved places without promising offline synchronization", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "Can saved places work offline?",
+    });
+    expect(response.answer).toContain("open Saved");
+    expect(response.answer).toContain(
+      "Offline access or synchronization should not be assumed",
+    );
+  });
+
   it("does not pretend to know unrelated questions", async () => {
     const service = new AssistantService(config());
 
