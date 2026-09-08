@@ -398,7 +398,7 @@ describe("AssistantService", () => {
   it("routes saved places without promising offline synchronization", async () => {
     const service = new AssistantService(config());
     const response = await service.ask({
-      message: "Where are my saved places?",
+      message: "Can saved places work offline?",
     });
     expect(response.answer).toContain("open Saved");
     expect(response.answer).toContain(

@@ -303,7 +303,7 @@ ${matchedEntry.answer}`;
         "event-discovery-actions",
       ],
       [
-        /near.*me|nearby.*place|place.*near.*me|explore.*map|map.*place|location.*permission|current.*location/,
+        /where.*places.*near.*me|places.*near.*me|nearby.*places|explore.*map|map.*place|location.*permission|current.*location/,
         "near-me-map",
       ],
       [
@@ -331,7 +331,7 @@ ${matchedEntry.answer}`;
         "car-rental-filters-booking",
       ],
       [
-        /onboarding|getting started|where.*saved.*(items|places)|offline.*(save|sync)/,
+        /onboarding|getting started|where.*saved.*items|offline.*(save|sync)|saved.*offline|offline.*saved/,
         "onboarding-saved-places",
       ],
       [
