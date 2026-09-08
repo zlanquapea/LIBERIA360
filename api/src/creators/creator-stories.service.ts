@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { Creator } from "./entities/creator.entity";
 import { CreatorVerificationStatus } from "./entities/creator.enums";
 import {
@@ -65,7 +65,13 @@ export class CreatorStoriesService {
       )
       .orderBy("story.published_at", "DESC")
       .getMany();
-    return stories.map((story) => this.serialize(story));
+    // Facebook-style "seen" ring on the story tray needs to know which of
+    // these are already viewed by this exact viewer — one query for the
+    // whole batch rather than N+1 per story.
+    const viewedIds = await this.viewedStoryIds(viewerUserId, stories);
+    return stories.map((story) =>
+      this.serialize(story, viewedIds.has(story.id)),
+    );
   }
 
   async getStory(id: string, viewerUserId?: string) {
@@ -82,7 +88,23 @@ export class CreatorStoriesService {
       });
       if (!follow) throw new NotFoundException("Story not found");
     }
-    return this.serialize(story);
+    const viewedIds = await this.viewedStoryIds(viewerUserId, [story]);
+    return this.serialize(story, viewedIds.has(story.id));
+  }
+
+  private async viewedStoryIds(
+    viewerUserId: string | undefined,
+    stories: CreatorStory[],
+  ): Promise<Set<string>> {
+    if (!viewerUserId || stories.length === 0) return new Set();
+    const views = await this.viewRepo.find({
+      where: {
+        storyId: In(stories.map((story) => story.id)),
+        viewerUserId,
+      },
+      select: { storyId: true },
+    });
+    return new Set(views.map((view) => view.storyId));
   }
 
   async eligibility(userId: string) {
@@ -211,7 +233,7 @@ export class CreatorStoriesService {
     );
   }
 
-  private serialize(story: CreatorStory) {
+  private serialize(story: CreatorStory, viewedByMe = false) {
     return {
       id: story.id,
       creatorId: story.creatorId,
@@ -225,6 +247,7 @@ export class CreatorStoriesService {
       tripId: story.tripId,
       creatorProfileId: story.creatorProfileId,
       viewCount: story.viewCount,
+      viewedByMe,
       publishedAt: story.publishedAt,
       expiresAt: story.expiresAt,
       createdAt: story.createdAt,

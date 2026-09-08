@@ -1877,6 +1877,11 @@ export interface CreatorStory {
   tripId: string | null;
   creatorProfileId: string | null;
   viewCount: number;
+  // Whether the current caller has already viewed this story — always
+  // false for a signed-out caller. Drives the story tray's Facebook/
+  // Instagram-style "seen" ring (muted once every story in a creator's
+  // reel has been viewed, colorful while any remain unseen).
+  viewedByMe: boolean;
   publishedAt: string | null;
   expiresAt: string | null;
   createdAt: string;

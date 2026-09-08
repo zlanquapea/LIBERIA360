@@ -10,6 +10,7 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 import {
   CreateCreatorStoryDto,
@@ -22,7 +23,17 @@ import { CreatorStoriesService } from "./creator-stories.service";
 export class CreatorStoriesController {
   constructor(private readonly stories: CreatorStoriesService) {}
 
+  // Public — no login required to browse — but decorated with
+  // OptionalJwtAuthGuard (not left bare) so a signed-in viewer's
+  // followers-only stories and per-story viewedByMe flag actually come
+  // back correct instead of every viewer silently reading as
+  // signed-out. See that guard's doc comment, and
+  // CreatorFeedController.findPublicFeed's identical fix, for why a bare
+  // `@CurrentUser() user?: User` here never populates `user` at all (bug
+  // fix, Sep 2026: this is why a follower-only story 404'd even for its
+  // own followers, and why the story tray's "seen" ring never updated).
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   listActive(@CurrentUser() user?: User) {
     return this.stories.listActive(user?.id);
   }
@@ -42,6 +53,7 @@ export class CreatorStoriesController {
   }
 
   @Get(":id")
+  @UseGuards(OptionalJwtAuthGuard)
   get(@Param("id") id: string, @CurrentUser() user?: User) {
     return this.stories.getStory(id, user?.id);
   }
