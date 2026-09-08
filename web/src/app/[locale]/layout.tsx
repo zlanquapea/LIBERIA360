@@ -113,8 +113,15 @@ export default async function LocaleLayout({
           </div>
           <BottomNav />
           {/* Standalone for Phase 1 — see LanguageSwitcher's own doc
-              comment for why this isn't woven into Header's nav yet. */}
-          <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+0.75rem)] right-3 z-40 lg:bottom-3">
+              comment for why this isn't woven into Header's nav yet.
+              left-3, not right-3 (bug fix, Sep 2026): Liberia360Assistant's
+              launcher anchors bottom-right by default, so pinning this
+              widget to the same side crowded the two together in the same
+              corner. Moved to the opposite corner to give each its own
+              space — mirrors the assistant's bottom offset rather than
+              matching it exactly since this control has no expanding
+              panel of its own to clear BottomNav for. */}
+          <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+0.75rem)] left-3 z-40 lg:bottom-3">
             <LanguageSwitcher />
           </div>
           <Liberia360Assistant />
