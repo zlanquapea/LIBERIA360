@@ -1664,6 +1664,28 @@ describe("Phase 3 (e2e)", () => {
         .send({ travelerType: "tourist" })
         .expect(401);
     });
+
+    it("sets, replaces, and clears profileImage via PATCH /auth/me", async () => {
+      const withPhoto = await request(app.getHttpServer())
+        .patch("/api/v1/auth/me")
+        .set("Cookie", guestToken)
+        .send({ profileImage: "/uploads/avatar-1.jpg" })
+        .expect(200);
+      expect(withPhoto.body.profileImage).toBe("/uploads/avatar-1.jpg");
+
+      const me = await request(app.getHttpServer())
+        .get("/api/v1/auth/me")
+        .set("Cookie", guestToken)
+        .expect(200);
+      expect(me.body.profileImage).toBe("/uploads/avatar-1.jpg");
+
+      const cleared = await request(app.getHttpServer())
+        .patch("/api/v1/auth/me")
+        .set("Cookie", guestToken)
+        .send({ profileImage: null })
+        .expect(200);
+      expect(cleared.body.profileImage).toBeNull();
+    });
   });
 
   describe("Admin Team & Access (super admin only)", () => {

@@ -23,6 +23,7 @@ import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { AccountSecurity } from "@/components/AccountSecurity";
 import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
+import { ProfilePictureUploader } from "@/components/ProfilePictureUploader";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import {
   CountySelect,
@@ -177,9 +178,7 @@ export default function AccountPage() {
   return (
     <main className="mx-auto flex max-w-sm flex-col gap-6 px-4 py-10">
       <div className="flex items-center gap-4">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-700 text-xl font-semibold text-white">
-          {user.name.trim().charAt(0).toUpperCase() || "?"}
-        </span>
+        <ProfilePictureUploader user={user} />
         <div>
           <h1 className="text-lg font-bold text-slate-900 dark:text-slate-50">
             {user.name}

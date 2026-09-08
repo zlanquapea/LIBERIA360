@@ -67,6 +67,8 @@ export interface UpdateProfileInput {
   homeCountyId?: string;
   travelerType?: TravelerType;
   interests?: string[];
+  // A URL from uploadImage(), or null to remove the current photo.
+  profileImage?: string | null;
 }
 
 export function updateProfile(

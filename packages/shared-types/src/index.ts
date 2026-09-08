@@ -146,6 +146,10 @@ export interface AuthUser {
   name: string;
   email: string;
   phone: string | null;
+  // URL from POST /uploads/image, set/replaced/cleared via PATCH /auth/me
+  // — the account's own Facebook-style profile picture. Null until the
+  // user uploads one.
+  profileImage: string | null;
   authProvider: string;
   homeCounty: County | null;
   isAdmin: boolean;

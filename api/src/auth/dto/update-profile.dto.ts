@@ -39,4 +39,13 @@ export class UpdateProfileDto {
   @ArrayMaxSize(10)
   @IsString({ each: true })
   interests?: string[];
+
+  // The URL POST /uploads/image returned, or `null` to remove the current
+  // photo — @IsOptional() skips validation for both undefined (field not
+  // sent) and null, matching UpdateStopDto's notes field for the same
+  // "optional and explicitly clearable" shape.
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  profileImage?: string | null;
 }

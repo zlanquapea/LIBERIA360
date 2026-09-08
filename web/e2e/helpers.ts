@@ -265,6 +265,7 @@ export async function loginAs(
       name: user.name,
       email: user.email,
       phone: null,
+      profileImage: null,
       authProvider: 'email',
       homeCounty: null,
       isAdmin: roles.isAdmin ?? false,

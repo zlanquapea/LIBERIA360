@@ -36,6 +36,19 @@ export class User {
   @Column({ type: "varchar", length: 40, nullable: true })
   phone: string | null;
 
+  // URL from POST /uploads/image (see UploadsController) — set/replaced/
+  // cleared via PATCH /auth/me, never uploaded directly against this
+  // entity. Same "just a URL, re-encoded on the way in" treatment as
+  // Creator.profileImage/Business photos; no separate thumbnail field
+  // since resolveThumbUrl derives one by filename convention.
+  @Column({
+    name: "profile_image",
+    type: "varchar",
+    length: 500,
+    nullable: true,
+  })
+  profileImage: string | null;
+
   @Column({
     name: "auth_provider",
     type: "enum",

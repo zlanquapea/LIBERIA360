@@ -10,6 +10,7 @@ const OWNER: AuthUser = {
   name: 'Trip Owner',
   email: 'owner@example.com',
   phone: null,
+  profileImage: null,
   authProvider: 'email',
   homeCounty: null,
   isAdmin: false,

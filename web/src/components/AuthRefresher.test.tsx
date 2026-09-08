@@ -16,6 +16,7 @@ const USER: AuthUser = {
   name: 'Test User',
   email: 'test@example.com',
   phone: null,
+  profileImage: null,
   authProvider: 'email',
   homeCounty: null,
   isAdmin: false,
