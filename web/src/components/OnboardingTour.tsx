@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { MapIcon, SparklesIcon, BookmarkIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightIcon,
+  MapIcon,
+  SparklesIcon,
+  BookmarkIcon,
+} from "@heroicons/react/24/outline";
 import { SPLASH_DISPLAY_MS, SPLASH_SESSION_KEY } from "./SplashScreen";
 
 const ONBOARDING_STORAGE_KEY = "liberia360:onboarding-seen";
@@ -211,7 +216,7 @@ export function OnboardingTour() {
         <button
           type="button"
           onClick={dismiss}
-          className="absolute right-3 top-3 z-10 rounded-full bg-black/25 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="absolute right-3 top-3 z-10 rounded-full bg-black/25 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:bg-black/40 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
           Skip
         </button>
@@ -284,9 +289,29 @@ export function OnboardingTour() {
             <button
               type="button"
               onClick={() => (isLast ? dismiss() : goTo(activeIndex + 1))}
-              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 text-base font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+              // Modernization pass (Sep 9, 2026): a flat hover:bg-* swap
+              // reads exactly like every other button in the app — this is
+              // the one button a first-time visitor is guaranteed to
+              // press, so it gets its own small signature instead: a lift
+              // off the surface with a matching brand-tinted shadow (not
+              // a generic gray one, so it still reads as *this app's*
+              // shadow rather than a default Bootstrap-y card lift), and
+              // an arrow that unfurls from nothing beside the label rather
+              // than sitting there static — the label nudges left half a
+              // pixel to make room for it, so the whole thing reads as one
+              // button reaching toward you rather than two elements
+              // moving independently. All transform/opacity, no layout
+              // thrash, and it fully reverses on active: (press) so a tap
+              // on a touch device — which never sees :hover at all — still
+              // gets the plain color-swap it always had.
+              className="group/cta flex min-h-14 w-full items-center justify-center gap-1.5 rounded-2xl bg-brand-700 px-4 text-base font-semibold text-white shadow-md transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-brand-800 hover:shadow-xl hover:shadow-brand-900/30 active:translate-y-0 active:bg-brand-800 active:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             >
-              {isLast ? "Get started" : "Next"}
+              <span className="transition-transform duration-300 ease-out group-hover/cta:-translate-x-0.5">
+                {isLast ? "Get started" : "Next"}
+              </span>
+              <span className="inline-flex w-0 items-center overflow-hidden opacity-0 transition-all duration-300 ease-out group-hover/cta:w-5 group-hover/cta:opacity-100">
+                <ArrowRightIcon aria-hidden className="h-5 w-5 shrink-0" />
+              </span>
             </button>
           </div>
         </div>
