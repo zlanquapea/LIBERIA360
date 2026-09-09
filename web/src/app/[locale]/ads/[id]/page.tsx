@@ -54,7 +54,15 @@ export default async function AdvertisementDetailPage({ params }: { params: Prom
     'inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/30';
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6">
+    // Desktop pass (Sep 9, 2026): every sibling detail page (events, car
+    // rentals, ...) wraps its content in a centered `max-w-*` column —
+    // this one never got it, so its full-bleed cover image and body text
+    // stretched to the entire browser width on desktop instead, the same
+    // "images lost quality" complaint as the home page's ad carousel (see
+    // AdvertisementBanner's own doc comment) for the same reason: a cover
+    // image sized for a ~600px-wide reading column, rendered at 1500px+
+    // wide on a real desktop window.
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
       <AdvertisementViewTracker advertisementId={ad.id} />
 
       <Link
@@ -142,6 +150,6 @@ export default async function AdvertisementDetailPage({ params }: { params: Prom
           </ContactLink>
         )}
       </div>
-    </div>
+    </main>
   );
 }

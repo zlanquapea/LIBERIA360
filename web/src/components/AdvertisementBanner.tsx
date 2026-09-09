@@ -224,7 +224,21 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
       </div>
 
       <div
-        className="relative overflow-hidden"
+        // Desktop pass (Sep 9, 2026): "the-container-minus-6rem" reads as an
+        // intentional peek margin on a phone-width section, but this same
+        // section sits inside the page's ~1200px-wide `max-w-7xl` column —
+        // there `calc(100% - 6rem)` is still over 1000px, so the single
+        // visible ad stretched to a near-full-width banner. Its `full`
+        // rendition (see api/src/uploads/image-processing.ts) is only
+        // rendered at up to 1600 raw px specifically because nothing was
+        // ever supposed to display it wider than ~1200 CSS px, so on a
+        // retina desktop screen that oversized card was also upscaling a
+        // source image past its native resolution — the blur the "images
+        // lost quality" report described. Capping this wrapper to a fixed
+        // card size (rather than a fraction of whatever the page happens to
+        // be) keeps a single sponsored card at roughly the size it was
+        // designed at everywhere, same fix as OnboardingTour's desktop pass.
+        className="relative overflow-hidden sm:max-w-md"
         role="region"
         aria-roledescription="carousel"
         aria-label="Sponsored advertisements"
@@ -253,7 +267,7 @@ export function AdvertisementBanner({ ads }: { ads: Advertisement[] }) {
           {visible.map((ad, index) => (
             <div
               key={ad.id}
-              className="w-[calc(100%-2.5rem)] shrink-0 sm:w-[calc(100%-6rem)]"
+              className="w-[calc(100%-2.5rem)] shrink-0 sm:w-full"
               aria-hidden={index !== activeIndex}
               inert={index !== activeIndex ? true : undefined}
             >
