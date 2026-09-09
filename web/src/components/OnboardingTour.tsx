@@ -191,94 +191,106 @@ export function OnboardingTour() {
   const isLast = activeIndex === STEPS.length - 1;
 
   return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Welcome to LIBERIA360"
-      className="fixed inset-0 z-[125] flex flex-col bg-white dark:bg-slate-950"
-    >
-      <button
-        type="button"
-        onClick={dismiss}
-        className="absolute right-3 top-3 z-10 rounded-full bg-black/25 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-      >
-        Skip
-      </button>
-
+    // Desktop pass (Sep 9, 2026): below `sm` this fills the viewport
+    // exactly as before — full-bleed photo, full-width button, no visible
+    // seam between this wrapper and the dialog inside it. At `sm` and up,
+    // this wrapper instead centers a phone-shaped card (fixed width, tall,
+    // rounded) against a dimmed backdrop — the fix for "it expands so much
+    // on desktop and the button gets so long": rather than trying to make
+    // one full-bleed mobile layout also read well stretched to a 1440px+
+    // window, the mobile design *becomes the card*, at the width it was
+    // actually designed at, same treatment CreatorStories' story viewer
+    // already uses for the same reason.
+    <div className="fixed inset-0 z-[125] flex items-center justify-center bg-white dark:bg-slate-950 sm:bg-slate-950/70 sm:p-6 sm:backdrop-blur-sm">
       <div
-        ref={trackRef}
-        className="flex flex-1 snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Welcome to LIBERIA360"
+        className="relative flex h-full w-full flex-col overflow-hidden bg-white dark:bg-slate-950 sm:h-[min(90vh,48rem)] sm:w-[26rem] sm:rounded-[2.5rem] sm:shadow-2xl sm:ring-1 sm:ring-black/10 dark:sm:ring-white/10"
       >
-        {STEPS.map((step, i) => {
-          const Icon = step.icon;
-
-          return (
-            <div
-              key={step.title}
-              ref={(el) => {
-                slideEls.current[i] = el;
-              }}
-              className="relative flex w-full shrink-0 snap-center flex-col overflow-hidden"
-            >
-              <Image
-                src={step.image}
-                alt=""
-                fill
-                sizes="100vw"
-                priority={i === 0}
-                className="object-cover"
-              />
-              {/* Bottom-anchored scrim so the title/description stay
-                  legible over the photo, same purpose as the dark
-                  gradient under the homepage hero's own imagery. */}
-              <div
-                aria-hidden
-                className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent"
-              />
-              <div className="relative mt-auto flex flex-col gap-3 px-8 pb-40 pt-16 text-center sm:pb-44">
-                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm">
-                  <Icon aria-hidden className="h-7 w-7" />
-                </span>
-                <div className="mx-auto max-w-sm">
-                  <h2 className="font-display text-2xl font-bold text-white">
-                    {step.title}
-                  </h2>
-                  <p className="mt-3 leading-6 text-white/85">
-                    {step.description}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 bg-white px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 dark:bg-slate-950">
-        <div className="flex items-center justify-center gap-1.5">
-          {STEPS.map((step, i) => (
-            <button
-              key={step.title}
-              type="button"
-              onClick={() => goTo(i)}
-              aria-label={`Go to step ${i + 1}`}
-              aria-current={i === activeIndex}
-              className={`h-1.5 rounded-full transition-all ${
-                i === activeIndex
-                  ? "w-5 bg-brand-700 dark:bg-brand-400"
-                  : "w-1.5 bg-slate-300 dark:bg-slate-700"
-              }`}
-            />
-          ))}
-        </div>
         <button
           type="button"
-          onClick={() => (isLast ? dismiss() : goTo(activeIndex + 1))}
-          className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 text-base font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+          onClick={dismiss}
+          className="absolute right-3 top-3 z-10 rounded-full bg-black/25 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
-          {isLast ? "Get started" : "Next"}
+          Skip
         </button>
-      </div>
-    </div>,
+
+        <div
+          ref={trackRef}
+          className="flex flex-1 snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+            {STEPS.map((step, i) => {
+              const Icon = step.icon;
+
+              return (
+                <div
+                  key={step.title}
+                  ref={(el) => {
+                    slideEls.current[i] = el;
+                  }}
+                  className="relative flex w-full shrink-0 snap-center flex-col overflow-hidden"
+                >
+                  <Image
+                    src={step.image}
+                    alt=""
+                    fill
+                    sizes="(min-width: 640px) 26rem, 100vw"
+                    priority={i === 0}
+                    className="object-cover"
+                  />
+                  {/* Bottom-anchored scrim so the title/description stay
+                      legible over the photo, same purpose as the dark
+                      gradient under the homepage hero's own imagery. */}
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent"
+                  />
+                  <div className="relative mt-auto flex flex-col gap-3 px-8 pb-40 pt-16 text-center sm:pb-44">
+                    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm">
+                      <Icon aria-hidden className="h-7 w-7" />
+                    </span>
+                    <div className="mx-auto max-w-sm">
+                      <h2 className="font-display text-2xl font-bold text-white">
+                        {step.title}
+                      </h2>
+                      <p className="mt-3 leading-6 text-white/85">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 flex flex-col gap-4 bg-white px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 dark:bg-slate-950">
+            <div className="flex items-center justify-center gap-1.5">
+              {STEPS.map((step, i) => (
+                <button
+                  key={step.title}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`Go to step ${i + 1}`}
+                  aria-current={i === activeIndex}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === activeIndex
+                      ? "w-5 bg-brand-700 dark:bg-brand-400"
+                      : "w-1.5 bg-slate-300 dark:bg-slate-700"
+                  }`}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => (isLast ? dismiss() : goTo(activeIndex + 1))}
+              className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 text-base font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+            >
+              {isLast ? "Get started" : "Next"}
+            </button>
+          </div>
+        </div>
+      </div>,
     document.body,
   );
 }
