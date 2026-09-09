@@ -730,6 +730,66 @@ html[data-splash-seen='1'] .splash-screen {
   margin-bottom: 1.4rem;
   padding: .85rem 1rem;
 }
+/* Active/Past/Shared-with-you tabs (Sep 9, 2026): previously every order —
+   pending, approved, rejected, cancelled, from any date — rendered as one
+   unbroken list, with tickets a friend sent still further below that.
+   Scrolling past a full order history just to find a shared ticket was
+   the reported problem; these three views put each a click away instead. */
+/* Horizontally scrollable rather than wrapping: on a narrow phone width
+   three tabs plus "Shared with you" (the longest label) don't all fit,
+   and letting the text wrap mid-label inside a shrunk tab read as broken
+   — same scroll-not-squeeze treatment as EventCarousel/BottomNav
+   elsewhere for the same reason. */
+.ticket-tabs {
+  border-bottom: 1px solid var(--ticket-line);
+  display: flex;
+  gap: 1.6rem;
+  margin-bottom: 1.8rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ticket-tabs::-webkit-scrollbar { display: none; }
+.ticket-tab {
+  align-items: center;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  color: var(--ticket-slate);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-family: var(--font-display), ui-sans-serif, sans-serif;
+  font-size: .84rem;
+  font-weight: 700;
+  white-space: nowrap;
+  gap: .5rem;
+  margin-bottom: -1px;
+  padding: .8rem .1rem;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.ticket-tab:hover { color: var(--ticket-ink); }
+.dark .ticket-tab:hover { color: #f4f5ed; }
+.ticket-tab[aria-selected="true"] { border-bottom-color: var(--ticket-yellow); color: var(--ticket-ink); }
+.dark .ticket-tab[aria-selected="true"] { color: #f4f5ed; }
+.ticket-tab-count { background: var(--ticket-warm); border-radius: 999px; color: var(--ticket-slate); font-size: .68rem; font-weight: 800; padding: .12rem .55rem; }
+.ticket-tab[aria-selected="true"] .ticket-tab-count { background: var(--ticket-yellow); color: var(--ticket-deep); }
+.ticket-tab-empty { padding: 2.4rem 1.5rem; }
+.ticket-shared-banner {
+  align-items: center;
+  background: rgb(255 198 61 / .14);
+  border: 1px dashed rgb(160 115 17 / .5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .8rem;
+  justify-content: space-between;
+  margin-bottom: 1.6rem;
+  padding: .95rem 1.15rem;
+}
+.ticket-shared-banner p { align-items: center; color: var(--ticket-ink); display: flex; font-size: .84rem; font-weight: 700; gap: .5rem; margin: 0; }
+.dark .ticket-shared-banner p { color: #f4f5ed; }
+.ticket-shared-banner p svg { color: #a07311; flex-shrink: 0; }
+.ticket-shared-banner button { background: var(--ticket-ink); color: white; flex-shrink: 0; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .76rem; font-weight: 700; padding: .55rem .95rem; transition: background 160ms ease; }
+.ticket-shared-banner button:hover { background: var(--ticket-deep); }
+
 .ticket-orders-list { display: grid; gap: 1.5rem; list-style: none; margin: 0; padding: 0; }
 .ticket-order-card {
   background: var(--ticket-paper);
