@@ -129,9 +129,22 @@ jobs:
       - name: Build (also statically prerenders pages that fetch from the live API above)
         run: npm run build:web
 
+      # This step's `apt-get update` (part of --with-deps) occasionally hits
+      # a transient "Hash Sum mismatch" against Google's own Chrome apt
+      # mirror — its Release file and Packages.gz briefly disagree while
+      # the mirror is mid-sync, nothing to do with this repo. A retry a few
+      # seconds later has always found the mirror caught up.
       - name: Install Playwright's Chromium
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: |
+          for attempt in 1 2 3; do
+            if npx playwright install --with-deps chromium; then
+              exit 0
+            fi
+            echo "Playwright browser install failed (attempt $attempt/3) — retrying in 10s..." >&2
+            sleep 10
+          done
+          exit 1
 
       - name: E2E tests (Playwright, against the live API + DB started above)
         working-directory: web
