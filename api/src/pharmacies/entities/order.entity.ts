@@ -28,7 +28,8 @@ export class CustomerAddress {
   @Column({ length: 80 }) label: string;
   @Column({ type: "text" }) address: string;
   @Column({ length: 80 }) city: string;
-  @Column({ length: 40, nullable: true }) telephone: string | null;
+  @Column({ type: "varchar", length: 40, nullable: true }) telephone:
+    string | null;
   @Column({ default: false }) isDefault: boolean;
 }
 @Entity("pharmacy_carts")
@@ -113,7 +114,8 @@ export class PharmacyOrderItem {
   @ManyToOne(() => PharmacyOrder, { onDelete: "CASCADE" })
   @JoinColumn({ name: "order_id" })
   order: PharmacyOrder;
-  @Column({ name: "product_id", nullable: true }) productId: string | null;
+  @Column({ name: "product_id", type: "uuid", nullable: true }) productId:
+    string | null;
   @Column({ length: 180 }) name: string;
   @Column({ name: "unit_price", type: "decimal", precision: 10, scale: 2 })
   unitPrice: number;
@@ -150,7 +152,12 @@ export class PharmacyPayment {
   @PrimaryGeneratedColumn("uuid") id: string;
   @Column({ name: "order_id", unique: true }) orderId: string;
   @Column({ length: 40, default: "unconfigured" }) provider: string;
-  @Column({ name: "provider_reference", length: 255, nullable: true })
+  @Column({
+    name: "provider_reference",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+  })
   providerReference: string | null;
   @Column({ type: "enum", enum: PaymentStatus, default: PaymentStatus.PENDING })
   status: PaymentStatus;
@@ -161,19 +168,22 @@ export class PharmacyDelivery {
   @PrimaryGeneratedColumn("uuid") id: string;
   @Column({ name: "order_id", unique: true }) orderId: string;
   @Column({ type: "text" }) address: string;
-  @Column({ name: "driver_name", length: 120, nullable: true }) driverName:
-    string | null;
+  @Column({ name: "driver_name", type: "varchar", length: 120, nullable: true })
+  driverName: string | null;
   @Column({ name: "tracking_note", type: "text", nullable: true })
   trackingNote: string | null;
 }
 @Entity("pharmacy_audit_logs")
 export class PharmacyAuditLog {
   @PrimaryGeneratedColumn("uuid") id: string;
-  @Column({ name: "actor_user_id", nullable: true }) actorUserId: string | null;
-  @Column({ name: "pharmacy_id", nullable: true }) pharmacyId: string | null;
+  @Column({ name: "actor_user_id", type: "uuid", nullable: true }) actorUserId:
+    string | null;
+  @Column({ name: "pharmacy_id", type: "uuid", nullable: true }) pharmacyId:
+    string | null;
   @Column({ length: 100 }) action: string;
   @Column({ name: "target_type", length: 60 }) targetType: string;
-  @Column({ name: "target_id", nullable: true }) targetId: string | null;
+  @Column({ name: "target_id", type: "uuid", nullable: true }) targetId:
+    string | null;
   @Column({ type: "jsonb", default: () => "'{}'" }) metadata: Record<
     string,
     unknown
@@ -184,8 +194,10 @@ export class PharmacyAuditLog {
 export class PharmacyReport {
   @PrimaryGeneratedColumn("uuid") id: string;
   @Column({ name: "reporter_user_id" }) reporterUserId: string;
-  @Column({ name: "pharmacy_id", nullable: true }) pharmacyId: string | null;
-  @Column({ name: "product_id", nullable: true }) productId: string | null;
+  @Column({ name: "pharmacy_id", type: "uuid", nullable: true }) pharmacyId:
+    string | null;
+  @Column({ name: "product_id", type: "uuid", nullable: true }) productId:
+    string | null;
   @Column({ type: "text" }) reason: string;
   @Column({ default: "open", length: 30 }) status: string;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;

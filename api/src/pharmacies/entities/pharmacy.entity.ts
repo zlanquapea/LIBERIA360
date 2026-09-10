@@ -19,10 +19,10 @@ export class Pharmacy {
   @Column({ length: 240 }) address: string;
   @Column({ length: 80, default: "Monrovia" }) location: string;
   @Column({ length: 40 }) telephone: string;
-  @Column({ name: "logo_url", length: 500, nullable: true }) logoUrl:
-    string | null;
-  @Column({ name: "cover_url", length: 500, nullable: true }) coverUrl:
-    string | null;
+  @Column({ name: "logo_url", type: "varchar", length: 500, nullable: true })
+  logoUrl: string | null;
+  @Column({ name: "cover_url", type: "varchar", length: 500, nullable: true })
+  coverUrl: string | null;
   @Column({ type: "decimal", precision: 9, scale: 6, nullable: true })
   latitude: number | null;
   @Column({ type: "decimal", precision: 9, scale: 6, nullable: true })
@@ -46,6 +46,7 @@ export class Pharmacy {
   status: PharmacyStatus;
   @Column({
     name: "licence_number",
+    type: "varchar",
     length: 100,
     nullable: true,
     select: false,

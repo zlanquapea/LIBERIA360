@@ -32,8 +32,8 @@ export class PharmacyProduct {
   @JoinColumn({ name: "category_id" })
   category: PharmacyProductCategory;
   @Column({ length: 180 }) name: string;
-  @Column({ name: "image_url", length: 500, nullable: true }) imageUrl:
-    string | null;
+  @Column({ name: "image_url", type: "varchar", length: 500, nullable: true })
+  imageUrl: string | null;
   @Column({ type: "decimal", precision: 10, scale: 2 }) price: number;
   @Column({ name: "prescription_required", default: false })
   prescriptionRequired: boolean;
