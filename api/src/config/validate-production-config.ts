@@ -63,6 +63,22 @@ export function validateProductionConfig(
         "policy before starting in production.",
     );
   }
+  // Setting S3_PRIVATE_BUCKET is not by itself enough — pointing it at the
+  // same bucket S3_BUCKET already uses (public-read) recreates exactly the
+  // exposure the check above exists to prevent, just without tripping the
+  // "unset" condition.
+  if (
+    storage.driver === "s3" &&
+    storage.s3.privateBucket &&
+    storage.s3.privateBucket === storage.s3.bucket
+  ) {
+    fatal.push(
+      "S3_PRIVATE_BUCKET is set to the same bucket as S3_BUCKET. That bucket is expected to have a public-read " +
+        "policy for normal uploads, so private uploads (e.g. pharmacy prescriptions) written there are exactly as " +
+        "exposed as if S3_PRIVATE_BUCKET were unset. Set S3_PRIVATE_BUCKET to a genuinely distinct bucket with no " +
+        "public-read policy before starting in production.",
+    );
+  }
 
   if (fatal.length > 0) {
     logger.error(

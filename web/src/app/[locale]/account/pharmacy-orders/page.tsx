@@ -49,6 +49,20 @@ export default function PharmacyOrdersPage() {
               {new Date(o.createdAt).toLocaleDateString()} ·{" "}
               {o.fulfillmentMethod}
             </p>
+            {o.items && o.items.length > 0 && (
+              <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                {o.items.map((item) => (
+                  <li key={item.id} className="flex justify-between">
+                    <span>
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span>
+                      L${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="mt-2 font-bold">
               Total L${Number(o.finalTotal).toFixed(2)}
             </p>

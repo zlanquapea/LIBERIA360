@@ -92,6 +92,7 @@ describe("PharmaciesService", () => {
     findOne: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
+    count: jest.Mock;
   };
   let usersService: { findByEmail: jest.Mock };
   let productRepo: { find: jest.Mock };
@@ -168,6 +169,7 @@ describe("PharmaciesService", () => {
       findOne: jest.fn(),
       save: jest.fn((x) => Promise.resolve({ id: "staff-1", ...x })),
       create: jest.fn((x) => x),
+      count: jest.fn(),
     };
     usersService = { findByEmail: jest.fn() };
     productRepo = { find: jest.fn() };
@@ -311,6 +313,45 @@ describe("PharmaciesService", () => {
         } as any),
       ).rejects.toThrow(NotFoundException);
       expect(staffRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses to demote the pharmacy's only active manager", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER }) // assertStaff(managerId, ...)
+        .mockResolvedValueOnce({
+          role: PharmacyStaffRole.MANAGER,
+          active: true,
+        }); // the manager demoting themselves
+      usersService.findByEmail.mockResolvedValue({ id: "manager-user-1" });
+      staffRepo.count.mockResolvedValue(1);
+
+      await expect(
+        service.assignStaff("manager-1", "pharmacy-1", {
+          email: "manager-1@example.com",
+          role: PharmacyStaffRole.PHARMACIST,
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(staffRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("allows demoting a manager when another active manager remains", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER }) // assertStaff(managerId, ...)
+        .mockResolvedValueOnce({
+          role: PharmacyStaffRole.MANAGER,
+          active: true,
+        });
+      usersService.findByEmail.mockResolvedValue({ id: "other-manager-user" });
+      staffRepo.count.mockResolvedValue(2);
+
+      await service.assignStaff("manager-1", "pharmacy-1", {
+        email: "other-manager@example.com",
+        role: PharmacyStaffRole.EMPLOYEE,
+      } as any);
+
+      expect(staffRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ role: PharmacyStaffRole.EMPLOYEE }),
+      );
     });
   });
 

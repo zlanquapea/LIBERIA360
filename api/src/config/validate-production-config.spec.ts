@@ -155,6 +155,31 @@ describe("validateProductionConfig", () => {
     );
   });
 
+  it("refuses to boot in production when S3_PRIVATE_BUCKET is the same as S3_BUCKET", () => {
+    // Setting the variable isn't enough on its own — pointing it at the
+    // same (public-read) bucket recreates the exact exposure the check
+    // above exists to prevent.
+    const configService = buildConfigService({
+      storage: {
+        driver: "s3",
+        s3: {
+          bucket: "same-bucket",
+          privateBucket: "same-bucket",
+          region: "auto",
+          accessKeyId: "k",
+          secretAccessKey: "s",
+          endpoint: "",
+          publicUrlBase: "https://cdn.example.com",
+        },
+      },
+    });
+    validateProductionConfig(configService);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("S3_PRIVATE_BUCKET"),
+    );
+  });
+
   it("warns but does not exit when SMTP is unset", () => {
     const configService = buildConfigService({
       mail: {

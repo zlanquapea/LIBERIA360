@@ -49,6 +49,15 @@ export type PharmacyProduct = {
   inventory: { quantity: number } | null;
   category?: { id: string; name: string; slug: string };
 };
+export type PharmacyOrderItem = {
+  id: string;
+  orderId: string;
+  productId: string | null;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  prescriptionRequired: boolean;
+};
 export type PharmacyOrder = {
   id: string;
   pharmacyId: string;
@@ -60,6 +69,10 @@ export type PharmacyOrder = {
   finalTotal: number;
   createdAt: string;
   pharmacy?: Pharmacy;
+  // Present on GET /pharmacy-marketplace/orders/mine (customerOrders()) —
+  // not on the createPharmacyOrder() response, which returns the bare
+  // order row.
+  items?: PharmacyOrderItem[];
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {

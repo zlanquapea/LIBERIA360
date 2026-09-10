@@ -283,6 +283,23 @@ export class PharmaciesService {
     let member = await this.staff.findOne({
       where: { pharmacyId, userId: user.id },
     });
+    // If this call would demote the pharmacy's only active manager (most
+    // often a manager doing it to themselves), refuse it: this same
+    // endpoint requires the caller already be a manager, so once the last
+    // one is gone nobody can assign a replacement without direct DB access.
+    if (
+      member?.role === PharmacyStaffRole.MANAGER &&
+      member.active &&
+      dto.role !== PharmacyStaffRole.MANAGER
+    ) {
+      const managerCount = await this.staff.count({
+        where: { pharmacyId, role: PharmacyStaffRole.MANAGER, active: true },
+      });
+      if (managerCount <= 1)
+        throw new ConflictException(
+          "Cannot demote the pharmacy's only manager — assign another manager first",
+        );
+    }
     member = Object.assign(
       member ?? this.staff.create({ pharmacyId, userId: user.id }),
       { role: dto.role, active: true },
@@ -625,6 +642,7 @@ export class PharmaciesService {
       orderRepo: Repository<PharmacyOrder>,
       itemRepo: Repository<PharmacyOrderItem>,
       inventoryRepo: Repository<PharmacyInventory>,
+      auditRepo: Repository<PharmacyAuditLog>,
     ) => {
       // Conditioned on the order still being in fromStatus — two concurrent
       // requests both racing this transition (e.g. two staff both hit
@@ -648,6 +666,19 @@ export class PharmaciesService {
       if (status === PharmacyOrderStatus.CANCELLED) {
         await this.restoreInventory(order.id, itemRepo, inventoryRepo);
       }
+      // Committed with the status change and any restock above — otherwise
+      // a failure here would leave the transition (and a cancellation's
+      // restock) applied with no status-change audit entry, and a retry
+      // can't repair it once the order has moved out of fromStatus.
+      await this.audit(
+        userId,
+        pharmacyId,
+        "order.status_changed",
+        "order",
+        order.id,
+        { status },
+        auditRepo,
+      );
     };
     const manager = this.orders.manager;
     if (manager?.transaction) {
@@ -656,21 +687,14 @@ export class PharmaciesService {
           tx.getRepository(PharmacyOrder),
           tx.getRepository(PharmacyOrderItem),
           tx.getRepository(PharmacyInventory),
+          tx.getRepository(PharmacyAuditLog),
         ),
       );
     } else {
-      await run(this.orders, this.orderItems, this.inventory);
+      await run(this.orders, this.orderItems, this.inventory, this.audits);
     }
 
     order.status = status;
-    await this.audit(
-      userId,
-      pharmacyId,
-      "order.status_changed",
-      "order",
-      order.id,
-      { status },
-    );
     return order;
   }
   async review(
