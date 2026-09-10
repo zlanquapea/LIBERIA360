@@ -71,6 +71,7 @@ import { KnowledgeBaseModule } from "./knowledge-base/knowledge-base.module";
 import { FaqModule } from "./faq/faq.module";
 import { BlogModule } from "./blog/blog.module";
 import { SavedPlacesModule } from "./saved-places/saved-places.module";
+import { PharmaciesModule } from "./pharmacies/pharmacies.module";
 
 @Module({
   imports: [
@@ -177,6 +178,7 @@ import { SavedPlacesModule } from "./saved-places/saved-places.module";
     FaqModule,
     BlogModule,
     SavedPlacesModule,
+    PharmaciesModule,
   ],
   providers: [
     {

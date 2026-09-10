@@ -5,6 +5,7 @@ import { Category } from "../categories/entities/category.entity";
 import { Place } from "../places/entities/place.entity";
 import { Activity } from "../activities/entities/activity.entity";
 import { COUNTY_SEEDS, CATEGORY_SEEDS, PLACE_SEEDS } from "./seed-data";
+import { seedPharmacyMarketplace } from "../pharmacies/pharmacy-seed";
 
 /**
  * Idempotent seed script — safe to re-run. Upserts by `slug` for
@@ -65,6 +66,7 @@ async function seed() {
       `Seeded ${PLACE_SEEDS.length} places (Stage 1 — Greater Monrovia).`,
     );
 
+    await seedPharmacyMarketplace(dataSource);
     console.log("Seed complete.");
   } finally {
     await dataSource.destroy();

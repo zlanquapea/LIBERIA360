@@ -1,9 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { AppConfig } from "../../config/configuration";
 import {
+  ReadPrivateFileResult,
   SaveFileInput,
+  SavePrivateFileResult,
   SaveFileResult,
   StorageProvider,
 } from "./storage-provider.interface";
@@ -24,11 +31,13 @@ export class S3StorageProvider implements StorageProvider {
   private readonly logger = new Logger(S3StorageProvider.name);
   private readonly client: S3Client;
   private readonly bucket: string;
+  private readonly privateBucket: string;
   private readonly publicUrlBase: string;
 
   constructor(configService: ConfigService<AppConfig, true>) {
     const {
       bucket,
+      privateBucket,
       region,
       accessKeyId,
       secretAccessKey,
@@ -54,6 +63,19 @@ export class S3StorageProvider implements StorageProvider {
         "STORAGE_DRIVER=s3 but S3_BUCKET or S3_PUBLIC_URL_BASE isn't set — uploads will fail. See api/README.md.",
       );
     }
+    // Falling back to the public bucket here is a dev/demo convenience
+    // only — a key prefix cannot make an object private when the public
+    // bucket's own policy already grants public read across every key in
+    // it, so anything written through savePrivate()/readPrivate() below
+    // would be exactly as exposed as a normal upload despite the prefix.
+    if (!privateBucket) {
+      this.logger.warn(
+        "STORAGE_DRIVER=s3 but S3_PRIVATE_BUCKET isn't set — private uploads (e.g. prescriptions) will be stored in " +
+          "S3_BUCKET instead, which is unsafe if that bucket has any public-read policy. Set S3_PRIVATE_BUCKET to a " +
+          "bucket with no public access. See api/README.md.",
+      );
+    }
+    this.privateBucket = privateBucket || bucket;
   }
 
   async save({
@@ -73,5 +95,45 @@ export class S3StorageProvider implements StorageProvider {
       }),
     );
     return { url: `${this.publicUrlBase}/${filename}` };
+  }
+
+  // A distinct bucket from the one save() writes to — the object is never
+  // given a publicUrlBase URL and (given S3_PRIVATE_BUCKET is actually
+  // configured, see the constructor's warning above) that bucket carries
+  // no public-read policy either, so the only way back to its bytes is
+  // readPrivate() below, which every caller reaches through an
+  // application-level authorization check first.
+  async savePrivate({
+    buffer,
+    filename,
+    contentType,
+  }: SaveFileInput): Promise<SavePrivateFileResult> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.privateBucket,
+        Key: filename,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+    return { key: filename };
+  }
+
+  async readPrivate(key: string): Promise<ReadPrivateFileResult> {
+    const result = await this.client.send(
+      new GetObjectCommand({ Bucket: this.privateBucket, Key: key }),
+    );
+    const bytes = await result.Body!.transformToByteArray();
+    return { buffer: Buffer.from(bytes) };
+  }
+
+  // S3's DeleteObjectCommand already succeeds for a key that doesn't exist
+  // (no NoSuchKey error the way GetObjectCommand throws one) — satisfies the
+  // interface's "must not throw for an already-gone key" contract with no
+  // extra handling needed here.
+  async deletePrivate(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.privateBucket, Key: key }),
+    );
   }
 }

@@ -20,6 +20,7 @@ const SECURE_CONFIG: Pick<
     driver: "s3",
     s3: {
       bucket: "b",
+      privateBucket: "pb",
       region: "auto",
       accessKeyId: "k",
       secretAccessKey: "s",
@@ -113,6 +114,7 @@ describe("validateProductionConfig", () => {
         driver: "local",
         s3: {
           bucket: "",
+          privateBucket: "",
           region: "auto",
           accessKeyId: "",
           secretAccessKey: "",
@@ -125,6 +127,56 @@ describe("validateProductionConfig", () => {
     expect(exitSpy).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("STORAGE_DRIVER"),
+    );
+  });
+
+  it("refuses to boot in production with STORAGE_DRIVER=s3 and no S3_PRIVATE_BUCKET", () => {
+    // Unlike the other storage/mail/push checks, this one is fatal: the
+    // fallback silently writes private uploads (prescriptions) into the
+    // public bucket, a live privacy exposure rather than a missing feature.
+    const configService = buildConfigService({
+      storage: {
+        driver: "s3",
+        s3: {
+          bucket: "b",
+          privateBucket: "",
+          region: "auto",
+          accessKeyId: "k",
+          secretAccessKey: "s",
+          endpoint: "",
+          publicUrlBase: "https://cdn.example.com",
+        },
+      },
+    });
+    validateProductionConfig(configService);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("S3_PRIVATE_BUCKET"),
+    );
+  });
+
+  it("refuses to boot in production when S3_PRIVATE_BUCKET is the same as S3_BUCKET", () => {
+    // Setting the variable isn't enough on its own — pointing it at the
+    // same (public-read) bucket recreates the exact exposure the check
+    // above exists to prevent.
+    const configService = buildConfigService({
+      storage: {
+        driver: "s3",
+        s3: {
+          bucket: "same-bucket",
+          privateBucket: "same-bucket",
+          region: "auto",
+          accessKeyId: "k",
+          secretAccessKey: "s",
+          endpoint: "",
+          publicUrlBase: "https://cdn.example.com",
+        },
+      },
+    });
+    validateProductionConfig(configService);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("S3_PRIVATE_BUCKET"),
     );
   });
 

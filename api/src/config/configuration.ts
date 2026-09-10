@@ -45,6 +45,15 @@ export interface AppConfig {
     driver: "local" | "s3";
     s3: {
       bucket: string;
+      // A *distinct* bucket with no public-read bucket policy, used only
+      // for content that must stay private (currently: prescription
+      // uploads — see S3StorageProvider.savePrivate()/readPrivate()). A
+      // key prefix alone cannot make an object private when the bucket
+      // policy already grants public read across all keys, so this has
+      // to be a separate bucket, not a prefix inside `bucket` above.
+      // Falls back to `bucket` when unset, which only makes sense for
+      // local/dev setups where `bucket` isn't actually public either.
+      privateBucket: string;
       region: string;
       accessKeyId: string;
       secretAccessKey: string;
@@ -126,6 +135,7 @@ export default (): AppConfig => ({
     driver: process.env.STORAGE_DRIVER === "s3" ? "s3" : "local",
     s3: {
       bucket: process.env.S3_BUCKET ?? "",
+      privateBucket: process.env.S3_PRIVATE_BUCKET ?? "",
       region: process.env.S3_REGION ?? "auto",
       accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
