@@ -6,20 +6,33 @@ import { apiRequest } from "@/lib/http";
 import {
   assignPharmacyStaff,
   deletePharmacyProduct,
+  getMyPharmacyHours,
   getMyPharmacyProducts,
   getPharmacyCategories,
   getPharmacyDashboardOrders,
   getPharmacyStats,
   reviewPharmacyPrescription,
+  savePharmacyHours,
   savePharmacyProduct,
   savePharmacyProfile,
   transitionPharmacyOrder,
   type Pharmacy,
+  type PharmacyOpeningHoursEntry,
   type PharmacyOrder,
   type PharmacyProduct,
   type PharmacyProductInput,
   type PharmacyStats,
 } from "@/lib/pharmacy-api";
+
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 const ORDER_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -327,6 +340,133 @@ function StaffForm({ pharmacyId }: { pharmacyId: string }) {
       )}
       {error && (
         <p role="alert" className="error-state w-full">
+          {error}
+        </p>
+      )}
+    </form>
+  );
+}
+
+function emptyHours(): PharmacyOpeningHoursEntry[] {
+  return DAY_NAMES.map((_, dayOfWeek) => ({
+    dayOfWeek,
+    opensAt: "08:00",
+    closesAt: "20:00",
+    isClosed: false,
+  }));
+}
+
+// The only place a pharmacy can ever populate pharmacy_opening_hours —
+// without this, directory()'s "Open now" filter (which inner-joins that
+// table) can never match this pharmacy, no matter how it was created.
+function OpeningHoursSection({ pharmacyId }: { pharmacyId: string }) {
+  const [hours, setHours] = useState<PharmacyOpeningHoursEntry[] | null>(
+      null,
+    ),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState(""),
+    [saved, setSaved] = useState(false);
+  useEffect(() => {
+    getMyPharmacyHours(pharmacyId)
+      .then((rows) =>
+        setHours(
+          rows.length
+            ? DAY_NAMES.map(
+                (_, dayOfWeek) =>
+                  rows.find((r) => r.dayOfWeek === dayOfWeek) ?? {
+                    dayOfWeek,
+                    opensAt: "08:00",
+                    closesAt: "20:00",
+                    isClosed: false,
+                  },
+              )
+            : emptyHours(),
+        ),
+      )
+      .catch((e) => setError(e instanceof Error ? e.message : "Load failed"));
+  }, [pharmacyId]);
+  function updateDay(
+    dayOfWeek: number,
+    patch: Partial<PharmacyOpeningHoursEntry>,
+  ) {
+    setHours((prev) =>
+      (prev ?? emptyHours()).map((h) =>
+        h.dayOfWeek === dayOfWeek ? { ...h, ...patch } : h,
+      ),
+    );
+  }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!hours) return;
+    setSaving(true);
+    setError("");
+    setSaved(false);
+    try {
+      const updated = await savePharmacyHours(pharmacyId, hours);
+      setHours(
+        DAY_NAMES.map(
+          (_, dayOfWeek) =>
+            updated.find((r) => r.dayOfWeek === dayOfWeek) ?? hours[dayOfWeek],
+        ),
+      );
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save hours.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  if (!hours) return <p className="mt-2">Loading hours…</p>;
+  return (
+    <form onSubmit={submit} className="mt-2 space-y-2">
+      {hours.map((h) => (
+        <div key={h.dayOfWeek} className="flex flex-wrap items-center gap-2">
+          <span className="w-24 text-sm font-medium">
+            {DAY_NAMES[h.dayOfWeek]}
+          </span>
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={h.isClosed}
+              onChange={(e) =>
+                updateDay(h.dayOfWeek, { isClosed: e.target.checked })
+              }
+            />
+            Closed
+          </label>
+          {!h.isClosed && (
+            <>
+              <input
+                type="time"
+                className="input"
+                value={h.opensAt ?? "08:00"}
+                onChange={(e) =>
+                  updateDay(h.dayOfWeek, { opensAt: e.target.value })
+                }
+              />
+              <span className="text-sm text-slate-500">to</span>
+              <input
+                type="time"
+                className="input"
+                value={h.closesAt ?? "20:00"}
+                onChange={(e) =>
+                  updateDay(h.dayOfWeek, { closesAt: e.target.value })
+                }
+              />
+            </>
+          )}
+        </div>
+      ))}
+      <button disabled={saving} className="btn-primary mt-2 min-h-9">
+        {saving ? "Saving…" : "Save hours"}
+      </button>
+      {saved && (
+        <p role="status" className="text-sm text-emerald-700">
+          Hours saved.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="error-state">
           {error}
         </p>
       )}
@@ -869,6 +1009,14 @@ export default function PharmacyManagePage() {
               Verification: {pharmacy.status}
             </p>
             <ProfileForm pharmacy={pharmacy} onSaved={setPharmacy} />
+          </section>
+          <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
+            <h2 className="text-xl font-bold">Opening hours</h2>
+            <p className="mb-3 text-sm text-slate-500">
+              Required for this pharmacy to ever appear under the
+              marketplace&apos;s &quot;Open now&quot; filter.
+            </p>
+            <OpeningHoursSection pharmacyId={pharmacy.id} />
           </section>
           <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
             <h2 className="text-xl font-bold">Staff</h2>

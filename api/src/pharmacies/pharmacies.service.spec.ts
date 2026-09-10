@@ -97,6 +97,7 @@ describe("PharmaciesService", () => {
     create: jest.Mock;
     count: jest.Mock;
   };
+  let hoursRepo: { find: jest.Mock; upsert: jest.Mock };
   let usersService: { findByEmail: jest.Mock };
   let productRepo: {
     find: jest.Mock;
@@ -292,6 +293,10 @@ describe("PharmaciesService", () => {
       create: jest.fn((x) => x),
       count: jest.fn(),
     };
+    hoursRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      upsert: jest.fn().mockResolvedValue(undefined),
+    };
     usersService = { findByEmail: jest.fn() };
     productRepo = {
       find: jest.fn(),
@@ -366,7 +371,10 @@ describe("PharmaciesService", () => {
         PharmaciesService,
         { provide: getRepositoryToken(Pharmacy), useValue: pharmacyRepo },
         { provide: getRepositoryToken(PharmacyStaff), useValue: staffRepo },
-        { provide: getRepositoryToken(PharmacyOpeningHours), useValue: {} },
+        {
+          provide: getRepositoryToken(PharmacyOpeningHours),
+          useValue: hoursRepo,
+        },
         {
           provide: getRepositoryToken(PharmacyProduct),
           useValue: productRepo,
@@ -1544,6 +1552,91 @@ describe("PharmaciesService", () => {
       const result = await service.stats("user-1", "pharmacy-1");
 
       expect(result.role).toBe(PharmacyStaffRole.EMPLOYEE);
+    });
+  });
+
+  describe("saveOpeningHours / getOpeningHours", () => {
+    it("upserts one row per submitted day, keyed on (pharmacyId, dayOfWeek)", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
+
+      await service.saveOpeningHours("user-1", "pharmacy-1", {
+        hours: [
+          {
+            dayOfWeek: 1,
+            opensAt: "08:00",
+            closesAt: "20:00",
+            isClosed: false,
+          },
+          { dayOfWeek: 0, opensAt: null, closesAt: null, isClosed: true },
+        ],
+      } as any);
+
+      expect(hoursRepo.upsert).toHaveBeenCalledWith(
+        [
+          {
+            pharmacyId: "pharmacy-1",
+            dayOfWeek: 1,
+            opensAt: "08:00",
+            closesAt: "20:00",
+            isClosed: false,
+          },
+          {
+            pharmacyId: "pharmacy-1",
+            dayOfWeek: 0,
+            opensAt: null,
+            closesAt: null,
+            isClosed: true,
+          },
+        ],
+        ["pharmacyId", "dayOfWeek"],
+      );
+    });
+
+    it("discards stale opens/closes times for a day marked closed, even if the caller still sent them", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
+
+      await service.saveOpeningHours("user-1", "pharmacy-1", {
+        hours: [
+          { dayOfWeek: 0, opensAt: "08:00", closesAt: "20:00", isClosed: true },
+        ],
+      } as any);
+
+      expect(hoursRepo.upsert).toHaveBeenCalledWith(
+        [
+          {
+            pharmacyId: "pharmacy-1",
+            dayOfWeek: 0,
+            opensAt: null,
+            closesAt: null,
+            isClosed: true,
+          },
+        ],
+        ["pharmacyId", "dayOfWeek"],
+      );
+    });
+
+    it("refuses a caller who isn't staff at this pharmacy", async () => {
+      staffRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.saveOpeningHours("user-1", "pharmacy-1", {
+          hours: [],
+        } as any),
+      ).rejects.toThrow(ForbiddenException);
+      expect(hoursRepo.upsert).not.toHaveBeenCalled();
+    });
+
+    it("lets any staff role (not just manager) read the pharmacy's current hours", async () => {
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      hoursRepo.find.mockResolvedValue([
+        { dayOfWeek: 0, opensAt: "08:00", closesAt: "20:00", isClosed: false },
+      ]);
+
+      const result = await service.getOpeningHours("user-1", "pharmacy-1");
+
+      expect(result).toHaveLength(1);
     });
   });
 

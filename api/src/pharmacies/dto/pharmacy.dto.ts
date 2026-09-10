@@ -1,5 +1,6 @@
 import { Transform, Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsEmail,
@@ -10,6 +11,7 @@ import {
   IsString,
   IsUUID,
   Length,
+  Matches,
   Max,
   Min,
   ValidateNested,
@@ -135,4 +137,30 @@ export class AssignStaffDto {
   // account id; the same lookup-by-email pattern trip invitations use.
   @IsEmail() email: string;
   @IsEnum(PharmacyStaffRole) role: PharmacyStaffRole;
+}
+export class OpeningHoursEntryDto {
+  @Type(() => Number) @IsInt() @Min(0) @Max(6) dayOfWeek: number;
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d(:00)?$/, {
+    message: "opensAt must be in HH:MM (24-hour) format",
+  })
+  opensAt?: string;
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d(:00)?$/, {
+    message: "closesAt must be in HH:MM (24-hour) format",
+  })
+  closesAt?: string;
+  @IsBoolean() isClosed: boolean;
+}
+export class SaveOpeningHoursDto {
+  // One entry per day actually submitted — a day omitted here is left
+  // untouched rather than assumed closed, so a partial update (e.g.
+  // correcting just Sunday) can't accidentally wipe the other six days.
+  @IsArray()
+  @ArrayMaxSize(7)
+  @ValidateNested({ each: true })
+  @Type(() => OpeningHoursEntryDto)
+  hours: OpeningHoursEntryDto[];
 }

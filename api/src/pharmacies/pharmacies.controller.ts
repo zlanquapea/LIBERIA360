@@ -31,6 +31,7 @@ import {
   PrescriptionReviewDto,
   ProductDto,
   ProductQueryDto,
+  SaveOpeningHoursDto,
   StatusDto,
   UploadPrescriptionDto,
   VerificationDto,
@@ -162,6 +163,27 @@ export class PharmacyDashboardController {
     @Body() dto: PharmacyProfileDto,
   ) {
     return this.service.saveProfile(u.id, id, dto);
+  }
+  // one() (the public storefront lookup) only works once a pharmacy is
+  // approved — this is the only way staff can load their own hours to
+  // edit while an application is still pending.
+  @Get(":id/hours") getHours(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.service.getOpeningHours(u.id, id);
+  }
+  // Any staff role may set hours — unlike staff assignment, this isn't a
+  // clinical or organizational decision, and gatekeeping it behind
+  // "manager-only" would leave a pharmacist-only staffed pharmacy (or one
+  // whose manager is unavailable) unable to ever open the storefront to
+  // the "Open now" filter.
+  @Patch(":id/hours") saveHours(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SaveOpeningHoursDto,
+  ) {
+    return this.service.saveOpeningHours(u.id, id, dto);
   }
   // Manager-only — the only way this pharmacy gets a pharmacist (or a
   // second manager, or an employee) beyond the one saveProfile() created

@@ -222,6 +222,33 @@ export const assignPharmacyStaff = (
     body: JSON.stringify(body),
   });
 
+export type PharmacyOpeningHoursEntry = {
+  dayOfWeek: number;
+  opensAt: string | null;
+  closesAt: string | null;
+  isClosed: boolean;
+};
+
+// Only reachable while staff — one() (the public storefront) requires an
+// approved pharmacy, so a pending application has no other way to load
+// its own hours for editing.
+export const getMyPharmacyHours = (pharmacyId: string) =>
+  apiRequest<PharmacyOpeningHoursEntry[]>(
+    `/pharmacy-dashboard/${pharmacyId}/hours`,
+  );
+
+// The only path that can ever populate pharmacy_opening_hours — without
+// setting these, a pharmacy can never match the public directory's "Open
+// now" filter, which inner-joins this table server-side.
+export const savePharmacyHours = (
+  pharmacyId: string,
+  hours: PharmacyOpeningHoursEntry[],
+) =>
+  apiRequest<PharmacyOpeningHoursEntry[]>(
+    `/pharmacy-dashboard/${pharmacyId}/hours`,
+    { method: "PATCH", body: JSON.stringify({ hours }) },
+  );
+
 // Includes hidden (isVisible: false) products — the public catalog()
 // endpoint (getPharmacyProducts above) never returns those, which would
 // otherwise leave staff unable to find and re-enable one they'd hidden.

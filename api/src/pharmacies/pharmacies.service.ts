@@ -23,6 +23,7 @@ import {
   PrescriptionReviewDto,
   ProductDto,
   ProductQueryDto,
+  SaveOpeningHoursDto,
   VerificationDto,
 } from "./dto/pharmacy.dto";
 import {
@@ -363,6 +364,49 @@ export class PharmaciesService {
           ),
         )
       : run(this.pharmacies, this.staff, this.audits);
+  }
+  // Staff-facing read — one() (the public storefront lookup) only works
+  // for an already-approved pharmacy, so a pending application has no
+  // other way to load its own hours for editing.
+  async getOpeningHours(userId: string, pharmacyId: string) {
+    await this.assertStaff(userId, pharmacyId);
+    return this.hours.find({
+      where: { pharmacyId },
+      order: { dayOfWeek: "ASC" },
+    });
+  }
+  // The only path that can ever populate pharmacy_opening_hours —
+  // directory()'s openNow filter inner-joins that table, so without this
+  // no pharmacy created through the application flow (or seeded) could
+  // ever match it, and the filter always returned an empty directory.
+  async saveOpeningHours(
+    userId: string,
+    pharmacyId: string,
+    dto: SaveOpeningHoursDto,
+  ) {
+    await this.assertStaff(userId, pharmacyId);
+    if (dto.hours.length === 0)
+      return this.hours.find({
+        where: { pharmacyId },
+        order: { dayOfWeek: "ASC" },
+      });
+    await this.hours.upsert(
+      dto.hours.map((h) => ({
+        pharmacyId,
+        dayOfWeek: h.dayOfWeek,
+        // A closed day's times are meaningless — store null rather than
+        // whatever stale opensAt/closesAt the form still had, so a later
+        // read can't show a closed day with leftover hours.
+        opensAt: h.isClosed ? null : (h.opensAt ?? null),
+        closesAt: h.isClosed ? null : (h.closesAt ?? null),
+        isClosed: h.isClosed,
+      })),
+      ["pharmacyId", "dayOfWeek"],
+    );
+    return this.hours.find({
+      where: { pharmacyId },
+      order: { dayOfWeek: "ASC" },
+    });
   }
   // The only way a pharmacy gets any staff beyond the manager saveProfile()
   // creates automatically for a new application — without this, a freshly

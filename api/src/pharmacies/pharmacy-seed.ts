@@ -1,6 +1,6 @@
 import { DataSource, IsNull } from "typeorm";
 import { User } from "../users/entities/user.entity";
-import { Pharmacy } from "./entities/pharmacy.entity";
+import { Pharmacy, PharmacyOpeningHours } from "./entities/pharmacy.entity";
 import {
   FulfillmentMethod,
   PharmacyOrderStatus,
@@ -100,6 +100,23 @@ export async function seedPharmacyMarketplace(ds: DataSource) {
   const saved = await pharmacyRepo.find({
     where: pharmacies.map((x) => ({ slug: x.slug })),
   });
+  // Without this, none of the seeded pharmacies could ever match
+  // directory()'s "Open now" filter (it inner-joins this table) — nothing
+  // else in the codebase populates it. Every day 08:00-20:00 is a
+  // reasonable default for a demo pharmacy.
+  const hoursRepo = ds.getRepository(PharmacyOpeningHours);
+  await hoursRepo.upsert(
+    saved.flatMap((pharmacy) =>
+      Array.from({ length: 7 }, (_, dayOfWeek) => ({
+        pharmacyId: pharmacy.id,
+        dayOfWeek,
+        opensAt: "08:00:00",
+        closesAt: "20:00:00",
+        isClosed: false,
+      })),
+    ),
+    ["pharmacyId", "dayOfWeek"],
+  );
   for (let i = 0; i < NAMES.length; i++) {
     const pharmacy = saved[i % saved.length],
       category = categories[i % categories.length];
