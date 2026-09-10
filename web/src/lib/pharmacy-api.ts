@@ -103,6 +103,16 @@ export const getPharmacyCategories = () =>
   read<Array<{ id: string; name: string; slug: string }>>(
     "/pharmacies/categories",
   );
+// Client-safe twin of getPharmacyCategories() above, for "use client"
+// callers (the pharmacy dashboard's ProductsSection). read()'s API base
+// uses serverApiOrigin(), which resolves to a server-only host/port that
+// isn't reachable from the browser once deployed — apiRequest()'s
+// same-origin /api/v1 path (proxied by the Next.js server either way) is
+// what every other client-side pharmacy-dashboard call already uses.
+export const getPharmacyCategoriesClient = () =>
+  apiRequest<Array<{ id: string; name: string; slug: string }>>(
+    "/pharmacies/categories",
+  );
 export const createPharmacyOrder = (body: unknown) =>
   apiRequest<PharmacyOrder>("/pharmacy-marketplace/orders", {
     method: "POST",
@@ -189,10 +199,13 @@ export type PharmacyProfileInput = {
   address: string;
   location: string;
   telephone: string;
-  logoUrl?: string;
-  coverUrl?: string;
-  latitude?: number;
-  longitude?: number;
+  // Omitted means "leave unchanged"; an explicit null clears a
+  // previously-set value (the API's PharmacyProfileDto treats these two
+  // cases differently — see ProfileForm's submit() for why that matters).
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
   deliveryFee: number;

@@ -8,7 +8,7 @@ import {
   deletePharmacyProduct,
   getMyPharmacyHours,
   getMyPharmacyProducts,
-  getPharmacyCategories,
+  getPharmacyCategoriesClient,
   getPharmacyDashboardOrders,
   getPharmacyStats,
   reviewPharmacyPrescription,
@@ -112,10 +112,16 @@ function ProfileForm({
         address: form.address,
         location: form.location,
         telephone: form.telephone,
-        logoUrl: form.logoUrl || undefined,
-        coverUrl: form.coverUrl || undefined,
-        latitude: form.latitude === "" ? undefined : Number(form.latitude),
-        longitude: form.longitude === "" ? undefined : Number(form.longitude),
+        // null (not undefined) for an emptied field: this form always
+        // submits every field, pre-populated from the current pharmacy, so
+        // there's no "the user didn't touch this" case to preserve here —
+        // an empty box means "remove this", and the API only takes that as
+        // a clear when it's explicitly null (omitting the key entirely
+        // means "leave unchanged", which would just restore the old value).
+        logoUrl: form.logoUrl || null,
+        coverUrl: form.coverUrl || null,
+        latitude: form.latitude === "" ? null : Number(form.latitude),
+        longitude: form.longitude === "" ? null : Number(form.longitude),
         pickupEnabled: form.pickupEnabled,
         deliveryEnabled: form.deliveryEnabled,
         deliveryFee: Number(form.deliveryFee),
@@ -642,7 +648,7 @@ function ProductsSection({ pharmacyId }: { pharmacyId: string }) {
   const load = useCallback(() => {
     Promise.all([
       getMyPharmacyProducts(pharmacyId),
-      getPharmacyCategories(),
+      getPharmacyCategoriesClient(),
     ])
       .then(([p, c]) => {
         setProducts(p);
@@ -1023,7 +1029,13 @@ export default function PharmacyManagePage() {
             <p className="mb-3 text-sm text-slate-500">
               Only a pharmacist on staff can decide on a prescription review.
             </p>
-            <StaffForm pharmacyId={pharmacy.id} />
+            {stats?.role === "manager" ? (
+              <StaffForm pharmacyId={pharmacy.id} />
+            ) : (
+              <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                Only a manager can add or reassign staff at this pharmacy.
+              </p>
+            )}
           </section>
           <ProductsSection pharmacyId={pharmacy.id} />
           <OrdersSection

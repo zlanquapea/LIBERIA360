@@ -321,7 +321,11 @@ export class PharmaciesService {
           // PATCH built from what mine()/the dashboard list returned, which
           // omits any field it didn't touch. Treating that omission as
           // "clear it" would erase the existing images (or licence) on
-          // every unrelated edit, so only write these when explicitly sent.
+          // every unrelated edit, so only write these when explicitly sent
+          // — but an explicit `null` for logoUrl/coverUrl/latitude/longitude
+          // *does* pass through here (the check is `!== undefined`, not
+          // truthiness), so the profile form can still remove one of these
+          // once it's been set, rather than being stuck replace-only.
           ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
           ...(dto.coverUrl !== undefined ? { coverUrl: dto.coverUrl } : {}),
           ...(dto.latitude !== undefined ? { latitude: dto.latitude } : {}),

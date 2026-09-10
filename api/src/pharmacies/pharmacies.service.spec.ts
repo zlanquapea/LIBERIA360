@@ -2072,6 +2072,54 @@ describe("PharmaciesService", () => {
       );
     });
 
+    it("clears the logo/cover/coordinates when the PATCH explicitly sends null", async () => {
+      // Distinct from the "omitted" test above: an explicit null is how
+      // ProfileForm represents "the user emptied this field" — it must
+      // actually clear the column, not be swallowed the same way omission
+      // is (the `!== undefined` check on the service side lets null
+      // through while still treating undefined as "leave unchanged").
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+        logoUrl: "https://cdn.example.com/old-logo.jpg",
+        coverUrl: "https://cdn.example.com/old-cover.jpg",
+        latitude: 6.3,
+        longitude: -10.8,
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy Renamed",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-0042",
+        logoUrl: null,
+        coverUrl: null,
+        latitude: null,
+        longitude: null,
+      } as any);
+
+      expect(saved.logoUrl).toBeNull();
+      expect(saved.coverUrl).toBeNull();
+      expect(saved.latitude).toBeNull();
+      expect(saved.longitude).toBeNull();
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        expect.objectContaining({
+          logoUrl: null,
+          coverUrl: null,
+          latitude: null,
+          longitude: null,
+        }),
+      );
+    });
+
     it("persists coordinates so an approved pharmacy can appear on PharmacyMap", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
       mockPharmacyQueryBuilder({

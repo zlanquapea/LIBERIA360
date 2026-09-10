@@ -49,8 +49,15 @@ export class PharmacyProfileDto {
   @IsString() @Length(5, 240) address: string;
   @IsString() @Length(2, 80) location: string;
   @IsString() @Length(5, 40) telephone: string;
-  @IsOptional() @IsString() logoUrl?: string;
-  @IsOptional() @IsString() coverUrl?: string;
+  // string | null (not just an optional string): omitting the field means
+  // "leave unchanged" (see saveProfile()'s `!== undefined` checks below),
+  // but a caller that already has a logo/cover/coordinates on file needs a
+  // way to actually remove one — sending "" doesn't validate as a URL/
+  // number and sending nothing at all would just leave the old value in
+  // place. @IsOptional() short-circuits the type/range checks for both
+  // undefined *and* null, so an explicit null still reaches saveProfile().
+  @IsOptional() @IsString() logoUrl?: string | null;
+  @IsOptional() @IsString() coverUrl?: string | null;
   // Matches the Pharmacy entity's decimal(9,6) columns — plenty of
   // precision for a street address, and rules out a caller passing degrees
   // as a huge/garbage number. Without these, an approved pharmacy has no
@@ -61,13 +68,13 @@ export class PharmacyProfileDto {
   @IsNumber()
   @Min(-90)
   @Max(90)
-  latitude?: number;
+  latitude?: number | null;
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(-180)
   @Max(180)
-  longitude?: number;
+  longitude?: number | null;
   @IsBoolean() pickupEnabled: boolean;
   @IsBoolean() deliveryEnabled: boolean;
   @Type(() => Number) @IsNumber() @Min(0) deliveryFee: number;
