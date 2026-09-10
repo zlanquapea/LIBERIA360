@@ -71,11 +71,14 @@ const NEXT: Record<PharmacyOrderStatus, PharmacyOrderStatus[]> = {
     PharmacyOrderStatus.ACCEPTED,
     PharmacyOrderStatus.CANCELLED,
   ],
-  [PharmacyOrderStatus.UNDER_REVIEW]: [
-    PharmacyOrderStatus.ACCEPTED,
-    PharmacyOrderStatus.REJECTED,
-    PharmacyOrderStatus.CANCELLED,
-  ],
+  // Deliberately does NOT list ACCEPTED/REJECTED: an order only reaches
+  // under_review because it has a prescription attached (see createOrder),
+  // and that decision belongs to review() alone — the only place that
+  // checks the pharmacist role and records a PrescriptionReview. Letting
+  // the generic status PATCH (transition(), below) also accept this jump
+  // would let any staff member approve a prescription order without ever
+  // going through review, silently bypassing that whole check.
+  [PharmacyOrderStatus.UNDER_REVIEW]: [PharmacyOrderStatus.CANCELLED],
   [PharmacyOrderStatus.ACCEPTED]: [
     PharmacyOrderStatus.PREPARING,
     PharmacyOrderStatus.CANCELLED,
@@ -166,6 +169,14 @@ export class PharmaciesService {
     return this.categories.find({ order: { name: "ASC" } });
   }
   async catalog(pharmacyId: string, q: ProductQueryDto) {
+    // Public route (no auth) — directory() and one() already gate on
+    // approved-only, but this one only checked isVisible on the product
+    // itself. Without this, a pharmacy's product list and stock levels
+    // stayed fetchable by anyone who already had its UUID even after it
+    // was suspended, rejected, or was never approved in the first place.
+    const pharmacy = await this.pharmacies.findOneBy({ id: pharmacyId });
+    if (!pharmacy || pharmacy.status !== PharmacyStatus.APPROVED)
+      throw new NotFoundException("Pharmacy not found");
     const where: any = { pharmacyId, isVisible: true };
     if (q.categoryId) where.categoryId = q.categoryId;
     const items = await this.products.find({
@@ -270,9 +281,14 @@ export class PharmaciesService {
       throw new BadRequestException(
         "This pharmacy is not approved to receive orders",
       );
+    // Checked against the trimmed value — the DTO's length validation and
+    // this check both pass for a whitespace-only address ("     "), which
+    // then trims to nothing when it's actually saved a few lines down,
+    // leaving an order with no usable delivery destination.
+    const trimmedDeliveryAddress = dto.deliveryAddress?.trim();
     if (
       dto.fulfillmentMethod === FulfillmentMethod.DELIVERY &&
-      (!pharmacy.deliveryEnabled || !dto.deliveryAddress)
+      (!pharmacy.deliveryEnabled || !trimmedDeliveryAddress)
     )
       throw new BadRequestException("A delivery address is required");
     if (
@@ -362,7 +378,7 @@ export class PharmaciesService {
           pharmacyId: pharmacy.id,
           customerUserId: userId,
           fulfillmentMethod: dto.fulfillmentMethod,
-          deliveryAddress: dto.deliveryAddress?.trim() || null,
+          deliveryAddress: trimmedDeliveryAddress || null,
           productSubtotal: subtotal,
           deliveryFee: delivery,
           platformFee: 0,
@@ -445,6 +461,25 @@ export class PharmaciesService {
     if (!NEXT[order.status].includes(status))
       throw new ConflictException(
         `Cannot move an order from ${order.status} to ${status}`,
+      );
+    // NEXT[PREPARING] offers both dispatch states so one table can serve
+    // every order regardless of how it's fulfilled — but only one of them
+    // actually matches this particular order; picking the other would show
+    // the customer a tracking status ("out for delivery") that contradicts
+    // what they actually chose ("pickup") at checkout.
+    if (
+      status === PharmacyOrderStatus.READY_FOR_PICKUP &&
+      order.fulfillmentMethod !== FulfillmentMethod.PICKUP
+    )
+      throw new ConflictException(
+        "This order is for delivery, not pickup — mark it out for delivery instead",
+      );
+    if (
+      status === PharmacyOrderStatus.OUT_FOR_DELIVERY &&
+      order.fulfillmentMethod !== FulfillmentMethod.DELIVERY
+    )
+      throw new ConflictException(
+        "This order is for pickup, not delivery — mark it ready for pickup instead",
       );
     order.status = status;
     await this.orders.save(order);
@@ -622,8 +657,22 @@ export class PharmaciesService {
       ].includes(dto.decision)
     )
       throw new BadRequestException("Invalid verification decision");
-    const p = await this.pharmacies.findOneBy({ id: pharmacyId });
+    // licenceNumber is `select: false` — opt back in explicitly, the same
+    // way applications() does, since it's what this check is actually for.
+    const p = await this.pharmacies
+      .createQueryBuilder("p")
+      .addSelect("p.licenceNumber")
+      .where("p.id = :id", { id: pharmacyId })
+      .getOne();
     if (!p) throw new NotFoundException("Pharmacy not found");
+    // The admin oversight page is the only place a licence number can be
+    // inspected before verifying — enforced here too, not just by disabling
+    // the button there, since this is the endpoint that actually grants a
+    // storefront "approved" status.
+    if (dto.decision === PharmacyStatus.APPROVED && !p.licenceNumber?.trim())
+      throw new BadRequestException(
+        "Cannot approve a pharmacy with no licence number on file",
+      );
     p.status = dto.decision;
     await this.pharmacies.save(p);
     await this.verifications.save(

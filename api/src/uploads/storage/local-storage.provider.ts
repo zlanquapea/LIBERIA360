@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { mkdir, writeFile } from "fs/promises";
-import { dirname, join, resolve, sep } from "path";
+import { dirname, resolve, sep } from "path";
 import { localUploadsDir } from "../local-uploads-dir";
 import {
   SaveFileInput,

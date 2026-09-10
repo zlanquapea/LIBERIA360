@@ -25,6 +25,11 @@ export type Pharmacy = {
   deliveryFee: number;
   status: string;
   sponsored: boolean;
+  // Only present on GET /admin/pharmacies/applications — every other read
+  // omits both (Pharmacy.licenceNumber/licenceDocumentKey are `select:
+  // false` columns; applications() is the one query that opts back in).
+  licenceNumber?: string | null;
+  licenceDocumentKey?: string | null;
   openingHours?: Array<{
     dayOfWeek: number;
     opensAt: string | null;

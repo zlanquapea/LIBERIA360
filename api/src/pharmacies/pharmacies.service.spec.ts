@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
 } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -67,22 +68,23 @@ describe("pharmacy marketplace policies", () => {
     );
     expect(PHARMACY_ORDER_TRANSITIONS.completed).toEqual([]);
   });
-  it("keeps prescription orders under human review", () => {
-    expect(PHARMACY_ORDER_TRANSITIONS.under_review).toEqual(
-      expect.arrayContaining([
-        PharmacyOrderStatus.ACCEPTED,
-        PharmacyOrderStatus.REJECTED,
-      ]),
-    );
-    expect(PHARMACY_ORDER_TRANSITIONS.under_review).not.toContain(
-      PharmacyOrderStatus.PREPARING,
-    );
+  it("only lets a prescription order leave under_review via the pharmacist review flow, not the generic status endpoint", () => {
+    // accepted/rejected are deliberately absent here: only review() (which
+    // checks the pharmacist role and records a PrescriptionReview) may make
+    // that decision. Cancelling is still allowed generically.
+    expect(PHARMACY_ORDER_TRANSITIONS.under_review).toEqual([
+      PharmacyOrderStatus.CANCELLED,
+    ]);
   });
 });
 
 describe("PharmaciesService", () => {
   let service: PharmaciesService;
-  let pharmacyRepo: { findOneBy: jest.Mock };
+  let pharmacyRepo: {
+    findOneBy: jest.Mock;
+    save: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
   let staffRepo: { findOne: jest.Mock };
   let productRepo: { find: jest.Mock };
   let inventoryRepo: { decrement: jest.Mock; increment: jest.Mock };
@@ -113,6 +115,15 @@ describe("PharmaciesService", () => {
       ...overrides,
     } as Pharmacy;
   }
+  // verification() opts back into the `select: false` licenceNumber column
+  // via createQueryBuilder rather than a plain findOneBy — mock that chain.
+  function mockPharmacyQueryBuilder(pharmacy: Partial<Pharmacy> | null) {
+    pharmacyRepo.createQueryBuilder.mockReturnValue({
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(pharmacy),
+    });
+  }
   function product(overrides: Partial<PharmacyProduct> = {}): PharmacyProduct {
     return {
       id: "product-1",
@@ -127,7 +138,11 @@ describe("PharmaciesService", () => {
   }
 
   beforeEach(async () => {
-    pharmacyRepo = { findOneBy: jest.fn() };
+    pharmacyRepo = {
+      findOneBy: jest.fn(),
+      save: jest.fn((x) => Promise.resolve(x)),
+      createQueryBuilder: jest.fn(),
+    };
     staffRepo = { findOne: jest.fn() };
     productRepo = { find: jest.fn() };
     inventoryRepo = {
@@ -189,7 +204,13 @@ describe("PharmaciesService", () => {
           provide: getRepositoryToken(PrescriptionReview),
           useValue: reviewRepo,
         },
-        { provide: getRepositoryToken(PharmacyVerification), useValue: {} },
+        {
+          provide: getRepositoryToken(PharmacyVerification),
+          useValue: {
+            save: jest.fn().mockResolvedValue(undefined),
+            create: jest.fn((x) => x),
+          },
+        },
         { provide: getRepositoryToken(PharmacyAuditLog), useValue: auditRepo },
         { provide: STORAGE_PROVIDER, useValue: { save: jest.fn() } },
       ],
@@ -284,6 +305,21 @@ describe("PharmaciesService", () => {
         { id: "rx-1" },
         { orderId: "order-1" },
       );
+    });
+
+    it("rejects a whitespace-only delivery address instead of silently trimming it away", async () => {
+      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
+      productRepo.find.mockResolvedValue([product()]);
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.DELIVERY,
+          deliveryAddress: "     ",
+          items: [{ productId: "product-1", quantity: 1 }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -396,6 +432,158 @@ describe("PharmaciesService", () => {
       );
 
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
+    });
+
+    it("blocks approving/rejecting a prescription order through the generic status endpoint", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+      });
+
+      await expect(
+        service.transition(
+          "user-1",
+          "pharmacy-1",
+          "order-1",
+          PharmacyOrderStatus.ACCEPTED,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("still allows cancelling a prescription order under review", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+      });
+      orderItemRepo.find.mockResolvedValue([]);
+
+      await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+        PharmacyOrderStatus.CANCELLED,
+      );
+
+      expect(orderRepo.save).toHaveBeenCalled();
+    });
+
+    it("refuses to mark a delivery order ready for pickup", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.PREPARING,
+        fulfillmentMethod: FulfillmentMethod.DELIVERY,
+      });
+
+      await expect(
+        service.transition(
+          "user-1",
+          "pharmacy-1",
+          "order-1",
+          PharmacyOrderStatus.READY_FOR_PICKUP,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses to mark a pickup order out for delivery", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.PREPARING,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+      });
+
+      await expect(
+        service.transition(
+          "user-1",
+          "pharmacy-1",
+          "order-1",
+          PharmacyOrderStatus.OUT_FOR_DELIVERY,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("allows the dispatch state that actually matches the order's fulfillment method", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.PREPARING,
+        fulfillmentMethod: FulfillmentMethod.DELIVERY,
+      });
+
+      await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+        PharmacyOrderStatus.OUT_FOR_DELIVERY,
+      );
+
+      expect(orderRepo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("catalog", () => {
+    it("hides a suspended or otherwise non-approved pharmacy's products", async () => {
+      pharmacyRepo.findOneBy.mockResolvedValue(
+        approvedPharmacy({ status: PharmacyStatus.SUSPENDED }),
+      );
+
+      await expect(service.catalog("pharmacy-1", {} as any)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(productRepo.find).not.toHaveBeenCalled();
+    });
+
+    it("returns the catalog for an approved pharmacy", async () => {
+      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
+      productRepo.find.mockResolvedValue([product()]);
+
+      const items = await service.catalog("pharmacy-1", {} as any);
+
+      expect(items).toHaveLength(1);
+    });
+  });
+
+  describe("verification", () => {
+    it("refuses to approve a pharmacy with no licence number on file", async () => {
+      mockPharmacyQueryBuilder({ id: "pharmacy-1", licenceNumber: null });
+
+      await expect(
+        service.verification("admin-1", "pharmacy-1", {
+          decision: PharmacyStatus.APPROVED,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(pharmacyRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("approves a pharmacy once a licence number is on file", async () => {
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        licenceNumber: "LR-PHM-0042",
+      });
+
+      await service.verification("admin-1", "pharmacy-1", {
+        decision: PharmacyStatus.APPROVED,
+      } as any);
+
+      expect(pharmacyRepo.save).toHaveBeenCalled();
+    });
+
+    it("does not require a licence number to reject or suspend", async () => {
+      mockPharmacyQueryBuilder({ id: "pharmacy-1", licenceNumber: null });
+
+      await service.verification("admin-1", "pharmacy-1", {
+        decision: PharmacyStatus.REJECTED,
+      } as any);
+
+      expect(pharmacyRepo.save).toHaveBeenCalled();
     });
   });
 });
