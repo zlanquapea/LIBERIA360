@@ -199,6 +199,19 @@ export class PharmaciesService {
         )
       : items;
   }
+  // Staff-facing counterpart to catalog() — that one only ever returns
+  // isVisible products (it's the public storefront read), which left staff
+  // with no way to see, edit, or delete a product they'd hidden. No
+  // approved-only gate either: staff still needs to manage their own
+  // catalog while the pharmacy itself is pending/suspended.
+  async myProducts(userId: string, pharmacyId: string) {
+    await this.assertStaff(userId, pharmacyId);
+    return this.products.find({
+      where: { pharmacyId },
+      relations: { category: true },
+      order: { name: "ASC" },
+    });
+  }
   async assertStaff(userId: string, pharmacyId: string) {
     const member = await this.staff.findOne({
       where: { userId, pharmacyId, active: true },
@@ -300,6 +313,8 @@ export class PharmaciesService {
           // every unrelated edit, so only write these when explicitly sent.
           ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
           ...(dto.coverUrl !== undefined ? { coverUrl: dto.coverUrl } : {}),
+          ...(dto.latitude !== undefined ? { latitude: dto.latitude } : {}),
+          ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
           ...(licenceProvided ? { licenceNumber: dto.licenceNumber } : {}),
         };
         await pharmacyRepo.update({ id }, patch);
@@ -864,7 +879,6 @@ export class PharmaciesService {
       throw new ConflictException(
         "A new prescription can only be submitted after a pharmacist requests clarification",
       );
-    const previousKey = prescription.privateStorageKey;
     const filename = `prescriptions/${randomUUID()}${extname(file.originalName).slice(0, 10)}`;
     const { key } = await this.storage.savePrivate({
       buffer: file.buffer,
@@ -880,6 +894,9 @@ export class PharmaciesService {
     // both it and the latest review after acquiring the lock: a concurrent
     // decision either already committed (and this now correctly refuses)
     // or is blocked behind this lock until its own transaction commits.
+    // This same order lock also serializes two concurrent resubmissions
+    // against each other — both requests target the same row, so the
+    // second one blocks here until the first's transaction commits.
     const run = async (
       orderRepo: Repository<PharmacyOrder>,
       reviewRepo: Repository<PrescriptionReview>,
@@ -912,6 +929,22 @@ export class PharmaciesService {
         throw new ConflictException(
           "A new prescription can only be submitted after a pharmacist requests clarification",
         );
+      // Read (and lock) the key that's *actually* stored right now, not
+      // the one captured before this transaction started — two
+      // resubmissions racing each other both serialize on the order lock
+      // above, but the second one's pre-transaction read of the old key
+      // is stale by the time it gets here: the first resubmission has
+      // already overwritten it with its own new key. Deleting that stale
+      // key on success would silently leave the first resubmission's file
+      // (the one this second request is actually superseding) orphaned in
+      // storage forever, with no database row left pointing to it.
+      const current = await prescriptionRepo
+        .createQueryBuilder("p")
+        .setLock("pessimistic_write")
+        .addSelect("p.privateStorageKey")
+        .where("p.id = :id", { id: prescription.id })
+        .getOneOrFail();
+      const previousKey = current.privateStorageKey;
       await prescriptionRepo.update(
         { id: prescription.id },
         {
@@ -929,21 +962,21 @@ export class PharmaciesService {
         {},
         auditRepo,
       );
+      return previousKey;
     };
     const manager = this.orders.manager;
+    let previousKey: string;
     try {
-      if (manager?.transaction) {
-        await manager.transaction((tx) =>
-          run(
-            tx.getRepository(PharmacyOrder),
-            tx.getRepository(PrescriptionReview),
-            tx.getRepository(Prescription),
-            tx.getRepository(PharmacyAuditLog),
-          ),
-        );
-      } else {
-        await run(this.orders, this.reviews, this.prescriptions, this.audits);
-      }
+      previousKey = manager?.transaction
+        ? await manager.transaction((tx) =>
+            run(
+              tx.getRepository(PharmacyOrder),
+              tx.getRepository(PrescriptionReview),
+              tx.getRepository(Prescription),
+              tx.getRepository(PharmacyAuditLog),
+            ),
+          )
+        : await run(this.orders, this.reviews, this.prescriptions, this.audits);
     } catch (err) {
       // The new object was already written above — a refused replacement
       // (the recheck lost the race) leaves it orphaned exactly like a
@@ -1159,6 +1192,31 @@ export class PharmaciesService {
       inventoryRepo: Repository<PharmacyInventory>,
       auditRepo: Repository<PharmacyAuditLog>,
     ) => {
+      // Locked *before* the review row is saved, not after — every branch
+      // used to lock only once it got around to touching the order (the
+      // terminal branch's conditional UPDATE, or the clarification
+      // branch's own explicit lock), both *after* the review insert above.
+      // resubmitPrescription() takes this same order lock before its own
+      // write, so a resubmission could win this lock first, see the review
+      // this transaction just inserted as still uncommitted (so the
+      // prescription still reads as clarification_requested), swap the
+      // file, and commit — all before this transaction's own order UPDATE
+      // ever runs and finalizes a decision made on a file that no longer
+      // exists. Locking unconditionally up front, ahead of either branch,
+      // closes that inverse lock ordering: whichever of the two
+      // transactions gets here first now blocks the other until it commits.
+      if (orderId) {
+        const locked = await orderRepo
+          .createQueryBuilder("o")
+          .setLock("pessimistic_write")
+          .where("o.id = :orderId", { orderId })
+          .andWhere("o.pharmacyId = :pharmacyId", { pharmacyId })
+          .getOne();
+        if (!locked || locked.status !== PharmacyOrderStatus.UNDER_REVIEW)
+          throw new ConflictException(
+            "This order was just decided by another request",
+          );
+      }
       const review = await reviewRepo.save(
         reviewRepo.create({
           prescriptionId,
@@ -1168,11 +1226,11 @@ export class PharmaciesService {
         }),
       );
       if (orderId && newStatus) {
-        // Conditioned on the order still being under_review, same reasoning
-        // as transition()'s conditional update: this row lock serializes a
-        // concurrent second decision on the same prescription/order (e.g.
-        // a double-submitted review request) so at most one of them can
-        // move the order and, on rejection, restore its inventory.
+        // The order row is already locked above — this UPDATE's own WHERE
+        // condition can't actually lose the race anymore (nothing else
+        // could get in between the lock and here), but it stays as
+        // defense in depth against this method's own logic drifting out
+        // of sync with the lock someday.
         const result = await orderRepo.update(
           {
             id: orderId,
@@ -1192,29 +1250,11 @@ export class PharmaciesService {
         if (newStatus === PharmacyOrderStatus.REJECTED) {
           await this.restoreInventory(orderId, itemRepo, inventoryRepo);
         }
-      } else if (orderId && !isTerminalDecision) {
-        // A clarification request doesn't move the order, so it has no
-        // status transition to condition an UPDATE on — but without some
-        // lock here, this path could still record a review row after
-        // another pharmacist's concurrent terminal decision has already
-        // moved the order past under_review, contradicting a decision this
-        // request never saw (the preliminary check above only catches the
-        // sequential case, not a genuine race). Lock the order row the same
-        // way the terminal branch's UPDATE does, and recheck: a concurrent
-        // accept/reject either committed first (and this now correctly
-        // refuses) or is blocked behind this lock until this transaction
-        // commits (and then itself re-evaluates against under_review).
-        const locked = await orderRepo
-          .createQueryBuilder("o")
-          .setLock("pessimistic_write")
-          .where("o.id = :orderId", { orderId })
-          .andWhere("o.pharmacyId = :pharmacyId", { pharmacyId })
-          .getOne();
-        if (!locked || locked.status !== PharmacyOrderStatus.UNDER_REVIEW)
-          throw new ConflictException(
-            "This order was just decided by another request",
-          );
       }
+      // else: a clarification request doesn't move the order, so there's
+      // no status transition to make here — the lock above already
+      // confirmed the order is still under_review before the review row
+      // was even saved.
       // Committed in the same transaction as the review row and order
       // transition above — otherwise a failure here would leave the
       // clinical decision (and any inventory restoration) applied with no

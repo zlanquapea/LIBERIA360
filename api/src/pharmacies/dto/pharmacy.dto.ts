@@ -49,6 +49,23 @@ export class PharmacyProfileDto {
   @IsString() @Length(5, 40) telephone: string;
   @IsOptional() @IsString() logoUrl?: string;
   @IsOptional() @IsString() coverUrl?: string;
+  // Matches the Pharmacy entity's decimal(9,6) columns — plenty of
+  // precision for a street address, and rules out a caller passing degrees
+  // as a huge/garbage number. Without these, an approved pharmacy has no
+  // way to ever appear on PharmacyMap (see its own filter on both being
+  // non-null) — every marketplace pharmacy was permanently map-invisible.
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
   @IsBoolean() pickupEnabled: boolean;
   @IsBoolean() deliveryEnabled: boolean;
   @Type(() => Number) @IsNumber() @Min(0) deliveryFee: number;

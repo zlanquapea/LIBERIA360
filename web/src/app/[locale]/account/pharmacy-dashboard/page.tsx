@@ -42,7 +42,12 @@ export default function PharmacyDashboard() {
               <Link className="btn-secondary" href={`/pharmacies/${p.slug}`}>
                 View storefront
               </Link>
-              <button className="btn-primary">Manage profile & products</button>
+              <Link
+                className="btn-primary"
+                href={`/account/pharmacy-dashboard/${p.id}`}
+              >
+                Manage profile & products
+              </Link>
             </div>
           </article>
         ))}

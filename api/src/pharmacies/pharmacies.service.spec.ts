@@ -172,12 +172,14 @@ describe("PharmaciesService", () => {
   function mockOrderQueryBuilder(
     order: { status: PharmacyOrderStatus } | null,
   ) {
-    orderRepo.createQueryBuilder.mockReturnValue({
+    const builder = {
       setLock: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(order),
-    });
+    };
+    orderRepo.createQueryBuilder.mockReturnValue(builder);
+    return builder;
   }
   // resubmitPrescription() locks and rechecks the latest review the same
   // way review()'s clarification-request branch locks the order — mock
@@ -190,6 +192,19 @@ describe("PharmaciesService", () => {
       where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(review),
+    });
+  }
+  // resubmitPrescription() also locks and re-reads the prescription's
+  // *current* privateStorageKey inside the same transaction, right before
+  // overwriting it — capturing it any earlier would be stale by the time a
+  // concurrent resubmission (serialized behind the order lock above) gets
+  // here. Mock that chain the same way.
+  function mockPrescriptionQueryBuilder(privateStorageKey: string) {
+    prescriptionRepo.createQueryBuilder.mockReturnValue({
+      setLock: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOneOrFail: jest.fn().mockResolvedValue({ privateStorageKey }),
     });
   }
   // createOrder() locks and re-reads both the pharmacy and the cart's
@@ -705,6 +720,10 @@ describe("PharmaciesService", () => {
         id: "order-1",
         status: PharmacyOrderStatus.UNDER_REVIEW,
       });
+      // The order row is now locked and rechecked *before* the review row
+      // is saved, ahead of either branch — see the dedicated lock-ordering
+      // test below for the race this closes.
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
       orderItemRepo.find.mockResolvedValue([
         { productId: "product-1", quantity: 2 },
       ]);
@@ -732,6 +751,7 @@ describe("PharmaciesService", () => {
         id: "order-1",
         status: PharmacyOrderStatus.UNDER_REVIEW,
       });
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
 
       await service.review("user-1", "pharmacy-1", "rx-1", {
         decision: PrescriptionDecision.ACCEPTED,
@@ -754,12 +774,12 @@ describe("PharmaciesService", () => {
         id: "order-1",
         status: PharmacyOrderStatus.UNDER_REVIEW,
       });
-      // ...but the conditional update's row lock finds the order no
-      // longer under_review by the time it runs (a genuinely concurrent
-      // second decision landed first) — the whole decision (including the
-      // review row just written) is rolled back rather than silently
-      // recording a contradictory review beside the winning one.
-      orderRepo.update.mockResolvedValue({ affected: 0 });
+      // ...but the row lock taken *before* the review is even saved finds
+      // the order no longer under_review (a genuinely concurrent second
+      // decision landed first) — the whole decision (including the review
+      // row, since it's never even reached) is refused rather than
+      // silently recording a contradictory review beside the winning one.
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.ACCEPTED });
 
       await expect(
         service.review("user-1", "pharmacy-1", "rx-1", {
@@ -767,7 +787,50 @@ describe("PharmaciesService", () => {
         } as any),
       ).rejects.toThrow(ConflictException);
 
+      expect(reviewRepo.save).not.toHaveBeenCalled();
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
+    });
+
+    it("locks the order before saving the review — not after — so a resubmission can't win the race in between", async () => {
+      // Regression test for the inverse-lock-ordering bug: review() used to
+      // save the review row *before* locking the order (the terminal
+      // branch's conditional UPDATE, or the clarification branch's own
+      // lock, both ran afterward). resubmitPrescription() locks the order
+      // first. If review() didn't also lock first, a resubmission could
+      // win the order lock, see review()'s insert as still uncommitted (so
+      // the prescription still reads as clarification_requested), replace
+      // the file, and commit — all before review()'s own order UPDATE
+      // ever ran. Asserting the call order here pins down that the lock
+      // now happens first, regardless of decision type.
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      const calls: string[] = [];
+      const builder = mockOrderQueryBuilder({
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      builder.getOne.mockImplementation(() => {
+        calls.push("lock");
+        return Promise.resolve({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      });
+      reviewRepo.save.mockImplementation((x: any) => {
+        calls.push("save");
+        return Promise.resolve(x);
+      });
+
+      await service.review("user-1", "pharmacy-1", "rx-1", {
+        decision: PrescriptionDecision.ACCEPTED,
+      } as any);
+
+      expect(calls).toEqual(["lock", "save"]);
     });
 
     it("records a clarification request without moving the order", async () => {
@@ -962,6 +1025,7 @@ describe("PharmaciesService", () => {
       mockReviewQueryBuilder({
         decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
       });
+      mockPrescriptionQueryBuilder("prescriptions/old-key.jpg");
       storageProvider.savePrivate.mockResolvedValue({
         key: "prescriptions/new-key.jpg",
       });
@@ -983,6 +1047,51 @@ describe("PharmaciesService", () => {
       // up once the replacement is safely committed.
       expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
         "prescriptions/old-key.jpg",
+      );
+    });
+
+    it("deletes the key actually superseded under the lock, not a stale pre-transaction read", async () => {
+      // Regression test: two resubmissions racing each other both
+      // serialize on the order lock, but a *pre-transaction* read of the
+      // old key is stale by the time the second one gets here — the first
+      // resubmission already overwrote it with its own new key. The key
+      // to delete must come from the locked, in-transaction read.
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+        // Stale — a concurrent resubmission (already committed by the
+        // time this one reaches the lock) has since replaced this key.
+        privateStorageKey: "prescriptions/original-key.jpg",
+      });
+      reviewRepo.findOne.mockResolvedValue({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      mockReviewQueryBuilder({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      // What's actually stored right now, read fresh under the lock.
+      mockPrescriptionQueryBuilder("prescriptions/first-resubmission-key.jpg");
+      storageProvider.savePrivate.mockResolvedValue({
+        key: "prescriptions/second-resubmission-key.jpg",
+      });
+
+      await service.resubmitPrescription("user-1", "order-1", {
+        buffer: Buffer.from("fake-bytes"),
+        originalName: "script3.jpg",
+        mimeType: "image/jpeg",
+      });
+
+      expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
+        "prescriptions/first-resubmission-key.jpg",
+      );
+      expect(storageProvider.deletePrivate).not.toHaveBeenCalledWith(
+        "prescriptions/original-key.jpg",
       );
     });
 
@@ -1287,6 +1396,32 @@ describe("PharmaciesService", () => {
       const items = await service.catalog("pharmacy-1", {} as any);
 
       expect(items).toHaveLength(1);
+    });
+  });
+
+  describe("myProducts", () => {
+    it("includes hidden products, unlike the public catalog", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      productRepo.find.mockResolvedValue([
+        product({ isVisible: true }),
+        product({ id: "product-2", isVisible: false }),
+      ]);
+
+      const items = await service.myProducts("user-1", "pharmacy-1");
+
+      expect(items).toHaveLength(2);
+      expect(productRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { pharmacyId: "pharmacy-1" } }),
+      );
+    });
+
+    it("refuses a caller who isn't staff at this pharmacy", async () => {
+      staffRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.myProducts("user-1", "pharmacy-1")).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(productRepo.find).not.toHaveBeenCalled();
     });
   });
 
@@ -1610,6 +1745,65 @@ describe("PharmaciesService", () => {
           coverUrl: "https://cdn.example.com/new-cover.jpg",
         }),
       );
+    });
+
+    it("persists coordinates so an approved pharmacy can appear on PharmacyMap", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+        latitude: null,
+        longitude: null,
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-0042",
+        latitude: 6.3156,
+        longitude: -10.8074,
+      } as any);
+
+      expect(saved.latitude).toBe(6.3156);
+      expect(saved.longitude).toBe(-10.8074);
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        expect.objectContaining({ latitude: 6.3156, longitude: -10.8074 }),
+      );
+    });
+
+    it("leaves coordinates untouched when the PATCH omits them", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+        latitude: 6.3156,
+        longitude: -10.8074,
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy Renamed",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-0042",
+        // latitude/longitude intentionally omitted
+      } as any);
+
+      expect(saved.latitude).toBe(6.3156);
+      expect(saved.longitude).toBe(-10.8074);
     });
 
     it("creates the initial manager membership for a new application", async () => {

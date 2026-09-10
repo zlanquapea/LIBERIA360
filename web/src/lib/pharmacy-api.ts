@@ -172,3 +172,112 @@ export async function resubmitPrescription(
     );
   }
 }
+
+// ---------------------------------------------------------------------
+// Staff-facing (pharmacy-dashboard) — everything below is only reachable
+// by staff assigned to the pharmacy in question (PharmaciesService's own
+// assertStaff() enforces that server-side); the account/pharmacy-dashboard
+// pages are the only callers.
+// ---------------------------------------------------------------------
+
+export type PharmacyProfileInput = {
+  name: string;
+  address: string;
+  location: string;
+  telephone: string;
+  logoUrl?: string;
+  coverUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+  deliveryFee: number;
+  licenceNumber?: string;
+};
+
+export const getMyPharmacies = () => apiRequest<Pharmacy[]>("/pharmacy-dashboard");
+
+export const createPharmacy = (body: PharmacyProfileInput) =>
+  apiRequest<Pharmacy>("/pharmacy-dashboard", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const savePharmacyProfile = (id: string, body: PharmacyProfileInput) =>
+  apiRequest<Pharmacy>(`/pharmacy-dashboard/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+export const assignPharmacyStaff = (
+  pharmacyId: string,
+  body: { email: string; role: "manager" | "pharmacist" | "employee" },
+) =>
+  apiRequest<unknown>(`/pharmacy-dashboard/${pharmacyId}/staff`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+// Includes hidden (isVisible: false) products — the public catalog()
+// endpoint (getPharmacyProducts above) never returns those, which would
+// otherwise leave staff unable to find and re-enable one they'd hidden.
+export const getMyPharmacyProducts = (pharmacyId: string) =>
+  apiRequest<PharmacyProduct[]>(`/pharmacy-dashboard/${pharmacyId}/products`);
+
+export type PharmacyProductInput = {
+  name: string;
+  categoryId: string;
+  imageUrl?: string;
+  price: number;
+  stockQuantity: number;
+  prescriptionRequired: boolean;
+  isVisible?: boolean;
+};
+
+export const savePharmacyProduct = (
+  pharmacyId: string,
+  productId: string | undefined,
+  body: PharmacyProductInput,
+) =>
+  apiRequest<PharmacyProduct>(
+    `/pharmacy-dashboard/${pharmacyId}/products${productId ? `/${productId}` : ""}`,
+    { method: productId ? "PATCH" : "POST", body: JSON.stringify(body) },
+  );
+
+export const deletePharmacyProduct = (pharmacyId: string, productId: string) =>
+  apiRequest<unknown>(`/pharmacy-dashboard/${pharmacyId}/products/${productId}`, {
+    method: "DELETE",
+  });
+
+export const getPharmacyDashboardOrders = (pharmacyId: string) =>
+  apiRequest<PharmacyOrder[]>(`/pharmacy-dashboard/${pharmacyId}/orders`);
+
+export const transitionPharmacyOrder = (
+  pharmacyId: string,
+  orderId: string,
+  status: string,
+) =>
+  apiRequest<PharmacyOrder>(
+    `/pharmacy-dashboard/${pharmacyId}/orders/${orderId}/status`,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+  );
+
+export const reviewPharmacyPrescription = (
+  pharmacyId: string,
+  prescriptionId: string,
+  body: { decision: "accepted" | "rejected" | "clarification_requested"; notes?: string },
+) =>
+  apiRequest<unknown>(
+    `/pharmacy-dashboard/${pharmacyId}/prescriptions/${prescriptionId}/reviews`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+
+export type PharmacyStats = {
+  totalOrders: number;
+  completedOrders: number;
+  pendingOrders: number;
+  revenue: number;
+};
+
+export const getPharmacyStats = (pharmacyId: string) =>
+  apiRequest<PharmacyStats>(`/pharmacy-dashboard/${pharmacyId}/statistics`);

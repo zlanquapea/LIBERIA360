@@ -173,6 +173,15 @@ export class PharmacyDashboardController {
   ) {
     return this.service.assignStaff(u.id, id, dto);
   }
+  // Staff-facing — unlike PharmaciesController's public ":id/products"
+  // (catalog()), this includes hidden products too, since staff need to
+  // find and re-enable one they'd previously hidden.
+  @Get(":id/products") myProducts(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.service.myProducts(u.id, id);
+  }
   @Post(":id/products") product(
     @CurrentUser() u: User,
     @Param("id", ParseUUIDPipe) id: string,

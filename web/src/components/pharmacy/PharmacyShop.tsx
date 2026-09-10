@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
 import { createPharmacyOrder, uploadPrescription } from "@/lib/pharmacy-api";
 
@@ -38,6 +38,19 @@ export function PharmacyShop({
     [consent, setConsent] = useState(false),
     [placing, setPlacing] = useState(false),
     [notice, setNotice] = useState("");
+  // Caches the id from a successful uploadPrescription() call, keyed by
+  // the exact File it was uploaded for — checkout() reuses it on a retry
+  // (e.g. after the order itself is rejected for stock/pharmacy-status
+  // reasons unrelated to the prescription) instead of uploading another
+  // copy every attempt. Each copy is a private object plus a database row
+  // that never gets attached to an order and nothing ever cleans up, so an
+  // unlucky sequence of retries would otherwise leave several of them
+  // behind for one customer's one prescription. Cleared whenever the
+  // customer picks a different file, since the cached id no longer
+  // matches what's selected.
+  const uploadedPrescriptionRef = useRef<{ file: File; id: string } | null>(
+    null,
+  );
   const shown = products.filter(
     (p) =>
       (!category || p.categoryId === category) &&
@@ -77,14 +90,27 @@ export function PharmacyShop({
     setPlacing(true);
     setNotice("Placing order…");
     try {
-      // Uploaded fresh for this order, right before checkout — the
-      // pharmacist reviews it against this specific order once it exists,
-      // and a prescription attaches to at most one order (see
-      // PharmaciesService.createOrder), so a leftover upload from an
-      // earlier abandoned attempt is never silently reused here.
-      const prescriptionId = needsPrescription
-        ? await uploadPrescription(pharmacy.id, prescriptionFile!)
-        : undefined;
+      // Reuse a prescription already uploaded for this exact file (e.g. a
+      // retry after createPharmacyOrder() below rejected for stock or
+      // pharmacy-status reasons unrelated to the prescription itself)
+      // instead of uploading another copy — see uploadedPrescriptionRef's
+      // doc comment. A prescription still attaches to at most one order
+      // (PharmaciesService.createOrder), so reusing the id here is safe:
+      // nothing else could have consumed it between attempts.
+      const cached = uploadedPrescriptionRef.current;
+      const prescriptionId = !needsPrescription
+        ? undefined
+        : cached && cached.file === prescriptionFile
+          ? cached.id
+          : await uploadPrescription(pharmacy.id, prescriptionFile!).then(
+              (id) => {
+                uploadedPrescriptionRef.current = {
+                  file: prescriptionFile!,
+                  id,
+                };
+                return id;
+              },
+            );
       await createPharmacyOrder({
         pharmacyId: pharmacy.id,
         fulfillmentMethod: method,
@@ -95,6 +121,7 @@ export function PharmacyShop({
         prescriptionId,
         consentToPrescriptionProcessing: needsPrescription ? consent : undefined,
       });
+      uploadedPrescriptionRef.current = null;
       setCart({});
       setPrescriptionFile(null);
       setConsent(false);
