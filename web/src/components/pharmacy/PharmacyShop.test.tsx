@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PharmacyShop } from "./PharmacyShop";
-import { createPharmacyOrder, uploadPrescription } from "@/lib/pharmacy-api";
+import {
+  createPharmacyOrder,
+  deleteUnattachedPrescription,
+  uploadPrescription,
+} from "@/lib/pharmacy-api";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
 
 // jest.mock's module specifier is a plain string, not an import
@@ -13,11 +17,13 @@ jest.mock("../../lib/pharmacy-api", () => {
     ...actual,
     uploadPrescription: jest.fn(),
     createPharmacyOrder: jest.fn(),
+    deleteUnattachedPrescription: jest.fn(),
   };
 });
 
 const mockedUpload = uploadPrescription as jest.Mock;
 const mockedCreateOrder = createPharmacyOrder as jest.Mock;
+const mockedDeleteUnattached = deleteUnattachedPrescription as jest.Mock;
 
 const pharmacy: Pharmacy = {
   id: "pharmacy-1",
@@ -68,6 +74,7 @@ describe("PharmacyShop checkout — prescription upload reuse", () => {
   beforeEach(() => {
     mockedUpload.mockReset();
     mockedCreateOrder.mockReset();
+    mockedDeleteUnattached.mockReset().mockResolvedValue(undefined);
   });
 
   it("reuses the already-uploaded prescription on a retry instead of uploading another copy", async () => {
@@ -128,6 +135,43 @@ describe("PharmacyShop checkout — prescription upload reuse", () => {
     expect(mockedUpload).toHaveBeenCalledTimes(2);
     expect(mockedCreateOrder).toHaveBeenLastCalledWith(
       expect.objectContaining({ prescriptionId: "rx-2" }),
+    );
+    // The first upload (rx-1) is now orphaned — never attached to an
+    // order, and no longer reachable via uploadedPrescriptionRef — so it
+    // must be cleaned up rather than left behind.
+    expect(mockedDeleteUnattached).toHaveBeenCalledWith("rx-1");
+  });
+
+  it("deletes the cached upload as soon as a different file is selected, even before any checkout retry", async () => {
+    mockedUpload.mockResolvedValue("rx-1");
+    // The order itself must not succeed here — a successful order clears
+    // uploadedPrescriptionRef on its own (the prescription is now
+    // legitimately attached), which would make this scenario impossible to
+    // observe. Same "order fails, upload didn't" setup as the test above.
+    mockedCreateOrder.mockRejectedValue(new Error("Out of stock"));
+
+    render(
+      <PharmacyShop
+        pharmacy={pharmacy}
+        products={[rxProduct]}
+        categories={[{ id: "cat-1", name: "Antibiotics" }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /add to cart/i }));
+    selectPrescriptionFile();
+    fireEvent.click(screen.getByRole("checkbox", { name: /i consent/i }));
+    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalledTimes(1));
+
+    const newFile = new File(["y"], "script2.jpg", { type: "image/jpeg" });
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [newFile] } });
+
+    await waitFor(() =>
+      expect(mockedDeleteUnattached).toHaveBeenCalledWith("rx-1"),
     );
   });
 });

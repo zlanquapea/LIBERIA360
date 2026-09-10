@@ -134,6 +134,7 @@ describe("PharmaciesService", () => {
     save: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+    delete: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let reviewRepo: {
@@ -344,6 +345,7 @@ describe("PharmaciesService", () => {
       // Same reasoning as orderRepo.update above — default to "claimed
       // successfully" unless a test simulates a concurrent claim.
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn(),
     };
     reviewRepo = {
@@ -1093,6 +1095,37 @@ describe("PharmaciesService", () => {
         }),
       ]);
     });
+
+    it("withholds notes from a terminal (accepted/rejected) decision", async () => {
+      // Only a clarification_requested decision is ever meant to be shown
+      // to the customer — a pharmacist's accept/reject notes may carry
+      // internal clinical/operational rationale never meant for them.
+      orderRepo.find.mockResolvedValue([
+        { id: "order-1", status: PharmacyOrderStatus.ACCEPTED },
+      ]);
+      prescriptionRepo.find.mockResolvedValue([
+        { id: "rx-1", orderId: "order-1" },
+      ]);
+      reviewRepo.find.mockResolvedValue([
+        {
+          id: "review-1",
+          prescriptionId: "rx-1",
+          decision: PrescriptionDecision.ACCEPTED,
+          notes: "internal-only rationale",
+          createdAt: new Date("2026-01-01"),
+        },
+      ]);
+
+      const orders = await service.customerOrders("customer-1");
+
+      expect(orders).toEqual([
+        expect.objectContaining({
+          id: "order-1",
+          latestReviewDecision: PrescriptionDecision.ACCEPTED,
+          latestReviewNotes: null,
+        }),
+      ]);
+    });
   });
 
   describe("resubmitPrescription", () => {
@@ -1626,6 +1659,33 @@ describe("PharmaciesService", () => {
       expect(hoursRepo.upsert).not.toHaveBeenCalled();
     });
 
+    it("rejects two entries for the same day before reaching the upsert", async () => {
+      // Postgres's ON CONFLICT DO UPDATE refuses to touch the same row
+      // twice in one statement — without this check, a duplicate dayOfWeek
+      // in the submitted array would surface as a raw 500 instead of 400.
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
+
+      await expect(
+        service.saveOpeningHours("user-1", "pharmacy-1", {
+          hours: [
+            {
+              dayOfWeek: 2,
+              opensAt: "08:00",
+              closesAt: "20:00",
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 2,
+              opensAt: "09:00",
+              closesAt: "17:00",
+              isClosed: false,
+            },
+          ],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(hoursRepo.upsert).not.toHaveBeenCalled();
+    });
+
     it("lets any staff role (not just manager) read the pharmacy's current hours", async () => {
       staffRepo.findOne.mockResolvedValue({
         role: PharmacyStaffRole.PHARMACIST,
@@ -1818,6 +1878,89 @@ describe("PharmaciesService", () => {
         service.prescriptionFile("user-1", false, "rx-1"),
       ).rejects.toThrow(ForbiddenException);
       expect(storageProvider.readPrivate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleteUnattachedPrescription", () => {
+    it("deletes the row and its storage object for the uploader's own unattached prescription", async () => {
+      prescriptionRepo.createQueryBuilder.mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          id: "rx-1",
+          customerUserId: "user-1",
+          orderId: null,
+          privateStorageKey: "prescriptions/abc123.jpg",
+        }),
+      });
+      prescriptionRepo.delete.mockResolvedValue({ affected: 1 });
+
+      await service.deleteUnattachedPrescription("user-1", "rx-1");
+
+      expect(prescriptionRepo.delete).toHaveBeenCalledWith({
+        id: "rx-1",
+        customerUserId: "user-1",
+        orderId: IsNull(),
+      });
+      expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
+        "prescriptions/abc123.jpg",
+      );
+    });
+
+    it("refuses to delete a prescription already attached to an order", async () => {
+      prescriptionRepo.createQueryBuilder.mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          id: "rx-1",
+          customerUserId: "user-1",
+          orderId: "order-1",
+          privateStorageKey: "prescriptions/abc123.jpg",
+        }),
+      });
+
+      await expect(
+        service.deleteUnattachedPrescription("user-1", "rx-1"),
+      ).rejects.toThrow(ConflictException);
+      expect(prescriptionRepo.delete).not.toHaveBeenCalled();
+      expect(storageProvider.deletePrivate).not.toHaveBeenCalled();
+    });
+
+    it("refuses a caller who doesn't own the prescription", async () => {
+      // The query itself is scoped to customerUserId, so someone else's
+      // prescription (or a nonexistent id) simply comes back as no row.
+      prescriptionRepo.createQueryBuilder.mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.deleteUnattachedPrescription("user-1", "rx-1"),
+      ).rejects.toThrow(NotFoundException);
+      expect(prescriptionRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("no-ops the storage cleanup when a concurrent checkout already claimed the prescription", async () => {
+      prescriptionRepo.createQueryBuilder.mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          id: "rx-1",
+          customerUserId: "user-1",
+          orderId: null,
+          privateStorageKey: "prescriptions/abc123.jpg",
+        }),
+      });
+      prescriptionRepo.delete.mockResolvedValue({ affected: 0 });
+
+      await service.deleteUnattachedPrescription("user-1", "rx-1");
+
+      expect(storageProvider.deletePrivate).not.toHaveBeenCalled();
     });
   });
 

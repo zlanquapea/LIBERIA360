@@ -394,6 +394,19 @@ export class PharmaciesService {
         where: { pharmacyId },
         order: { dayOfWeek: "ASC" },
       });
+    // Two entries for the same dayOfWeek both pass DTO validation (nothing
+    // there checks across array entries) but target the same (pharmacyId,
+    // dayOfWeek) conflict key — Postgres's ON CONFLICT DO UPDATE refuses to
+    // touch the same row twice in one statement, so this would otherwise
+    // surface as a raw 500 instead of a 400 for what's simply bad input.
+    const seenDays = new Set<number>();
+    for (const h of dto.hours) {
+      if (seenDays.has(h.dayOfWeek))
+        throw new BadRequestException(
+          `Duplicate entry for day ${h.dayOfWeek} — submit at most one entry per day`,
+        );
+      seenDays.add(h.dayOfWeek);
+    }
     await this.hours.upsert(
       dto.hours.map((h) => ({
         pharmacyId,
@@ -903,7 +916,16 @@ export class PharmaciesService {
         items: itemsByOrderId.get(o.id) ?? [],
         prescriptionId,
         latestReviewDecision: latestReview?.decision ?? null,
-        latestReviewNotes: latestReview?.notes ?? null,
+        // Notes are only ever customer-facing for a clarification request —
+        // that's the one case a pharmacist is told (on the dashboard) their
+        // notes will be shown to the customer. An accept/reject's notes may
+        // carry internal clinical/operational rationale never meant for the
+        // customer, so withhold them on a terminal decision.
+        latestReviewNotes:
+          latestReview?.decision ===
+          PrescriptionDecision.CLARIFICATION_REQUESTED
+            ? (latestReview?.notes ?? null)
+            : null,
       };
     });
   }
@@ -1500,6 +1522,38 @@ export class PharmaciesService {
       throw err;
     }
     return { id: rx.id };
+  }
+  // Deletes an uploaded-but-never-attached prescription — the customer's
+  // only way to clean up a copy uploadPrescription() left behind after
+  // picking a different file (see PharmacyShop's uploadedPrescriptionRef
+  // comment: each upload is a private object plus a database row that
+  // nothing else ever attaches or cleans up on its own). Scoped to the
+  // uploader's own prescription, and conditioned on orderId still being
+  // null the same way createOrder()'s own attach step is — a concurrent
+  // checkout that's already claimed this prescription wins the race, and
+  // this call becomes a no-op rather than deleting evidence for a real
+  // order.
+  async deleteUnattachedPrescription(userId: string, prescriptionId: string) {
+    const rx = await this.prescriptions
+      .createQueryBuilder("p")
+      .addSelect("p.privateStorageKey")
+      .where("p.id = :id", { id: prescriptionId })
+      .andWhere("p.customerUserId = :userId", { userId })
+      .getOne();
+    if (!rx) throw new NotFoundException("Prescription not found");
+    if (rx.orderId !== null)
+      throw new ConflictException(
+        "This prescription is already attached to an order",
+      );
+    const result = await this.prescriptions.delete({
+      id: prescriptionId,
+      customerUserId: userId,
+      orderId: IsNull(),
+    });
+    // Lost the race to a concurrent checkout attaching this prescription
+    // between the read above and this delete — nothing left to clean up.
+    if (!result.affected) return;
+    await this.storage.deletePrivate(rx.privateStorageKey).catch(() => {});
   }
   // Auditable, access-controlled reveal of an uploaded prescription's file
   // — the only place privateStorageKey ever leaves the service, and only

@@ -1,7 +1,11 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
-import { createPharmacyOrder, uploadPrescription } from "@/lib/pharmacy-api";
+import {
+  createPharmacyOrder,
+  deleteUnattachedPrescription,
+  uploadPrescription,
+} from "@/lib/pharmacy-api";
 
 // Matches CartItemDto's @Max(100) on the API — without this cap, a product
 // with more than 100 units in stock let this button stay enabled past
@@ -43,11 +47,12 @@ export function PharmacyShop({
   // (e.g. after the order itself is rejected for stock/pharmacy-status
   // reasons unrelated to the prescription) instead of uploading another
   // copy every attempt. Each copy is a private object plus a database row
-  // that never gets attached to an order and nothing ever cleans up, so an
-  // unlucky sequence of retries would otherwise leave several of them
-  // behind for one customer's one prescription. Cleared whenever the
-  // customer picks a different file, since the cached id no longer
-  // matches what's selected.
+  // that stays orphaned until an order attaches it — an unlucky sequence
+  // of retries, or simply picking a different file after a successful
+  // upload, would otherwise leave one behind for good. See
+  // handlePrescriptionFileChange(), which deletes the cached upload (via
+  // deleteUnattachedPrescription()) whenever the selected file changes,
+  // since the cached id no longer matches what's selected at that point.
   const uploadedPrescriptionRef = useRef<{ file: File; id: string } | null>(
     null,
   );
@@ -135,6 +140,19 @@ export function PharmacyShop({
     } finally {
       setPlacing(false);
     }
+  }
+  // Selecting a different file (or clearing the input) orphans whatever
+  // the ref was still caching — that upload's id no longer matches what's
+  // selected, so checkout() would upload a fresh copy and never revisit
+  // the old one. Delete it best-effort (it's housekeeping, not something
+  // worth blocking file selection on) before dropping the reference.
+  function handlePrescriptionFileChange(file: File | null) {
+    const cached = uploadedPrescriptionRef.current;
+    if (cached && cached.file !== file) {
+      uploadedPrescriptionRef.current = null;
+      deleteUnattachedPrescription(cached.id).catch(() => {});
+    }
+    setPrescriptionFile(file);
   }
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
@@ -317,7 +335,9 @@ export function PharmacyShop({
                 required
                 accept="image/jpeg,image/png,image/webp,application/pdf"
                 className="input mt-1 w-full"
-                onChange={(e) => setPrescriptionFile(e.target.files?.[0] ?? null)}
+                onChange={(e) =>
+                  handlePrescriptionFileChange(e.target.files?.[0] ?? null)
+                }
               />
             </label>
             <label className="flex items-start gap-2 text-xs">

@@ -162,6 +162,18 @@ export async function uploadPrescription(
   return (data as { id: string }).id;
 }
 
+// DELETE /pharmacy-marketplace/prescriptions/:id — cleans up a prescription
+// uploadPrescription() created but that never ended up attached to an
+// order (e.g. the customer picked a different file). Best-effort from the
+// caller's side: PharmacyShop swallows any failure here rather than
+// blocking on it, since it's just housekeeping.
+export async function deleteUnattachedPrescription(id: string): Promise<void> {
+  await fetch(`/api/v1/pharmacy-marketplace/prescriptions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+}
+
 // PATCH /pharmacy-marketplace/orders/:orderId/prescription — a customer's
 // reply to a pharmacist's "clarification requested" review (surfaced on
 // PharmacyOrder.latestReviewDecision/latestReviewNotes above), replacing

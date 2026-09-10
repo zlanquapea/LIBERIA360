@@ -99,6 +99,17 @@ export class PharmacyCustomerController {
       mimeType: file.mimetype,
     });
   }
+  // Cleans up an uploaded prescription that was never attached to an
+  // order — e.g. the customer picked a different file after a successful
+  // upload but before checking out (see PharmacyShop's
+  // uploadedPrescriptionRef, which now calls this on that path).
+  @Delete("prescriptions/:id")
+  deleteUnattachedPrescription(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.service.deleteUnattachedPrescription(u.id, id);
+  }
   // Lets a customer reply to a pharmacist's clarification_requested
   // decision (see PharmaciesService.review()) by uploading a replacement
   // prescription for the same order — customerOrders() surfaces the
