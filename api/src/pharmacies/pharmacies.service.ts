@@ -221,11 +221,28 @@ export class PharmaciesService {
     dto: PharmacyProfileDto,
   ) {
     if (id) await this.assertStaff(userId, id);
+    // licenceNumber is `select: false` (see verification()'s comment on the
+    // same column) — a plain findOneByOrFail() would come back with it
+    // `undefined`, which would make every update to an approved pharmacy
+    // look like a licence change and reset it to pending. Opt back in via
+    // the query builder, same as verification()/applications() do.
     const pharmacy = id
-      ? await this.pharmacies.findOneByOrFail({ id })
+      ? await this.pharmacies
+          .createQueryBuilder("p")
+          .addSelect("p.licenceNumber")
+          .where("p.id = :id", { id })
+          .getOneOrFail()
       : this.pharmacies.create({ status: PharmacyStatus.PENDING });
+    // An admin verified this exact licenceNumber (see verification()) — if
+    // staff change it afterward, the pharmacy keeps showing the "approved"
+    // badge for evidence nobody has actually reviewed. Any licence change
+    // on an already-approved pharmacy must go back through admin review.
+    const licenceChanged =
+      pharmacy.status === PharmacyStatus.APPROVED &&
+      (dto.licenceNumber ?? null) !== (pharmacy.licenceNumber ?? null);
     Object.assign(pharmacy, dto, {
       slug: pharmacy.slug || `${slugify(dto.name)}-${Date.now().toString(36)}`,
+      ...(licenceChanged ? { status: PharmacyStatus.PENDING } : {}),
     });
     const saved = await this.pharmacies.save(pharmacy);
     if (!id)
@@ -512,10 +529,27 @@ export class PharmaciesService {
     return this.orderDetail(order.id);
   }
   async customerOrders(userId: string) {
-    return this.orders.find({
+    const orders = await this.orders.find({
       where: { customerUserId: userId },
       order: { createdAt: "DESC" },
     });
+    // Same reasoning as pharmacyOrders() below: without line items, a
+    // customer with several orders of the same total can't tell them apart
+    // on an order-history page. One extra query, not N+1.
+    const orderIds = orders.map((o) => o.id);
+    const items = orderIds.length
+      ? await this.orderItems.find({ where: { orderId: In(orderIds) } })
+      : [];
+    const itemsByOrderId = new Map<string, typeof items>();
+    for (const item of items) {
+      const bucket = itemsByOrderId.get(item.orderId);
+      if (bucket) bucket.push(item);
+      else itemsByOrderId.set(item.orderId, [item]);
+    }
+    return orders.map((o) => ({
+      ...o,
+      items: itemsByOrderId.get(o.id) ?? [],
+    }));
   }
   async pharmacyOrders(userId: string, pharmacyId: string) {
     await this.assertStaff(userId, pharmacyId);
@@ -700,6 +734,7 @@ export class PharmaciesService {
       orderRepo: Repository<PharmacyOrder>,
       itemRepo: Repository<PharmacyOrderItem>,
       inventoryRepo: Repository<PharmacyInventory>,
+      auditRepo: Repository<PharmacyAuditLog>,
     ) => {
       const review = await reviewRepo.save(
         reviewRepo.create({
@@ -735,6 +770,21 @@ export class PharmaciesService {
           await this.restoreInventory(orderId!, itemRepo, inventoryRepo);
         }
       }
+      // Committed in the same transaction as the review row and order
+      // transition above — otherwise a failure here would leave the
+      // clinical decision (and any inventory restoration) applied with no
+      // corresponding audit entry, and a retry can't repair it once the
+      // order has left under_review (the preliminary check above now
+      // correctly refuses a second decision).
+      await this.audit(
+        userId,
+        pharmacyId,
+        `prescription.${dto.decision}`,
+        "prescription",
+        prescriptionId,
+        {},
+        auditRepo,
+      );
       return review;
     };
     const manager = this.orders.manager;
@@ -745,17 +795,17 @@ export class PharmaciesService {
             tx.getRepository(PharmacyOrder),
             tx.getRepository(PharmacyOrderItem),
             tx.getRepository(PharmacyInventory),
+            tx.getRepository(PharmacyAuditLog),
           ),
         )
-      : await run(this.reviews, this.orders, this.orderItems, this.inventory);
+      : await run(
+          this.reviews,
+          this.orders,
+          this.orderItems,
+          this.inventory,
+          this.audits,
+        );
 
-    await this.audit(
-      userId,
-      pharmacyId,
-      `prescription.${dto.decision}`,
-      "prescription",
-      prescriptionId,
-    );
     return review;
   }
   // Customer-facing upload — happens *before* checkout, so the cart can

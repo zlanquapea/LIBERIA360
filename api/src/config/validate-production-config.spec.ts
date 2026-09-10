@@ -130,7 +130,10 @@ describe("validateProductionConfig", () => {
     );
   });
 
-  it("warns but does not exit when S3_PRIVATE_BUCKET is unset", () => {
+  it("refuses to boot in production with STORAGE_DRIVER=s3 and no S3_PRIVATE_BUCKET", () => {
+    // Unlike the other storage/mail/push checks, this one is fatal: the
+    // fallback silently writes private uploads (prescriptions) into the
+    // public bucket, a live privacy exposure rather than a missing feature.
     const configService = buildConfigService({
       storage: {
         driver: "s3",
@@ -146,8 +149,8 @@ describe("validateProductionConfig", () => {
       },
     });
     validateProductionConfig(configService);
-    expect(exitSpy).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("S3_PRIVATE_BUCKET"),
     );
   });

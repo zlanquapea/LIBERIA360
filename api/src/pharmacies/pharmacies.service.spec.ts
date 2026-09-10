@@ -84,6 +84,7 @@ describe("PharmaciesService", () => {
   let service: PharmaciesService;
   let pharmacyRepo: {
     findOneBy: jest.Mock;
+    findOneByOrFail: jest.Mock;
     save: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
@@ -138,6 +139,9 @@ describe("PharmaciesService", () => {
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(pharmacy),
+      getOneOrFail: pharmacy
+        ? jest.fn().mockResolvedValue(pharmacy)
+        : jest.fn().mockRejectedValue(new Error("not found")),
     });
   }
   function product(overrides: Partial<PharmacyProduct> = {}): PharmacyProduct {
@@ -156,6 +160,7 @@ describe("PharmaciesService", () => {
   beforeEach(async () => {
     pharmacyRepo = {
       findOneBy: jest.fn(),
+      findOneByOrFail: jest.fn(),
       save: jest.fn((x) => Promise.resolve(x)),
       createQueryBuilder: jest.fn(),
     };
@@ -603,6 +608,46 @@ describe("PharmaciesService", () => {
     });
   });
 
+  describe("customerOrders", () => {
+    it("attaches each order's line items so a customer's order history is distinguishable", async () => {
+      orderRepo.find.mockResolvedValue([
+        { id: "order-1", finalTotal: "10.00" },
+        { id: "order-2", finalTotal: "10.00" },
+      ]);
+      orderItemRepo.find.mockResolvedValue([
+        { id: "item-1", orderId: "order-1", name: "Paracetamol", quantity: 2 },
+        { id: "item-2", orderId: "order-2", name: "Vitamin C", quantity: 1 },
+      ]);
+
+      const orders = await service.customerOrders("customer-1");
+
+      expect(orders).toEqual([
+        expect.objectContaining({
+          id: "order-1",
+          items: [
+            {
+              id: "item-1",
+              orderId: "order-1",
+              name: "Paracetamol",
+              quantity: 2,
+            },
+          ],
+        }),
+        expect.objectContaining({
+          id: "order-2",
+          items: [
+            {
+              id: "item-2",
+              orderId: "order-2",
+              name: "Vitamin C",
+              quantity: 1,
+            },
+          ],
+        }),
+      ]);
+    });
+  });
+
   describe("transition", () => {
     it("restores reserved inventory when an order is cancelled", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
@@ -901,6 +946,57 @@ describe("PharmaciesService", () => {
       } as any);
 
       expect(pharmacyRepo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("saveProfile", () => {
+    it("sends an approved pharmacy back to pending when its licence number changes", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-9999",
+      } as any);
+
+      // An admin verified LR-PHM-0042 specifically — a different licence
+      // number is unreviewed evidence and must not keep the "approved"
+      // (publicly visible, verified-badge) status.
+      expect(saved.status).toBe(PharmacyStatus.PENDING);
+    });
+
+    it("leaves an approved pharmacy's status untouched when the licence number is unchanged", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy Renamed",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-0042",
+      } as any);
+
+      expect(saved.status).toBe(PharmacyStatus.APPROVED);
     });
   });
 });

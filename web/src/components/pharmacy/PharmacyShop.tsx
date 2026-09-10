@@ -7,6 +7,9 @@ import { createPharmacyOrder, uploadPrescription } from "@/lib/pharmacy-api";
 // pharmacy (pickupEnabled=false) previously still opened on "pickup", so
 // its own delivery radio sat unchecked and checkout rejected the
 // unselected default until the customer noticed and switched it by hand.
+// PharmacyProfileDto permits neither flag being set; the result there
+// doesn't matter because hasFulfillmentMethod() below disables ordering
+// entirely in that case rather than letting a phantom method through.
 function defaultFulfillmentMethod(pharmacy: Pick<Pharmacy, "pickupEnabled" | "deliveryEnabled">) {
   return pharmacy.pickupEnabled ? "pickup" : "delivery";
 }
@@ -39,6 +42,11 @@ export function PharmacyShop({
   // free items would have a $0 subtotal and read as "empty" if that were
   // used as the signal, even though checkout has real items to submit.
   const cartIsEmpty = Object.values(cart).every((q) => !q);
+  // ProductDto/PharmacyProfileDto permit a pharmacy with neither flag set —
+  // the API always rejects an order whose fulfillmentMethod isn't actually
+  // enabled, so ordering must be disabled up front rather than defaulting
+  // "method" to a value that's guaranteed to fail at checkout.
+  const hasFulfillmentMethod = pharmacy.pickupEnabled || pharmacy.deliveryEnabled;
   const subtotal = useMemo(
       () =>
         products.reduce((s, p) => s + Number(p.price) * (cart[p.id] || 0), 0),
@@ -50,6 +58,10 @@ export function PharmacyShop({
       (p) => cart[p.id] && p.prescriptionRequired,
     );
   async function checkout() {
+    if (!hasFulfillmentMethod) {
+      setNotice("This pharmacy isn't currently accepting orders.");
+      return;
+    }
     if (needsPrescription && (!prescriptionFile || !consent)) {
       setNotice(
         "Prescription items require a secure prescription upload and your consent before they can be submitted.",
@@ -182,29 +194,35 @@ export function PharmacyShop({
               ))}
           </ul>
         )}
-        <fieldset className="space-y-2">
-          <legend className="font-semibold">Fulfillment</legend>
-          {pharmacy.pickupEnabled && (
-            <label className="block">
-              <input
-                type="radio"
-                checked={method === "pickup"}
-                onChange={() => setMethod("pickup")}
-              />{" "}
-              Pickup
-            </label>
-          )}
-          {pharmacy.deliveryEnabled && (
-            <label className="block">
-              <input
-                type="radio"
-                checked={method === "delivery"}
-                onChange={() => setMethod("delivery")}
-              />{" "}
-              Delivery
-            </label>
-          )}
-        </fieldset>
+        {hasFulfillmentMethod ? (
+          <fieldset className="space-y-2">
+            <legend className="font-semibold">Fulfillment</legend>
+            {pharmacy.pickupEnabled && (
+              <label className="block">
+                <input
+                  type="radio"
+                  checked={method === "pickup"}
+                  onChange={() => setMethod("pickup")}
+                />{" "}
+                Pickup
+              </label>
+            )}
+            {pharmacy.deliveryEnabled && (
+              <label className="block">
+                <input
+                  type="radio"
+                  checked={method === "delivery"}
+                  onChange={() => setMethod("delivery")}
+                />{" "}
+                Delivery
+              </label>
+            )}
+          </fieldset>
+        ) : (
+          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            This pharmacy isn&apos;t currently accepting orders (no pickup or delivery is enabled).
+          </p>
+        )}
         {method === "delivery" && (
           <label className="mt-3 block">
             Delivery address
@@ -265,6 +283,7 @@ export function PharmacyShop({
         </dl>
         <button
           disabled={
+            !hasFulfillmentMethod ||
             cartIsEmpty ||
             placing ||
             (method === "delivery" && !address) ||

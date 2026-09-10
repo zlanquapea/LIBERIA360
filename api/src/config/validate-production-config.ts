@@ -50,6 +50,19 @@ export function validateProductionConfig(
         "    node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     );
   }
+  // Unlike the other storage/mail/push checks below, this one is fatal: the
+  // S3StorageProvider fallback silently writes prescriptions and other
+  // private uploads into the *public* bucket when S3_PRIVATE_BUCKET is
+  // unset, which is a live privacy exposure the moment a real prescription
+  // is uploaded — not a merely-missing feature like SMTP or VAPID keys.
+  if (storage.driver === "s3" && !storage.s3.privateBucket) {
+    fatal.push(
+      "S3_PRIVATE_BUCKET is not set with STORAGE_DRIVER=s3. Private uploads (e.g. pharmacy prescriptions) would " +
+        "silently fall back to S3_BUCKET, the same bucket public uploads use — anyone who discovers or leaks an " +
+        "object key bypasses every access check. Set S3_PRIVATE_BUCKET to a distinct bucket with no public-read " +
+        "policy before starting in production.",
+    );
+  }
 
   if (fatal.length > 0) {
     logger.error(
@@ -65,14 +78,6 @@ export function validateProductionConfig(
       "STORAGE_DRIVER is 'local' in production — uploaded photos are written to local disk on this instance. " +
         "They will not survive a redeploy and will not be visible from any other instance behind a load balancer. " +
         "Set STORAGE_DRIVER=s3 (see api/README.md) before real users start uploading photos.",
-    );
-  }
-  if (storage.driver === "s3" && !storage.s3.privateBucket) {
-    logger.warn(
-      "S3_PRIVATE_BUCKET is not set in production — private uploads (e.g. pharmacy prescriptions) fall back to " +
-        "S3_BUCKET, the same bucket public uploads use. A key prefix alone does not make an object private if that " +
-        "bucket's policy grants public read across all keys. Set S3_PRIVATE_BUCKET to a bucket with no public access " +
-        "before this feature handles real prescriptions.",
     );
   }
   if (!mail.smtpHost) {
