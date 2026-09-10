@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import { LocalStorageProvider } from "./local-storage.provider";
 import { localUploadsDir } from "../local-uploads-dir";
@@ -12,6 +12,7 @@ describe("LocalStorageProvider", () => {
   const mockedMkdir = mkdir as jest.Mock;
   const mockedWriteFile = writeFile as jest.Mock;
   const mockedReadFile = readFile as jest.Mock;
+  const mockedUnlink = unlink as jest.Mock;
   const mockedUploadsDir = localUploadsDir as jest.Mock;
   const mockedPrivateUploadsDir = localPrivateUploadsDir as jest.Mock;
 
@@ -22,6 +23,7 @@ describe("LocalStorageProvider", () => {
     mockedMkdir.mockResolvedValue(undefined);
     mockedWriteFile.mockResolvedValue(undefined);
     mockedReadFile.mockResolvedValue(Buffer.from("fake-bytes"));
+    mockedUnlink.mockResolvedValue(undefined);
   });
 
   it("writes the buffer into the uploads directory and returns a root-relative URL", async () => {
@@ -122,5 +124,46 @@ describe("LocalStorageProvider", () => {
       "Invalid storage key",
     );
     expect(mockedReadFile).not.toHaveBeenCalled();
+  });
+
+  it("deletePrivate() unlinks the file from the private uploads directory", async () => {
+    const provider = new LocalStorageProvider();
+    await provider.deletePrivate("prescriptions/abc123.jpg");
+
+    expect(mockedUnlink).toHaveBeenCalledWith(
+      join("/fake/private-uploads", "prescriptions", "abc123.jpg"),
+    );
+  });
+
+  it("deletePrivate() swallows an already-gone file instead of throwing", async () => {
+    const provider = new LocalStorageProvider();
+    const enoent = Object.assign(new Error("no such file"), {
+      code: "ENOENT",
+    });
+    mockedUnlink.mockRejectedValue(enoent);
+
+    await expect(
+      provider.deletePrivate("prescriptions/gone.jpg"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("deletePrivate() still surfaces a non-ENOENT failure", async () => {
+    const provider = new LocalStorageProvider();
+    mockedUnlink.mockRejectedValue(
+      Object.assign(new Error("permission denied"), { code: "EACCES" }),
+    );
+
+    await expect(
+      provider.deletePrivate("prescriptions/locked.jpg"),
+    ).rejects.toThrow("permission denied");
+  });
+
+  it("deletePrivate() refuses a key that would escape the private uploads directory", async () => {
+    const provider = new LocalStorageProvider();
+
+    await expect(provider.deletePrivate("../../etc/passwd")).rejects.toThrow(
+      "Invalid storage key",
+    );
+    expect(mockedUnlink).not.toHaveBeenCalled();
   });
 });

@@ -289,13 +289,17 @@ export class PharmaciesService {
           address: dto.address,
           location: dto.location,
           telephone: dto.telephone,
-          logoUrl: dto.logoUrl ?? null,
-          coverUrl: dto.coverUrl ?? null,
           pickupEnabled: dto.pickupEnabled,
           deliveryEnabled: dto.deliveryEnabled,
           deliveryFee: dto.deliveryFee,
-          // Preserve whatever licence number is already on file when the
-          // caller didn't send one (see the licenceProvided comment above).
+          // logoUrl/coverUrl and licenceNumber are all optional on the DTO
+          // for the same reason: a caller updating unrelated fields sends a
+          // PATCH built from what mine()/the dashboard list returned, which
+          // omits any field it didn't touch. Treating that omission as
+          // "clear it" would erase the existing images (or licence) on
+          // every unrelated edit, so only write these when explicitly sent.
+          ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
+          ...(dto.coverUrl !== undefined ? { coverUrl: dto.coverUrl } : {}),
           ...(licenceProvided ? { licenceNumber: dto.licenceNumber } : {}),
         };
         await pharmacyRepo.update({ id }, patch);
@@ -829,8 +833,23 @@ export class PharmaciesService {
     if (!order) throw new NotFoundException("Order not found");
     if (order.status !== PharmacyOrderStatus.UNDER_REVIEW)
       throw new ConflictException("This order is no longer awaiting review");
+    // privateStorageKey is `select: false` on the entity (see its own doc
+    // comment) — a plain find() leaves it `undefined`, which would make
+    // the "delete the superseded file" step below silently do nothing.
+    // Opt back in explicitly, the same way saveProfile()/verification()
+    // do for Pharmacy.licenceNumber.
     const prescription = await this.prescriptions.findOne({
       where: { orderId, customerUserId: userId },
+      select: {
+        id: true,
+        orderId: true,
+        customerUserId: true,
+        pharmacyId: true,
+        privateStorageKey: true,
+        originalFilename: true,
+        mimeType: true,
+        createdAt: true,
+      },
     });
     if (!prescription)
       throw new NotFoundException("Prescription not found for this order");
@@ -845,27 +864,107 @@ export class PharmaciesService {
       throw new ConflictException(
         "A new prescription can only be submitted after a pharmacist requests clarification",
       );
+    const previousKey = prescription.privateStorageKey;
     const filename = `prescriptions/${randomUUID()}${extname(file.originalName).slice(0, 10)}`;
     const { key } = await this.storage.savePrivate({
       buffer: file.buffer,
       filename,
       contentType: file.mimeType,
     });
-    await this.prescriptions.update(
-      { id: prescription.id },
-      {
-        privateStorageKey: key,
-        originalFilename: file.originalName,
-        mimeType: file.mimeType,
-      },
-    );
-    await this.audit(
-      userId,
-      order.pharmacyId,
-      "prescription.resubmitted",
-      "prescription",
-      prescription.id,
-    );
+
+    // The checks above are only the sequential case — a pharmacist can
+    // still accept or reject this prescription between them and the write
+    // below, which would otherwise let this resubmission silently replace
+    // the very file that decision was made on. Lock the order row the same
+    // way review()'s own clarification-request branch does, and recheck
+    // both it and the latest review after acquiring the lock: a concurrent
+    // decision either already committed (and this now correctly refuses)
+    // or is blocked behind this lock until its own transaction commits.
+    const run = async (
+      orderRepo: Repository<PharmacyOrder>,
+      reviewRepo: Repository<PrescriptionReview>,
+      prescriptionRepo: Repository<Prescription>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const lockedOrder = await orderRepo
+        .createQueryBuilder("o")
+        .setLock("pessimistic_write")
+        .where("o.id = :orderId", { orderId })
+        .andWhere("o.customerUserId = :userId", { userId })
+        .getOne();
+      if (
+        !lockedOrder ||
+        lockedOrder.status !== PharmacyOrderStatus.UNDER_REVIEW
+      )
+        throw new ConflictException("This order is no longer awaiting review");
+      const stillNeedsClarification = await reviewRepo
+        .createQueryBuilder("r")
+        .setLock("pessimistic_write")
+        .where("r.prescriptionId = :prescriptionId", {
+          prescriptionId: prescription.id,
+        })
+        .orderBy("r.createdAt", "DESC")
+        .getOne();
+      if (
+        stillNeedsClarification?.decision !==
+        PrescriptionDecision.CLARIFICATION_REQUESTED
+      )
+        throw new ConflictException(
+          "A new prescription can only be submitted after a pharmacist requests clarification",
+        );
+      await prescriptionRepo.update(
+        { id: prescription.id },
+        {
+          privateStorageKey: key,
+          originalFilename: file.originalName,
+          mimeType: file.mimeType,
+        },
+      );
+      await this.audit(
+        userId,
+        order.pharmacyId,
+        "prescription.resubmitted",
+        "prescription",
+        prescription.id,
+        {},
+        auditRepo,
+      );
+    };
+    const manager = this.orders.manager;
+    try {
+      if (manager?.transaction) {
+        await manager.transaction((tx) =>
+          run(
+            tx.getRepository(PharmacyOrder),
+            tx.getRepository(PrescriptionReview),
+            tx.getRepository(Prescription),
+            tx.getRepository(PharmacyAuditLog),
+          ),
+        );
+      } else {
+        await run(this.orders, this.reviews, this.prescriptions, this.audits);
+      }
+    } catch (err) {
+      // The new object was already written above — a refused replacement
+      // (the recheck lost the race) leaves it orphaned exactly like a
+      // successful one leaves the old one orphaned below. Same best-effort
+      // cleanup, same reasoning: never let a storage failure fail the
+      // response the caller is waiting on for an error that already has
+      // its own outcome.
+      await this.storage.deletePrivate(key).catch(() => {});
+      throw err;
+    }
+
+    // The file the pharmacist reviewed (or was about to) is now replaced —
+    // no database row references it anymore, and nothing else will ever
+    // clean it up (the storage interface has no listing/GC job), so delete
+    // it once the replacement is safely committed. Best-effort: a delete
+    // failure here must not fail the resubmission the customer is waiting
+    // on.
+    if (previousKey) {
+      await this.storage.deletePrivate(previousKey).catch(() => {});
+    }
+
     return { id: prescription.id };
   }
   async pharmacyOrders(userId: string, pharmacyId: string) {

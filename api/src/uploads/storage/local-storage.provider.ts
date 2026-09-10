@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { chmod, mkdir, readFile, writeFile } from "fs/promises";
+import { chmod, mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { dirname, resolve, sep } from "path";
 import { localUploadsDir } from "../local-uploads-dir";
 import { localPrivateUploadsDir } from "../local-private-uploads-dir";
@@ -80,5 +80,17 @@ export class LocalStorageProvider implements StorageProvider {
     const source = resolveWithinDir(dir, key);
     const buffer = await readFile(source);
     return { buffer };
+  }
+
+  async deletePrivate(key: string): Promise<void> {
+    const dir = localPrivateUploadsDir();
+    const target = resolveWithinDir(dir, key);
+    try {
+      await unlink(target);
+    } catch (err: unknown) {
+      // Already gone (a retried cleanup, or the key was never written) —
+      // the interface's doc comment says this must not throw for that case.
+      if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") throw err;
+    }
   }
 }

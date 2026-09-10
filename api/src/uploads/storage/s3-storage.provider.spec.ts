@@ -15,6 +15,10 @@ jest.mock("@aws-sdk/client-s3", () => ({
     __command: "GetObjectCommand",
     input,
   })),
+  DeleteObjectCommand: jest.fn().mockImplementation((input: unknown) => ({
+    __command: "DeleteObjectCommand",
+    input,
+  })),
 }));
 
 // Imported after the mock above so the module under test picks up the
@@ -125,5 +129,18 @@ describe("S3StorageProvider", () => {
       Key: "prescriptions/abc123.jpg",
     });
     expect(result).toEqual({ buffer: Buffer.from("fake-bytes") });
+  });
+
+  it("deletePrivate() deletes the object from the private bucket", async () => {
+    const provider = buildProvider();
+    await provider.deletePrivate("prescriptions/abc123.jpg");
+
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const command = mockSend.mock.calls[0][0];
+    expect(command.__command).toBe("DeleteObjectCommand");
+    expect(command.input).toEqual({
+      Bucket: "test-private-bucket",
+      Key: "prescriptions/abc123.jpg",
+    });
   });
 });

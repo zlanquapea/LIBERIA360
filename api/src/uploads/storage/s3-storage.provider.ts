@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -124,5 +125,15 @@ export class S3StorageProvider implements StorageProvider {
     );
     const bytes = await result.Body!.transformToByteArray();
     return { buffer: Buffer.from(bytes) };
+  }
+
+  // S3's DeleteObjectCommand already succeeds for a key that doesn't exist
+  // (no NoSuchKey error the way GetObjectCommand throws one) — satisfies the
+  // interface's "must not throw for an already-gone key" contract with no
+  // extra handling needed here.
+  async deletePrivate(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.privateBucket, Key: key }),
+    );
   }
 }

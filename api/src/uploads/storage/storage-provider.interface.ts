@@ -41,6 +41,15 @@ export interface StorageProvider {
   save(input: SaveFileInput): Promise<SaveFileResult>;
   savePrivate(input: SaveFileInput): Promise<SavePrivateFileResult>;
   readPrivate(key: string): Promise<ReadPrivateFileResult>;
+  // Deletes a private object by the key savePrivate() returned. Used when a
+  // caller replaces a private object under a new key (e.g. a prescription
+  // resubmission) and the old one would otherwise never be reachable again
+  // through any database row, yet would still sit in storage indefinitely —
+  // no caller currently needs to delete a *public* save()'d object, so
+  // there's deliberately no equivalent for that path. Resolving a key that
+  // was never written (already deleted, or never existed) must not throw —
+  // callers treat this as idempotent cleanup, not an existence check.
+  deletePrivate(key: string): Promise<void>;
 }
 
 export const STORAGE_PROVIDER = Symbol("STORAGE_PROVIDER");

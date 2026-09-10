@@ -131,12 +131,14 @@ describe("PharmaciesService", () => {
     create: jest.Mock;
     find: jest.Mock;
     findOne: jest.Mock;
+    createQueryBuilder: jest.Mock;
   };
   let auditRepo: { save: jest.Mock; create: jest.Mock };
   let storageProvider: {
     save: jest.Mock;
     savePrivate: jest.Mock;
     readPrivate: jest.Mock;
+    deletePrivate: jest.Mock;
   };
 
   function approvedPharmacy(overrides: Partial<Pharmacy> = {}): Pharmacy {
@@ -175,6 +177,19 @@ describe("PharmaciesService", () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(order),
+    });
+  }
+  // resubmitPrescription() locks and rechecks the latest review the same
+  // way review()'s clarification-request branch locks the order — mock
+  // that chain the same way mockOrderQueryBuilder does above.
+  function mockReviewQueryBuilder(
+    review: { decision: PrescriptionDecision } | null,
+  ) {
+    reviewRepo.createQueryBuilder.mockReturnValue({
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(review),
     });
   }
   // createOrder() locks and re-reads both the pharmacy and the cart's
@@ -275,6 +290,7 @@ describe("PharmaciesService", () => {
       create: jest.fn((x) => x),
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
+      createQueryBuilder: jest.fn(),
     };
     auditRepo = {
       save: jest.fn().mockResolvedValue(undefined),
@@ -286,6 +302,7 @@ describe("PharmaciesService", () => {
         .fn()
         .mockResolvedValue({ key: "prescriptions/rx-1.jpg" }),
       readPrivate: jest.fn().mockResolvedValue({ buffer: Buffer.from("x") }),
+      deletePrivate: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -936,8 +953,13 @@ describe("PharmaciesService", () => {
       prescriptionRepo.findOne.mockResolvedValue({
         id: "rx-1",
         orderId: "order-1",
+        privateStorageKey: "prescriptions/old-key.jpg",
       });
       reviewRepo.findOne.mockResolvedValue({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      mockReviewQueryBuilder({
         decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
       });
       storageProvider.savePrivate.mockResolvedValue({
@@ -955,6 +977,57 @@ describe("PharmaciesService", () => {
         expect.objectContaining({
           privateStorageKey: "prescriptions/new-key.jpg",
         }),
+      );
+      // The file the pharmacist's clarification request was about is now
+      // orphaned — nothing references it anymore — so it must be cleaned
+      // up once the replacement is safely committed.
+      expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
+        "prescriptions/old-key.jpg",
+      );
+    });
+
+    it("refuses the replacement — and cleans up the newly uploaded file — when a pharmacist decided between the initial check and the locked recheck", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+        privateStorageKey: "prescriptions/old-key.jpg",
+      });
+      reviewRepo.findOne.mockResolvedValue({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      // The locked recheck sees what the initial (unlocked) read couldn't:
+      // a pharmacist accepted this order in between.
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.ACCEPTED });
+      mockReviewQueryBuilder({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      storageProvider.savePrivate.mockResolvedValue({
+        key: "prescriptions/new-key.jpg",
+      });
+
+      await expect(
+        service.resubmitPrescription("user-1", "order-1", {
+          buffer: Buffer.from("fake-bytes"),
+          originalName: "script2.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prescriptionRepo.update).not.toHaveBeenCalled();
+      // The already-uploaded replacement must not be left dangling once
+      // the write it was for is refused.
+      expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
+        "prescriptions/new-key.jpg",
+      );
+      // ...and the file the (still-current) clarification request was
+      // about must be left alone — it was never replaced.
+      expect(storageProvider.deletePrivate).not.toHaveBeenCalledWith(
+        "prescriptions/old-key.jpg",
       );
     });
 
@@ -1463,6 +1536,80 @@ describe("PharmaciesService", () => {
 
       expect(saved.status).toBe(PharmacyStatus.APPROVED);
       expect(saved.licenceNumber).toBe("LR-PHM-0042");
+    });
+
+    it("preserves the existing logo/cover images when a PATCH omits them", async () => {
+      // Same reasoning as the licenceNumber test above: a client updating
+      // unrelated fields sends a PATCH built from what mine()/the dashboard
+      // list returned, which omits any image it didn't touch. Treating
+      // that omission as "clear it" would erase the pharmacy's images on
+      // every unrelated edit.
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+        logoUrl: "https://cdn.example.com/logo.jpg",
+        coverUrl: "https://cdn.example.com/cover.jpg",
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy Renamed",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-0042",
+        // logoUrl/coverUrl intentionally omitted
+      } as any);
+
+      expect(saved.logoUrl).toBe("https://cdn.example.com/logo.jpg");
+      expect(saved.coverUrl).toBe("https://cdn.example.com/cover.jpg");
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        expect.not.objectContaining({
+          logoUrl: expect.anything(),
+          coverUrl: expect.anything(),
+        }),
+      );
+    });
+
+    it("updates the logo/cover images when the PATCH explicitly sends them", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+        logoUrl: "https://cdn.example.com/old-logo.jpg",
+        coverUrl: "https://cdn.example.com/old-cover.jpg",
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy Renamed",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-0042",
+        logoUrl: "https://cdn.example.com/new-logo.jpg",
+        coverUrl: "https://cdn.example.com/new-cover.jpg",
+      } as any);
+
+      expect(saved.logoUrl).toBe("https://cdn.example.com/new-logo.jpg");
+      expect(saved.coverUrl).toBe("https://cdn.example.com/new-cover.jpg");
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        expect.objectContaining({
+          logoUrl: "https://cdn.example.com/new-logo.jpg",
+          coverUrl: "https://cdn.example.com/new-cover.jpg",
+        }),
+      );
     });
 
     it("creates the initial manager membership for a new application", async () => {
