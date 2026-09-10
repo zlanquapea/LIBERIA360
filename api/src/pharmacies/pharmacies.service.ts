@@ -237,31 +237,64 @@ export class PharmaciesService {
     // staff change it afterward, the pharmacy keeps showing the "approved"
     // badge for evidence nobody has actually reviewed. Any licence change
     // on an already-approved pharmacy must go back through admin review.
+    // licenceNumber is optional on the DTO, and mine()/the dashboard list
+    // never return it (select: false) for a caller to round-trip — a
+    // normal PATCH built from that response omits the field entirely, and
+    // must be read as "unchanged", not as clearing it to null.
+    const licenceProvided = dto.licenceNumber !== undefined;
     const licenceChanged =
       pharmacy.status === PharmacyStatus.APPROVED &&
-      (dto.licenceNumber ?? null) !== (pharmacy.licenceNumber ?? null);
+      licenceProvided &&
+      dto.licenceNumber !== (pharmacy.licenceNumber ?? null);
     Object.assign(pharmacy, dto, {
       slug: pharmacy.slug || `${slugify(dto.name)}-${Date.now().toString(36)}`,
+      // Preserve whatever licence number is already on file rather than
+      // letting Object.assign blank it out when the caller didn't send one.
+      ...(licenceProvided ? {} : { licenceNumber: pharmacy.licenceNumber }),
       ...(licenceChanged ? { status: PharmacyStatus.PENDING } : {}),
     });
-    const saved = await this.pharmacies.save(pharmacy);
-    if (!id)
-      await this.staff.save(
-        this.staff.create({
-          pharmacyId: saved.id,
-          userId,
-          role: "manager" as any,
-          active: true,
-        }),
+
+    // The pharmacy row, its initial manager membership (new applications
+    // only), and the audit entry are one unit — without a transaction, a
+    // failure partway through (e.g. the membership insert) leaves an
+    // orphan pharmacy the applicant can't reach through mine() and can't
+    // retry without creating a duplicate application.
+    const run = async (
+      pharmacyRepo: Repository<Pharmacy>,
+      staffRepo: Repository<PharmacyStaff>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const saved = await pharmacyRepo.save(pharmacy);
+      if (!id)
+        await staffRepo.save(
+          staffRepo.create({
+            pharmacyId: saved.id,
+            userId,
+            role: "manager" as any,
+            active: true,
+          }),
+        );
+      await this.audit(
+        userId,
+        saved.id,
+        id ? "pharmacy.updated" : "pharmacy.applied",
+        "pharmacy",
+        saved.id,
+        {},
+        auditRepo,
       );
-    await this.audit(
-      userId,
-      saved.id,
-      id ? "pharmacy.updated" : "pharmacy.applied",
-      "pharmacy",
-      saved.id,
-    );
-    return saved;
+      return saved;
+    };
+    const manager = this.pharmacies.manager;
+    return manager?.transaction
+      ? manager.transaction((tx) =>
+          run(
+            tx.getRepository(Pharmacy),
+            tx.getRepository(PharmacyStaff),
+            tx.getRepository(PharmacyAuditLog),
+          ),
+        )
+      : run(this.pharmacies, this.staff, this.audits);
   }
   // The only way a pharmacy gets any staff beyond the manager saveProfile()
   // creates automatically for a new application — without this, a freshly
@@ -280,40 +313,75 @@ export class PharmaciesService {
       );
     const user = await this.users.findByEmail(dto.email);
     if (!user) throw new NotFoundException("No account found for that email");
-    let member = await this.staff.findOne({
-      where: { pharmacyId, userId: user.id },
-    });
-    // If this call would demote the pharmacy's only active manager (most
-    // often a manager doing it to themselves), refuse it: this same
-    // endpoint requires the caller already be a manager, so once the last
-    // one is gone nobody can assign a replacement without direct DB access.
-    if (
-      member?.role === PharmacyStaffRole.MANAGER &&
-      member.active &&
-      dto.role !== PharmacyStaffRole.MANAGER
-    ) {
-      const managerCount = await this.staff.count({
-        where: { pharmacyId, role: PharmacyStaffRole.MANAGER, active: true },
+
+    const run = async (
+      staffRepo: Repository<PharmacyStaff>,
+      auditRepo: Repository<PharmacyAuditLog>,
+      countActiveManagers: () => Promise<number>,
+    ) => {
+      let member = await staffRepo.findOne({
+        where: { pharmacyId, userId: user.id },
       });
-      if (managerCount <= 1)
-        throw new ConflictException(
-          "Cannot demote the pharmacy's only manager — assign another manager first",
-        );
+      // If this call would demote the pharmacy's only active manager (most
+      // often a manager doing it to themselves), refuse it: this same
+      // endpoint requires the caller already be a manager, so once the last
+      // one is gone nobody can assign a replacement without direct DB
+      // access. countActiveManagers() locks the pharmacy's active-manager
+      // rows when running inside a real transaction (see below), so two
+      // concurrent demotions can't both observe a count above 1 before
+      // either commits — the second blocks until the first commits, then
+      // re-reads the now-updated membership.
+      if (
+        member?.role === PharmacyStaffRole.MANAGER &&
+        member.active &&
+        dto.role !== PharmacyStaffRole.MANAGER
+      ) {
+        if ((await countActiveManagers()) <= 1)
+          throw new ConflictException(
+            "Cannot demote the pharmacy's only manager — assign another manager first",
+          );
+      }
+      member = Object.assign(
+        member ?? staffRepo.create({ pharmacyId, userId: user.id }),
+        { role: dto.role, active: true },
+      );
+      const saved = await staffRepo.save(member);
+      await this.audit(
+        managerId,
+        pharmacyId,
+        "staff.assigned",
+        "staff",
+        saved.id,
+        { userId: user.id, role: dto.role },
+        auditRepo,
+      );
+      return saved;
+    };
+
+    const txManager = this.staff.manager;
+    if (txManager?.transaction) {
+      return txManager.transaction((tx) => {
+        const staffRepo = tx.getRepository(PharmacyStaff);
+        return run(staffRepo, tx.getRepository(PharmacyAuditLog), async () => {
+          // Postgres rejects `SELECT count(*) ... FOR UPDATE` outright
+          // ("FOR UPDATE is not allowed with aggregate functions") — fetch
+          // and lock the matching rows instead, and count them in JS.
+          const locked = await staffRepo
+            .createQueryBuilder("s")
+            .setLock("pessimistic_write")
+            .where("s.pharmacyId = :pharmacyId", { pharmacyId })
+            .andWhere("s.role = :role", { role: PharmacyStaffRole.MANAGER })
+            .andWhere("s.active = :active", { active: true })
+            .getMany();
+          return locked.length;
+        });
+      });
     }
-    member = Object.assign(
-      member ?? this.staff.create({ pharmacyId, userId: user.id }),
-      { role: dto.role, active: true },
+    return run(this.staff, this.audits, () =>
+      this.staff.count({
+        where: { pharmacyId, role: PharmacyStaffRole.MANAGER, active: true },
+      }),
     );
-    const saved = await this.staff.save(member);
-    await this.audit(
-      managerId,
-      pharmacyId,
-      "staff.assigned",
-      "staff",
-      saved.id,
-      { userId: user.id, role: dto.role },
-    );
-    return saved;
   }
   async saveProduct(
     userId: string,

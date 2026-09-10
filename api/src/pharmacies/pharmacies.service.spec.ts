@@ -86,6 +86,7 @@ describe("PharmaciesService", () => {
     findOneBy: jest.Mock;
     findOneByOrFail: jest.Mock;
     save: jest.Mock;
+    create: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let staffRepo: {
@@ -163,6 +164,7 @@ describe("PharmaciesService", () => {
       findOneBy: jest.fn(),
       findOneByOrFail: jest.fn(),
       save: jest.fn((x) => Promise.resolve(x)),
+      create: jest.fn((x) => x),
       createQueryBuilder: jest.fn(),
     };
     staffRepo = {
@@ -1038,6 +1040,51 @@ describe("PharmaciesService", () => {
       } as any);
 
       expect(saved.status).toBe(PharmacyStatus.APPROVED);
+    });
+
+    it("leaves an approved pharmacy's status and licence number untouched when the field is omitted entirely", async () => {
+      // mine()/the dashboard list never return licenceNumber (select:
+      // false), so a normal PATCH built from that response omits the
+      // field — this must read as "unchanged", not as clearing it to null.
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+      });
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy Renamed",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        // licenceNumber intentionally omitted
+      } as any);
+
+      expect(saved.status).toBe(PharmacyStatus.APPROVED);
+      expect(saved.licenceNumber).toBe("LR-PHM-0042");
+    });
+
+    it("creates the initial manager membership for a new application", async () => {
+      staffRepo.save.mockResolvedValue({ id: "staff-1" });
+
+      await service.saveProfile("user-1", undefined, {
+        name: "New Pharmacy",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+      } as any);
+
+      expect(staffRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-1", role: "manager" }),
+      );
     });
   });
 });
