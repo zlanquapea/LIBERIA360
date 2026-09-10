@@ -469,10 +469,34 @@ export class PharmaciesService {
       auditRepo: Repository<PharmacyAuditLog>,
     ) => {
       const saved = await productRepo.save(product);
-      await inventoryRepo.upsert(
-        { productId: saved.id, quantity: dto.stockQuantity },
-        ["productId"],
-      );
+      if (!id) {
+        // A new product has no prior stock to race against.
+        await inventoryRepo.upsert(
+          { productId: saved.id, quantity: dto.stockQuantity },
+          ["productId"],
+        );
+      } else if (dto.previousStockQuantity !== undefined) {
+        // Applied as a delta off whatever is *actually* stored right now,
+        // not an absolute overwrite of the count this edit form loaded —
+        // see ProductDto.previousStockQuantity's own doc comment for the
+        // lost-update this closes (a concurrent checkout decrement landing
+        // while the form sat open). Locked first so that decrement can't
+        // land between this read and the update below.
+        const current = await inventoryRepo
+          .createQueryBuilder("inv")
+          .setLock("pessimistic_write")
+          .where("inv.productId = :productId", { productId: saved.id })
+          .getOne();
+        const delta = dto.stockQuantity - dto.previousStockQuantity;
+        const nextQuantity = Math.max(0, (current?.quantity ?? 0) + delta);
+        await inventoryRepo.upsert(
+          { productId: saved.id, quantity: nextQuantity },
+          ["productId"],
+        );
+      }
+      // else: an edit that didn't say what it originally saw leaves stock
+      // untouched entirely — same "omitted means unchanged" convention as
+      // logoUrl/coverUrl/licenceNumber elsewhere in this file.
       await this.audit(
         userId,
         pharmacyId,
@@ -1326,23 +1350,51 @@ export class PharmaciesService {
       filename,
       contentType: file.mimeType,
     });
-    const rx = await this.prescriptions.save(
-      this.prescriptions.create({
-        customerUserId: userId,
+    // The row and its audit entry commit together — otherwise a failure
+    // between them (or in the row insert itself) leaves the object this
+    // savePrivate() call just wrote with no database row through which it
+    // can ever be authorized, retained, or deleted, and a retry from the
+    // client (having seen only a 500) writes yet another orphaned copy.
+    const run = async (
+      prescriptionRepo: Repository<Prescription>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const rx = await prescriptionRepo.save(
+        prescriptionRepo.create({
+          customerUserId: userId,
+          pharmacyId,
+          orderId: null,
+          privateStorageKey: key,
+          originalFilename: file.originalName,
+          mimeType: file.mimeType,
+        }),
+      );
+      await this.audit(
+        userId,
         pharmacyId,
-        orderId: null,
-        privateStorageKey: key,
-        originalFilename: file.originalName,
-        mimeType: file.mimeType,
-      }),
-    );
-    await this.audit(
-      userId,
-      pharmacyId,
-      "prescription.uploaded",
-      "prescription",
-      rx.id,
-    );
+        "prescription.uploaded",
+        "prescription",
+        rx.id,
+        {},
+        auditRepo,
+      );
+      return rx;
+    };
+    const manager = this.prescriptions.manager;
+    let rx: Prescription;
+    try {
+      rx = manager?.transaction
+        ? await manager.transaction((tx) =>
+            run(
+              tx.getRepository(Prescription),
+              tx.getRepository(PharmacyAuditLog),
+            ),
+          )
+        : await run(this.prescriptions, this.audits);
+    } catch (err) {
+      await this.storage.deletePrivate(key).catch(() => {});
+      throw err;
+    }
     return { id: rx.id };
   }
   // Auditable, access-controlled reveal of an uploaded prescription's file

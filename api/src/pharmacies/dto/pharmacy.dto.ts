@@ -77,6 +77,20 @@ export class ProductDto {
   @IsOptional() @IsString() imageUrl?: string;
   @Type(() => Number) @IsNumber() @Min(0) price: number;
   @Type(() => Number) @IsInt() @Min(0) @Max(100000) stockQuantity: number;
+  // The stock level the editing form actually loaded, before the staff
+  // member made any changes — required (by saveProduct(), not by
+  // decorator, since it's meaningless on a create) so an edit can be
+  // applied as a *delta* off the currently-stored quantity instead of
+  // blindly overwriting it. Without this, stock a customer's concurrent
+  // checkout decremented while the form sat open silently comes back the
+  // moment the form is saved, since it always resubmits the count it
+  // first loaded.
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  previousStockQuantity?: number;
   @IsBoolean() prescriptionRequired: boolean;
   @IsOptional() @IsBoolean() isVisible?: boolean;
 }

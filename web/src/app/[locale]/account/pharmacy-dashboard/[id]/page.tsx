@@ -47,6 +47,18 @@ const NEXT_STATUSES: Record<string, string[]> = {
   rejected: [],
   cancelled: [],
 };
+// "preparing" offers both dispatch options above, but only one is ever
+// valid for a given order — the API's own NEXT[] map (and its 409) doesn't
+// distinguish by fulfillmentMethod either, it just rejects whichever one
+// doesn't match, so filter it out here rather than showing a button that's
+// guaranteed to fail.
+function nextStatusesFor(order: PharmacyOrder): string[] {
+  return (NEXT_STATUSES[order.status] ?? []).filter((next) => {
+    if (next === "ready_for_pickup") return order.fulfillmentMethod === "pickup";
+    if (next === "out_for_delivery") return order.fulfillmentMethod === "delivery";
+    return true;
+  });
+}
 
 function ProfileForm({
   pharmacy,
@@ -336,6 +348,10 @@ function ProductForm({
           imageUrl: editing.imageUrl ?? undefined,
           price: Number(editing.price),
           stockQuantity: editing.inventory?.quantity ?? 0,
+          // Captured once, at load time, so the save can be applied as a
+          // delta off whatever is actually stored by then — not resent as
+          // this fixed value on every re-render.
+          previousStockQuantity: editing.inventory?.quantity ?? 0,
           prescriptionRequired: editing.prescriptionRequired,
           isVisible: editing.isVisible,
         }
@@ -613,6 +629,18 @@ function ReviewForm({
       <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
         Prescription review required
       </p>
+      {/* Streams the actual bytes through the cookie-authenticated API
+          route (see PharmaciesController#prescriptionFile) — there's no
+          public URL for this file, so a plain <img>/href to the storage
+          provider is never an option. */}
+      <a
+        href={`/api/v1/pharmacy-marketplace/prescriptions/${prescriptionId}/file`}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-1 inline-block text-sm font-semibold text-brand-700 underline"
+      >
+        View uploaded prescription
+      </a>
       <label className="mt-2 block text-sm">
         Notes (shown to the customer on a clarification request)
         <textarea
@@ -717,9 +745,9 @@ function OrdersSection({ pharmacyId }: { pharmacyId: string }) {
                 onDone={load}
               />
             )}
-            {(NEXT_STATUSES[o.status] ?? []).length > 0 && (
+            {nextStatusesFor(o).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {NEXT_STATUSES[o.status].map((next) => (
+                {nextStatusesFor(o).map((next) => (
                   <button
                     key={next}
                     disabled={transitioning === o.id}

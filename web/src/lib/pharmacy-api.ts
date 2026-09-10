@@ -230,6 +230,11 @@ export type PharmacyProductInput = {
   imageUrl?: string;
   price: number;
   stockQuantity: number;
+  // The stock level this form loaded before editing began — lets the API
+  // apply the change as a delta instead of an absolute overwrite, so a
+  // concurrent checkout decrement isn't silently undone by this save. See
+  // ProductDto.previousStockQuantity on the API side.
+  previousStockQuantity?: number;
   prescriptionRequired: boolean;
   isVisible?: boolean;
 };

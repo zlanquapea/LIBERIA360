@@ -99,6 +99,10 @@ describe("PharmaciesService", () => {
   let usersService: { findByEmail: jest.Mock };
   let productRepo: {
     find: jest.Mock;
+    findOneBy: jest.Mock;
+    findOneOrFail: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
     delete: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
@@ -106,7 +110,10 @@ describe("PharmaciesService", () => {
     find: jest.Mock;
     decrement: jest.Mock;
     increment: jest.Mock;
+    upsert: jest.Mock;
+    createQueryBuilder: jest.Mock;
   };
+  let categoryRepo: { findOneBy: jest.Mock };
   let orderRepo: {
     create: jest.Mock;
     save: jest.Mock;
@@ -218,6 +225,16 @@ describe("PharmaciesService", () => {
       getMany: jest.fn().mockResolvedValue(products),
     });
   }
+  // saveProduct() locks and re-reads the *current* inventory row before
+  // applying a stock delta — mock that chain the same way
+  // mockPharmacyQueryBuilder does above.
+  function mockInventoryQueryBuilder(inventory: { quantity: number } | null) {
+    inventoryRepo.createQueryBuilder.mockReturnValue({
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(inventory),
+    });
+  }
   // Convenience wrapper for createOrder() tests: wires up the locked
   // pharmacy read, locked product read, and the separate inventory lookup
   // it now does instead of relying on PharmacyProduct.inventory.
@@ -264,6 +281,10 @@ describe("PharmaciesService", () => {
     usersService = { findByEmail: jest.fn() };
     productRepo = {
       find: jest.fn(),
+      findOneBy: jest.fn(),
+      findOneOrFail: jest.fn((x) => Promise.resolve({ id: "product-1", ...x })),
+      save: jest.fn((x) => Promise.resolve({ id: "product-1", ...x })),
+      create: jest.fn((x) => x),
       delete: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
@@ -271,6 +292,11 @@ describe("PharmaciesService", () => {
       find: jest.fn().mockResolvedValue([]),
       decrement: jest.fn().mockResolvedValue(undefined),
       increment: jest.fn().mockResolvedValue(undefined),
+      upsert: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(),
+    };
+    categoryRepo = {
+      findOneBy: jest.fn().mockResolvedValue({ id: "category-1" }),
     };
     orderRepo = {
       create: jest.fn((x) => x),
@@ -334,7 +360,10 @@ describe("PharmaciesService", () => {
           provide: getRepositoryToken(PharmacyInventory),
           useValue: inventoryRepo,
         },
-        { provide: getRepositoryToken(PharmacyProductCategory), useValue: {} },
+        {
+          provide: getRepositoryToken(PharmacyProductCategory),
+          useValue: categoryRepo,
+        },
         { provide: getRepositoryToken(PharmacyOrder), useValue: orderRepo },
         {
           provide: getRepositoryToken(PharmacyOrderItem),
@@ -1425,6 +1454,96 @@ describe("PharmaciesService", () => {
     });
   });
 
+  describe("saveProduct", () => {
+    beforeEach(() => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+    });
+
+    it("sets stock as an absolute value for a new product — there is no prior stock to race against", async () => {
+      await service.saveProduct("user-1", "pharmacy-1", undefined, {
+        name: "New Product",
+        categoryId: "category-1",
+        price: 10,
+        stockQuantity: 20,
+        prescriptionRequired: false,
+      } as any);
+
+      expect(inventoryRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(inventoryRepo.upsert).toHaveBeenCalledWith(
+        { productId: "product-1", quantity: 20 },
+        ["productId"],
+      );
+    });
+
+    it("applies an edit as a delta off the currently stored quantity, not the value the edit form loaded", async () => {
+      productRepo.findOneBy.mockResolvedValue({
+        id: "product-1",
+        pharmacyId: "pharmacy-1",
+        name: "Paracetamol",
+      });
+      // The form loaded 10 in stock and the staff member reduced it to 8 (a
+      // delta of -2) — but a customer's concurrent checkout has already
+      // brought the real count down to 7 while the form sat open.
+      mockInventoryQueryBuilder({ quantity: 7 });
+
+      await service.saveProduct("user-1", "pharmacy-1", "product-1", {
+        name: "Paracetamol",
+        categoryId: "category-1",
+        price: 10,
+        stockQuantity: 8,
+        previousStockQuantity: 10,
+        prescriptionRequired: false,
+      } as any);
+
+      expect(inventoryRepo.upsert).toHaveBeenCalledWith(
+        { productId: "product-1", quantity: 5 },
+        ["productId"],
+      );
+    });
+
+    it("never lets a delta take stock negative", async () => {
+      productRepo.findOneBy.mockResolvedValue({
+        id: "product-1",
+        pharmacyId: "pharmacy-1",
+        name: "Paracetamol",
+      });
+      mockInventoryQueryBuilder({ quantity: 2 });
+
+      await service.saveProduct("user-1", "pharmacy-1", "product-1", {
+        name: "Paracetamol",
+        categoryId: "category-1",
+        price: 10,
+        stockQuantity: 0,
+        previousStockQuantity: 10,
+        prescriptionRequired: false,
+      } as any);
+
+      expect(inventoryRepo.upsert).toHaveBeenCalledWith(
+        { productId: "product-1", quantity: 0 },
+        ["productId"],
+      );
+    });
+
+    it("leaves stock untouched when the edit omits previousStockQuantity", async () => {
+      productRepo.findOneBy.mockResolvedValue({
+        id: "product-1",
+        pharmacyId: "pharmacy-1",
+        name: "Paracetamol",
+      });
+
+      await service.saveProduct("user-1", "pharmacy-1", "product-1", {
+        name: "Paracetamol (renamed)",
+        categoryId: "category-1",
+        price: 10,
+        stockQuantity: 999,
+        prescriptionRequired: false,
+      } as any);
+
+      expect(inventoryRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(inventoryRepo.upsert).not.toHaveBeenCalled();
+    });
+  });
+
   describe("uploadPrescription / prescriptionFile", () => {
     it("stores the file via the storage provider's private path and keeps only the returned key, never a URL", async () => {
       pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
@@ -1446,6 +1565,26 @@ describe("PharmaciesService", () => {
         expect.objectContaining({
           privateStorageKey: "prescriptions/abc123.jpg",
         }),
+      );
+    });
+
+    it("deletes the object it just wrote to storage when the row+audit write fails, instead of leaving it orphaned", async () => {
+      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
+      storageProvider.savePrivate.mockResolvedValue({
+        key: "prescriptions/abc123.jpg",
+      });
+      prescriptionRepo.save.mockRejectedValue(new Error("db down"));
+
+      await expect(
+        service.uploadPrescription("user-1", "pharmacy-1", {
+          buffer: Buffer.from("fake-bytes"),
+          originalName: "script.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ).rejects.toThrow("db down");
+
+      expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
+        "prescriptions/abc123.jpg",
       );
     });
 
