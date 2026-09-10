@@ -542,20 +542,23 @@ describe("PharmaciesService", () => {
       });
       // ...but the conditional update's row lock finds the order no
       // longer under_review by the time it runs (a genuinely concurrent
-      // second decision landed first) — this decision must not also
-      // restore inventory.
+      // second decision landed first) — the whole decision (including the
+      // review row just written) is rolled back rather than silently
+      // recording a contradictory review beside the winning one.
       orderRepo.update.mockResolvedValue({ affected: 0 });
 
-      await service.review("user-1", "pharmacy-1", "rx-1", {
-        decision: PrescriptionDecision.REJECTED,
-      } as any);
+      await expect(
+        service.review("user-1", "pharmacy-1", "rx-1", {
+          decision: PrescriptionDecision.REJECTED,
+        } as any),
+      ).rejects.toThrow(ConflictException);
 
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
     });
   });
 
   describe("pharmacyOrders", () => {
-    it("attaches each order's prescriptionId so staff can reach review()/prescriptionFile()", async () => {
+    it("attaches each order's prescriptionId and line items so staff can prepare/review orders", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
       orderRepo.find.mockResolvedValue([
         { id: "order-1", status: PharmacyOrderStatus.UNDER_REVIEW },
@@ -564,12 +567,38 @@ describe("PharmaciesService", () => {
       prescriptionRepo.find.mockResolvedValue([
         { id: "rx-1", orderId: "order-1" },
       ]);
+      orderItemRepo.find.mockResolvedValue([
+        { id: "item-1", orderId: "order-1", name: "Paracetamol", quantity: 2 },
+        { id: "item-2", orderId: "order-2", name: "Vitamin C", quantity: 1 },
+      ]);
 
       const orders = await service.pharmacyOrders("user-1", "pharmacy-1");
 
       expect(orders).toEqual([
-        expect.objectContaining({ id: "order-1", prescriptionId: "rx-1" }),
-        expect.objectContaining({ id: "order-2", prescriptionId: null }),
+        expect.objectContaining({
+          id: "order-1",
+          prescriptionId: "rx-1",
+          items: [
+            {
+              id: "item-1",
+              orderId: "order-1",
+              name: "Paracetamol",
+              quantity: 2,
+            },
+          ],
+        }),
+        expect.objectContaining({
+          id: "order-2",
+          prescriptionId: null,
+          items: [
+            {
+              id: "item-2",
+              orderId: "order-2",
+              name: "Vitamin C",
+              quantity: 1,
+            },
+          ],
+        }),
       ]);
     });
   });

@@ -523,21 +523,34 @@ export class PharmaciesService {
       where: { pharmacyId },
       order: { createdAt: "DESC" },
     });
+    const orderIds = orders.map((o) => o.id);
     // PharmacyOrder itself has no prescription reference (the FK points
     // the other way — Prescription.orderId), so without this a staff
     // member has no way to discover the id review()/prescriptionFile()
     // need for an under_review order: neither route is reachable from the
     // order queue alone. One extra query rather than N+1 per order.
-    const orderIds = orders.map((o) => o.id);
     const prescriptions = orderIds.length
       ? await this.prescriptions.find({ where: { orderId: In(orderIds) } })
       : [];
     const prescriptionIdByOrderId = new Map(
       prescriptions.map((p) => [p.orderId as string, p.id]),
     );
+    // Same story for line items: staff preparing an order need to know
+    // what's actually in it (product names, quantities), and there was no
+    // other route exposing that — just totals and a status.
+    const items = orderIds.length
+      ? await this.orderItems.find({ where: { orderId: In(orderIds) } })
+      : [];
+    const itemsByOrderId = new Map<string, typeof items>();
+    for (const item of items) {
+      const bucket = itemsByOrderId.get(item.orderId);
+      if (bucket) bucket.push(item);
+      else itemsByOrderId.set(item.orderId, [item]);
+    }
     return orders.map((o) => ({
       ...o,
       prescriptionId: prescriptionIdByOrderId.get(o.id) ?? null,
+      items: itemsByOrderId.get(o.id) ?? [],
     }));
   }
   async transition(
@@ -665,28 +678,38 @@ export class PharmaciesService {
           "This order has already left review — a new decision can't be recorded",
         );
     }
-    const review = await this.reviews.save(
-      this.reviews.create({
-        prescriptionId,
-        reviewerUserId: userId,
-        decision: dto.decision,
-        notes: dto.notes?.trim() || null,
-      }),
-    );
-    if (
+    const willTransitionOrder =
       rx.orderId &&
-      dto.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED
-    ) {
-      const newStatus =
-        dto.decision === PrescriptionDecision.ACCEPTED
-          ? PharmacyOrderStatus.ACCEPTED
-          : PharmacyOrderStatus.REJECTED;
-      const orderId = rx.orderId;
-      const run = async (
-        orderRepo: Repository<PharmacyOrder>,
-        itemRepo: Repository<PharmacyOrderItem>,
-        inventoryRepo: Repository<PharmacyInventory>,
-      ) => {
+      dto.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED;
+    const newStatus = willTransitionOrder
+      ? dto.decision === PrescriptionDecision.ACCEPTED
+        ? PharmacyOrderStatus.ACCEPTED
+        : PharmacyOrderStatus.REJECTED
+      : null;
+    const orderId = rx.orderId;
+
+    // The review row and (when applicable) the order's status transition
+    // are one decision — committed together, in this order, inside one
+    // transaction. Without that, two pharmacists deciding concurrently
+    // could both pass the preliminary under_review check above, both save
+    // a review row here, and only then race on the conditional UPDATE
+    // below — silently leaving a contradictory review (e.g. "rejected")
+    // recorded and audited beside whichever decision actually won.
+    const run = async (
+      reviewRepo: Repository<PrescriptionReview>,
+      orderRepo: Repository<PharmacyOrder>,
+      itemRepo: Repository<PharmacyOrderItem>,
+      inventoryRepo: Repository<PharmacyInventory>,
+    ) => {
+      const review = await reviewRepo.save(
+        reviewRepo.create({
+          prescriptionId,
+          reviewerUserId: userId,
+          decision: dto.decision,
+          notes: dto.notes?.trim() || null,
+        }),
+      );
+      if (willTransitionOrder && newStatus) {
         // Conditioned on the order still being under_review, same reasoning
         // as transition()'s conditional update: this row lock serializes a
         // concurrent second decision on the same prescription/order (e.g.
@@ -694,33 +717,38 @@ export class PharmaciesService {
         // move the order and, on rejection, restore its inventory.
         const result = await orderRepo.update(
           {
-            id: orderId,
+            id: orderId!,
             pharmacyId,
             status: PharmacyOrderStatus.UNDER_REVIEW,
           },
           { status: newStatus },
         );
+        if (!result.affected)
+          throw new ConflictException(
+            "This order was just decided by another request",
+          );
         // A rejected prescription means this order will never be
         // fulfilled — release the stock it reserved at checkout, same as
         // an explicit cancellation. REJECTED is terminal (NEXT[REJECTED]
         // is empty) so this can only happen once per order.
-        if (result.affected && newStatus === PharmacyOrderStatus.REJECTED) {
-          await this.restoreInventory(orderId, itemRepo, inventoryRepo);
+        if (newStatus === PharmacyOrderStatus.REJECTED) {
+          await this.restoreInventory(orderId!, itemRepo, inventoryRepo);
         }
-      };
-      const manager = this.orders.manager;
-      if (manager?.transaction) {
-        await manager.transaction((tx) =>
+      }
+      return review;
+    };
+    const manager = this.orders.manager;
+    const review = manager?.transaction
+      ? await manager.transaction((tx) =>
           run(
+            tx.getRepository(PrescriptionReview),
             tx.getRepository(PharmacyOrder),
             tx.getRepository(PharmacyOrderItem),
             tx.getRepository(PharmacyInventory),
           ),
-        );
-      } else {
-        await run(this.orders, this.orderItems, this.inventory);
-      }
-    }
+        )
+      : await run(this.reviews, this.orders, this.orderItems, this.inventory);
+
     await this.audit(
       userId,
       pharmacyId,
@@ -852,23 +880,49 @@ export class PharmaciesService {
         "Cannot approve a pharmacy with no licence number on file",
       );
     p.status = dto.decision;
-    await this.pharmacies.save(p);
-    await this.verifications.save(
-      this.verifications.create({
+
+    // The status change, the PharmacyVerification evidence record, and the
+    // audit entry all describe one decision — committed together so a
+    // failure partway through can't leave the pharmacy "approved" (and
+    // therefore publicly listed) with no verification record explaining
+    // why, or reporting failure to the caller for a decision that had, in
+    // fact, already taken effect.
+    const run = async (
+      pharmacyRepo: Repository<Pharmacy>,
+      verificationRepo: Repository<PharmacyVerification>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      await pharmacyRepo.save(p);
+      await verificationRepo.save(
+        verificationRepo.create({
+          pharmacyId,
+          reviewerUserId: adminId,
+          decision: dto.decision,
+          notes: dto.notes?.trim() || null,
+        }),
+      );
+      await this.audit(
+        adminId,
         pharmacyId,
-        reviewerUserId: adminId,
-        decision: dto.decision,
-        notes: dto.notes?.trim() || null,
-      }),
-    );
-    await this.audit(
-      adminId,
-      pharmacyId,
-      "verification.decided",
-      "pharmacy",
-      pharmacyId,
-      { decision: dto.decision },
-    );
+        "verification.decided",
+        "pharmacy",
+        pharmacyId,
+        { decision: dto.decision },
+        auditRepo,
+      );
+    };
+    const manager = this.pharmacies.manager;
+    if (manager?.transaction) {
+      await manager.transaction((tx) =>
+        run(
+          tx.getRepository(Pharmacy),
+          tx.getRepository(PharmacyVerification),
+          tx.getRepository(PharmacyAuditLog),
+        ),
+      );
+    } else {
+      await run(this.pharmacies, this.verifications, this.audits);
+    }
     return p;
   }
   applications() {

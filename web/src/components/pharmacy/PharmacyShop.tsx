@@ -34,6 +34,11 @@ export function PharmacyShop({
       (!category || p.categoryId === category) &&
       p.name.toLowerCase().includes(search.toLowerCase()),
   );
+  // Whether the cart holds anything is a question about quantities, not
+  // money — ProductDto allows a zero price (@Min(0)), so a cart of only
+  // free items would have a $0 subtotal and read as "empty" if that were
+  // used as the signal, even though checkout has real items to submit.
+  const cartIsEmpty = Object.values(cart).every((q) => !q);
   const subtotal = useMemo(
       () =>
         products.reduce((s, p) => s + Number(p.price) * (cart[p.id] || 0), 0),
@@ -161,7 +166,7 @@ export function PharmacyShop({
       </section>
       <aside className="h-fit rounded-2xl border bg-white p-5 dark:bg-slate-900">
         <h2 className="text-xl font-bold">Your cart</h2>
-        {!subtotal ? (
+        {cartIsEmpty ? (
           <p className="my-4 text-sm text-slate-500">Your cart is empty.</p>
         ) : (
           <ul className="my-4 space-y-2 text-sm">
@@ -260,7 +265,7 @@ export function PharmacyShop({
         </dl>
         <button
           disabled={
-            !subtotal ||
+            cartIsEmpty ||
             placing ||
             (method === "delivery" && !address) ||
             (needsPrescription && (!prescriptionFile || !consent))

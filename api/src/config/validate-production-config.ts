@@ -67,6 +67,14 @@ export function validateProductionConfig(
         "Set STORAGE_DRIVER=s3 (see api/README.md) before real users start uploading photos.",
     );
   }
+  if (storage.driver === "s3" && !storage.s3.privateBucket) {
+    logger.warn(
+      "S3_PRIVATE_BUCKET is not set in production — private uploads (e.g. pharmacy prescriptions) fall back to " +
+        "S3_BUCKET, the same bucket public uploads use. A key prefix alone does not make an object private if that " +
+        "bucket's policy grants public read across all keys. Set S3_PRIVATE_BUCKET to a bucket with no public access " +
+        "before this feature handles real prescriptions.",
+    );
+  }
   if (!mail.smtpHost) {
     logger.warn(
       "SMTP_HOST is not set in production — password reset and email verification messages will be logged, not delivered. " +

@@ -20,6 +20,7 @@ const SECURE_CONFIG: Pick<
     driver: "s3",
     s3: {
       bucket: "b",
+      privateBucket: "pb",
       region: "auto",
       accessKeyId: "k",
       secretAccessKey: "s",
@@ -113,6 +114,7 @@ describe("validateProductionConfig", () => {
         driver: "local",
         s3: {
           bucket: "",
+          privateBucket: "",
           region: "auto",
           accessKeyId: "",
           secretAccessKey: "",
@@ -125,6 +127,28 @@ describe("validateProductionConfig", () => {
     expect(exitSpy).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("STORAGE_DRIVER"),
+    );
+  });
+
+  it("warns but does not exit when S3_PRIVATE_BUCKET is unset", () => {
+    const configService = buildConfigService({
+      storage: {
+        driver: "s3",
+        s3: {
+          bucket: "b",
+          privateBucket: "",
+          region: "auto",
+          accessKeyId: "k",
+          secretAccessKey: "s",
+          endpoint: "",
+          publicUrlBase: "https://cdn.example.com",
+        },
+      },
+    });
+    validateProductionConfig(configService);
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("S3_PRIVATE_BUCKET"),
     );
   });
 
