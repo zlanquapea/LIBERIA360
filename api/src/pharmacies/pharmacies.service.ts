@@ -246,13 +246,6 @@ export class PharmaciesService {
       pharmacy.status === PharmacyStatus.APPROVED &&
       licenceProvided &&
       dto.licenceNumber !== (pharmacy.licenceNumber ?? null);
-    Object.assign(pharmacy, dto, {
-      slug: pharmacy.slug || `${slugify(dto.name)}-${Date.now().toString(36)}`,
-      // Preserve whatever licence number is already on file rather than
-      // letting Object.assign blank it out when the caller didn't send one.
-      ...(licenceProvided ? {} : { licenceNumber: pharmacy.licenceNumber }),
-      ...(licenceChanged ? { status: PharmacyStatus.PENDING } : {}),
-    });
 
     // The pharmacy row, its initial manager membership (new applications
     // only), and the audit entry are one unit — without a transaction, a
@@ -264,8 +257,12 @@ export class PharmaciesService {
       staffRepo: Repository<PharmacyStaff>,
       auditRepo: Repository<PharmacyAuditLog>,
     ) => {
-      const saved = await pharmacyRepo.save(pharmacy);
-      if (!id)
+      let saved: Pharmacy;
+      if (!id) {
+        const created = Object.assign(pharmacy, dto, {
+          slug: `${slugify(dto.name)}-${Date.now().toString(36)}`,
+        });
+        saved = await pharmacyRepo.save(created);
         await staffRepo.save(
           staffRepo.create({
             pharmacyId: saved.id,
@@ -274,6 +271,41 @@ export class PharmaciesService {
             active: true,
           }),
         );
+      } else {
+        // Only the DTO-controlled columns are written here — never the
+        // full stale entity read above `pharmacy` was fetched before this
+        // transaction started, so a plain save() would silently overwrite
+        // a status an admin changed concurrently (e.g. suspending this
+        // pharmacy) back to whatever this request happened to observe.
+        const patch: Partial<Pharmacy> = {
+          name: dto.name,
+          address: dto.address,
+          location: dto.location,
+          telephone: dto.telephone,
+          logoUrl: dto.logoUrl ?? null,
+          coverUrl: dto.coverUrl ?? null,
+          pickupEnabled: dto.pickupEnabled,
+          deliveryEnabled: dto.deliveryEnabled,
+          deliveryFee: dto.deliveryFee,
+          // Preserve whatever licence number is already on file when the
+          // caller didn't send one (see the licenceProvided comment above).
+          ...(licenceProvided ? { licenceNumber: dto.licenceNumber } : {}),
+        };
+        await pharmacyRepo.update({ id }, patch);
+        // Reset to pending only if the pharmacy is *still* approved at
+        // write time — conditioned the same way transition() conditions
+        // order status changes, so a concurrent admin suspension/rejection
+        // between the read above and here wins instead of being clobbered.
+        let resultStatus = pharmacy.status;
+        if (licenceChanged) {
+          const result = await pharmacyRepo.update(
+            { id, status: PharmacyStatus.APPROVED },
+            { status: PharmacyStatus.PENDING },
+          );
+          if (result.affected) resultStatus = PharmacyStatus.PENDING;
+        }
+        saved = { ...pharmacy, ...patch, id, status: resultStatus } as Pharmacy;
+      }
       await this.audit(
         userId,
         saved.id,
@@ -399,18 +431,43 @@ export class PharmaciesService {
       product ?? this.products.create({ pharmacyId }),
       dto,
     );
-    const saved = await this.products.save(product);
-    await this.inventory.upsert(
-      { productId: saved.id, quantity: dto.stockQuantity },
-      ["productId"],
-    );
-    await this.audit(
-      userId,
-      pharmacyId,
-      id ? "product.updated" : "product.created",
-      "product",
-      saved.id,
-    );
+
+    // The product row, its inventory upsert, and the audit entry are one
+    // unit — without a transaction, a failure partway through (e.g. the
+    // inventory upsert) leaves a product with no inventory row while the
+    // endpoint reports failure, and a retry can create a duplicate since
+    // product names aren't unique per pharmacy.
+    const run = async (
+      productRepo: Repository<PharmacyProduct>,
+      inventoryRepo: Repository<PharmacyInventory>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const saved = await productRepo.save(product);
+      await inventoryRepo.upsert(
+        { productId: saved.id, quantity: dto.stockQuantity },
+        ["productId"],
+      );
+      await this.audit(
+        userId,
+        pharmacyId,
+        id ? "product.updated" : "product.created",
+        "product",
+        saved.id,
+        {},
+        auditRepo,
+      );
+      return saved;
+    };
+    const manager = this.products.manager;
+    const saved = manager?.transaction
+      ? await manager.transaction((tx) =>
+          run(
+            tx.getRepository(PharmacyProduct),
+            tx.getRepository(PharmacyInventory),
+            tx.getRepository(PharmacyAuditLog),
+          ),
+        )
+      : await run(this.products, this.inventory, this.audits);
     return this.products.findOneOrFail({ where: { id: saved.id } });
   }
   async removeProduct(userId: string, pharmacyId: string, id: string) {
@@ -804,14 +861,14 @@ export class PharmaciesService {
           "This order has already left review — a new decision can't be recorded",
         );
     }
-    const willTransitionOrder =
-      rx.orderId &&
+    const isTerminalDecision =
       dto.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED;
-    const newStatus = willTransitionOrder
-      ? dto.decision === PrescriptionDecision.ACCEPTED
-        ? PharmacyOrderStatus.ACCEPTED
-        : PharmacyOrderStatus.REJECTED
-      : null;
+    const newStatus =
+      rx.orderId && isTerminalDecision
+        ? dto.decision === PrescriptionDecision.ACCEPTED
+          ? PharmacyOrderStatus.ACCEPTED
+          : PharmacyOrderStatus.REJECTED
+        : null;
     const orderId = rx.orderId;
 
     // The review row and (when applicable) the order's status transition
@@ -836,7 +893,7 @@ export class PharmaciesService {
           notes: dto.notes?.trim() || null,
         }),
       );
-      if (willTransitionOrder && newStatus) {
+      if (orderId && newStatus) {
         // Conditioned on the order still being under_review, same reasoning
         // as transition()'s conditional update: this row lock serializes a
         // concurrent second decision on the same prescription/order (e.g.
@@ -844,7 +901,7 @@ export class PharmaciesService {
         // move the order and, on rejection, restore its inventory.
         const result = await orderRepo.update(
           {
-            id: orderId!,
+            id: orderId,
             pharmacyId,
             status: PharmacyOrderStatus.UNDER_REVIEW,
           },
@@ -859,8 +916,30 @@ export class PharmaciesService {
         // an explicit cancellation. REJECTED is terminal (NEXT[REJECTED]
         // is empty) so this can only happen once per order.
         if (newStatus === PharmacyOrderStatus.REJECTED) {
-          await this.restoreInventory(orderId!, itemRepo, inventoryRepo);
+          await this.restoreInventory(orderId, itemRepo, inventoryRepo);
         }
+      } else if (orderId && !isTerminalDecision) {
+        // A clarification request doesn't move the order, so it has no
+        // status transition to condition an UPDATE on — but without some
+        // lock here, this path could still record a review row after
+        // another pharmacist's concurrent terminal decision has already
+        // moved the order past under_review, contradicting a decision this
+        // request never saw (the preliminary check above only catches the
+        // sequential case, not a genuine race). Lock the order row the same
+        // way the terminal branch's UPDATE does, and recheck: a concurrent
+        // accept/reject either committed first (and this now correctly
+        // refuses) or is blocked behind this lock until this transaction
+        // commits (and then itself re-evaluates against under_review).
+        const locked = await orderRepo
+          .createQueryBuilder("o")
+          .setLock("pessimistic_write")
+          .where("o.id = :orderId", { orderId })
+          .andWhere("o.pharmacyId = :pharmacyId", { pharmacyId })
+          .getOne();
+        if (!locked || locked.status !== PharmacyOrderStatus.UNDER_REVIEW)
+          throw new ConflictException(
+            "This order was just decided by another request",
+          );
       }
       // Committed in the same transaction as the review row and order
       // transition above — otherwise a failure here would leave the

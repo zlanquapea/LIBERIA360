@@ -87,6 +87,7 @@ describe("PharmaciesService", () => {
     findOneByOrFail: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let staffRepo: {
@@ -105,6 +106,7 @@ describe("PharmaciesService", () => {
     find: jest.Mock;
     findOneBy: jest.Mock;
     findOneOrFail: jest.Mock;
+    createQueryBuilder: jest.Mock;
     manager: undefined;
   };
   let orderItemRepo: { create: jest.Mock; save: jest.Mock; find: jest.Mock };
@@ -146,6 +148,19 @@ describe("PharmaciesService", () => {
         : jest.fn().mockRejectedValue(new Error("not found")),
     });
   }
+  // review()'s clarification-request branch locks/rechecks the order via
+  // createQueryBuilder(...).setLock(...) rather than findOneBy — mock that
+  // chain the same way mockPharmacyQueryBuilder does above.
+  function mockOrderQueryBuilder(
+    order: { status: PharmacyOrderStatus } | null,
+  ) {
+    orderRepo.createQueryBuilder.mockReturnValue({
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(order),
+    });
+  }
   function product(overrides: Partial<PharmacyProduct> = {}): PharmacyProduct {
     return {
       id: "product-1",
@@ -165,6 +180,10 @@ describe("PharmaciesService", () => {
       findOneByOrFail: jest.fn(),
       save: jest.fn((x) => Promise.resolve(x)),
       create: jest.fn((x) => x),
+      // Same reasoning as orderRepo.update below — default to "1 row
+      // updated" so saveProfile()'s targeted updates succeed unless a test
+      // deliberately simulates a lost race with affected: 0.
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn(),
     };
     staffRepo = {
@@ -189,6 +208,7 @@ describe("PharmaciesService", () => {
       find: jest.fn().mockResolvedValue([]),
       findOneBy: jest.fn(),
       findOneOrFail: jest.fn().mockResolvedValue({ id: "order-1" }),
+      createQueryBuilder: jest.fn(),
       manager: undefined,
     };
     orderItemRepo = {
@@ -602,6 +622,55 @@ describe("PharmaciesService", () => {
       ).rejects.toThrow(ConflictException);
 
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
+    });
+
+    it("records a clarification request without moving the order", async () => {
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      // The order is still under_review by the time the clarification
+      // branch's row-locked recheck runs.
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+
+      await service.review("user-1", "pharmacy-1", "rx-1", {
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      } as any);
+
+      expect(reviewRepo.save).toHaveBeenCalled();
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses a clarification request when a concurrent terminal decision already moved the order", async () => {
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      // The preliminary check (sequential case) still passes...
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      // ...but a genuinely concurrent accept/reject committed first, so the
+      // clarification branch's row-locked recheck finds the order has
+      // already left under_review.
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.ACCEPTED });
+
+      await expect(
+        service.review("user-1", "pharmacy-1", "rx-1", {
+          decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+        } as any),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -1017,6 +1086,51 @@ describe("PharmaciesService", () => {
       // number is unreviewed evidence and must not keep the "approved"
       // (publicly visible, verified-badge) status.
       expect(saved.status).toBe(PharmacyStatus.PENDING);
+      // The update path must never save() the full stale entity — that
+      // would silently overwrite a status changed concurrently by an
+      // admin. Only the targeted update() calls should run.
+      expect(pharmacyRepo.save).not.toHaveBeenCalled();
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1", status: PharmacyStatus.APPROVED },
+        { status: PharmacyStatus.PENDING },
+      );
+    });
+
+    it("does not fabricate a pending status when a concurrent admin action already moved the pharmacy off approved", async () => {
+      // Simulates the TOCTOU race this fix closes: the pharmacy was read as
+      // APPROVED above, but an admin suspended it in between — the
+      // conditional update's row lock finds `status = approved` no longer
+      // matches, so this request's licence-driven reset silently loses the
+      // race instead of clobbering the admin's concurrent decision back to
+      // pending.
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: "LR-PHM-0042",
+        slug: "existing-slug",
+      });
+      pharmacyRepo.update.mockImplementation((criteria: any) =>
+        Promise.resolve(
+          criteria.status === PharmacyStatus.APPROVED
+            ? { affected: 0 } // lost the race — admin already changed status
+            : { affected: 1 }, // the unconditional profile-fields patch
+        ),
+      );
+
+      const saved = await service.saveProfile("user-1", "pharmacy-1", {
+        name: "Test Pharmacy",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+        licenceNumber: "LR-PHM-9999",
+      } as any);
+
+      expect(saved.status).toBe(PharmacyStatus.APPROVED);
+      expect(pharmacyRepo.save).not.toHaveBeenCalled();
     });
 
     it("leaves an approved pharmacy's status untouched when the licence number is unchanged", async () => {
