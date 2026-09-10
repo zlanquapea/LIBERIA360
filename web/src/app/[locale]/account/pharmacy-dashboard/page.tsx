@@ -187,10 +187,21 @@ export default function PharmacyDashboard() {
           >
             <h2 className="text-xl font-bold">{p.name}</h2>
             <p className="capitalize">Verification: {p.status}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link className="btn-secondary" href={`/pharmacies/${p.slug}`}>
-                View storefront
-              </Link>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {p.status === "approved" ? (
+                <Link className="btn-secondary" href={`/pharmacies/${p.slug}`}>
+                  View storefront
+                </Link>
+              ) : (
+                // one() (the storefront page) only ever resolves an
+                // approved pharmacy — a pending/rejected/suspended one
+                // 404s, so linking there is a dead end until approval.
+                <span className="text-sm text-slate-500">
+                  {p.status === "pending"
+                    ? "Storefront available once approved"
+                    : "Storefront unavailable while " + p.status}
+                </span>
+              )}
               <Link
                 className="btn-primary"
                 href={`/account/pharmacy-dashboard/${p.id}`}

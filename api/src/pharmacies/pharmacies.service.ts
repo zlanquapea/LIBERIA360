@@ -149,12 +149,27 @@ export class PharmaciesService {
     if (q.pickup) qb.andWhere("p.pickup_enabled = true");
     if (q.openNow) {
       const day = new Date().getUTCDay(),
+        prevDay = (day + 6) % 7,
         time = new Date().toISOString().slice(11, 19);
+      // A row is "overnight" when closes_at <= opens_at (e.g. 20:00-08:00)
+      // — plain `opens_at <= time AND closes_at > time` is false on both
+      // sides of midnight for such a row, and even where it happened to
+      // match, this only ever checked *today's* row, never the previous
+      // day's overnight interval that's still open after midnight. Match
+      // either: today's row, open normally or (if overnight) already past
+      // its opening; or yesterday's row, overnight and not yet past its
+      // closing.
       qb.innerJoin(
         PharmacyOpeningHours,
         "h",
-        "h.pharmacy_id=p.id AND h.day_of_week=:day AND h.is_closed=false AND h.opens_at<=:time AND h.closes_at>:time",
-        { day, time },
+        `h.pharmacy_id=p.id AND h.is_closed=false AND (
+          (h.day_of_week=:day AND (
+            (h.closes_at>h.opens_at AND h.opens_at<=:time AND h.closes_at>:time)
+            OR (h.closes_at<=h.opens_at AND h.opens_at<=:time)
+          ))
+          OR (h.day_of_week=:prevDay AND h.closes_at<=h.opens_at AND h.closes_at>:time)
+        )`,
+        { day, prevDay, time },
       );
     }
     return qb
@@ -495,6 +510,82 @@ export class PharmaciesService {
           // Postgres rejects `SELECT count(*) ... FOR UPDATE` outright
           // ("FOR UPDATE is not allowed with aggregate functions") — fetch
           // and lock the matching rows instead, and count them in JS.
+          const locked = await staffRepo
+            .createQueryBuilder("s")
+            .setLock("pessimistic_write")
+            .where("s.pharmacyId = :pharmacyId", { pharmacyId })
+            .andWhere("s.role = :role", { role: PharmacyStaffRole.MANAGER })
+            .andWhere("s.active = :active", { active: true })
+            .getMany();
+          return locked.length;
+        });
+      });
+    }
+    return run(this.staff, this.audits, () =>
+      this.staff.count({
+        where: { pharmacyId, role: PharmacyStaffRole.MANAGER, active: true },
+      }),
+    );
+  }
+  // The only way a departed staff member's access is ever actually
+  // revoked — assignStaff() can only create or reassign a membership
+  // (always forcing active back to true), so without this a pharmacist or
+  // employee who leaves keeps read access to every private prescription
+  // and write access to products/orders indefinitely. Deactivating (not
+  // deleting) keeps the row's audit history — see assertStaff() and
+  // mine(), which both already filter on active: true, so this takes
+  // effect immediately for every pharmacy-scoped route.
+  async deactivateStaff(
+    managerId: string,
+    pharmacyId: string,
+    staffUserId: string,
+  ) {
+    const manager = await this.assertStaff(managerId, pharmacyId);
+    if (manager.role !== PharmacyStaffRole.MANAGER)
+      throw new ForbiddenException(
+        "Only a manager on staff can deactivate staff",
+      );
+
+    const run = async (
+      staffRepo: Repository<PharmacyStaff>,
+      auditRepo: Repository<PharmacyAuditLog>,
+      countActiveManagers: () => Promise<number>,
+    ) => {
+      const member = await staffRepo.findOne({
+        where: { pharmacyId, userId: staffUserId, active: true },
+      });
+      if (!member) throw new NotFoundException("No active staff member found");
+      // Same last-manager invariant as the demotion path in assignStaff()
+      // above — a pharmacy can never be left with zero active managers,
+      // since nobody could then assign a replacement without direct DB
+      // access. countActiveManagers() locks the active-manager rows when
+      // running inside a real transaction, serializing this against a
+      // concurrent deactivation or demotion the same way assignStaff() does.
+      if (member.role === PharmacyStaffRole.MANAGER) {
+        if ((await countActiveManagers()) <= 1)
+          throw new ConflictException(
+            "Cannot deactivate the pharmacy's only manager — assign another manager first",
+          );
+      }
+      member.active = false;
+      const saved = await staffRepo.save(member);
+      await this.audit(
+        managerId,
+        pharmacyId,
+        "staff.deactivated",
+        "staff",
+        saved.id,
+        { userId: staffUserId },
+        auditRepo,
+      );
+      return saved;
+    };
+
+    const txManager = this.staff.manager;
+    if (txManager?.transaction) {
+      return txManager.transaction((tx) => {
+        const staffRepo = tx.getRepository(PharmacyStaff);
+        return run(staffRepo, tx.getRepository(PharmacyAuditLog), async () => {
           const locked = await staffRepo
             .createQueryBuilder("s")
             .setLock("pessimistic_write")
@@ -974,12 +1065,19 @@ export class PharmaciesService {
       throw new NotFoundException("Prescription not found for this order");
     // Only accept a resubmission when the pharmacist actually asked for
     // one — otherwise a customer could overwrite the very file a
-    // pharmacist is mid-review on, or one already accepted/rejected.
+    // pharmacist is mid-review on, or one already accepted/rejected. Once
+    // consumed (fulfilledAt set, below), the same clarification request
+    // can't be used for a second replacement — otherwise the customer
+    // could keep resubmitting indefinitely against a single request, each
+    // time invalidating whatever version the pharmacist has open.
     const latestReview = await this.reviews.findOne({
       where: { prescriptionId: prescription.id },
       order: { createdAt: "DESC" },
     });
-    if (latestReview?.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED)
+    if (
+      latestReview?.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED ||
+      latestReview.fulfilledAt
+    )
       throw new ConflictException(
         "A new prescription can only be submitted after a pharmacist requests clarification",
       );
@@ -1028,7 +1126,8 @@ export class PharmaciesService {
         .getOne();
       if (
         stillNeedsClarification?.decision !==
-        PrescriptionDecision.CLARIFICATION_REQUESTED
+          PrescriptionDecision.CLARIFICATION_REQUESTED ||
+        stillNeedsClarification.fulfilledAt
       )
         throw new ConflictException(
           "A new prescription can only be submitted after a pharmacist requests clarification",
@@ -1053,6 +1152,13 @@ export class PharmaciesService {
       // pharmacist's review() (which checks this against the version it
       // was handed) can never be satisfied by a version that predates
       // bytes actually written to storage.
+      // Consumed under the same lock this row was just read+locked under —
+      // this specific clarification request can now never satisfy another
+      // resubmission attempt, sequential or concurrent.
+      await reviewRepo.update(
+        { id: stillNeedsClarification.id },
+        { fulfilledAt: new Date() },
+      );
       await prescriptionRepo.update(
         { id: prescription.id },
         {
@@ -1713,6 +1819,24 @@ export class PharmaciesService {
         role: member.role,
       };
     });
+  }
+  // There was no way to see who's actually on staff before this — the
+  // management page could only add someone via assignStaff(), never list
+  // who has access, which also made deactivateStaff() impossible to
+  // reach from the UI. Any staff role can view the roster (same reasoning
+  // as getOpeningHours()); only a manager can act on it.
+  async listStaff(userId: string, pharmacyId: string) {
+    await this.assertStaff(userId, pharmacyId);
+    const members = await this.staff.find({
+      where: { pharmacyId, active: true },
+      relations: ["user"],
+      order: { role: "ASC" },
+    });
+    return members.map((m) => ({
+      userId: m.userId,
+      email: m.user?.email ?? null,
+      role: m.role,
+    }));
   }
   auditLogs() {
     return this.audits.find({ order: { createdAt: "DESC" }, take: 250 });

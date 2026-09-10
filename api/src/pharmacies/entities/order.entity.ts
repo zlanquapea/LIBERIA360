@@ -155,6 +155,15 @@ export class PrescriptionReview {
   @Column({ type: "enum", enum: PrescriptionDecision })
   decision: PrescriptionDecision;
   @Column({ type: "text", nullable: true }) notes: string | null;
+  // Set by resubmitPrescription() the moment it consumes this
+  // clarification_requested review — without this, "the latest review is
+  // still clarification_requested" stays true forever after the first
+  // resubmission (nothing about a resubmission changes the review itself),
+  // letting the customer replace the file an unlimited number of times
+  // against a single pharmacist request, each one silently invalidating
+  // whatever version the pharmacist has open.
+  @Column({ name: "fulfilled_at", type: "timestamptz", nullable: true })
+  fulfilledAt: Date | null;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
 }
 @Entity("pharmacy_payments")

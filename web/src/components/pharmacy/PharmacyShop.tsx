@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
 import {
@@ -41,7 +42,8 @@ export function PharmacyShop({
     [prescriptionFile, setPrescriptionFile] = useState<File | null>(null),
     [consent, setConsent] = useState(false),
     [placing, setPlacing] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [orderPlaced, setOrderPlaced] = useState(false);
   // Caches the id from a successful uploadPrescription() call, keyed by
   // the exact File it was uploaded for — checkout() reuses it on a retry
   // (e.g. after the order itself is rejected for stock/pharmacy-status
@@ -94,6 +96,7 @@ export function PharmacyShop({
     }
     setPlacing(true);
     setNotice("Placing order…");
+    setOrderPlaced(false);
     try {
       // Reuse a prescription already uploaded for this exact file (e.g. a
       // retry after createPharmacyOrder() below rejected for stock or
@@ -135,6 +138,7 @@ export function PharmacyShop({
           ? "Order submitted for pharmacist review. Uploading a prescription does not guarantee approval."
           : "Order placed successfully.",
       );
+      setOrderPlaced(true);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Could not place the order.");
     } finally {
@@ -386,6 +390,17 @@ export function PharmacyShop({
         {notice && (
           <p role="status" className="mt-3 text-sm">
             {notice}
+            {orderPlaced && (
+              <>
+                {" "}
+                <Link
+                  href="/account/pharmacy-orders"
+                  className="font-semibold text-brand-700 underline"
+                >
+                  Track your order
+                </Link>
+              </>
+            )}
           </p>
         )}
         <p className="mt-4 text-xs text-slate-500">

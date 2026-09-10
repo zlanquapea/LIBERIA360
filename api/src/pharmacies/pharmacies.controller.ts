@@ -206,6 +206,23 @@ export class PharmacyDashboardController {
   ) {
     return this.service.assignStaff(u.id, id, dto);
   }
+  @Get(":id/staff") listStaff(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.service.listStaff(u.id, id);
+  }
+  // Deactivates (never hard-deletes, to preserve audit history) a staff
+  // member's access — the only way a departed pharmacist/employee's
+  // access is ever actually revoked, since assignStaff() only creates or
+  // reassigns a membership.
+  @Delete(":id/staff/:staffUserId") deactivateStaff(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("staffUserId", ParseUUIDPipe) staffUserId: string,
+  ) {
+    return this.service.deactivateStaff(u.id, id, staffUserId);
+  }
   // Staff-facing — unlike PharmaciesController's public ":id/products"
   // (catalog()), this includes hidden products too, since staff need to
   // find and re-enable one they'd previously hidden.

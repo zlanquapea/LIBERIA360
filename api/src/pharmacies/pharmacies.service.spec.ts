@@ -142,6 +142,7 @@ describe("PharmaciesService", () => {
     create: jest.Mock;
     find: jest.Mock;
     findOne: jest.Mock;
+    update: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let auditRepo: { save: jest.Mock; create: jest.Mock };
@@ -196,7 +197,11 @@ describe("PharmaciesService", () => {
   // way review()'s clarification-request branch locks the order — mock
   // that chain the same way mockOrderQueryBuilder does above.
   function mockReviewQueryBuilder(
-    review: { decision: PrescriptionDecision } | null,
+    review: {
+      id?: string;
+      decision: PrescriptionDecision;
+      fulfilledAt?: Date | null;
+    } | null,
   ) {
     reviewRepo.createQueryBuilder.mockReturnValue({
       setLock: jest.fn().mockReturnThis(),
@@ -353,6 +358,7 @@ describe("PharmaciesService", () => {
       create: jest.fn((x) => x),
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn(),
     };
     auditRepo = {
@@ -506,6 +512,120 @@ describe("PharmaciesService", () => {
       expect(staffRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ role: PharmacyStaffRole.EMPLOYEE }),
       );
+    });
+  });
+
+  describe("deactivateStaff", () => {
+    it("lets a manager deactivate an employee", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER }) // assertStaff(managerId, ...)
+        .mockResolvedValueOnce({
+          id: "membership-1",
+          role: PharmacyStaffRole.EMPLOYEE,
+          active: true,
+        });
+
+      await service.deactivateStaff(
+        "manager-1",
+        "pharmacy-1",
+        "employee-user-1",
+      );
+
+      expect(staffRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "membership-1", active: false }),
+      );
+    });
+
+    it("refuses when the caller isn't a manager", async () => {
+      staffRepo.findOne.mockResolvedValueOnce({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+
+      await expect(
+        service.deactivateStaff("user-1", "pharmacy-1", "employee-user-1"),
+      ).rejects.toThrow(ForbiddenException);
+      expect(staffRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("404s when the target has no active membership", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER })
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.deactivateStaff("manager-1", "pharmacy-1", "nobody"),
+      ).rejects.toThrow(NotFoundException);
+      expect(staffRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses to deactivate the pharmacy's only active manager", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER })
+        .mockResolvedValueOnce({
+          id: "membership-1",
+          role: PharmacyStaffRole.MANAGER,
+          active: true,
+        });
+      staffRepo.count.mockResolvedValue(1);
+
+      await expect(
+        service.deactivateStaff("manager-1", "pharmacy-1", "manager-user-1"),
+      ).rejects.toThrow(ConflictException);
+      expect(staffRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("allows deactivating a manager when another active manager remains", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER })
+        .mockResolvedValueOnce({
+          id: "membership-1",
+          role: PharmacyStaffRole.MANAGER,
+          active: true,
+        });
+      staffRepo.count.mockResolvedValue(2);
+
+      await service.deactivateStaff(
+        "manager-1",
+        "pharmacy-1",
+        "manager-user-1",
+      );
+
+      expect(staffRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ active: false }),
+      );
+    });
+  });
+
+  describe("listStaff", () => {
+    it("returns the active roster with email/role, any staff role may view it", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
+      staffRepo.find.mockResolvedValue([
+        {
+          userId: "user-1",
+          role: PharmacyStaffRole.MANAGER,
+          user: { email: "manager@example.com" },
+        },
+        {
+          userId: "user-2",
+          role: PharmacyStaffRole.EMPLOYEE,
+          user: { email: "employee@example.com" },
+        },
+      ]);
+
+      const result = await service.listStaff("user-1", "pharmacy-1");
+
+      expect(result).toEqual([
+        {
+          userId: "user-1",
+          email: "manager@example.com",
+          role: PharmacyStaffRole.MANAGER,
+        },
+        {
+          userId: "user-2",
+          email: "employee@example.com",
+          role: PharmacyStaffRole.EMPLOYEE,
+        },
+      ]);
     });
   });
 
@@ -1145,6 +1265,7 @@ describe("PharmaciesService", () => {
       });
       mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
       mockReviewQueryBuilder({
+        id: "review-1",
         decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
       });
       mockPrescriptionQueryBuilder("prescriptions/old-key.jpg");
@@ -1170,6 +1291,73 @@ describe("PharmaciesService", () => {
       expect(storageProvider.deletePrivate).toHaveBeenCalledWith(
         "prescriptions/old-key.jpg",
       );
+      // Marks the clarification request consumed so a second resubmission
+      // against the same request is refused — see the two tests below.
+      expect(reviewRepo.update).toHaveBeenCalledWith(
+        { id: "review-1" },
+        { fulfilledAt: expect.any(Date) },
+      );
+    });
+
+    it("refuses a second resubmission against a clarification request already fulfilled by an earlier one", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+        privateStorageKey: "prescriptions/old-key.jpg",
+      });
+      // The fast-fail outer read sees the request as already fulfilled —
+      // a customer replacing the file once already consumed it.
+      reviewRepo.findOne.mockResolvedValue({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+        fulfilledAt: new Date(),
+      });
+
+      await expect(
+        service.resubmitPrescription("user-1", "order-1", {
+          buffer: Buffer.from("fake-bytes"),
+          originalName: "script3.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(prescriptionRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses a second resubmission when a concurrent one just fulfilled the request, caught by the locked recheck", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+        privateStorageKey: "prescriptions/old-key.jpg",
+      });
+      // Outer fast-fail read still sees it as unfulfilled...
+      reviewRepo.findOne.mockResolvedValue({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      // ...but the locked, in-transaction recheck sees a concurrent
+      // resubmission already consumed it.
+      mockReviewQueryBuilder({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+        fulfilledAt: new Date(),
+      });
+
+      await expect(
+        service.resubmitPrescription("user-1", "order-1", {
+          buffer: Buffer.from("fake-bytes"),
+          originalName: "script3.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(prescriptionRepo.update).not.toHaveBeenCalled();
     });
 
     it("deletes the key actually superseded under the lock, not a stale pre-transaction read", async () => {
