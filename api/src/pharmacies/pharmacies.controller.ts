@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,8 +8,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AdminGuard } from "../auth/guards/admin.guard";
@@ -22,9 +27,14 @@ import {
   ProductDto,
   ProductQueryDto,
   StatusDto,
+  UploadPrescriptionDto,
   VerificationDto,
 } from "./dto/pharmacy.dto";
 import { PharmaciesService } from "./pharmacies.service";
+
+// Matches uploads.controller.ts's own image cap; a prescription upload
+// separately also allows a PDF (see pharmacies.service.ts) up to 10MB.
+const MAX_PRESCRIPTION_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 @ApiTags("Pharmacies")
 @Controller("pharmacies")
@@ -58,6 +68,36 @@ export class PharmacyCustomerController {
   }
   @Get("orders/mine") mine(@CurrentUser() u: User) {
     return this.service.customerOrders(u.id);
+  }
+  // Uploaded *before* checkout — returns the prescriptionId the cart then
+  // submits as CreateOrderDto.prescriptionId.
+  @Post("prescriptions")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PRESCRIPTION_FILE_SIZE_BYTES },
+    }),
+  )
+  uploadPrescription(
+    @CurrentUser() u: User,
+    @Body() dto: UploadPrescriptionDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'No file uploaded (expected multipart field "file")',
+      );
+    return this.service.uploadPrescription(u.id, dto.pharmacyId, {
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+    });
+  }
+  @Get("prescriptions/:id/file") prescriptionFile(
+    @CurrentUser() u: User,
+    @Param("id") id: string,
+  ) {
+    return this.service.prescriptionFile(u.id, u.isAdmin, id);
   }
 }
 

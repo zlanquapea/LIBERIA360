@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { StorageModule } from "../uploads/storage/storage.module";
 import {
   AdminPharmaciesController,
   PharmaciesController,
@@ -53,7 +54,7 @@ export const PHARMACY_ENTITIES = [
   PharmacyReport,
 ];
 @Module({
-  imports: [TypeOrmModule.forFeature(PHARMACY_ENTITIES)],
+  imports: [TypeOrmModule.forFeature(PHARMACY_ENTITIES), StorageModule],
   controllers: [
     PharmaciesController,
     PharmacyCustomerController,

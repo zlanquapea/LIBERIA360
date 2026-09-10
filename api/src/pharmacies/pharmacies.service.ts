@@ -2,11 +2,18 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, In, Repository } from "typeorm";
+import { Brackets, In, IsNull, Repository } from "typeorm";
+import { randomUUID } from "crypto";
+import { extname } from "path";
+import {
+  STORAGE_PROVIDER,
+  StorageProvider,
+} from "../uploads/storage/storage-provider.interface";
 import { slugify } from "../common/slugify";
 import {
   CreateOrderDto,
@@ -26,6 +33,7 @@ import {
 import {
   FulfillmentMethod,
   PharmacyOrderStatus,
+  PharmacyStaffRole,
   PharmacyStatus,
   PrescriptionDecision,
 } from "./entities/pharmacy.enums";
@@ -41,6 +49,21 @@ import {
   Prescription,
   PrescriptionReview,
 } from "./entities/order.entity";
+
+// Prescription photos/scans, not just product photos — a phone camera shot
+// of a paper script is the common case, but a PDF scan is common enough
+// (many Liberian pharmacies' partner clinics issue printed/PDF scripts) to
+// allow too. Re-encoding through processUploadedImage (like /uploads/image
+// does) isn't appropriate here: a PDF isn't an image at all, and a
+// prescription photo shouldn't be silently recompressed/stripped the same
+// way a profile photo is.
+const ALLOWED_PRESCRIPTION_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+];
+const MAX_PRESCRIPTION_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const NEXT: Record<PharmacyOrderStatus, PharmacyOrderStatus[]> = {
   [PharmacyOrderStatus.PENDING]: [
@@ -92,6 +115,7 @@ export class PharmaciesService {
     private verifications: Repository<PharmacyVerification>,
     @InjectRepository(PharmacyAuditLog)
     private audits: Repository<PharmacyAuditLog>,
+    @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
   async directory(q: PharmacyQueryDto) {
@@ -256,24 +280,39 @@ export class PharmaciesService {
       !pharmacy.pickupEnabled
     )
       throw new BadRequestException("Pickup is unavailable");
-    const ids = dto.items.map((x) => x.productId),
-      products = await this.products.find({
-        where: { id: In(ids), pharmacyId: dto.pharmacyId, isVisible: true },
-      });
-    if (products.length !== new Set(ids).size)
+
+    // Aggregate quantities per product first — the cart can list the same
+    // productId on more than one line (e.g. added in two separate clicks).
+    // Checking/reserving stock per *line* instead of per product lets two
+    // lines each pass a "quantity <= stock" check against the same
+    // pre-decrement stock figure, then have the second decrement violate
+    // the DB's CHECK(quantity>=0) after the first has already landed.
+    const quantityByProduct = new Map<string, number>();
+    for (const item of dto.items) {
+      quantityByProduct.set(
+        item.productId,
+        (quantityByProduct.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+    const ids = [...quantityByProduct.keys()];
+    const products = await this.products.find({
+      where: { id: In(ids), pharmacyId: dto.pharmacyId, isVisible: true },
+    });
+    if (products.length !== ids.length)
       throw new BadRequestException("Cart contains an unavailable product");
     const map = new Map(products.map((x) => [x.id, x]));
     let requires = false;
-    const lines = dto.items.map((x) => {
-      const p = map.get(x.productId)!;
-      if (!p.inventory || p.inventory.quantity < x.quantity)
+    const lines = ids.map((id) => {
+      const p = map.get(id)!;
+      const quantity = quantityByProduct.get(id)!;
+      if (!p.inventory || p.inventory.quantity < quantity)
         throw new ConflictException(`${p.name} does not have enough stock`);
       requires ||= p.prescriptionRequired;
       return this.orderItems.create({
         productId: p.id,
         name: p.name,
         unitPrice: p.price,
-        quantity: x.quantity,
+        quantity,
         prescriptionRequired: p.prescriptionRequired,
       });
     });
@@ -284,52 +323,100 @@ export class PharmaciesService {
       throw new BadRequestException(
         "Prescription upload and consent are required; upload does not guarantee approval",
       );
+
+    // Validate the prescription *before* writing anything — findOne here,
+    // not after the order/items are already saved, so a bad prescriptionId
+    // (nonexistent, someone else's, a different pharmacy's, or already
+    // attached to another order) fails with nothing persisted rather than
+    // leaving a phantom under_review order behind.
+    let prescription: Prescription | null = null;
+    if (requires) {
+      prescription = await this.prescriptions.findOne({
+        where: {
+          id: dto.prescriptionId,
+          customerUserId: userId,
+          pharmacyId: dto.pharmacyId,
+          orderId: IsNull(),
+        },
+      });
+      if (!prescription)
+        throw new BadRequestException(
+          "Prescription is not available for this pharmacy",
+        );
+    }
+
     const { subtotal, delivery, total } = calculatePharmacyTotals(
       lines,
       dto.fulfillmentMethod,
       Number(pharmacy.deliveryFee),
     );
-    const order = await this.orders.save(
-      this.orders.create({
-        pharmacyId: pharmacy.id,
-        customerUserId: userId,
-        fulfillmentMethod: dto.fulfillmentMethod,
-        deliveryAddress: dto.deliveryAddress?.trim() || null,
-        productSubtotal: subtotal,
-        deliveryFee: delivery,
-        platformFee: 0,
-        finalTotal: total,
-        status: requires
-          ? PharmacyOrderStatus.UNDER_REVIEW
-          : PharmacyOrderStatus.PENDING,
-      }),
-    );
-    await this.orderItems.save(
-      lines.map((x) => Object.assign(x, { orderId: order.id })),
-    );
-    if (requires) {
-      const rx = await this.prescriptions.findOne({
-        where: {
-          id: dto.prescriptionId,
+
+    const persist = async (
+      orderRepo: Repository<PharmacyOrder>,
+      itemRepo: Repository<PharmacyOrderItem>,
+      inventoryRepo: Repository<PharmacyInventory>,
+      prescriptionRepo: Repository<Prescription>,
+    ) => {
+      const order = await orderRepo.save(
+        orderRepo.create({
+          pharmacyId: pharmacy.id,
           customerUserId: userId,
-          pharmacyId: dto.pharmacyId,
-        },
-      });
-      if (!rx)
-        throw new BadRequestException(
-          "Prescription is not available for this pharmacy",
-        );
-      rx.orderId = order.id;
-      await this.prescriptions.save(rx);
-    }
-    for (const x of dto.items) {
-      const p = map.get(x.productId)!;
-      await this.inventory.decrement(
-        { productId: p.id },
-        "quantity",
-        x.quantity,
+          fulfillmentMethod: dto.fulfillmentMethod,
+          deliveryAddress: dto.deliveryAddress?.trim() || null,
+          productSubtotal: subtotal,
+          deliveryFee: delivery,
+          platformFee: 0,
+          finalTotal: total,
+          status: requires
+            ? PharmacyOrderStatus.UNDER_REVIEW
+            : PharmacyOrderStatus.PENDING,
+        }),
       );
-    }
+      await itemRepo.save(
+        lines.map((x) => Object.assign(x, { orderId: order.id })),
+      );
+      if (prescription) {
+        await prescriptionRepo.update(
+          { id: prescription.id },
+          { orderId: order.id },
+        );
+      }
+      for (const [productId, quantity] of quantityByProduct) {
+        try {
+          await inventoryRepo.decrement({ productId }, "quantity", quantity);
+        } catch {
+          // Someone else's order landed between our availability check
+          // above and this write and took the remaining stock — the DB's
+          // CHECK(quantity>=0) is the real backstop against overselling;
+          // surface it the same way the pre-check above does.
+          throw new ConflictException(
+            `${map.get(productId)!.name} does not have enough stock`,
+          );
+        }
+      }
+      return order;
+    };
+
+    // Wrapped in a transaction so a mid-flight failure (the stock-check
+    // race above, or anything else) can't leave an order with some but
+    // not all of its items/inventory/prescription-link written.
+    const manager = this.orders.manager;
+    const order = manager?.transaction
+      ? await manager.transaction((tx) =>
+          persist(
+            tx.getRepository(PharmacyOrder),
+            tx.getRepository(PharmacyOrderItem),
+            tx.getRepository(PharmacyInventory),
+            tx.getRepository(Prescription),
+          ),
+        )
+      : await persist(
+          this.orders,
+          this.orderItems,
+          this.inventory,
+          this.prescriptions,
+        );
+
     await this.audit(userId, pharmacy.id, "order.created", "order", order.id);
     return this.orderDetail(order.id);
   }
@@ -361,6 +448,13 @@ export class PharmaciesService {
       );
     order.status = status;
     await this.orders.save(order);
+    // A cancelled order was already decremented against inventory at
+    // creation time — every path into CANCELLED is a one-way transition
+    // (NEXT[CANCELLED] is empty, so an order can reach here at most once),
+    // so this can't double-restore.
+    if (status === PharmacyOrderStatus.CANCELLED) {
+      await this.restoreInventory(order.id);
+    }
     await this.audit(
       userId,
       pharmacyId,
@@ -377,7 +471,15 @@ export class PharmaciesService {
     prescriptionId: string,
     dto: PrescriptionReviewDto,
   ) {
-    await this.assertStaff(userId, pharmacyId);
+    const member = await this.assertStaff(userId, pharmacyId);
+    // A manager or ordinary employee passes assertStaff the same as a
+    // pharmacist — but deciding whether a prescription is genuine and
+    // matches the order is a clinical judgment call the storefront
+    // advertises as "pharmacist review only"; only that role may record one.
+    if (member.role !== PharmacyStaffRole.PHARMACIST)
+      throw new ForbiddenException(
+        "Only a pharmacist on staff can decide on a prescription",
+      );
     const rx = await this.prescriptions.findOne({
       where: { id: prescriptionId, pharmacyId },
     });
@@ -403,6 +505,13 @@ export class PharmaciesService {
             ? PharmacyOrderStatus.ACCEPTED
             : PharmacyOrderStatus.REJECTED;
         await this.orders.save(order);
+        // A rejected prescription means this order will never be
+        // fulfilled — release the stock it reserved at checkout, same as
+        // an explicit cancellation. REJECTED is terminal (NEXT[REJECTED]
+        // is empty) so this too can only happen once per order.
+        if (order.status === PharmacyOrderStatus.REJECTED) {
+          await this.restoreInventory(order.id);
+        }
       }
     }
     await this.audit(
@@ -413,6 +522,92 @@ export class PharmaciesService {
       prescriptionId,
     );
     return review;
+  }
+  // Customer-facing upload — happens *before* checkout, so the cart can
+  // submit the returned id as CreateOrderDto.prescriptionId. Files are
+  // saved through the same StorageProvider every other upload in this app
+  // uses (a filename no one can guess is this app's existing privacy model
+  // for uploaded documents — see licenceDocumentKey), under a
+  // "prescriptions/" prefix and stored by key, never returned as part of
+  // any pharmacy/order listing (Prescription.privateStorageKey is
+  // `select: false`) — only prescriptionFile() below, which checks the
+  // caller is the order owner, assigned pharmacy staff, or an admin,
+  // reveals it.
+  async uploadPrescription(
+    userId: string,
+    pharmacyId: string,
+    file: { buffer: Buffer; originalName: string; mimeType: string },
+  ) {
+    if (!ALLOWED_PRESCRIPTION_MIME_TYPES.includes(file.mimeType))
+      throw new BadRequestException(
+        "Only JPEG, PNG, WebP images or a PDF are allowed",
+      );
+    if (file.buffer.length > MAX_PRESCRIPTION_FILE_SIZE_BYTES)
+      throw new BadRequestException("Prescription file is larger than 10MB");
+    const pharmacy = await this.pharmacies.findOneBy({ id: pharmacyId });
+    if (!pharmacy || pharmacy.status !== PharmacyStatus.APPROVED)
+      throw new BadRequestException(
+        "This pharmacy is not approved to receive orders",
+      );
+    const key = `prescriptions/${randomUUID()}${extname(file.originalName).slice(0, 10)}`;
+    const { url } = await this.storage.save({
+      buffer: file.buffer,
+      filename: key,
+      contentType: file.mimeType,
+    });
+    const rx = await this.prescriptions.save(
+      this.prescriptions.create({
+        customerUserId: userId,
+        pharmacyId,
+        orderId: null,
+        privateStorageKey: url,
+        originalFilename: file.originalName,
+        mimeType: file.mimeType,
+      }),
+    );
+    await this.audit(
+      userId,
+      pharmacyId,
+      "prescription.uploaded",
+      "prescription",
+      rx.id,
+    );
+    return { id: rx.id };
+  }
+  // Auditable, access-controlled reveal of an uploaded prescription's file
+  // — the only place privateStorageKey ever leaves the service, and only
+  // to the customer who uploaded it, staff of the pharmacy it was uploaded
+  // for, or an admin.
+  async prescriptionFile(userId: string, isAdmin: boolean, id: string) {
+    const rx = await this.prescriptions
+      .createQueryBuilder("rx")
+      .addSelect("rx.privateStorageKey")
+      .where("rx.id = :id", { id })
+      .getOne();
+    if (!rx) throw new NotFoundException("Prescription not found");
+    const isOwner = rx.customerUserId === userId;
+    const isStaff =
+      !isOwner &&
+      !isAdmin &&
+      (await this.staff.findOne({
+        where: { userId, pharmacyId: rx.pharmacyId, active: true },
+      }));
+    if (!isOwner && !isAdmin && !isStaff)
+      throw new ForbiddenException(
+        "You are not authorized to view this prescription",
+      );
+    await this.audit(
+      userId,
+      rx.pharmacyId,
+      "prescription.viewed",
+      "prescription",
+      rx.id,
+    );
+    return {
+      url: rx.privateStorageKey,
+      mimeType: rx.mimeType,
+      originalFilename: rx.originalFilename,
+    };
   }
   async verification(
     adminId: string,
@@ -484,6 +679,21 @@ export class PharmaciesService {
   }
   private orderDetail(id: string) {
     return this.orders.findOneOrFail({ where: { id } });
+  }
+  // Undoes the per-line decrements createOrder() made at checkout, for an
+  // order that turns out never to be fulfilled (cancelled, or a rejected
+  // prescription). A line whose product was since deleted (ON DELETE SET
+  // NULL leaves productId null) has nothing left to credit back.
+  private async restoreInventory(orderId: string) {
+    const items = await this.orderItems.find({ where: { orderId } });
+    for (const item of items) {
+      if (!item.productId) continue;
+      await this.inventory.increment(
+        { productId: item.productId },
+        "quantity",
+        item.quantity,
+      );
+    }
   }
   private audit(
     actorUserId: string | null,

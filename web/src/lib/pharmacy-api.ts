@@ -1,5 +1,13 @@
-import { apiRequest } from "./http";
+import { apiRequest, HttpError } from "./http";
 import { serverApiOrigin } from "./server-api-origin";
+
+const MAX_PRESCRIPTION_FILE_SIZE_BYTES = 10 * 1024 * 1024; // matches api/src/pharmacies/pharmacies.service.ts
+const ALLOWED_PRESCRIPTION_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+];
 
 export type Pharmacy = {
   id: string;
@@ -73,3 +81,40 @@ export const createPharmacyOrder = (body: unknown) =>
   });
 export const getMyPharmacyOrders = () =>
   apiRequest<PharmacyOrder[]>("/pharmacy-marketplace/orders/mine");
+// POST /pharmacy-marketplace/prescriptions — multipart, so this bypasses
+// http.ts's apiRequest (which always sets Content-Type: application/json);
+// see lib/uploads-api.ts's uploadImage for the same pattern. Uploaded
+// *before* checkout: the returned id is what the cart then submits as
+// CreateOrderDto.prescriptionId.
+export async function uploadPrescription(
+  pharmacyId: string,
+  file: File,
+): Promise<string> {
+  if (!ALLOWED_PRESCRIPTION_MIME_TYPES.includes(file.type)) {
+    throw new HttpError(400, "Only JPEG, PNG, WebP images or a PDF are allowed.");
+  }
+  if (file.size > MAX_PRESCRIPTION_FILE_SIZE_BYTES) {
+    throw new HttpError(400, "Prescription file is larger than 10MB.");
+  }
+  const body = new FormData();
+  body.append("pharmacyId", pharmacyId);
+  body.append("file", file);
+  // Relative, same-origin path — this runs client-side (called from
+  // PharmacyShop, a "use client" component), unlike this file's read()
+  // helper above which runs server-side and needs serverApiOrigin()'s
+  // bare host. Same reasoning as lib/uploads-api.ts's uploadImage.
+  const res = await fetch("/api/v1/pharmacy-marketplace/prescriptions", {
+    method: "POST",
+    credentials: "same-origin",
+    body,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message = (data as { message?: unknown } | null)?.message;
+    throw new HttpError(
+      res.status,
+      typeof message === "string" ? message : `Upload failed with ${res.status}`,
+    );
+  }
+  return (data as { id: string }).id;
+}

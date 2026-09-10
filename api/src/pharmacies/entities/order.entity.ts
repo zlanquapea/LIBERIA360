@@ -125,10 +125,14 @@ export class PharmacyOrderItem {
 @Entity("prescriptions")
 export class Prescription {
   @PrimaryGeneratedColumn("uuid") id: string;
-  @Column({ name: "order_id" }) orderId: string;
-  @ManyToOne(() => PharmacyOrder, { onDelete: "CASCADE" })
+  // Nullable: a prescription is uploaded *before* checkout (to obtain the
+  // prescriptionId the cart submits), so it starts unattached to any order
+  // — createOrder() links it once the order it belongs to actually exists.
+  @Column({ name: "order_id", type: "uuid", nullable: true }) orderId:
+    string | null;
+  @ManyToOne(() => PharmacyOrder, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "order_id" })
-  order: PharmacyOrder;
+  order: PharmacyOrder | null;
   @Column({ name: "customer_user_id" }) customerUserId: string;
   @Column({ name: "pharmacy_id" }) pharmacyId: string;
   @Column({ name: "private_storage_key", type: "text", select: false })

@@ -65,6 +65,9 @@ export class CartItemDto {
   @IsUUID() productId: string;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) quantity: number;
 }
+export class UploadPrescriptionDto {
+  @IsUUID() pharmacyId: string;
+}
 export class CreateOrderDto {
   @IsUUID() pharmacyId: string;
   @IsEnum(FulfillmentMethod) fulfillmentMethod: FulfillmentMethod;

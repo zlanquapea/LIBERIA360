@@ -1,7 +1,16 @@
 "use client";
 import { useMemo, useState } from "react";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
-import { createPharmacyOrder } from "@/lib/pharmacy-api";
+import { createPharmacyOrder, uploadPrescription } from "@/lib/pharmacy-api";
+
+// Pickup-first only when both are actually offered — a delivery-only
+// pharmacy (pickupEnabled=false) previously still opened on "pickup", so
+// its own delivery radio sat unchecked and checkout rejected the
+// unselected default until the customer noticed and switched it by hand.
+function defaultFulfillmentMethod(pharmacy: Pick<Pharmacy, "pickupEnabled" | "deliveryEnabled">) {
+  return pharmacy.pickupEnabled ? "pickup" : "delivery";
+}
+
 export function PharmacyShop({
   pharmacy,
   products,
@@ -14,8 +23,11 @@ export function PharmacyShop({
   const [search, setSearch] = useState(""),
     [category, setCategory] = useState(""),
     [cart, setCart] = useState<Record<string, number>>({}),
-    [method, setMethod] = useState("pickup"),
+    [method, setMethod] = useState(() => defaultFulfillmentMethod(pharmacy)),
     [address, setAddress] = useState(""),
+    [prescriptionFile, setPrescriptionFile] = useState<File | null>(null),
+    [consent, setConsent] = useState(false),
+    [placing, setPlacing] = useState(false),
     [notice, setNotice] = useState("");
   const shown = products.filter(
     (p) =>
@@ -28,17 +40,28 @@ export function PharmacyShop({
       [cart, products],
     ),
     delivery = method === "delivery" ? Number(pharmacy.deliveryFee) : 0,
-    total = subtotal + delivery;
+    total = subtotal + delivery,
+    needsPrescription = products.some(
+      (p) => cart[p.id] && p.prescriptionRequired,
+    );
   async function checkout() {
+    if (needsPrescription && (!prescriptionFile || !consent)) {
+      setNotice(
+        "Prescription items require a secure prescription upload and your consent before they can be submitted.",
+      );
+      return;
+    }
+    setPlacing(true);
     setNotice("Placing order…");
     try {
-      const rx = products.some((p) => cart[p.id] && p.prescriptionRequired);
-      if (rx) {
-        setNotice(
-          "Prescription items require a secure prescription upload and pharmacist review. Uploading does not guarantee approval.",
-        );
-        return;
-      }
+      // Uploaded fresh for this order, right before checkout — the
+      // pharmacist reviews it against this specific order once it exists,
+      // and a prescription attaches to at most one order (see
+      // PharmaciesService.createOrder), so a leftover upload from an
+      // earlier abandoned attempt is never silently reused here.
+      const prescriptionId = needsPrescription
+        ? await uploadPrescription(pharmacy.id, prescriptionFile!)
+        : undefined;
       await createPharmacyOrder({
         pharmacyId: pharmacy.id,
         fulfillmentMethod: method,
@@ -46,11 +69,21 @@ export function PharmacyShop({
         items: Object.entries(cart)
           .filter(([, q]) => q)
           .map(([productId, quantity]) => ({ productId, quantity })),
+        prescriptionId,
+        consentToPrescriptionProcessing: needsPrescription ? consent : undefined,
       });
       setCart({});
-      setNotice("Order placed successfully.");
+      setPrescriptionFile(null);
+      setConsent(false);
+      setNotice(
+        needsPrescription
+          ? "Order submitted for pharmacist review. Uploading a prescription does not guarantee approval."
+          : "Order placed successfully.",
+      );
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Could not place the order.");
+    } finally {
+      setPlacing(false);
     }
   }
   return (
@@ -168,6 +201,35 @@ export function PharmacyShop({
             />
           </label>
         )}
+        {needsPrescription && (
+          <div className="mt-3 space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              This cart includes a prescription item — upload your
+              prescription for the pharmacist to review before this order can
+              be submitted.
+            </p>
+            <label className="block text-sm">
+              Prescription photo or PDF
+              <input
+                type="file"
+                required
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="input mt-1 w-full"
+                onChange={(e) => setPrescriptionFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+              />
+              I consent to sharing this prescription with the pharmacy for
+              review. Uploading it does not guarantee approval.
+            </label>
+          </div>
+        )}
         <dl className="my-4 space-y-1 text-sm">
           <div className="flex justify-between">
             <dt>Product subtotal</dt>
@@ -187,11 +249,16 @@ export function PharmacyShop({
           </div>
         </dl>
         <button
-          disabled={!subtotal || (method === "delivery" && !address)}
+          disabled={
+            !subtotal ||
+            placing ||
+            (method === "delivery" && !address) ||
+            (needsPrescription && (!prescriptionFile || !consent))
+          }
           onClick={checkout}
           className="btn-primary min-h-12 w-full"
         >
-          Place order
+          {placing ? "Placing order…" : "Place order"}
         </button>
         {notice && (
           <p role="status" className="mt-3 text-sm">
