@@ -196,11 +196,42 @@ export function PharmacyShop({
             {products
               .filter((p) => cart[p.id])
               .map((p) => (
-                <li key={p.id} className="flex justify-between">
-                  <span>
+                <li key={p.id} className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label={`Remove one ${p.name}`}
+                      onClick={() =>
+                        setCart((x) => {
+                          const next = { ...x };
+                          if (next[p.id] <= 1) delete next[p.id];
+                          else next[p.id] -= 1;
+                          return next;
+                        })
+                      }
+                      className="min-h-8 min-w-8 rounded-full border text-base leading-none"
+                    >
+                      −
+                    </button>
                     {p.name} × {cart[p.id]}
                   </span>
-                  <span>L${(Number(p.price) * cart[p.id]).toFixed(2)}</span>
+                  <span className="flex items-center gap-2">
+                    L${(Number(p.price) * cart[p.id]).toFixed(2)}
+                    <button
+                      type="button"
+                      aria-label={`Remove all ${p.name} from cart`}
+                      onClick={() =>
+                        setCart((x) => {
+                          const next = { ...x };
+                          delete next[p.id];
+                          return next;
+                        })
+                      }
+                      className="text-xs text-slate-500 underline"
+                    >
+                      Remove
+                    </button>
+                  </span>
                 </li>
               ))}
           </ul>

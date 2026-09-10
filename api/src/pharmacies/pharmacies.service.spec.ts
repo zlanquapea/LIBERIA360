@@ -424,6 +424,29 @@ describe("PharmaciesService", () => {
       expect(inventoryRepo.decrement).not.toHaveBeenCalled();
     });
 
+    it("rejects duplicate lines that together exceed the 100-unit cap, even though each line is within CartItemDto's own limit", async () => {
+      // CartItemDto's @Max(100) validates each line independently — two
+      // lines of 60 each both pass DTO validation, but aggregate to 120 for
+      // the same product, which must still be rejected here.
+      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
+      productRepo.find.mockResolvedValue([
+        product({ inventory: { quantity: 500 } as any }),
+      ]);
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [
+            { productId: "product-1", quantity: 60 },
+            { productId: "product-1", quantity: 60 },
+          ],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+      expect(inventoryRepo.decrement).not.toHaveBeenCalled();
+    });
+
     it("validates prescription ownership before writing anything", async () => {
       pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
       productRepo.find.mockResolvedValue([
@@ -1041,16 +1064,25 @@ describe("PharmaciesService", () => {
     });
 
     it("approves a pharmacy once a licence number is on file", async () => {
-      mockPharmacyQueryBuilder({
+      const builder = mockPharmacyQueryBuilder({
         id: "pharmacy-1",
         licenceNumber: "LR-PHM-0042",
       });
 
-      await service.verification("admin-1", "pharmacy-1", {
+      const result = await service.verification("admin-1", "pharmacy-1", {
         decision: PharmacyStatus.APPROVED,
       } as any);
 
-      expect(pharmacyRepo.save).toHaveBeenCalled();
+      // Only the status column is written — never a full save() of the
+      // locked-and-read entity, which would clobber any profile field
+      // staff changed concurrently.
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        { status: PharmacyStatus.APPROVED },
+      );
+      expect(pharmacyRepo.save).not.toHaveBeenCalled();
+      expect(builder.setLock).toHaveBeenCalledWith("pessimistic_write");
+      expect(result.status).toBe(PharmacyStatus.APPROVED);
     });
 
     it("does not require a licence number to reject or suspend", async () => {
@@ -1060,7 +1092,11 @@ describe("PharmaciesService", () => {
         decision: PharmacyStatus.REJECTED,
       } as any);
 
-      expect(pharmacyRepo.save).toHaveBeenCalled();
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        { status: PharmacyStatus.REJECTED },
+      );
+      expect(pharmacyRepo.save).not.toHaveBeenCalled();
     });
   });
 

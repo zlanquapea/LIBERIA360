@@ -520,6 +520,17 @@ export class PharmaciesService {
         (quantityByProduct.get(item.productId) ?? 0) + item.quantity,
       );
     }
+    // CartItemDto's @Max(100) validates each line independently, so
+    // splitting one product across several lines (e.g. 100 + 100) passes
+    // DTO validation and only gets caught here, after aggregation — without
+    // this, checkout would silently accept a per-product quantity the UI
+    // and DTO both intend to cap at 100 whenever stock allows it.
+    for (const quantity of quantityByProduct.values()) {
+      if (quantity > 100)
+        throw new BadRequestException(
+          "Cart contains more than 100 units of the same product",
+        );
+    }
     const ids = [...quantityByProduct.keys()];
     const products = await this.products.find({
       where: { id: In(ids), pharmacyId: dto.pharmacyId, isVisible: true },
@@ -1091,23 +1102,6 @@ export class PharmaciesService {
       ].includes(dto.decision)
     )
       throw new BadRequestException("Invalid verification decision");
-    // licenceNumber is `select: false` — opt back in explicitly, the same
-    // way applications() does, since it's what this check is actually for.
-    const p = await this.pharmacies
-      .createQueryBuilder("p")
-      .addSelect("p.licenceNumber")
-      .where("p.id = :id", { id: pharmacyId })
-      .getOne();
-    if (!p) throw new NotFoundException("Pharmacy not found");
-    // The admin oversight page is the only place a licence number can be
-    // inspected before verifying — enforced here too, not just by disabling
-    // the button there, since this is the endpoint that actually grants a
-    // storefront "approved" status.
-    if (dto.decision === PharmacyStatus.APPROVED && !p.licenceNumber?.trim())
-      throw new BadRequestException(
-        "Cannot approve a pharmacy with no licence number on file",
-      );
-    p.status = dto.decision;
 
     // The status change, the PharmacyVerification evidence record, and the
     // audit entry all describe one decision — committed together so a
@@ -1120,7 +1114,34 @@ export class PharmaciesService {
       verificationRepo: Repository<PharmacyVerification>,
       auditRepo: Repository<PharmacyAuditLog>,
     ) => {
-      await pharmacyRepo.save(p);
+      // Locked and read *inside* the transaction, not before it — staff
+      // could update the pharmacy's profile (saveProfile()) between an
+      // earlier read and this write; a full save() of that stale
+      // pre-transaction entity would silently revert the staff request
+      // even though it had already returned success to its caller.
+      // licenceNumber is `select: false` — opt back in via the query
+      // builder, same as applications() does, since it's what the licence
+      // check below is actually for.
+      const p = await pharmacyRepo
+        .createQueryBuilder("p")
+        .setLock("pessimistic_write")
+        .addSelect("p.licenceNumber")
+        .where("p.id = :id", { id: pharmacyId })
+        .getOne();
+      if (!p) throw new NotFoundException("Pharmacy not found");
+      // The admin oversight page is the only place a licence number can be
+      // inspected before verifying — enforced here too, not just by
+      // disabling the button there, since this is the endpoint that
+      // actually grants a storefront "approved" status.
+      if (dto.decision === PharmacyStatus.APPROVED && !p.licenceNumber?.trim())
+        throw new BadRequestException(
+          "Cannot approve a pharmacy with no licence number on file",
+        );
+      // Only the verification-controlled status column is written — never
+      // a full save() of this entity, which would clobber any profile
+      // field staff changed concurrently back to whatever this read
+      // happened to observe.
+      await pharmacyRepo.update({ id: pharmacyId }, { status: dto.decision });
       await verificationRepo.save(
         verificationRepo.create({
           pharmacyId,
@@ -1138,20 +1159,18 @@ export class PharmaciesService {
         { decision: dto.decision },
         auditRepo,
       );
+      return { ...p, status: dto.decision } as Pharmacy;
     };
     const manager = this.pharmacies.manager;
-    if (manager?.transaction) {
-      await manager.transaction((tx) =>
-        run(
-          tx.getRepository(Pharmacy),
-          tx.getRepository(PharmacyVerification),
-          tx.getRepository(PharmacyAuditLog),
-        ),
-      );
-    } else {
-      await run(this.pharmacies, this.verifications, this.audits);
-    }
-    return p;
+    return manager?.transaction
+      ? manager.transaction((tx) =>
+          run(
+            tx.getRepository(Pharmacy),
+            tx.getRepository(PharmacyVerification),
+            tx.getRepository(PharmacyAuditLog),
+          ),
+        )
+      : run(this.pharmacies, this.verifications, this.audits);
   }
   applications() {
     return this.pharmacies
