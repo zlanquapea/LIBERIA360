@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -54,7 +55,7 @@ export class PharmaciesController {
     return this.service.one(slug);
   }
   @Get(":id/products") products(
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Query() q: ProductQueryDto,
   ) {
     return this.service.catalog(id, q);
@@ -97,6 +98,32 @@ export class PharmacyCustomerController {
       mimeType: file.mimetype,
     });
   }
+  // Lets a customer reply to a pharmacist's clarification_requested
+  // decision (see PharmaciesService.review()) by uploading a replacement
+  // prescription for the same order — customerOrders() surfaces the
+  // decision/notes that prompt this call.
+  @Patch("orders/:orderId/prescription")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_PRESCRIPTION_FILE_SIZE_BYTES },
+    }),
+  )
+  resubmitPrescription(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file)
+      throw new BadRequestException(
+        'No file uploaded (expected multipart field "file")',
+      );
+    return this.service.resubmitPrescription(u.id, orderId, {
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+    });
+  }
   // Streams the actual bytes back (not a URL — see PharmaciesService's
   // doc comment on prescriptionFile()) so this route itself, guarded by
   // JwtAuthGuard and the ownership/staff/admin check inside the service,
@@ -104,7 +131,7 @@ export class PharmacyCustomerController {
   @Get("prescriptions/:id/file")
   async prescriptionFile(
     @CurrentUser() u: User,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { buffer, mimeType, originalFilename } =
@@ -131,7 +158,7 @@ export class PharmacyDashboardController {
   }
   @Patch(":id") update(
     @CurrentUser() u: User,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: PharmacyProfileDto,
   ) {
     return this.service.saveProfile(u.id, id, dto);
@@ -141,55 +168,58 @@ export class PharmacyDashboardController {
   // automatically for whoever applied.
   @Post(":id/staff") assignStaff(
     @CurrentUser() u: User,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: AssignStaffDto,
   ) {
     return this.service.assignStaff(u.id, id, dto);
   }
   @Post(":id/products") product(
     @CurrentUser() u: User,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: ProductDto,
   ) {
     return this.service.saveProduct(u.id, id, undefined, dto);
   }
   @Patch(":id/products/:productId") updateProduct(
     @CurrentUser() u: User,
-    @Param("id") id: string,
-    @Param("productId") productId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("productId", ParseUUIDPipe) productId: string,
     @Body() dto: ProductDto,
   ) {
     return this.service.saveProduct(u.id, id, productId, dto);
   }
   @Delete(":id/products/:productId") remove(
     @CurrentUser() u: User,
-    @Param("id") id: string,
-    @Param("productId") productId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("productId", ParseUUIDPipe) productId: string,
   ) {
     return this.service.removeProduct(u.id, id, productId);
   }
-  @Get(":id/orders") orders(@CurrentUser() u: User, @Param("id") id: string) {
+  @Get(":id/orders") orders(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
     return this.service.pharmacyOrders(u.id, id);
   }
   @Patch(":id/orders/:orderId/status") status(
     @CurrentUser() u: User,
-    @Param("id") id: string,
-    @Param("orderId") orderId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
     @Body() dto: StatusDto,
   ) {
     return this.service.transition(u.id, id, orderId, dto.status);
   }
   @Post(":id/prescriptions/:prescriptionId/reviews") review(
     @CurrentUser() u: User,
-    @Param("id") id: string,
-    @Param("prescriptionId") prescriptionId: string,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("prescriptionId", ParseUUIDPipe) prescriptionId: string,
     @Body() dto: PrescriptionReviewDto,
   ) {
     return this.service.review(u.id, id, prescriptionId, dto);
   }
   @Get(":id/statistics") stats(
     @CurrentUser() u: User,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
   ) {
     return this.service.stats(u.id, id);
   }
@@ -206,7 +236,7 @@ export class AdminPharmaciesController {
   }
   @Patch(":id/verification") verify(
     @CurrentUser() u: User,
-    @Param("id") id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: VerificationDto,
   ) {
     return this.service.verification(u.id, id, dto);

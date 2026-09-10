@@ -97,8 +97,16 @@ describe("PharmaciesService", () => {
     count: jest.Mock;
   };
   let usersService: { findByEmail: jest.Mock };
-  let productRepo: { find: jest.Mock };
-  let inventoryRepo: { decrement: jest.Mock; increment: jest.Mock };
+  let productRepo: {
+    find: jest.Mock;
+    delete: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let inventoryRepo: {
+    find: jest.Mock;
+    decrement: jest.Mock;
+    increment: jest.Mock;
+  };
   let orderRepo: {
     create: jest.Mock;
     save: jest.Mock;
@@ -118,7 +126,12 @@ describe("PharmaciesService", () => {
     update: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
-  let reviewRepo: { save: jest.Mock; create: jest.Mock };
+  let reviewRepo: {
+    save: jest.Mock;
+    create: jest.Mock;
+    find: jest.Mock;
+    findOne: jest.Mock;
+  };
   let auditRepo: { save: jest.Mock; create: jest.Mock };
   let storageProvider: {
     save: jest.Mock;
@@ -164,6 +177,29 @@ describe("PharmaciesService", () => {
       getOne: jest.fn().mockResolvedValue(order),
     });
   }
+  // createOrder() locks and re-reads both the pharmacy and the cart's
+  // product rows inside its transaction — mock the product side of that
+  // chain the same way mockPharmacyQueryBuilder does above.
+  function mockProductQueryBuilder(products: PharmacyProduct[]) {
+    productRepo.createQueryBuilder.mockReturnValue({
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue(products),
+    });
+  }
+  // Convenience wrapper for createOrder() tests: wires up the locked
+  // pharmacy read, locked product read, and the separate inventory lookup
+  // it now does instead of relying on PharmacyProduct.inventory.
+  function mockCreateOrderFixtures(
+    pharmacy: Pharmacy,
+    products: PharmacyProduct[],
+    inventories: Array<{ productId: string; quantity: number }>,
+  ) {
+    mockPharmacyQueryBuilder(pharmacy);
+    mockProductQueryBuilder(products);
+    inventoryRepo.find.mockResolvedValue(inventories);
+  }
   function product(overrides: Partial<PharmacyProduct> = {}): PharmacyProduct {
     return {
       id: "product-1",
@@ -196,8 +232,13 @@ describe("PharmaciesService", () => {
       count: jest.fn(),
     };
     usersService = { findByEmail: jest.fn() };
-    productRepo = { find: jest.fn() };
+    productRepo = {
+      find: jest.fn(),
+      delete: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    };
     inventoryRepo = {
+      find: jest.fn().mockResolvedValue([]),
       decrement: jest.fn().mockResolvedValue(undefined),
       increment: jest.fn().mockResolvedValue(undefined),
     };
@@ -232,6 +273,8 @@ describe("PharmaciesService", () => {
     reviewRepo = {
       save: jest.fn((x) => Promise.resolve(x)),
       create: jest.fn((x) => x),
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
     };
     auditRepo = {
       save: jest.fn().mockResolvedValue(undefined),
@@ -382,10 +425,11 @@ describe("PharmaciesService", () => {
 
   describe("createOrder", () => {
     it("aggregates duplicate product lines into a single stock check and decrement", async () => {
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([
-        product({ inventory: { quantity: 5 } as any }),
-      ]);
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
 
       await service.createOrder("user-1", {
         pharmacyId: "pharmacy-1",
@@ -405,10 +449,11 @@ describe("PharmaciesService", () => {
     });
 
     it("rejects duplicate lines that together exceed stock, even though no single line does", async () => {
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([
-        product({ inventory: { quantity: 4 } as any }),
-      ]);
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product()],
+        [{ productId: "product-1", quantity: 4 }],
+      );
 
       await expect(
         service.createOrder("user-1", {
@@ -427,12 +472,8 @@ describe("PharmaciesService", () => {
     it("rejects duplicate lines that together exceed the 100-unit cap, even though each line is within CartItemDto's own limit", async () => {
       // CartItemDto's @Max(100) validates each line independently — two
       // lines of 60 each both pass DTO validation, but aggregate to 120 for
-      // the same product, which must still be rejected here.
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([
-        product({ inventory: { quantity: 500 } as any }),
-      ]);
-
+      // the same product, which must still be rejected here. This check
+      // runs before any repo reads, so no fixtures are needed.
       await expect(
         service.createOrder("user-1", {
           pharmacyId: "pharmacy-1",
@@ -447,11 +488,68 @@ describe("PharmaciesService", () => {
       expect(inventoryRepo.decrement).not.toHaveBeenCalled();
     });
 
+    it("refuses to check out against a pharmacy that is no longer approved", async () => {
+      // Locked and re-read inside the transaction — this is the TOCTOU fix
+      // itself: an admin suspension landing between dispatch and the
+      // transaction's own lock must still be honored.
+      mockCreateOrderFixtures(
+        approvedPharmacy({ status: PharmacyStatus.SUSPENDED }),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("requires a prescription when the locked product row says it's required, even if the cart didn't know that", async () => {
+      // The locked re-read is what actually decides `requires` — this
+      // simulates staff having flipped prescriptionRequired on between the
+      // cart being built and checkout running.
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 1 }],
+      );
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects a cart referencing a product that's no longer visible", async () => {
+      // The locked product query filters on isVisible = true, so a product
+      // hidden after the cart was built simply isn't returned — length
+      // mismatch against the requested ids is what's actually asserted.
+      mockCreateOrderFixtures(approvedPharmacy(), [], []);
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
     it("validates prescription ownership before writing anything", async () => {
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([
-        product({ prescriptionRequired: true }),
-      ]);
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 1 }],
+      );
       // Not found — could be nonexistent, someone else's, a different
       // pharmacy's, or already attached to another order.
       prescriptionRepo.findOne.mockResolvedValue(null);
@@ -471,10 +569,11 @@ describe("PharmaciesService", () => {
     });
 
     it("links a valid prescription to the order once it exists", async () => {
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([
-        product({ prescriptionRequired: true }),
-      ]);
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 1 }],
+      );
       prescriptionRepo.findOne.mockResolvedValue({ id: "rx-1", orderId: null });
 
       await service.createOrder("user-1", {
@@ -492,10 +591,11 @@ describe("PharmaciesService", () => {
     });
 
     it("rejects the order when a concurrent checkout already claimed the same prescription", async () => {
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([
-        product({ prescriptionRequired: true }),
-      ]);
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 1 }],
+      );
       prescriptionRepo.findOne.mockResolvedValue({ id: "rx-1", orderId: null });
       // Simulates the row lock losing a race: another transaction's update
       // committed between this request's findOne above and its own update,
@@ -514,8 +614,11 @@ describe("PharmaciesService", () => {
     });
 
     it("rejects a whitespace-only delivery address instead of silently trimming it away", async () => {
-      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
-      productRepo.find.mockResolvedValue([product()]);
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
 
       await expect(
         service.createOrder("user-1", {
@@ -783,6 +886,140 @@ describe("PharmaciesService", () => {
           ],
         }),
       ]);
+    });
+
+    it("surfaces the latest review decision/notes for an order with a clarification request", async () => {
+      orderRepo.find.mockResolvedValue([
+        { id: "order-1", status: PharmacyOrderStatus.UNDER_REVIEW },
+      ]);
+      prescriptionRepo.find.mockResolvedValue([
+        { id: "rx-1", orderId: "order-1" },
+      ]);
+      // Newest first — matches the service's own `order: { createdAt: "DESC" }`.
+      reviewRepo.find.mockResolvedValue([
+        {
+          id: "review-2",
+          prescriptionId: "rx-1",
+          decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+          notes: "Please confirm the dosage",
+          createdAt: new Date("2026-01-02"),
+        },
+        {
+          id: "review-1",
+          prescriptionId: "rx-1",
+          decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+          notes: "older note",
+          createdAt: new Date("2026-01-01"),
+        },
+      ]);
+
+      const orders = await service.customerOrders("customer-1");
+
+      expect(orders).toEqual([
+        expect.objectContaining({
+          id: "order-1",
+          prescriptionId: "rx-1",
+          latestReviewDecision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+          latestReviewNotes: "Please confirm the dosage",
+        }),
+      ]);
+    });
+  });
+
+  describe("resubmitPrescription", () => {
+    it("lets a customer replace their prescription after a clarification request", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      reviewRepo.findOne.mockResolvedValue({
+        decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+      });
+      storageProvider.savePrivate.mockResolvedValue({
+        key: "prescriptions/new-key.jpg",
+      });
+
+      await service.resubmitPrescription("user-1", "order-1", {
+        buffer: Buffer.from("fake-bytes"),
+        originalName: "script2.jpg",
+        mimeType: "image/jpeg",
+      });
+
+      expect(prescriptionRepo.update).toHaveBeenCalledWith(
+        { id: "rx-1" },
+        expect.objectContaining({
+          privateStorageKey: "prescriptions/new-key.jpg",
+        }),
+      );
+    });
+
+    it("refuses to resubmit when no clarification was ever requested", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      reviewRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.resubmitPrescription("user-1", "order-1", {
+          buffer: Buffer.from("fake-bytes"),
+          originalName: "script2.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(prescriptionRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses to resubmit once the order has left under_review", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.ACCEPTED,
+      });
+
+      await expect(
+        service.resubmitPrescription("user-1", "order-1", {
+          buffer: Buffer.from("fake-bytes"),
+          originalName: "script2.jpg",
+          mimeType: "image/jpeg",
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(prescriptionRepo.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("removeProduct", () => {
+    it("commits the delete and its audit entry together", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      productRepo.delete.mockResolvedValue({ affected: 1 });
+
+      await service.removeProduct("user-1", "pharmacy-1", "product-1");
+
+      expect(productRepo.delete).toHaveBeenCalledWith({
+        id: "product-1",
+        pharmacyId: "pharmacy-1",
+      });
+      expect(auditRepo.save).toHaveBeenCalled();
+    });
+
+    it("404s without auditing when the product doesn't belong to this pharmacy", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      productRepo.delete.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.removeProduct("user-1", "pharmacy-1", "product-1"),
+      ).rejects.toThrow(NotFoundException);
+      expect(auditRepo.save).not.toHaveBeenCalled();
     });
   });
 

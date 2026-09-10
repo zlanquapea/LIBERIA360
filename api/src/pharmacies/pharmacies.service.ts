@@ -479,33 +479,45 @@ export class PharmaciesService {
   }
   async removeProduct(userId: string, pharmacyId: string, id: string) {
     await this.assertStaff(userId, pharmacyId);
-    const result = await this.products.delete({ id, pharmacyId });
-    if (!result.affected)
-      throw new NotFoundException("Product not found in this pharmacy");
-    await this.audit(userId, pharmacyId, "product.deleted", "product", id);
+
+    // The delete and its audit entry are one unit — otherwise a failure in
+    // the audit write after the delete has already committed reports an
+    // error for a deletion that, in fact, already took effect, and a retry
+    // only ever sees a 404 with the required deletion audit still missing.
+    const run = async (
+      productRepo: Repository<PharmacyProduct>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const result = await productRepo.delete({ id, pharmacyId });
+      if (!result.affected)
+        throw new NotFoundException("Product not found in this pharmacy");
+      await this.audit(
+        userId,
+        pharmacyId,
+        "product.deleted",
+        "product",
+        id,
+        {},
+        auditRepo,
+      );
+    };
+    const manager = this.products.manager;
+    return manager?.transaction
+      ? manager.transaction((tx) =>
+          run(
+            tx.getRepository(PharmacyProduct),
+            tx.getRepository(PharmacyAuditLog),
+          ),
+        )
+      : run(this.products, this.audits);
   }
   async createOrder(userId: string, dto: CreateOrderDto) {
     if (!dto.items.length) throw new BadRequestException("Your cart is empty");
-    const pharmacy = await this.pharmacies.findOneBy({ id: dto.pharmacyId });
-    if (!pharmacy || pharmacy.status !== PharmacyStatus.APPROVED)
-      throw new BadRequestException(
-        "This pharmacy is not approved to receive orders",
-      );
     // Checked against the trimmed value — the DTO's length validation and
     // this check both pass for a whitespace-only address ("     "), which
     // then trims to nothing when it's actually saved a few lines down,
     // leaving an order with no usable delivery destination.
     const trimmedDeliveryAddress = dto.deliveryAddress?.trim();
-    if (
-      dto.fulfillmentMethod === FulfillmentMethod.DELIVERY &&
-      (!pharmacy.deliveryEnabled || !trimmedDeliveryAddress)
-    )
-      throw new BadRequestException("A delivery address is required");
-    if (
-      dto.fulfillmentMethod === FulfillmentMethod.PICKUP &&
-      !pharmacy.pickupEnabled
-    )
-      throw new BadRequestException("Pickup is unavailable");
 
     // Aggregate quantities per product first — the cart can list the same
     // productId on more than one line (e.g. added in two separate clicks).
@@ -532,69 +544,114 @@ export class PharmaciesService {
         );
     }
     const ids = [...quantityByProduct.keys()];
-    const products = await this.products.find({
-      where: { id: In(ids), pharmacyId: dto.pharmacyId, isVisible: true },
-    });
-    if (products.length !== ids.length)
-      throw new BadRequestException("Cart contains an unavailable product");
-    const map = new Map(products.map((x) => [x.id, x]));
-    let requires = false;
-    const lines = ids.map((id) => {
-      const p = map.get(id)!;
-      const quantity = quantityByProduct.get(id)!;
-      if (!p.inventory || p.inventory.quantity < quantity)
-        throw new ConflictException(`${p.name} does not have enough stock`);
-      requires ||= p.prescriptionRequired;
-      return this.orderItems.create({
-        productId: p.id,
-        name: p.name,
-        unitPrice: p.price,
-        quantity,
-        prescriptionRequired: p.prescriptionRequired,
-      });
-    });
-    if (
-      requires &&
-      (!dto.prescriptionId || !dto.consentToPrescriptionProcessing)
-    )
-      throw new BadRequestException(
-        "Prescription upload and consent are required; upload does not guarantee approval",
-      );
-
-    // Validate the prescription *before* writing anything — findOne here,
-    // not after the order/items are already saved, so a bad prescriptionId
-    // (nonexistent, someone else's, a different pharmacy's, or already
-    // attached to another order) fails with nothing persisted rather than
-    // leaving a phantom under_review order behind.
-    let prescription: Prescription | null = null;
-    if (requires) {
-      prescription = await this.prescriptions.findOne({
-        where: {
-          id: dto.prescriptionId,
-          customerUserId: userId,
-          pharmacyId: dto.pharmacyId,
-          orderId: IsNull(),
-        },
-      });
-      if (!prescription)
-        throw new BadRequestException(
-          "Prescription is not available for this pharmacy",
-        );
-    }
-
-    const { subtotal, delivery, total } = calculatePharmacyTotals(
-      lines,
-      dto.fulfillmentMethod,
-      Number(pharmacy.deliveryFee),
-    );
 
     const persist = async (
+      pharmacyRepo: Repository<Pharmacy>,
+      productRepo: Repository<PharmacyProduct>,
       orderRepo: Repository<PharmacyOrder>,
       itemRepo: Repository<PharmacyOrderItem>,
       inventoryRepo: Repository<PharmacyInventory>,
       prescriptionRepo: Repository<Prescription>,
       auditRepo: Repository<PharmacyAuditLog>,
     ) => {
+      // Locked and read inside the transaction, not before it — a
+      // pre-transaction read left a window where an admin could suspend or
+      // reject the pharmacy after this request passed its approval check
+      // but before the order was actually created, letting checkout
+      // reserve inventory for a pharmacy already declared unsafe.
+      const pharmacy = await pharmacyRepo
+        .createQueryBuilder("p")
+        .setLock("pessimistic_write")
+        .where("p.id = :id", { id: dto.pharmacyId })
+        .getOne();
+      if (!pharmacy || pharmacy.status !== PharmacyStatus.APPROVED)
+        throw new BadRequestException(
+          "This pharmacy is not approved to receive orders",
+        );
+      if (
+        dto.fulfillmentMethod === FulfillmentMethod.DELIVERY &&
+        (!pharmacy.deliveryEnabled || !trimmedDeliveryAddress)
+      )
+        throw new BadRequestException("A delivery address is required");
+      if (
+        dto.fulfillmentMethod === FulfillmentMethod.PICKUP &&
+        !pharmacy.pickupEnabled
+      )
+        throw new BadRequestException("Pickup is unavailable");
+
+      // Locked the same way — staff could otherwise change a product's
+      // price, prescriptionRequired flag, or visibility between the cart
+      // being built and checkout running here, letting a since-restricted
+      // product go through as an ordinary order, or a stale price be
+      // charged.
+      const products = await productRepo
+        .createQueryBuilder("p")
+        .setLock("pessimistic_write")
+        .where("p.id IN (:...ids)", { ids })
+        .andWhere("p.pharmacyId = :pharmacyId", { pharmacyId: dto.pharmacyId })
+        .andWhere("p.isVisible = true")
+        .getMany();
+      if (products.length !== ids.length)
+        throw new BadRequestException("Cart contains an unavailable product");
+      const inventories = await inventoryRepo.find({
+        where: { productId: In(ids) },
+      });
+      const inventoryByProductId = new Map(
+        inventories.map((x) => [x.productId, x]),
+      );
+      const map = new Map(products.map((x) => [x.id, x]));
+      let requires = false;
+      const lines = ids.map((id) => {
+        const p = map.get(id)!;
+        const quantity = quantityByProduct.get(id)!;
+        const inventory = inventoryByProductId.get(id);
+        if (!inventory || inventory.quantity < quantity)
+          throw new ConflictException(`${p.name} does not have enough stock`);
+        requires ||= p.prescriptionRequired;
+        return itemRepo.create({
+          productId: p.id,
+          name: p.name,
+          unitPrice: p.price,
+          quantity,
+          prescriptionRequired: p.prescriptionRequired,
+        });
+      });
+      if (
+        requires &&
+        (!dto.prescriptionId || !dto.consentToPrescriptionProcessing)
+      )
+        throw new BadRequestException(
+          "Prescription upload and consent are required; upload does not guarantee approval",
+        );
+
+      // Validate the prescription *before* writing anything — findOne
+      // here, not after the order/items are already saved, so a bad
+      // prescriptionId (nonexistent, someone else's, a different
+      // pharmacy's, or already attached to another order) fails with
+      // nothing persisted rather than leaving a phantom under_review order
+      // behind.
+      let prescription: Prescription | null = null;
+      if (requires) {
+        prescription = await prescriptionRepo.findOne({
+          where: {
+            id: dto.prescriptionId,
+            customerUserId: userId,
+            pharmacyId: dto.pharmacyId,
+            orderId: IsNull(),
+          },
+        });
+        if (!prescription)
+          throw new BadRequestException(
+            "Prescription is not available for this pharmacy",
+          );
+      }
+
+      const { subtotal, delivery, total } = calculatePharmacyTotals(
+        lines,
+        dto.fulfillmentMethod,
+        Number(pharmacy.deliveryFee),
+      );
+
       const order = await orderRepo.save(
         orderRepo.create({
           pharmacyId: pharmacy.id,
@@ -671,6 +728,8 @@ export class PharmaciesService {
     const order = manager?.transaction
       ? await manager.transaction((tx) =>
           persist(
+            tx.getRepository(Pharmacy),
+            tx.getRepository(PharmacyProduct),
             tx.getRepository(PharmacyOrder),
             tx.getRepository(PharmacyOrderItem),
             tx.getRepository(PharmacyInventory),
@@ -679,6 +738,8 @@ export class PharmaciesService {
           ),
         )
       : await persist(
+          this.pharmacies,
+          this.products,
           this.orders,
           this.orderItems,
           this.inventory,
@@ -706,10 +767,106 @@ export class PharmaciesService {
       if (bucket) bucket.push(item);
       else itemsByOrderId.set(item.orderId, [item]);
     }
-    return orders.map((o) => ({
-      ...o,
-      items: itemsByOrderId.get(o.id) ?? [],
-    }));
+    // A prescription-required order's only customer-visible signal was
+    // ever "under review" — when a pharmacist requests clarification (see
+    // review()), the customer had no way to see the request at all, let
+    // alone respond to it (that's what resubmitPrescription() is for).
+    // Surface the prescription id and its latest review decision/notes.
+    const prescriptions = orderIds.length
+      ? await this.prescriptions.find({ where: { orderId: In(orderIds) } })
+      : [];
+    const prescriptionIdByOrderId = new Map(
+      prescriptions.map((p) => [p.orderId as string, p.id]),
+    );
+    const prescriptionIds = prescriptions.map((p) => p.id);
+    const reviews = prescriptionIds.length
+      ? await this.reviews.find({
+          where: { prescriptionId: In(prescriptionIds) },
+          order: { createdAt: "DESC" },
+        })
+      : [];
+    // find() above is ordered newest-first, so the first review seen per
+    // prescriptionId is its latest.
+    const latestReviewByPrescriptionId = new Map<string, PrescriptionReview>();
+    for (const review of reviews) {
+      if (!latestReviewByPrescriptionId.has(review.prescriptionId))
+        latestReviewByPrescriptionId.set(review.prescriptionId, review);
+    }
+    return orders.map((o) => {
+      const prescriptionId = prescriptionIdByOrderId.get(o.id) ?? null;
+      const latestReview = prescriptionId
+        ? latestReviewByPrescriptionId.get(prescriptionId)
+        : undefined;
+      return {
+        ...o,
+        items: itemsByOrderId.get(o.id) ?? [],
+        prescriptionId,
+        latestReviewDecision: latestReview?.decision ?? null,
+        latestReviewNotes: latestReview?.notes ?? null,
+      };
+    });
+  }
+  // Lets a customer reply to a pharmacist's clarification_requested
+  // decision by uploading a replacement prescription file for the same
+  // order — without this there was no customer-facing way to act on a
+  // clarification request; the order would sit under_review until a
+  // pharmacist eventually decided without ever receiving one.
+  async resubmitPrescription(
+    userId: string,
+    orderId: string,
+    file: { buffer: Buffer; originalName: string; mimeType: string },
+  ) {
+    if (!ALLOWED_PRESCRIPTION_MIME_TYPES.includes(file.mimeType))
+      throw new BadRequestException(
+        "Only JPEG, PNG, WebP images or a PDF are allowed",
+      );
+    if (file.buffer.length > MAX_PRESCRIPTION_FILE_SIZE_BYTES)
+      throw new BadRequestException("Prescription file is larger than 10MB");
+    const order = await this.orders.findOneBy({
+      id: orderId,
+      customerUserId: userId,
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== PharmacyOrderStatus.UNDER_REVIEW)
+      throw new ConflictException("This order is no longer awaiting review");
+    const prescription = await this.prescriptions.findOne({
+      where: { orderId, customerUserId: userId },
+    });
+    if (!prescription)
+      throw new NotFoundException("Prescription not found for this order");
+    // Only accept a resubmission when the pharmacist actually asked for
+    // one — otherwise a customer could overwrite the very file a
+    // pharmacist is mid-review on, or one already accepted/rejected.
+    const latestReview = await this.reviews.findOne({
+      where: { prescriptionId: prescription.id },
+      order: { createdAt: "DESC" },
+    });
+    if (latestReview?.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED)
+      throw new ConflictException(
+        "A new prescription can only be submitted after a pharmacist requests clarification",
+      );
+    const filename = `prescriptions/${randomUUID()}${extname(file.originalName).slice(0, 10)}`;
+    const { key } = await this.storage.savePrivate({
+      buffer: file.buffer,
+      filename,
+      contentType: file.mimeType,
+    });
+    await this.prescriptions.update(
+      { id: prescription.id },
+      {
+        privateStorageKey: key,
+        originalFilename: file.originalName,
+        mimeType: file.mimeType,
+      },
+    );
+    await this.audit(
+      userId,
+      order.pharmacyId,
+      "prescription.resubmitted",
+      "prescription",
+      prescription.id,
+    );
+    return { id: prescription.id };
   }
   async pharmacyOrders(userId: string, pharmacyId: string) {
     await this.assertStaff(userId, pharmacyId);

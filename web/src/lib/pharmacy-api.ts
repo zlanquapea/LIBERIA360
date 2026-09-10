@@ -73,6 +73,13 @@ export type PharmacyOrder = {
   // not on the createPharmacyOrder() response, which returns the bare
   // order row.
   items?: PharmacyOrderItem[];
+  // Also customerOrders()-only — the linked prescription (if any) and the
+  // latest review decision on it, so a "clarification_requested" review
+  // is visible here rather than the order just sitting at "under_review"
+  // with no explanation. See resubmitPrescription() below.
+  prescriptionId?: string | null;
+  latestReviewDecision?: string | null;
+  latestReviewNotes?: string | null;
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
@@ -104,16 +111,20 @@ export const getMyPharmacyOrders = () =>
 // see lib/uploads-api.ts's uploadImage for the same pattern. Uploaded
 // *before* checkout: the returned id is what the cart then submits as
 // CreateOrderDto.prescriptionId.
-export async function uploadPrescription(
-  pharmacyId: string,
-  file: File,
-): Promise<string> {
+function assertValidPrescriptionFile(file: File) {
   if (!ALLOWED_PRESCRIPTION_MIME_TYPES.includes(file.type)) {
     throw new HttpError(400, "Only JPEG, PNG, WebP images or a PDF are allowed.");
   }
   if (file.size > MAX_PRESCRIPTION_FILE_SIZE_BYTES) {
     throw new HttpError(400, "Prescription file is larger than 10MB.");
   }
+}
+
+export async function uploadPrescription(
+  pharmacyId: string,
+  file: File,
+): Promise<string> {
+  assertValidPrescriptionFile(file);
   const body = new FormData();
   body.append("pharmacyId", pharmacyId);
   body.append("file", file);
@@ -135,4 +146,29 @@ export async function uploadPrescription(
     );
   }
   return (data as { id: string }).id;
+}
+
+// PATCH /pharmacy-marketplace/orders/:orderId/prescription — a customer's
+// reply to a pharmacist's "clarification requested" review (surfaced on
+// PharmacyOrder.latestReviewDecision/latestReviewNotes above), replacing
+// the prescription file on the same still-under-review order.
+export async function resubmitPrescription(
+  orderId: string,
+  file: File,
+): Promise<void> {
+  assertValidPrescriptionFile(file);
+  const body = new FormData();
+  body.append("file", file);
+  const res = await fetch(
+    `/api/v1/pharmacy-marketplace/orders/${encodeURIComponent(orderId)}/prescription`,
+    { method: "PATCH", credentials: "same-origin", body },
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const message = (data as { message?: unknown } | null)?.message;
+    throw new HttpError(
+      res.status,
+      typeof message === "string" ? message : `Upload failed with ${res.status}`,
+    );
+  }
 }

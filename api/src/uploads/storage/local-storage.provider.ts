@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, resolve, sep } from "path";
 import { localUploadsDir } from "../local-uploads-dir";
 import { localPrivateUploadsDir } from "../local-private-uploads-dir";
@@ -58,8 +58,20 @@ export class LocalStorageProvider implements StorageProvider {
   }: SaveFileInput): Promise<SavePrivateFileResult> {
     const dir = localPrivateUploadsDir();
     const destination = resolveWithinDir(dir, filename);
-    await mkdir(dirname(destination), { recursive: true });
+    const targetDir = dirname(destination);
+    // 0700/0600 — this directory holds sensitive files (prescriptions)
+    // that must not be world- or group-readable on a shared host,
+    // regardless of the process umask. mkdir's own `mode` option is
+    // silently masked by umask (a common `0022` leaves directories
+    // `0755`), and a recursive mkdir over an already-existing parent
+    // doesn't touch that parent's mode at all — chmod'ing explicitly
+    // after the fact is what actually enforces this on every call, new
+    // directory or not.
+    await mkdir(targetDir, { recursive: true });
+    await chmod(dir, 0o700);
+    await chmod(targetDir, 0o700);
     await writeFile(destination, buffer);
+    await chmod(destination, 0o600);
     return { key: filename };
   }
 

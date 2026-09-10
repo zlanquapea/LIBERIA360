@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getMyPharmacyOrders, type PharmacyOrder } from "@/lib/pharmacy-api";
+import {
+  getMyPharmacyOrders,
+  resubmitPrescription,
+  type PharmacyOrder,
+} from "@/lib/pharmacy-api";
 const labels: Record<string, string> = {
   pending: "Pending",
   under_review: "Under review",
@@ -12,13 +16,79 @@ const labels: Record<string, string> = {
   rejected: "Rejected",
   cancelled: "Cancelled",
 };
+
+// Inline reply form for an order whose prescription review came back
+// "clarification_requested" (see PharmaciesService.review()) — without
+// this the order just sat at "under_review" forever with no way for the
+// customer to act on the pharmacist's request.
+function ClarificationReply({
+  order,
+  onResubmitted,
+}: {
+  order: PharmacyOrder;
+  onResubmitted: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  return (
+    <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+      <p className="font-semibold text-amber-800 dark:text-amber-300">
+        The pharmacist requested clarification on your prescription
+      </p>
+      {order.latestReviewNotes && (
+        <p className="mt-1 text-amber-800 dark:text-amber-300">
+          &ldquo;{order.latestReviewNotes}&rdquo;
+        </p>
+      )}
+      <label className="mt-2 block">
+        <span className="sr-only">Upload a replacement prescription</span>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="input mt-1 w-full text-xs"
+        />
+      </label>
+      {error && (
+        <p role="alert" className="mt-1 text-red-700 dark:text-red-400">
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        disabled={!file || busy}
+        onClick={async () => {
+          if (!file) return;
+          setBusy(true);
+          setError("");
+          try {
+            await resubmitPrescription(order.id, file);
+            onResubmitted();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Upload failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="btn-secondary mt-2 min-h-9 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {busy ? "Uploading…" : "Submit new prescription"}
+      </button>
+    </div>
+  );
+}
+
 export default function PharmacyOrdersPage() {
   const [orders, setOrders] = useState<PharmacyOrder[] | null>(null),
     [error, setError] = useState("");
-  useEffect(() => {
+  const load = () =>
     getMyPharmacyOrders()
       .then(setOrders)
       .catch((e) => setError(e.message));
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <main className="page-shell max-w-4xl">
@@ -66,6 +136,10 @@ export default function PharmacyOrdersPage() {
             <p className="mt-2 font-bold">
               Total L${Number(o.finalTotal).toFixed(2)}
             </p>
+            {o.status === "under_review" &&
+              o.latestReviewDecision === "clarification_requested" && (
+                <ClarificationReply order={o} onResubmitted={load} />
+              )}
           </article>
         ))}
       </div>
