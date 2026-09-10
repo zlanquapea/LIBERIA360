@@ -16,6 +16,7 @@ import {
 } from "../uploads/storage/storage-provider.interface";
 import { slugify } from "../common/slugify";
 import {
+  AssignStaffDto,
   CreateOrderDto,
   PharmacyProfileDto,
   PharmacyQueryDto,
@@ -49,6 +50,7 @@ import {
   Prescription,
   PrescriptionReview,
 } from "./entities/order.entity";
+import { UsersService } from "../users/users.service";
 
 // Prescription photos/scans, not just product photos — a phone camera shot
 // of a paper script is the common case, but a PDF scan is common enough
@@ -66,8 +68,14 @@ const ALLOWED_PRESCRIPTION_MIME_TYPES = [
 const MAX_PRESCRIPTION_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const NEXT: Record<PharmacyOrderStatus, PharmacyOrderStatus[]> = {
+  // Deliberately does NOT list UNDER_REVIEW: createOrder() is the only
+  // place an order is ever created there (because it has a prescription
+  // attached), never moved into it later. A pending order has no
+  // prescription to review, so accepting this jump here would let staff
+  // PATCH any ordinary order into under_review and strand it — it can
+  // only leave under_review via CANCELLED (below), with no prescription
+  // for review() to ever act on.
   [PharmacyOrderStatus.PENDING]: [
-    PharmacyOrderStatus.UNDER_REVIEW,
     PharmacyOrderStatus.ACCEPTED,
     PharmacyOrderStatus.CANCELLED,
   ],
@@ -119,6 +127,7 @@ export class PharmaciesService {
     @InjectRepository(PharmacyAuditLog)
     private audits: Repository<PharmacyAuditLog>,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+    private readonly users: UsersService,
   ) {}
 
   async directory(q: PharmacyQueryDto) {
@@ -234,6 +243,41 @@ export class PharmaciesService {
       id ? "pharmacy.updated" : "pharmacy.applied",
       "pharmacy",
       saved.id,
+    );
+    return saved;
+  }
+  // The only way a pharmacy gets any staff beyond the manager saveProfile()
+  // creates automatically for a new application — without this, a freshly
+  // onboarded pharmacy has no pharmacist, and review() (correctly) refuses
+  // every non-pharmacist decision, so it could never approve a prescription
+  // order except through direct DB access.
+  async assignStaff(
+    managerId: string,
+    pharmacyId: string,
+    dto: AssignStaffDto,
+  ) {
+    const manager = await this.assertStaff(managerId, pharmacyId);
+    if (manager.role !== PharmacyStaffRole.MANAGER)
+      throw new ForbiddenException(
+        "Only a manager on staff can assign staff roles",
+      );
+    const user = await this.users.findByEmail(dto.email);
+    if (!user) throw new NotFoundException("No account found for that email");
+    let member = await this.staff.findOne({
+      where: { pharmacyId, userId: user.id },
+    });
+    member = Object.assign(
+      member ?? this.staff.create({ pharmacyId, userId: user.id }),
+      { role: dto.role, active: true },
+    );
+    const saved = await this.staff.save(member);
+    await this.audit(
+      managerId,
+      pharmacyId,
+      "staff.assigned",
+      "staff",
+      saved.id,
+      { userId: user.id, role: dto.role },
     );
     return saved;
   }
@@ -372,6 +416,7 @@ export class PharmaciesService {
       itemRepo: Repository<PharmacyOrderItem>,
       inventoryRepo: Repository<PharmacyInventory>,
       prescriptionRepo: Repository<Prescription>,
+      auditRepo: Repository<PharmacyAuditLog>,
     ) => {
       const order = await orderRepo.save(
         orderRepo.create({
@@ -424,12 +469,27 @@ export class PharmaciesService {
           );
         }
       }
+      // Logged inside the same transaction as the order/items/inventory
+      // writes — a standalone post-commit audit call would let a failure
+      // here (a DB blip, a constraint the audit table alone enforces)
+      // return an error to the customer for an order that had already
+      // fully succeeded, inviting a retry that pays and reserves stock
+      // twice for what looks to them like one checkout.
+      await this.audit(
+        userId,
+        pharmacy.id,
+        "order.created",
+        "order",
+        order.id,
+        {},
+        auditRepo,
+      );
       return order;
     };
 
     // Wrapped in a transaction so a mid-flight failure (the stock-check
     // race above, or anything else) can't leave an order with some but
-    // not all of its items/inventory/prescription-link written.
+    // not all of its items/inventory/prescription-link/audit-log written.
     const manager = this.orders.manager;
     const order = manager?.transaction
       ? await manager.transaction((tx) =>
@@ -438,6 +498,7 @@ export class PharmaciesService {
             tx.getRepository(PharmacyOrderItem),
             tx.getRepository(PharmacyInventory),
             tx.getRepository(Prescription),
+            tx.getRepository(PharmacyAuditLog),
           ),
         )
       : await persist(
@@ -445,9 +506,9 @@ export class PharmaciesService {
           this.orderItems,
           this.inventory,
           this.prescriptions,
+          this.audits,
         );
 
-    await this.audit(userId, pharmacy.id, "order.created", "order", order.id);
     return this.orderDetail(order.id);
   }
   async customerOrders(userId: string) {
@@ -458,10 +519,26 @@ export class PharmaciesService {
   }
   async pharmacyOrders(userId: string, pharmacyId: string) {
     await this.assertStaff(userId, pharmacyId);
-    return this.orders.find({
+    const orders = await this.orders.find({
       where: { pharmacyId },
       order: { createdAt: "DESC" },
     });
+    // PharmacyOrder itself has no prescription reference (the FK points
+    // the other way — Prescription.orderId), so without this a staff
+    // member has no way to discover the id review()/prescriptionFile()
+    // need for an under_review order: neither route is reachable from the
+    // order queue alone. One extra query rather than N+1 per order.
+    const orderIds = orders.map((o) => o.id);
+    const prescriptions = orderIds.length
+      ? await this.prescriptions.find({ where: { orderId: In(orderIds) } })
+      : [];
+    const prescriptionIdByOrderId = new Map(
+      prescriptions.map((p) => [p.orderId as string, p.id]),
+    );
+    return orders.map((o) => ({
+      ...o,
+      prescriptionId: prescriptionIdByOrderId.get(o.id) ?? null,
+    }));
   }
   async transition(
     userId: string,
@@ -569,6 +646,25 @@ export class PharmaciesService {
     });
     if (!rx)
       throw new NotFoundException("Prescription not found in this pharmacy");
+    // Refuse to record a decision once this prescription's order has
+    // already left under_review — otherwise a duplicate submission, or a
+    // second pharmacist deciding after the first, could record e.g.
+    // "rejected" here for audit purposes while the order itself keeps
+    // progressing under an earlier "accepted" decision, with nothing
+    // downstream ever reflecting the contradiction. The conditional
+    // UPDATE below is still what actually serializes a genuinely
+    // concurrent double-decision; this is the sequential case (order
+    // already decided, or cancelled, before this call even started).
+    if (rx.orderId) {
+      const order = await this.orders.findOneBy({
+        id: rx.orderId,
+        pharmacyId,
+      });
+      if (!order || order.status !== PharmacyOrderStatus.UNDER_REVIEW)
+        throw new ConflictException(
+          "This order has already left review — a new decision can't be recorded",
+        );
+    }
     const review = await this.reviews.save(
       this.reviews.create({
         prescriptionId,
@@ -840,9 +936,13 @@ export class PharmaciesService {
     targetType: string,
     targetId: string | null,
     metadata: Record<string, unknown> = {},
+    // Callers that need this audit row committed atomically with other
+    // writes (createOrder(), below) pass a transaction-scoped repo; every
+    // other call site logs standalone against this.audits.
+    auditRepo: Repository<PharmacyAuditLog> = this.audits,
   ) {
-    return this.audits.save(
-      this.audits.create({
+    return auditRepo.save(
+      auditRepo.create({
         actorUserId,
         pharmacyId,
         action,

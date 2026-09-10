@@ -23,6 +23,7 @@ import { AdminGuard } from "../auth/guards/admin.guard";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 import {
+  AssignStaffDto,
   CreateOrderDto,
   PharmacyProfileDto,
   PharmacyQueryDto,
@@ -134,6 +135,16 @@ export class PharmacyDashboardController {
     @Body() dto: PharmacyProfileDto,
   ) {
     return this.service.saveProfile(u.id, id, dto);
+  }
+  // Manager-only — the only way this pharmacy gets a pharmacist (or a
+  // second manager, or an employee) beyond the one saveProfile() created
+  // automatically for whoever applied.
+  @Post(":id/staff") assignStaff(
+    @CurrentUser() u: User,
+    @Param("id") id: string,
+    @Body() dto: AssignStaffDto,
+  ) {
+    return this.service.assignStaff(u.id, id, dto);
   }
   @Post(":id/products") product(
     @CurrentUser() u: User,

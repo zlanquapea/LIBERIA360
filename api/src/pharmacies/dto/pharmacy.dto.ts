@@ -2,6 +2,7 @@ import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsInt,
   IsNumber,
@@ -16,6 +17,7 @@ import {
 import {
   FulfillmentMethod,
   PharmacyOrderStatus,
+  PharmacyStaffRole,
   PharmacyStatus,
   PrescriptionDecision,
 } from "../entities/pharmacy.enums";
@@ -89,4 +91,10 @@ export class PrescriptionReviewDto {
 export class VerificationDto {
   @IsEnum(PharmacyStatus) decision: PharmacyStatus;
   @IsOptional() @IsString() @Length(2, 1000) notes?: string;
+}
+export class AssignStaffDto {
+  // By email, not userId — a manager knows a colleague's email, not their
+  // account id; the same lookup-by-email pattern trip invitations use.
+  @IsEmail() email: string;
+  @IsEnum(PharmacyStaffRole) role: PharmacyStaffRole;
 }

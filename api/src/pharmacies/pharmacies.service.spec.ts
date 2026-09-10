@@ -38,6 +38,7 @@ import {
   PrescriptionReview,
 } from "./entities/order.entity";
 import { STORAGE_PROVIDER } from "../uploads/storage/storage-provider.interface";
+import { UsersService } from "../users/users.service";
 
 describe("pharmacy marketplace policies", () => {
   it("calculates pickup and delivery totals server-side", () => {
@@ -86,13 +87,19 @@ describe("PharmaciesService", () => {
     save: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
-  let staffRepo: { findOne: jest.Mock };
+  let staffRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+  };
+  let usersService: { findByEmail: jest.Mock };
   let productRepo: { find: jest.Mock };
   let inventoryRepo: { decrement: jest.Mock; increment: jest.Mock };
   let orderRepo: {
     create: jest.Mock;
     save: jest.Mock;
     update: jest.Mock;
+    find: jest.Mock;
     findOneBy: jest.Mock;
     findOneOrFail: jest.Mock;
     manager: undefined;
@@ -100,6 +107,7 @@ describe("PharmaciesService", () => {
   let orderItemRepo: { create: jest.Mock; save: jest.Mock; find: jest.Mock };
   let prescriptionRepo: {
     findOne: jest.Mock;
+    find: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
@@ -151,7 +159,12 @@ describe("PharmaciesService", () => {
       save: jest.fn((x) => Promise.resolve(x)),
       createQueryBuilder: jest.fn(),
     };
-    staffRepo = { findOne: jest.fn() };
+    staffRepo = {
+      findOne: jest.fn(),
+      save: jest.fn((x) => Promise.resolve({ id: "staff-1", ...x })),
+      create: jest.fn((x) => x),
+    };
+    usersService = { findByEmail: jest.fn() };
     productRepo = { find: jest.fn() };
     inventoryRepo = {
       decrement: jest.fn().mockResolvedValue(undefined),
@@ -164,6 +177,7 @@ describe("PharmaciesService", () => {
       // updated" so transition()/review()'s conditional updates succeed
       // unless a test deliberately simulates a lost race with affected: 0.
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      find: jest.fn().mockResolvedValue([]),
       findOneBy: jest.fn(),
       findOneOrFail: jest.fn().mockResolvedValue({ id: "order-1" }),
       manager: undefined,
@@ -175,6 +189,7 @@ describe("PharmaciesService", () => {
     };
     prescriptionRepo = {
       findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       save: jest.fn((x) => Promise.resolve({ id: "rx-1", ...x })),
       create: jest.fn((x) => x),
       // Same reasoning as orderRepo.update above — default to "claimed
@@ -235,10 +250,63 @@ describe("PharmaciesService", () => {
         },
         { provide: getRepositoryToken(PharmacyAuditLog), useValue: auditRepo },
         { provide: STORAGE_PROVIDER, useValue: storageProvider },
+        { provide: UsersService, useValue: usersService },
       ],
     }).compile();
 
     service = module.get(PharmaciesService);
+  });
+
+  describe("assignStaff", () => {
+    it("lets a manager add a new pharmacist by email", async () => {
+      staffRepo.findOne
+        .mockResolvedValueOnce({ role: PharmacyStaffRole.MANAGER }) // assertStaff(managerId, ...)
+        .mockResolvedValueOnce(null); // no existing membership for the invitee
+      usersService.findByEmail.mockResolvedValue({ id: "user-2" });
+
+      await service.assignStaff("manager-1", "pharmacy-1", {
+        email: "pharmacist@example.com",
+        role: PharmacyStaffRole.PHARMACIST,
+      } as any);
+
+      expect(staffRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pharmacyId: "pharmacy-1",
+          userId: "user-2",
+          role: PharmacyStaffRole.PHARMACIST,
+          active: true,
+        }),
+      );
+    });
+
+    it("refuses when the caller isn't a manager", async () => {
+      staffRepo.findOne.mockResolvedValueOnce({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+
+      await expect(
+        service.assignStaff("user-1", "pharmacy-1", {
+          email: "x@example.com",
+          role: PharmacyStaffRole.EMPLOYEE,
+        } as any),
+      ).rejects.toThrow(ForbiddenException);
+      expect(staffRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("404s when no account exists for that email", async () => {
+      staffRepo.findOne.mockResolvedValueOnce({
+        role: PharmacyStaffRole.MANAGER,
+      });
+      usersService.findByEmail.mockResolvedValue(null);
+
+      await expect(
+        service.assignStaff("manager-1", "pharmacy-1", {
+          email: "nobody@example.com",
+          role: PharmacyStaffRole.PHARMACIST,
+        } as any),
+      ).rejects.toThrow(NotFoundException);
+      expect(staffRepo.save).not.toHaveBeenCalled();
+    });
   });
 
   describe("createOrder", () => {
@@ -368,6 +436,29 @@ describe("PharmaciesService", () => {
   });
 
   describe("review", () => {
+    it("refuses a decision once the order has already left review", async () => {
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      // An earlier decision (or a cancellation) already moved this order
+      // out of under_review by the time this call started.
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.ACCEPTED,
+      });
+
+      await expect(
+        service.review("user-1", "pharmacy-1", "rx-1", {
+          decision: PrescriptionDecision.REJECTED,
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(reviewRepo.save).not.toHaveBeenCalled();
+    });
+
     it("refuses a decision from staff who isn't a pharmacist", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
 
@@ -443,9 +534,16 @@ describe("PharmaciesService", () => {
         id: "rx-1",
         orderId: "order-1",
       });
-      // Conditional update finds the order no longer under_review (a
-      // concurrent decision, or an explicit cancellation, already moved
-      // it) — this decision must not also restore inventory.
+      // The preliminary check (still under_review at the time review()
+      // was called) passes...
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.UNDER_REVIEW,
+      });
+      // ...but the conditional update's row lock finds the order no
+      // longer under_review by the time it runs (a genuinely concurrent
+      // second decision landed first) — this decision must not also
+      // restore inventory.
       orderRepo.update.mockResolvedValue({ affected: 0 });
 
       await service.review("user-1", "pharmacy-1", "rx-1", {
@@ -453,6 +551,26 @@ describe("PharmaciesService", () => {
       } as any);
 
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("pharmacyOrders", () => {
+    it("attaches each order's prescriptionId so staff can reach review()/prescriptionFile()", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.find.mockResolvedValue([
+        { id: "order-1", status: PharmacyOrderStatus.UNDER_REVIEW },
+        { id: "order-2", status: PharmacyOrderStatus.PENDING },
+      ]);
+      prescriptionRepo.find.mockResolvedValue([
+        { id: "rx-1", orderId: "order-1" },
+      ]);
+
+      const orders = await service.pharmacyOrders("user-1", "pharmacy-1");
+
+      expect(orders).toEqual([
+        expect.objectContaining({ id: "order-1", prescriptionId: "rx-1" }),
+        expect.objectContaining({ id: "order-2", prescriptionId: null }),
+      ]);
     });
   });
 

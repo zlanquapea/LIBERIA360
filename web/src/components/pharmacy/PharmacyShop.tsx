@@ -136,11 +136,21 @@ export function PharmacyShop({
                   </p>
                 )}
                 <button
-                  disabled={!p.inventory?.quantity}
-                  onClick={() =>
-                    setCart((x) => ({ ...x, [p.id]: (x[p.id] || 0) + 1 }))
+                  disabled={
+                    !p.inventory?.quantity ||
+                    (cart[p.id] || 0) >= p.inventory.quantity
                   }
-                  className="btn-secondary mt-3 min-h-11"
+                  onClick={() =>
+                    setCart((x) => {
+                      const next = (x[p.id] || 0) + 1;
+                      // The server enforces this same cap at checkout —
+                      // stopping here just avoids building a cart that's
+                      // guaranteed to fail there.
+                      if (next > (p.inventory?.quantity ?? 0)) return x;
+                      return { ...x, [p.id]: next };
+                    })
+                  }
+                  className="btn-secondary mt-3 min-h-11 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Add to cart
                 </button>
