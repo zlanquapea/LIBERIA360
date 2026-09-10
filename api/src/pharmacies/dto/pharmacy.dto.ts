@@ -118,6 +118,13 @@ export class StatusDto {
 export class PrescriptionReviewDto {
   @IsEnum(PrescriptionDecision) decision: PrescriptionDecision;
   @IsOptional() @IsString() @Length(2, 1000) notes?: string;
+  // The Prescription.version the caller actually inspected (surfaced on
+  // each order by pharmacyOrders()) — required, not optional: without it a
+  // pharmacist who opened the file, then had the customer resubmit before
+  // clicking Accept/Reject, would have their decision silently applied to
+  // bytes they never looked at. review() rejects a stale value with a 409
+  // asking the caller to reload and re-review the latest submission.
+  @Type(() => Number) @IsInt() @Min(1) prescriptionVersion: number;
 }
 export class VerificationDto {
   @IsEnum(PharmacyStatus) decision: PharmacyStatus;

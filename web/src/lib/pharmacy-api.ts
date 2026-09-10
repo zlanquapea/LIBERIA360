@@ -80,6 +80,10 @@ export type PharmacyOrder = {
   prescriptionId?: string | null;
   latestReviewDecision?: string | null;
   latestReviewNotes?: string | null;
+  // Staff-facing only (getPharmacyDashboardOrders()) — the version
+  // ReviewForm must resubmit alongside its decision; see
+  // PrescriptionReviewDto.prescriptionVersion.
+  prescriptionVersion?: number | null;
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
@@ -270,7 +274,14 @@ export const transitionPharmacyOrder = (
 export const reviewPharmacyPrescription = (
   pharmacyId: string,
   prescriptionId: string,
-  body: { decision: "accepted" | "rejected" | "clarification_requested"; notes?: string },
+  body: {
+    decision: "accepted" | "rejected" | "clarification_requested";
+    notes?: string;
+    // The Prescription.version this decision was made against (from the
+    // order's own prescriptionVersion, set by getPharmacyDashboardOrders())
+    // — the API rejects a stale one with a 409 if it's changed since.
+    prescriptionVersion: number;
+  },
 ) =>
   apiRequest<unknown>(
     `/pharmacy-dashboard/${pharmacyId}/prescriptions/${prescriptionId}/reviews`,
@@ -282,6 +293,11 @@ export type PharmacyStats = {
   completedOrders: number;
   pendingOrders: number;
   revenue: number;
+  // The caller's own staff role at this pharmacy — used to hide the
+  // clinical Accept/Reject/clarification controls (ReviewForm) from
+  // anyone but a pharmacist, since review() rejects those from a manager
+  // or employee just the same.
+  role: "manager" | "pharmacist" | "employee";
 };
 
 export const getPharmacyStats = (pharmacyId: string) =>

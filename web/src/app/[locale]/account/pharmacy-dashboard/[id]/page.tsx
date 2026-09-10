@@ -79,6 +79,11 @@ function ProfileForm({
     pickupEnabled: pharmacy.pickupEnabled,
     deliveryEnabled: pharmacy.deliveryEnabled,
     deliveryFee: String(pharmacy.deliveryFee),
+    // Only present when getMyPharmacies() actually selected it — an
+    // application submitted without one (the empty-state ApplicationForm
+    // makes it optional) would otherwise never be correctable, since
+    // admin approval refuses a pharmacy with none on file.
+    licenceNumber: pharmacy.licenceNumber ?? "",
   });
   const [saving, setSaving] = useState(false),
     [error, setError] = useState(""),
@@ -101,6 +106,7 @@ function ProfileForm({
         pickupEnabled: form.pickupEnabled,
         deliveryEnabled: form.deliveryEnabled,
         deliveryFee: Number(form.deliveryFee),
+        licenceNumber: form.licenceNumber || undefined,
       });
       onSaved(updated);
       setSaved(true);
@@ -163,6 +169,16 @@ function ProfileForm({
           value={form.deliveryFee}
           onChange={(e) =>
             setForm((f) => ({ ...f, deliveryFee: e.target.value }))
+          }
+        />
+      </label>
+      <label>
+        Licence number
+        <input
+          className="input mt-1 w-full"
+          value={form.licenceNumber}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, licenceNumber: e.target.value }))
           }
         />
       </label>
@@ -600,22 +616,29 @@ function ProductsSection({ pharmacyId }: { pharmacyId: string }) {
 function ReviewForm({
   pharmacyId,
   prescriptionId,
+  prescriptionVersion,
   onDone,
 }: {
   pharmacyId: string;
   prescriptionId: string;
+  prescriptionVersion: number | null;
   onDone: () => void;
 }) {
   const [notes, setNotes] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   async function decide(decision: "accepted" | "rejected" | "clarification_requested") {
+    if (prescriptionVersion == null) {
+      setError("Could not determine the current prescription version — reload the page.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await reviewPharmacyPrescription(pharmacyId, prescriptionId, {
         decision,
         notes: notes.trim() || undefined,
+        prescriptionVersion,
       });
       onDone();
     } catch (e) {
@@ -681,7 +704,13 @@ function ReviewForm({
   );
 }
 
-function OrdersSection({ pharmacyId }: { pharmacyId: string }) {
+function OrdersSection({
+  pharmacyId,
+  isPharmacist,
+}: {
+  pharmacyId: string;
+  isPharmacist: boolean;
+}) {
   const [orders, setOrders] = useState<PharmacyOrder[] | null>(null),
     [error, setError] = useState(""),
     [transitioning, setTransitioning] = useState<string | null>(null);
@@ -738,10 +767,17 @@ function OrdersSection({ pharmacyId }: { pharmacyId: string }) {
                 ))}
               </ul>
             )}
-            {o.status === "under_review" && o.prescriptionId && (
+            {o.status === "under_review" && o.prescriptionId && !isPharmacist && (
+              <p className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                Awaiting pharmacist review — only a pharmacist on staff can
+                accept, reject, or request clarification on a prescription.
+              </p>
+            )}
+            {o.status === "under_review" && o.prescriptionId && isPharmacist && (
               <ReviewForm
                 pharmacyId={pharmacyId}
                 prescriptionId={o.prescriptionId}
+                prescriptionVersion={o.prescriptionVersion ?? null}
                 onDone={load}
               />
             )}
@@ -842,7 +878,10 @@ export default function PharmacyManagePage() {
             <StaffForm pharmacyId={pharmacy.id} />
           </section>
           <ProductsSection pharmacyId={pharmacy.id} />
-          <OrdersSection pharmacyId={pharmacy.id} />
+          <OrdersSection
+            pharmacyId={pharmacy.id}
+            isPharmacist={stats?.role === "pharmacist"}
+          />
         </div>
       )}
     </main>

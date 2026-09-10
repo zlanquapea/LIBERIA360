@@ -122,6 +122,7 @@ in production. Before real users start uploading listing photos:
 ```bash
 STORAGE_DRIVER=s3
 S3_BUCKET=...
+S3_PRIVATE_BUCKET=...    # required — see below
 S3_REGION=...            # "auto" is fine for R2; a real AWS region for S3
 S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
@@ -129,10 +130,18 @@ S3_ENDPOINT=...          # only for a non-AWS provider (R2, MinIO, ...)
 S3_PUBLIC_URL_BASE=...   # a CDN in front of the bucket, or the bucket's own public URL
 ```
 
-Works with AWS S3, Cloudflare R2, DigitalOcean Spaces, or MinIO. The bucket
+Works with AWS S3, Cloudflare R2, DigitalOcean Spaces, or MinIO. `S3_BUCKET`
 needs to actually be publicly readable (or fronted by a CDN that is) —
 `S3StorageProvider` deliberately never sets an object ACL, since modern
 buckets default to ACLs disabled ("bucket owner enforced").
+
+`S3_PRIVATE_BUCKET` must be a **second, distinct** bucket with no
+public-read policy — it's where anything uploaded via `savePrivate()`
+goes (currently just pharmacy prescriptions). `validateProductionConfig`
+refuses to boot with `STORAGE_DRIVER=s3` if this is unset, or if it's set
+to the same bucket as `S3_BUCKET`: either way, a private upload would
+land in the publicly-readable bucket, and anyone who discovers or leaks
+an object key bypasses every access check that route enforces.
 
 ## 5. Transactional email
 

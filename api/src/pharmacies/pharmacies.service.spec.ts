@@ -92,6 +92,7 @@ describe("PharmaciesService", () => {
   };
   let staffRepo: {
     findOne: jest.Mock;
+    find: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
     count: jest.Mock;
@@ -119,6 +120,7 @@ describe("PharmaciesService", () => {
     save: jest.Mock;
     update: jest.Mock;
     find: jest.Mock;
+    findBy: jest.Mock;
     findOneBy: jest.Mock;
     findOneOrFail: jest.Mock;
     createQueryBuilder: jest.Mock;
@@ -214,6 +216,17 @@ describe("PharmaciesService", () => {
       getOneOrFail: jest.fn().mockResolvedValue({ privateStorageKey }),
     });
   }
+  // review() locks and rereads the prescription's *current* version right
+  // after locking the order — mock that chain the same way
+  // mockPrescriptionQueryBuilder does above for resubmitPrescription()'s
+  // own (distinct) prescription lock.
+  function mockPrescriptionVersionLock(version: number) {
+    prescriptionRepo.createQueryBuilder.mockReturnValue({
+      setLock: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getOneOrFail: jest.fn().mockResolvedValue({ version }),
+    });
+  }
   // createOrder() locks and re-reads both the pharmacy and the cart's
   // product rows inside its transaction — mock the product side of that
   // chain the same way mockPharmacyQueryBuilder does above.
@@ -274,6 +287,7 @@ describe("PharmaciesService", () => {
     };
     staffRepo = {
       findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       save: jest.fn((x) => Promise.resolve({ id: "staff-1", ...x })),
       create: jest.fn((x) => x),
       count: jest.fn(),
@@ -306,6 +320,7 @@ describe("PharmaciesService", () => {
       // unless a test deliberately simulates a lost race with affected: 0.
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       find: jest.fn().mockResolvedValue([]),
+      findBy: jest.fn().mockResolvedValue([]),
       findOneBy: jest.fn(),
       findOneOrFail: jest.fn().mockResolvedValue({ id: "order-1" }),
       createQueryBuilder: jest.fn(),
@@ -717,6 +732,28 @@ describe("PharmaciesService", () => {
       expect(reviewRepo.save).not.toHaveBeenCalled();
     });
 
+    it("refuses a decision made against a prescription version that's since changed", async () => {
+      // The pharmacist opened the file, the customer resubmitted (bumping
+      // the version), and only then did the pharmacist click Accept —
+      // still holding the stale version their dashboard last loaded.
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+        version: 2,
+      });
+
+      await expect(
+        service.review("user-1", "pharmacy-1", "rx-1", {
+          decision: PrescriptionDecision.ACCEPTED,
+          prescriptionVersion: 1,
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(reviewRepo.save).not.toHaveBeenCalled();
+    });
+
     it("refuses a decision from staff who isn't a pharmacist", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
 
@@ -744,6 +781,7 @@ describe("PharmaciesService", () => {
       prescriptionRepo.findOne.mockResolvedValue({
         id: "rx-1",
         orderId: "order-1",
+        version: 1,
       });
       orderRepo.findOneBy.mockResolvedValue({
         id: "order-1",
@@ -753,12 +791,14 @@ describe("PharmaciesService", () => {
       // is saved, ahead of either branch — see the dedicated lock-ordering
       // test below for the race this closes.
       mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      mockPrescriptionVersionLock(1);
       orderItemRepo.find.mockResolvedValue([
         { productId: "product-1", quantity: 2 },
       ]);
 
       await service.review("user-1", "pharmacy-1", "rx-1", {
         decision: PrescriptionDecision.REJECTED,
+        prescriptionVersion: 1,
       } as any);
 
       expect(inventoryRepo.increment).toHaveBeenCalledWith(
@@ -775,15 +815,18 @@ describe("PharmaciesService", () => {
       prescriptionRepo.findOne.mockResolvedValue({
         id: "rx-1",
         orderId: "order-1",
+        version: 1,
       });
       orderRepo.findOneBy.mockResolvedValue({
         id: "order-1",
         status: PharmacyOrderStatus.UNDER_REVIEW,
       });
       mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      mockPrescriptionVersionLock(1);
 
       await service.review("user-1", "pharmacy-1", "rx-1", {
         decision: PrescriptionDecision.ACCEPTED,
+        prescriptionVersion: 1,
       } as any);
 
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
@@ -837,6 +880,7 @@ describe("PharmaciesService", () => {
       prescriptionRepo.findOne.mockResolvedValue({
         id: "rx-1",
         orderId: "order-1",
+        version: 1,
       });
       orderRepo.findOneBy.mockResolvedValue({
         id: "order-1",
@@ -850,6 +894,7 @@ describe("PharmaciesService", () => {
         calls.push("lock");
         return Promise.resolve({ status: PharmacyOrderStatus.UNDER_REVIEW });
       });
+      mockPrescriptionVersionLock(1);
       reviewRepo.save.mockImplementation((x: any) => {
         calls.push("save");
         return Promise.resolve(x);
@@ -857,6 +902,7 @@ describe("PharmaciesService", () => {
 
       await service.review("user-1", "pharmacy-1", "rx-1", {
         decision: PrescriptionDecision.ACCEPTED,
+        prescriptionVersion: 1,
       } as any);
 
       expect(calls).toEqual(["lock", "save"]);
@@ -869,6 +915,7 @@ describe("PharmaciesService", () => {
       prescriptionRepo.findOne.mockResolvedValue({
         id: "rx-1",
         orderId: "order-1",
+        version: 1,
       });
       orderRepo.findOneBy.mockResolvedValue({
         id: "order-1",
@@ -877,9 +924,11 @@ describe("PharmaciesService", () => {
       // The order is still under_review by the time the clarification
       // branch's row-locked recheck runs.
       mockOrderQueryBuilder({ status: PharmacyOrderStatus.UNDER_REVIEW });
+      mockPrescriptionVersionLock(1);
 
       await service.review("user-1", "pharmacy-1", "rx-1", {
         decision: PrescriptionDecision.CLARIFICATION_REQUESTED,
+        prescriptionVersion: 1,
       } as any);
 
       expect(reviewRepo.save).toHaveBeenCalled();
@@ -920,7 +969,7 @@ describe("PharmaciesService", () => {
         { id: "order-2", status: PharmacyOrderStatus.PENDING },
       ]);
       prescriptionRepo.find.mockResolvedValue([
-        { id: "rx-1", orderId: "order-1" },
+        { id: "rx-1", orderId: "order-1", version: 3 },
       ]);
       orderItemRepo.find.mockResolvedValue([
         { id: "item-1", orderId: "order-1", name: "Paracetamol", quantity: 2 },
@@ -933,6 +982,9 @@ describe("PharmaciesService", () => {
         expect.objectContaining({
           id: "order-1",
           prescriptionId: "rx-1",
+          // ReviewForm resubmits this with its decision; review() rejects
+          // a stale one — see the dedicated version-mismatch test above.
+          prescriptionVersion: 3,
           items: [
             {
               id: "item-1",
@@ -1451,6 +1503,47 @@ describe("PharmaciesService", () => {
         ForbiddenException,
       );
       expect(productRepo.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("mine", () => {
+    it("opts back into the licence number so staff can see and correct it in ProfileForm", async () => {
+      staffRepo.find.mockResolvedValue([
+        { pharmacyId: "pharmacy-1", active: true },
+      ]);
+      const builder = {
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getMany: jest
+          .fn()
+          .mockResolvedValue([{ id: "pharmacy-1", licenceNumber: "LR-1" }]),
+      };
+      pharmacyRepo.createQueryBuilder.mockReturnValue(builder);
+
+      const result = await service.mine("user-1");
+
+      expect(builder.addSelect).toHaveBeenCalledWith("p.licenceNumber");
+      expect(result).toEqual([{ id: "pharmacy-1", licenceNumber: "LR-1" }]);
+    });
+
+    it("returns an empty list without querying pharmacies when the caller has no active memberships", async () => {
+      staffRepo.find.mockResolvedValue([]);
+
+      const result = await service.mine("user-1");
+
+      expect(result).toEqual([]);
+      expect(pharmacyRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("stats", () => {
+    it("surfaces the caller's own staff role so the frontend can gate pharmacist-only controls", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.EMPLOYEE });
+      orderRepo.findBy.mockResolvedValue([]);
+
+      const result = await service.stats("user-1", "pharmacy-1");
+
+      expect(result.role).toBe(PharmacyStaffRole.EMPLOYEE);
     });
   });
 

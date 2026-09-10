@@ -224,9 +224,19 @@ export class PharmaciesService {
     const memberships = await this.staff.find({
       where: { userId, active: true },
     });
-    return this.pharmacies.findBy({
-      id: In(memberships.map((x) => x.pharmacyId)),
-    });
+    if (!memberships.length) return [];
+    // Opt back into the `select: false` licenceNumber column (same
+    // pattern as saveProfile()/verification()) — staff managing their own
+    // pharmacy need to see whether one is already on file, since
+    // ProfileForm is the only place they can add or correct it after an
+    // application was submitted without one.
+    return this.pharmacies
+      .createQueryBuilder("p")
+      .addSelect("p.licenceNumber")
+      .where("p.id IN (:...ids)", {
+        ids: memberships.map((x) => x.pharmacyId),
+      })
+      .getMany();
   }
   async saveProfile(
     userId: string,
@@ -969,12 +979,17 @@ export class PharmaciesService {
         .where("p.id = :id", { id: prescription.id })
         .getOneOrFail();
       const previousKey = current.privateStorageKey;
+      // Bumped under the same lock the key itself is read under, so a
+      // pharmacist's review() (which checks this against the version it
+      // was handed) can never be satisfied by a version that predates
+      // bytes actually written to storage.
       await prescriptionRepo.update(
         { id: prescription.id },
         {
           privateStorageKey: key,
           originalFilename: file.originalName,
           mimeType: file.mimeType,
+          version: current.version + 1,
         },
       );
       await this.audit(
@@ -1042,6 +1057,13 @@ export class PharmaciesService {
     const prescriptionIdByOrderId = new Map(
       prescriptions.map((p) => [p.orderId as string, p.id]),
     );
+    // The version this listing reflects — ReviewForm resubmits it with the
+    // decision, and review() rejects a stale one, so staff who let the
+    // dashboard sit open through a resubmission are forced to reload
+    // before their Accept/Reject can apply to bytes they never saw.
+    const prescriptionVersionByOrderId = new Map(
+      prescriptions.map((p) => [p.orderId as string, p.version]),
+    );
     // Same story for line items: staff preparing an order need to know
     // what's actually in it (product names, quantities), and there was no
     // other route exposing that — just totals and a status.
@@ -1057,6 +1079,7 @@ export class PharmaciesService {
     return orders.map((o) => ({
       ...o,
       prescriptionId: prescriptionIdByOrderId.get(o.id) ?? null,
+      prescriptionVersion: prescriptionVersionByOrderId.get(o.id) ?? null,
       items: itemsByOrderId.get(o.id) ?? [],
     }));
   }
@@ -1173,6 +1196,15 @@ export class PharmaciesService {
     });
     if (!rx)
       throw new NotFoundException("Prescription not found in this pharmacy");
+    // Fast-fail on the version the pharmacist actually saw — the
+    // authoritative recheck is the locked read inside the transaction
+    // below (this call may have changed by the time it starts), but there
+    // is no reason to open a transaction for a request that's already
+    // stale by this cheap, unlocked read.
+    if (rx.version !== dto.prescriptionVersion)
+      throw new ConflictException(
+        "This prescription has changed since you loaded it — reload and review the latest submission",
+      );
     // Refuse to record a decision once this prescription's order has
     // already left under_review — otherwise a duplicate submission, or a
     // second pharmacist deciding after the first, could record e.g.
@@ -1215,6 +1247,7 @@ export class PharmaciesService {
       itemRepo: Repository<PharmacyOrderItem>,
       inventoryRepo: Repository<PharmacyInventory>,
       auditRepo: Repository<PharmacyAuditLog>,
+      prescriptionRepo: Repository<Prescription>,
     ) => {
       // Locked *before* the review row is saved, not after — every branch
       // used to lock only once it got around to touching the order (the
@@ -1241,6 +1274,27 @@ export class PharmaciesService {
             "This order was just decided by another request",
           );
       }
+      // Authoritative version recheck, under lock — the outer check above
+      // is only a fast-fail against a pre-transaction read. A resubmission
+      // landing between that read and here (e.g. the pharmacist had this
+      // file open, the customer resubmitted, and only then did the
+      // pharmacist click Accept/Reject) must still be caught. Locked
+      // *after* the order above, matching resubmitPrescription()'s own
+      // order→prescription lock order — locking the other way around
+      // would deadlock the two against each other under real concurrency.
+      // Whichever of the two transactions gets to the order lock first now
+      // fully serializes the other, so the version read here is always
+      // either the one this decision actually inspected, or already
+      // reflects a resubmission this call correctly refuses to act on.
+      const lockedRx = await prescriptionRepo
+        .createQueryBuilder("p")
+        .setLock("pessimistic_write")
+        .where("p.id = :id", { id: prescriptionId })
+        .getOneOrFail();
+      if (lockedRx.version !== dto.prescriptionVersion)
+        throw new ConflictException(
+          "This prescription has changed since you loaded it — reload and review the latest submission",
+        );
       const review = await reviewRepo.save(
         reviewRepo.create({
           prescriptionId,
@@ -1305,6 +1359,7 @@ export class PharmaciesService {
             tx.getRepository(PharmacyOrderItem),
             tx.getRepository(PharmacyInventory),
             tx.getRepository(PharmacyAuditLog),
+            tx.getRepository(Prescription),
           ),
         )
       : await run(
@@ -1313,6 +1368,7 @@ export class PharmaciesService {
           this.orderItems,
           this.inventory,
           this.audits,
+          this.prescriptions,
         );
 
     return review;
@@ -1531,7 +1587,7 @@ export class PharmaciesService {
     return this.orders.find({ order: { createdAt: "DESC" } });
   }
   stats(userId: string, pharmacyId: string) {
-    return this.assertStaff(userId, pharmacyId).then(async () => {
+    return this.assertStaff(userId, pharmacyId).then(async (member) => {
       const all = await this.orders.findBy({ pharmacyId });
       return {
         totalOrders: all.length,
@@ -1547,6 +1603,12 @@ export class PharmaciesService {
         revenue: all
           .filter((x) => x.status === PharmacyOrderStatus.COMPLETED)
           .reduce((s, x) => s + Number(x.finalTotal), 0),
+        // The management page's only other staff-scoped, per-pharmacy call
+        // it always makes on load — piggybacking the caller's own role
+        // here (rather than adding a new endpoint) lets it gate the
+        // clinical Accept/Reject/clarification controls, which review()
+        // has always rejected for anyone but a pharmacist.
+        role: member.role,
       };
     });
   }

@@ -139,6 +139,12 @@ export class Prescription {
   privateStorageKey: string;
   @Column({ name: "original_filename", length: 255 }) originalFilename: string;
   @Column({ name: "mime_type", length: 60 }) mimeType: string;
+  // Bumped by resubmitPrescription() every time the file changes — review()
+  // requires the caller's PrescriptionReviewDto.prescriptionVersion to match
+  // this before recording a decision, so a pharmacist who opened the file
+  // before a resubmission landed can't unknowingly accept/reject bytes they
+  // never actually looked at.
+  @Column({ type: "int", default: 1 }) version: number;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
 }
 @Entity("prescription_reviews")
