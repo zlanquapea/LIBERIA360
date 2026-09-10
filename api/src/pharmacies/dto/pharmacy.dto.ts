@@ -78,7 +78,7 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CartItemDto)
   items: CartItemDto[];
-  @IsOptional() @IsString() prescriptionId?: string;
+  @IsOptional() @IsUUID() prescriptionId?: string;
   @IsOptional() @IsBoolean() consentToPrescriptionProcessing?: boolean;
 }
 export class StatusDto {

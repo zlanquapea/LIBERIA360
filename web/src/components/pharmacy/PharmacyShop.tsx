@@ -3,6 +3,12 @@ import { useMemo, useState } from "react";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
 import { createPharmacyOrder, uploadPrescription } from "@/lib/pharmacy-api";
 
+// Matches CartItemDto's @Max(100) on the API — without this cap, a product
+// with more than 100 units in stock let this button stay enabled past
+// quantity 100, building a cart line the server was always going to reject
+// at checkout.
+const MAX_CART_QUANTITY_PER_ITEM = 100;
+
 // Pickup-first only when both are actually offered — a delivery-only
 // pharmacy (pickupEnabled=false) previously still opened on "pickup", so
 // its own delivery radio sat unchecked and checkout rejected the
@@ -155,7 +161,8 @@ export function PharmacyShop({
                 <button
                   disabled={
                     !p.inventory?.quantity ||
-                    (cart[p.id] || 0) >= p.inventory.quantity
+                    (cart[p.id] || 0) >=
+                      Math.min(p.inventory.quantity, MAX_CART_QUANTITY_PER_ITEM)
                   }
                   onClick={() =>
                     setCart((x) => {
@@ -163,7 +170,11 @@ export function PharmacyShop({
                       // The server enforces this same cap at checkout —
                       // stopping here just avoids building a cart that's
                       // guaranteed to fail there.
-                      if (next > (p.inventory?.quantity ?? 0)) return x;
+                      const max = Math.min(
+                        p.inventory?.quantity ?? 0,
+                        MAX_CART_QUANTITY_PER_ITEM,
+                      );
+                      if (next > max) return x;
                       return { ...x, [p.id]: next };
                     })
                   }

@@ -221,18 +221,6 @@ export class PharmaciesService {
     dto: PharmacyProfileDto,
   ) {
     if (id) await this.assertStaff(userId, id);
-    // licenceNumber is `select: false` (see verification()'s comment on the
-    // same column) — a plain findOneByOrFail() would come back with it
-    // `undefined`, which would make every update to an approved pharmacy
-    // look like a licence change and reset it to pending. Opt back in via
-    // the query builder, same as verification()/applications() do.
-    const pharmacy = id
-      ? await this.pharmacies
-          .createQueryBuilder("p")
-          .addSelect("p.licenceNumber")
-          .where("p.id = :id", { id })
-          .getOneOrFail()
-      : this.pharmacies.create({ status: PharmacyStatus.PENDING });
     // An admin verified this exact licenceNumber (see verification()) — if
     // staff change it afterward, the pharmacy keeps showing the "approved"
     // badge for evidence nobody has actually reviewed. Any licence change
@@ -242,10 +230,6 @@ export class PharmaciesService {
     // normal PATCH built from that response omits the field entirely, and
     // must be read as "unchanged", not as clearing it to null.
     const licenceProvided = dto.licenceNumber !== undefined;
-    const licenceChanged =
-      pharmacy.status === PharmacyStatus.APPROVED &&
-      licenceProvided &&
-      dto.licenceNumber !== (pharmacy.licenceNumber ?? null);
 
     // The pharmacy row, its initial manager membership (new applications
     // only), and the audit entry are one unit — without a transaction, a
@@ -259,9 +243,11 @@ export class PharmaciesService {
     ) => {
       let saved: Pharmacy;
       if (!id) {
-        const created = Object.assign(pharmacy, dto, {
-          slug: `${slugify(dto.name)}-${Date.now().toString(36)}`,
-        });
+        const created = Object.assign(
+          pharmacyRepo.create({ status: PharmacyStatus.PENDING }),
+          dto,
+          { slug: `${slugify(dto.name)}-${Date.now().toString(36)}` },
+        );
         saved = await pharmacyRepo.save(created);
         await staffRepo.save(
           staffRepo.create({
@@ -272,11 +258,32 @@ export class PharmaciesService {
           }),
         );
       } else {
-        // Only the DTO-controlled columns are written here — never the
-        // full stale entity read above `pharmacy` was fetched before this
-        // transaction started, so a plain save() would silently overwrite
-        // a status an admin changed concurrently (e.g. suspending this
-        // pharmacy) back to whatever this request happened to observe.
+        // Locked and read *inside* the transaction, not before it — an
+        // earlier fix (see saveProfile()'s history) computed licenceChanged
+        // from a read taken before the transaction started, which left a
+        // window where an admin's concurrent approval between that read and
+        // this write wouldn't be reflected, letting a licence change on a
+        // since-approved pharmacy skip the pending reset entirely. Locking
+        // here also serializes against verification()'s own UPDATE of this
+        // same row — a concurrent admin decision blocks until this
+        // transaction commits, then this read (or that write) sees it.
+        // licenceNumber is `select: false` (see verification()'s comment on
+        // the same column) — opt back in via the query builder, same as
+        // verification()/applications() do, or a plain read would come back
+        // with it `undefined` and make every update look like a change.
+        const current = await pharmacyRepo
+          .createQueryBuilder("p")
+          .setLock("pessimistic_write")
+          .addSelect("p.licenceNumber")
+          .where("p.id = :id", { id })
+          .getOneOrFail();
+        const licenceChanged =
+          current.status === PharmacyStatus.APPROVED &&
+          licenceProvided &&
+          dto.licenceNumber !== (current.licenceNumber ?? null);
+        // Only the DTO-controlled columns are written here — never a full
+        // entity save(), which would silently overwrite a status an admin
+        // changed concurrently back to whatever this request last observed.
         const patch: Partial<Pharmacy> = {
           name: dto.name,
           address: dto.address,
@@ -292,11 +299,11 @@ export class PharmaciesService {
           ...(licenceProvided ? { licenceNumber: dto.licenceNumber } : {}),
         };
         await pharmacyRepo.update({ id }, patch);
-        // Reset to pending only if the pharmacy is *still* approved at
-        // write time — conditioned the same way transition() conditions
-        // order status changes, so a concurrent admin suspension/rejection
-        // between the read above and here wins instead of being clobbered.
-        let resultStatus = pharmacy.status;
+        // Reset to pending only if the pharmacy is *still* approved — the
+        // row lock above already guarantees `current.status` reflects the
+        // latest committed state, so this condition (unlike a bare update)
+        // exists only to skip a needless write, not to resolve a race.
+        let resultStatus = current.status;
         if (licenceChanged) {
           const result = await pharmacyRepo.update(
             { id, status: PharmacyStatus.APPROVED },
@@ -304,7 +311,7 @@ export class PharmaciesService {
           );
           if (result.affected) resultStatus = PharmacyStatus.PENDING;
         }
-        saved = { ...pharmacy, ...patch, id, status: resultStatus } as Pharmacy;
+        saved = { ...current, ...patch, id, status: resultStatus } as Pharmacy;
       }
       await this.audit(
         userId,

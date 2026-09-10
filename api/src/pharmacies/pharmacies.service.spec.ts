@@ -139,14 +139,17 @@ describe("PharmaciesService", () => {
   // verification() opts back into the `select: false` licenceNumber column
   // via createQueryBuilder rather than a plain findOneBy — mock that chain.
   function mockPharmacyQueryBuilder(pharmacy: Partial<Pharmacy> | null) {
-    pharmacyRepo.createQueryBuilder.mockReturnValue({
+    const builder = {
+      setLock: jest.fn().mockReturnThis(),
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(pharmacy),
       getOneOrFail: pharmacy
         ? jest.fn().mockResolvedValue(pharmacy)
         : jest.fn().mockRejectedValue(new Error("not found")),
-    });
+    };
+    pharmacyRepo.createQueryBuilder.mockReturnValue(builder);
+    return builder;
   }
   // review()'s clarification-request branch locks/rechecks the order via
   // createQueryBuilder(...).setLock(...) rather than findOneBy — mock that
@@ -1064,7 +1067,7 @@ describe("PharmaciesService", () => {
   describe("saveProfile", () => {
     it("sends an approved pharmacy back to pending when its licence number changes", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
-      mockPharmacyQueryBuilder({
+      const builder = mockPharmacyQueryBuilder({
         id: "pharmacy-1",
         status: PharmacyStatus.APPROVED,
         licenceNumber: "LR-PHM-0042",
@@ -1094,6 +1097,12 @@ describe("PharmaciesService", () => {
         { id: "pharmacy-1", status: PharmacyStatus.APPROVED },
         { status: PharmacyStatus.PENDING },
       );
+      // The status/licenceNumber this decision is based on must be read
+      // (and locked) inside the transaction, not before it — a read taken
+      // beforehand could miss a concurrent admin approval/rejection. See
+      // the dedicated TOCTOU test below for the read-timing race itself;
+      // this asserts the locking mechanism is actually requested.
+      expect(builder.setLock).toHaveBeenCalledWith("pessimistic_write");
     });
 
     it("does not fabricate a pending status when a concurrent admin action already moved the pharmacy off approved", async () => {
