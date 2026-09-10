@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { IsNull } from "typeorm";
 import {
   calculatePharmacyTotals,
   PHARMACY_ORDER_TRANSITIONS,
@@ -91,6 +92,7 @@ describe("PharmaciesService", () => {
   let orderRepo: {
     create: jest.Mock;
     save: jest.Mock;
+    update: jest.Mock;
     findOneBy: jest.Mock;
     findOneOrFail: jest.Mock;
     manager: undefined;
@@ -101,9 +103,15 @@ describe("PharmaciesService", () => {
     save: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+    createQueryBuilder: jest.Mock;
   };
   let reviewRepo: { save: jest.Mock; create: jest.Mock };
   let auditRepo: { save: jest.Mock; create: jest.Mock };
+  let storageProvider: {
+    save: jest.Mock;
+    savePrivate: jest.Mock;
+    readPrivate: jest.Mock;
+  };
 
   function approvedPharmacy(overrides: Partial<Pharmacy> = {}): Pharmacy {
     return {
@@ -152,6 +160,10 @@ describe("PharmaciesService", () => {
     orderRepo = {
       create: jest.fn((x) => x),
       save: jest.fn((x) => Promise.resolve({ id: "order-1", ...x })),
+      // Real UpdateResult always has `affected` — default to "1 row
+      // updated" so transition()/review()'s conditional updates succeed
+      // unless a test deliberately simulates a lost race with affected: 0.
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       findOneBy: jest.fn(),
       findOneOrFail: jest.fn().mockResolvedValue({ id: "order-1" }),
       manager: undefined,
@@ -165,7 +177,10 @@ describe("PharmaciesService", () => {
       findOne: jest.fn(),
       save: jest.fn((x) => Promise.resolve({ id: "rx-1", ...x })),
       create: jest.fn((x) => x),
-      update: jest.fn().mockResolvedValue(undefined),
+      // Same reasoning as orderRepo.update above — default to "claimed
+      // successfully" unless a test simulates a concurrent claim.
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      createQueryBuilder: jest.fn(),
     };
     reviewRepo = {
       save: jest.fn((x) => Promise.resolve(x)),
@@ -174,6 +189,13 @@ describe("PharmaciesService", () => {
     auditRepo = {
       save: jest.fn().mockResolvedValue(undefined),
       create: jest.fn((x) => x),
+    };
+    storageProvider = {
+      save: jest.fn(),
+      savePrivate: jest
+        .fn()
+        .mockResolvedValue({ key: "prescriptions/rx-1.jpg" }),
+      readPrivate: jest.fn().mockResolvedValue({ buffer: Buffer.from("x") }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -212,7 +234,7 @@ describe("PharmaciesService", () => {
           },
         },
         { provide: getRepositoryToken(PharmacyAuditLog), useValue: auditRepo },
-        { provide: STORAGE_PROVIDER, useValue: { save: jest.fn() } },
+        { provide: STORAGE_PROVIDER, useValue: storageProvider },
       ],
     }).compile();
 
@@ -302,9 +324,31 @@ describe("PharmaciesService", () => {
       } as any);
 
       expect(prescriptionRepo.update).toHaveBeenCalledWith(
-        { id: "rx-1" },
+        { id: "rx-1", orderId: IsNull() },
         { orderId: "order-1" },
       );
+    });
+
+    it("rejects the order when a concurrent checkout already claimed the same prescription", async () => {
+      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
+      productRepo.find.mockResolvedValue([
+        product({ prescriptionRequired: true }),
+      ]);
+      prescriptionRepo.findOne.mockResolvedValue({ id: "rx-1", orderId: null });
+      // Simulates the row lock losing a race: another transaction's update
+      // committed between this request's findOne above and its own update,
+      // so `orderId IS NULL` no longer matches and zero rows are affected.
+      prescriptionRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+          prescriptionId: "rx-1",
+          consentToPrescriptionProcessing: true,
+        } as any),
+      ).rejects.toThrow(ConflictException);
     });
 
     it("rejects a whitespace-only delivery address instead of silently trimming it away", async () => {
@@ -390,6 +434,26 @@ describe("PharmaciesService", () => {
 
       expect(inventoryRepo.increment).not.toHaveBeenCalled();
     });
+
+    it("does not double-restore inventory when the order already left under_review", async () => {
+      staffRepo.findOne.mockResolvedValue({
+        role: PharmacyStaffRole.PHARMACIST,
+      });
+      prescriptionRepo.findOne.mockResolvedValue({
+        id: "rx-1",
+        orderId: "order-1",
+      });
+      // Conditional update finds the order no longer under_review (a
+      // concurrent decision, or an explicit cancellation, already moved
+      // it) — this decision must not also restore inventory.
+      orderRepo.update.mockResolvedValue({ affected: 0 });
+
+      await service.review("user-1", "pharmacy-1", "rx-1", {
+        decision: PrescriptionDecision.REJECTED,
+      } as any);
+
+      expect(inventoryRepo.increment).not.toHaveBeenCalled();
+    });
   });
 
   describe("transition", () => {
@@ -415,6 +479,27 @@ describe("PharmaciesService", () => {
         "quantity",
         4,
       );
+    });
+
+    it("refuses to double-restore inventory when a concurrent request already moved the order out of its expected status", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.PENDING,
+      });
+      // Conditional update's row lock loses the race: another request's
+      // update already committed, so `status = pending` no longer matches.
+      orderRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.transition(
+          "user-1",
+          "pharmacy-1",
+          "order-1",
+          PharmacyOrderStatus.CANCELLED,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(inventoryRepo.increment).not.toHaveBeenCalled();
     });
 
     it("does not restore inventory for a non-cancelling transition", async () => {
@@ -469,7 +554,14 @@ describe("PharmaciesService", () => {
         PharmacyOrderStatus.CANCELLED,
       );
 
-      expect(orderRepo.save).toHaveBeenCalled();
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        {
+          id: "order-1",
+          pharmacyId: "pharmacy-1",
+          status: PharmacyOrderStatus.UNDER_REVIEW,
+        },
+        { status: PharmacyOrderStatus.CANCELLED },
+      );
     });
 
     it("refuses to mark a delivery order ready for pickup", async () => {
@@ -525,7 +617,14 @@ describe("PharmaciesService", () => {
         PharmacyOrderStatus.OUT_FOR_DELIVERY,
       );
 
-      expect(orderRepo.save).toHaveBeenCalled();
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        {
+          id: "order-1",
+          pharmacyId: "pharmacy-1",
+          status: PharmacyOrderStatus.PREPARING,
+        },
+        { status: PharmacyOrderStatus.OUT_FOR_DELIVERY },
+      );
     });
   });
 
@@ -548,6 +647,77 @@ describe("PharmaciesService", () => {
       const items = await service.catalog("pharmacy-1", {} as any);
 
       expect(items).toHaveLength(1);
+    });
+  });
+
+  describe("uploadPrescription / prescriptionFile", () => {
+    it("stores the file via the storage provider's private path and keeps only the returned key, never a URL", async () => {
+      pharmacyRepo.findOneBy.mockResolvedValue(approvedPharmacy());
+      storageProvider.savePrivate.mockResolvedValue({
+        key: "prescriptions/abc123.jpg",
+      });
+
+      await service.uploadPrescription("user-1", "pharmacy-1", {
+        buffer: Buffer.from("fake-bytes"),
+        originalName: "script.jpg",
+        mimeType: "image/jpeg",
+      });
+
+      expect(storageProvider.save).not.toHaveBeenCalled();
+      expect(storageProvider.savePrivate).toHaveBeenCalledWith(
+        expect.objectContaining({ contentType: "image/jpeg" }),
+      );
+      expect(prescriptionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          privateStorageKey: "prescriptions/abc123.jpg",
+        }),
+      );
+    });
+
+    it("reads the file back via the storage provider for the owning customer", async () => {
+      prescriptionRepo.createQueryBuilder.mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          id: "rx-1",
+          customerUserId: "user-1",
+          pharmacyId: "pharmacy-1",
+          privateStorageKey: "prescriptions/abc123.jpg",
+          mimeType: "image/jpeg",
+          originalFilename: "script.jpg",
+        }),
+      });
+      storageProvider.readPrivate.mockResolvedValue({
+        buffer: Buffer.from("fake-bytes"),
+      });
+
+      const result = await service.prescriptionFile("user-1", false, "rx-1");
+
+      expect(storageProvider.readPrivate).toHaveBeenCalledWith(
+        "prescriptions/abc123.jpg",
+      );
+      expect(result.buffer).toEqual(Buffer.from("fake-bytes"));
+    });
+
+    it("refuses to read the file back for a caller who is neither owner, staff, nor admin", async () => {
+      prescriptionRepo.createQueryBuilder.mockReturnValue({
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({
+          id: "rx-1",
+          customerUserId: "someone-else",
+          pharmacyId: "pharmacy-1",
+          privateStorageKey: "prescriptions/abc123.jpg",
+          mimeType: "image/jpeg",
+          originalFilename: "script.jpg",
+        }),
+      });
+      staffRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.prescriptionFile("user-1", false, "rx-1"),
+      ).rejects.toThrow(ForbiddenException);
+      expect(storageProvider.readPrivate).not.toHaveBeenCalled();
     });
   });
 

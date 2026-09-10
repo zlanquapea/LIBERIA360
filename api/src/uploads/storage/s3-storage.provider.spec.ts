@@ -11,6 +11,10 @@ jest.mock("@aws-sdk/client-s3", () => ({
     __command: "PutObjectCommand",
     input,
   })),
+  GetObjectCommand: jest.fn().mockImplementation((input: unknown) => ({
+    __command: "GetObjectCommand",
+    input,
+  })),
 }));
 
 // Imported after the mock above so the module under test picks up the
@@ -69,5 +73,46 @@ describe("S3StorageProvider", () => {
       contentType: "image/jpeg",
     });
     expect(result.url).toBe("https://cdn.example.com/f.jpg");
+  });
+
+  it("savePrivate() uploads under a private/ prefix and returns a key, not a URL", async () => {
+    const provider = buildProvider();
+    const result = await provider.savePrivate({
+      buffer: Buffer.from("fake-prescription-bytes"),
+      filename: "prescriptions/abc123.jpg",
+      contentType: "image/jpeg",
+    });
+
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const command = mockSend.mock.calls[0][0];
+    expect(command.input).toMatchObject({
+      Bucket: "test-bucket",
+      Key: "private/prescriptions/abc123.jpg",
+      ContentType: "image/jpeg",
+    });
+    expect(result).toEqual({ key: "private/prescriptions/abc123.jpg" });
+  });
+
+  it("readPrivate() fetches the object and returns its bytes as a Buffer", async () => {
+    const provider = buildProvider();
+    mockSend.mockResolvedValue({
+      Body: {
+        transformToByteArray: jest
+          .fn()
+          .mockResolvedValue(Uint8Array.from(Buffer.from("fake-bytes"))),
+      },
+    });
+
+    const result = await provider.readPrivate(
+      "private/prescriptions/abc123.jpg",
+    );
+
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const command = mockSend.mock.calls[0][0];
+    expect(command.input).toEqual({
+      Bucket: "test-bucket",
+      Key: "private/prescriptions/abc123.jpg",
+    });
+    expect(result).toEqual({ buffer: Buffer.from("fake-bytes") });
   });
 });

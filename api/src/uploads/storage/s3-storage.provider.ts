@@ -1,9 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { AppConfig } from "../../config/configuration";
 import {
+  ReadPrivateFileResult,
   SaveFileInput,
+  SavePrivateFileResult,
   SaveFileResult,
   StorageProvider,
 } from "./storage-provider.interface";
@@ -73,5 +79,34 @@ export class S3StorageProvider implements StorageProvider {
       }),
     );
     return { url: `${this.publicUrlBase}/${filename}` };
+  }
+
+  // Same bucket, a "private/" prefix instead of the public one save() uses
+  // — the object is never given a publicUrlBase URL, so the only way back
+  // to its bytes is readPrivate() below, which every caller reaches
+  // through an application-level authorization check first.
+  async savePrivate({
+    buffer,
+    filename,
+    contentType,
+  }: SaveFileInput): Promise<SavePrivateFileResult> {
+    const key = `private/${filename}`;
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+    return { key };
+  }
+
+  async readPrivate(key: string): Promise<ReadPrivateFileResult> {
+    const result = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    const bytes = await result.Body!.transformToByteArray();
+    return { buffer: Buffer.from(bytes) };
   }
 }

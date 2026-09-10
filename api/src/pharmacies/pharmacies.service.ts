@@ -392,10 +392,24 @@ export class PharmaciesService {
         lines.map((x) => Object.assign(x, { orderId: order.id })),
       );
       if (prescription) {
-        await prescriptionRepo.update(
-          { id: prescription.id },
+        // Conditioned on orderId still being null, and checked for exactly
+        // one affected row — without this, two concurrent checkouts that
+        // both read the same unattached prescription in the findOne above
+        // would both pass this update, the second one silently
+        // reassigning the prescription away from whichever order it had
+        // just been attached to. This UPDATE's row lock is what actually
+        // serializes that race: a concurrent transaction attempting the
+        // same conditional update blocks until this one commits, then
+        // re-evaluates orderId IS NULL against the now-committed row and
+        // finds it no longer matches.
+        const result = await prescriptionRepo.update(
+          { id: prescription.id, orderId: IsNull() },
           { orderId: order.id },
         );
+        if (!result.affected)
+          throw new ConflictException(
+            "This prescription was just used for another order",
+          );
       }
       for (const [productId, quantity] of quantityByProduct) {
         try {
@@ -458,9 +472,10 @@ export class PharmaciesService {
     await this.assertStaff(userId, pharmacyId);
     const order = await this.orders.findOneBy({ id: orderId, pharmacyId });
     if (!order) throw new NotFoundException("Order not found in this pharmacy");
-    if (!NEXT[order.status].includes(status))
+    const fromStatus = order.status;
+    if (!NEXT[fromStatus].includes(status))
       throw new ConflictException(
-        `Cannot move an order from ${order.status} to ${status}`,
+        `Cannot move an order from ${fromStatus} to ${status}`,
       );
     // NEXT[PREPARING] offers both dispatch states so one table can serve
     // every order regardless of how it's fulfilled — but only one of them
@@ -481,15 +496,49 @@ export class PharmaciesService {
       throw new ConflictException(
         "This order is for pickup, not delivery — mark it ready for pickup instead",
       );
-    order.status = status;
-    await this.orders.save(order);
-    // A cancelled order was already decremented against inventory at
-    // creation time — every path into CANCELLED is a one-way transition
-    // (NEXT[CANCELLED] is empty, so an order can reach here at most once),
-    // so this can't double-restore.
-    if (status === PharmacyOrderStatus.CANCELLED) {
-      await this.restoreInventory(order.id);
+
+    const run = async (
+      orderRepo: Repository<PharmacyOrder>,
+      itemRepo: Repository<PharmacyOrderItem>,
+      inventoryRepo: Repository<PharmacyInventory>,
+    ) => {
+      // Conditioned on the order still being in fromStatus — two concurrent
+      // requests both racing this transition (e.g. two staff both hit
+      // "cancel" on the same order) would otherwise both pass the
+      // in-memory NEXT[] check above, both save CANCELLED, and both run
+      // restoreInventory, inflating stock by an entire order. This UPDATE's
+      // row lock serializes that: whichever commits first wins, the other
+      // affects zero rows and throws instead of restoring inventory twice.
+      const result = await orderRepo.update(
+        { id: orderId, pharmacyId, status: fromStatus },
+        { status },
+      );
+      if (!result.affected)
+        throw new ConflictException(
+          `Cannot move an order from ${fromStatus} to ${status}`,
+        );
+      // A cancelled order was already decremented against inventory at
+      // creation time — every path into CANCELLED is a one-way transition
+      // (NEXT[CANCELLED] is empty), and the conditional update above
+      // ensures only one concurrent request's restore actually runs.
+      if (status === PharmacyOrderStatus.CANCELLED) {
+        await this.restoreInventory(order.id, itemRepo, inventoryRepo);
+      }
+    };
+    const manager = this.orders.manager;
+    if (manager?.transaction) {
+      await manager.transaction((tx) =>
+        run(
+          tx.getRepository(PharmacyOrder),
+          tx.getRepository(PharmacyOrderItem),
+          tx.getRepository(PharmacyInventory),
+        ),
+      );
+    } else {
+      await run(this.orders, this.orderItems, this.inventory);
     }
+
+    order.status = status;
     await this.audit(
       userId,
       pharmacyId,
@@ -528,25 +577,52 @@ export class PharmaciesService {
         notes: dto.notes?.trim() || null,
       }),
     );
-    if (rx.orderId) {
-      const order = await this.orders.findOneBy({ id: rx.orderId, pharmacyId });
-      if (
-        order &&
-        order.status === PharmacyOrderStatus.UNDER_REVIEW &&
-        dto.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED
-      ) {
-        order.status =
-          dto.decision === PrescriptionDecision.ACCEPTED
-            ? PharmacyOrderStatus.ACCEPTED
-            : PharmacyOrderStatus.REJECTED;
-        await this.orders.save(order);
+    if (
+      rx.orderId &&
+      dto.decision !== PrescriptionDecision.CLARIFICATION_REQUESTED
+    ) {
+      const newStatus =
+        dto.decision === PrescriptionDecision.ACCEPTED
+          ? PharmacyOrderStatus.ACCEPTED
+          : PharmacyOrderStatus.REJECTED;
+      const orderId = rx.orderId;
+      const run = async (
+        orderRepo: Repository<PharmacyOrder>,
+        itemRepo: Repository<PharmacyOrderItem>,
+        inventoryRepo: Repository<PharmacyInventory>,
+      ) => {
+        // Conditioned on the order still being under_review, same reasoning
+        // as transition()'s conditional update: this row lock serializes a
+        // concurrent second decision on the same prescription/order (e.g.
+        // a double-submitted review request) so at most one of them can
+        // move the order and, on rejection, restore its inventory.
+        const result = await orderRepo.update(
+          {
+            id: orderId,
+            pharmacyId,
+            status: PharmacyOrderStatus.UNDER_REVIEW,
+          },
+          { status: newStatus },
+        );
         // A rejected prescription means this order will never be
         // fulfilled — release the stock it reserved at checkout, same as
         // an explicit cancellation. REJECTED is terminal (NEXT[REJECTED]
-        // is empty) so this too can only happen once per order.
-        if (order.status === PharmacyOrderStatus.REJECTED) {
-          await this.restoreInventory(order.id);
+        // is empty) so this can only happen once per order.
+        if (result.affected && newStatus === PharmacyOrderStatus.REJECTED) {
+          await this.restoreInventory(orderId, itemRepo, inventoryRepo);
         }
+      };
+      const manager = this.orders.manager;
+      if (manager?.transaction) {
+        await manager.transaction((tx) =>
+          run(
+            tx.getRepository(PharmacyOrder),
+            tx.getRepository(PharmacyOrderItem),
+            tx.getRepository(PharmacyInventory),
+          ),
+        );
+      } else {
+        await run(this.orders, this.orderItems, this.inventory);
       }
     }
     await this.audit(
@@ -559,15 +635,16 @@ export class PharmaciesService {
     return review;
   }
   // Customer-facing upload — happens *before* checkout, so the cart can
-  // submit the returned id as CreateOrderDto.prescriptionId. Files are
-  // saved through the same StorageProvider every other upload in this app
-  // uses (a filename no one can guess is this app's existing privacy model
-  // for uploaded documents — see licenceDocumentKey), under a
-  // "prescriptions/" prefix and stored by key, never returned as part of
-  // any pharmacy/order listing (Prescription.privateStorageKey is
-  // `select: false`) — only prescriptionFile() below, which checks the
-  // caller is the order owner, assigned pharmacy staff, or an admin,
-  // reveals it.
+  // submit the returned id as CreateOrderDto.prescriptionId. Saved through
+  // StorageProvider.savePrivate() — not the save() every other upload in
+  // this app uses — because that one always returns a publicly-fetchable
+  // URL (local disk under the statically-served /uploads, or an S3 object
+  // meant to sit behind a public bucket/CDN); a prescription photo is
+  // sensitive enough that it must stay unreachable without going through
+  // prescriptionFile() below, which checks the caller is the order owner,
+  // assigned pharmacy staff, or an admin before reading it back. Never
+  // returned as part of any pharmacy/order listing either
+  // (Prescription.privateStorageKey is `select: false`).
   async uploadPrescription(
     userId: string,
     pharmacyId: string,
@@ -584,10 +661,10 @@ export class PharmaciesService {
       throw new BadRequestException(
         "This pharmacy is not approved to receive orders",
       );
-    const key = `prescriptions/${randomUUID()}${extname(file.originalName).slice(0, 10)}`;
-    const { url } = await this.storage.save({
+    const filename = `prescriptions/${randomUUID()}${extname(file.originalName).slice(0, 10)}`;
+    const { key } = await this.storage.savePrivate({
       buffer: file.buffer,
-      filename: key,
+      filename,
       contentType: file.mimeType,
     });
     const rx = await this.prescriptions.save(
@@ -595,7 +672,7 @@ export class PharmaciesService {
         customerUserId: userId,
         pharmacyId,
         orderId: null,
-        privateStorageKey: url,
+        privateStorageKey: key,
         originalFilename: file.originalName,
         mimeType: file.mimeType,
       }),
@@ -612,7 +689,11 @@ export class PharmaciesService {
   // Auditable, access-controlled reveal of an uploaded prescription's file
   // — the only place privateStorageKey ever leaves the service, and only
   // to the customer who uploaded it, staff of the pharmacy it was uploaded
-  // for, or an admin.
+  // for, or an admin. Reads the actual bytes back through
+  // StorageProvider.readPrivate() and returns them directly (the
+  // controller streams them to the caller) rather than a URL — there is no
+  // "private URL" a client could be handed and still have the
+  // authorization check above actually apply to it.
   async prescriptionFile(userId: string, isAdmin: boolean, id: string) {
     const rx = await this.prescriptions
       .createQueryBuilder("rx")
@@ -638,8 +719,9 @@ export class PharmaciesService {
       "prescription",
       rx.id,
     );
+    const { buffer } = await this.storage.readPrivate(rx.privateStorageKey);
     return {
-      url: rx.privateStorageKey,
+      buffer,
       mimeType: rx.mimeType,
       originalFilename: rx.originalFilename,
     };
@@ -732,12 +814,19 @@ export class PharmaciesService {
   // Undoes the per-line decrements createOrder() made at checkout, for an
   // order that turns out never to be fulfilled (cancelled, or a rejected
   // prescription). A line whose product was since deleted (ON DELETE SET
-  // NULL leaves productId null) has nothing left to credit back.
-  private async restoreInventory(orderId: string) {
-    const items = await this.orderItems.find({ where: { orderId } });
+  // NULL leaves productId null) has nothing left to credit back. Callers
+  // that need this atomic with the order's own status update (transition(),
+  // review()) pass in transaction-scoped repos; the defaults keep this
+  // usable standalone.
+  private async restoreInventory(
+    orderId: string,
+    itemRepo: Repository<PharmacyOrderItem> = this.orderItems,
+    inventoryRepo: Repository<PharmacyInventory> = this.inventory,
+  ) {
+    const items = await itemRepo.find({ where: { orderId } });
     for (const item of items) {
       if (!item.productId) continue;
-      await this.inventory.increment(
+      await inventoryRepo.increment(
         { productId: item.productId },
         "quantity",
         item.quantity,

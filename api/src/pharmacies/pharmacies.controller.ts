@@ -8,12 +8,15 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
+import type { Response } from "express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { AdminGuard } from "../auth/guards/admin.guard";
@@ -93,11 +96,23 @@ export class PharmacyCustomerController {
       mimeType: file.mimetype,
     });
   }
-  @Get("prescriptions/:id/file") prescriptionFile(
+  // Streams the actual bytes back (not a URL — see PharmaciesService's
+  // doc comment on prescriptionFile()) so this route itself, guarded by
+  // JwtAuthGuard and the ownership/staff/admin check inside the service,
+  // is the only way to ever read a prescription's content.
+  @Get("prescriptions/:id/file")
+  async prescriptionFile(
     @CurrentUser() u: User,
     @Param("id") id: string,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.service.prescriptionFile(u.id, u.isAdmin, id);
+    const { buffer, mimeType, originalFilename } =
+      await this.service.prescriptionFile(u.id, u.isAdmin, id);
+    res.set({
+      "Content-Type": mimeType,
+      "Content-Disposition": `inline; filename="${encodeURIComponent(originalFilename)}"`,
+    });
+    return new StreamableFile(buffer);
   }
 }
 
