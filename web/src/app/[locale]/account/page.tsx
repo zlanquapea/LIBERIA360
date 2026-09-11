@@ -141,6 +141,19 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         description: "Manage your creator page",
         icon: UserCircleIcon,
       },
+      // Previously reachable only via a one-time link on the place-submission
+      // confirmation screen right after submitting a place under the
+      // "Pharmacy" category — anyone who missed that screen (or is coming
+      // back later) had no way at all to find their pharmacy again, even
+      // though PharmaciesService.mine() already had it. This is the
+      // permanent entry point pharmacy-orders (the customer side, above)
+      // already had and this — the owner/staff side — was missing.
+      {
+        href: "/account/pharmacy-dashboard",
+        label: "Pharmacy Dashboard",
+        description: "Manage your pharmacy profile, inventory & orders",
+        icon: BeakerIcon,
+      },
     ],
   },
 ];

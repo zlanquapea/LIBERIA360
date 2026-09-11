@@ -13,6 +13,14 @@ export type Pharmacy = {
   id: string;
   name: string;
   slug: string;
+  // Set when this pharmacy originated from a self-service place submission
+  // under the dedicated "Pharmacy" category (see
+  // PharmaciesService.autoClaimSubmittedPlace) — null for one applied for
+  // directly through /account/pharmacy-dashboard. Present on every read
+  // (a plain, non-`select: false` column), just previously untyped here;
+  // used by the place-submission confirmation screen to find "this one" in
+  // getMyPharmacies()'s list without guessing from creation order.
+  placeId: string | null;
   address: string;
   location: string;
   telephone: string;

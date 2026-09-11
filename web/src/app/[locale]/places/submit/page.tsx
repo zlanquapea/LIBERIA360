@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { BrandLoader } from '@/components/BrandLoader';
 import { PlaceSubmissionForm } from '@/components/PlaceSubmissionForm';
 import { getMyBusinesses } from '@/lib/business-api';
+import { getMyPharmacies } from '@/lib/pharmacy-api';
 import type { Place } from '@/lib/types';
 
 // Self-service place submission — anyone signed in can add a destination
@@ -18,11 +19,22 @@ import type { Place } from '@/lib/types';
 // within the same request, so the confirmation screen can link straight
 // into that business's dashboard — there is no separate "my places" area
 // to track it from anymore.
+//
+// A submission under the dedicated "Pharmacy" category is *also*
+// auto-claimed a second time as a Pharmacy (see
+// PharmaciesService.autoClaimSubmittedPlace) — a completely separate
+// record from the Business one, with its own pending/approved status,
+// product catalog, and order queue. Without linking to it here too, the
+// only next click this screen offers ("Manage its listing") lands on the
+// generic Business dashboard, which has no idea a pharmacy exists at all —
+// exactly the "I don't see anything of the pharmacy I created" report this
+// was fixed for.
 export default function SubmitPlacePage() {
   const router = useRouter();
   const { user, token, ready } = useAuth();
   const [submitted, setSubmitted] = useState<Place | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [pharmacyId, setPharmacyId] = useState<string | null>(null);
 
   if (!ready) {
     return (
@@ -57,9 +69,21 @@ export default function SubmitPlacePage() {
           An admin will review it soon. It won&apos;t appear in the public catalog until it&apos;s approved.
         </p>
         <div className="flex flex-col gap-2">
+          {pharmacyId && (
+            <Link
+              href={`/account/pharmacy-dashboard/${pharmacyId}`}
+              className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              Manage your pharmacy
+            </Link>
+          )}
           <Link
             href={businessId ? `/account/my-businesses/${businessId}` : '/account/my-businesses'}
-            className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+            className={
+              pharmacyId
+                ? 'rounded-full border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500'
+                : 'rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800'
+            }
           >
             {businessId ? 'Manage its listing' : 'Go to My Businesses'}
           </Link>
@@ -68,6 +92,7 @@ export default function SubmitPlacePage() {
             onClick={() => {
               setSubmitted(null);
               setBusinessId(null);
+              setPharmacyId(null);
             }}
             className="rounded-full border border-slate-300 dark:border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500"
           >
@@ -98,6 +123,15 @@ export default function SubmitPlacePage() {
           getMyBusinesses(token).then((list) => {
             const match = list.find((b) => b.linkedPlaceId === place.id);
             if (match) setBusinessId(match.id);
+          });
+          // A submission under the "Pharmacy" category is separately
+          // auto-claimed as a Pharmacy too (see PlacesService.submitPlace) —
+          // look that up as well so this screen can link straight into its
+          // dashboard rather than leaving the pharmacy undiscoverable behind
+          // only the generic Business link above.
+          getMyPharmacies().then((list) => {
+            const match = list.find((p) => p.placeId === place.id);
+            if (match) setPharmacyId(match.id);
           });
         }}
       />
