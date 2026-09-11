@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { PharmacyShop } from "./PharmacyShop";
 import {
   createPharmacyOrder,
@@ -53,6 +59,18 @@ const rxProduct: PharmacyProduct = {
   prescriptionRequired: true,
   isVisible: true,
   inventory: { quantity: 5 },
+};
+
+const otcProduct: PharmacyProduct = {
+  id: "product-2",
+  pharmacyId: "pharmacy-1",
+  categoryId: "cat-1",
+  name: "Vitamin C",
+  imageUrl: null,
+  price: 5,
+  prescriptionRequired: false,
+  isVisible: true,
+  inventory: { quantity: 20 },
 };
 
 function selectPrescriptionFile() {
@@ -172,6 +190,46 @@ describe("PharmacyShop checkout — prescription upload reuse", () => {
 
     await waitFor(() =>
       expect(mockedDeleteUnattached).toHaveBeenCalledWith("rx-1"),
+    );
+  });
+
+  it("deletes the cached upload once the cart no longer needs a prescription, even without a file-change event", async () => {
+    mockedUpload.mockResolvedValue("rx-1");
+    // The first attempt (both items in cart) fails for an unrelated
+    // reason — the upload succeeds and gets cached, the order doesn't.
+    mockedCreateOrder.mockRejectedValueOnce(new Error("Out of stock"));
+    mockedCreateOrder.mockResolvedValueOnce({ id: "order-1" });
+
+    render(
+      <PharmacyShop
+        pharmacy={pharmacy}
+        products={[rxProduct, otcProduct]}
+        categories={[{ id: "cat-1", name: "Antibiotics" }]}
+      />,
+    );
+
+    const rxCard = screen.getByText("Amoxicillin").closest("article")!;
+    const otcCard = screen.getByText("Vitamin C").closest("article")!;
+    fireEvent.click(within(rxCard).getByRole("button", { name: /add to cart/i }));
+    fireEvent.click(within(otcCard).getByRole("button", { name: /add to cart/i }));
+    selectPrescriptionFile();
+    fireEvent.click(screen.getByRole("checkbox", { name: /i consent/i }));
+    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalledTimes(1));
+
+    // Drop the only prescription-required item, keeping the OTC one — the
+    // cart no longer needs a prescription at all, but nothing about the
+    // file input changed, so handlePrescriptionFileChange never runs.
+    fireEvent.click(
+      screen.getByRole("button", { name: /remove all amoxicillin from cart/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+
+    await waitFor(() =>
+      expect(mockedDeleteUnattached).toHaveBeenCalledWith("rx-1"),
+    );
+    expect(mockedCreateOrder).toHaveBeenLastCalledWith(
+      expect.objectContaining({ prescriptionId: undefined }),
     );
   });
 });

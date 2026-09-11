@@ -247,6 +247,24 @@ export const assignPharmacyStaff = (
     body: JSON.stringify(body),
   });
 
+export type PharmacyStaffMember = {
+  userId: string;
+  email: string | null;
+  role: "manager" | "pharmacist" | "employee";
+};
+
+export const getPharmacyStaff = (pharmacyId: string) =>
+  apiRequest<PharmacyStaffMember[]>(`/pharmacy-dashboard/${pharmacyId}/staff`);
+
+// Deactivates (not a hard delete — the API keeps the row for audit
+// history) a staff member's access. The only way a departed
+// pharmacist/employee's access is ever actually revoked, since
+// assignPharmacyStaff() can only create or reassign a membership.
+export const deactivatePharmacyStaff = (pharmacyId: string, staffUserId: string) =>
+  apiRequest<unknown>(`/pharmacy-dashboard/${pharmacyId}/staff/${staffUserId}`, {
+    method: "DELETE",
+  });
+
 export type PharmacyOpeningHoursEntry = {
   dayOfWeek: number;
   opensAt: string | null;

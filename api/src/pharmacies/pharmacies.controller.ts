@@ -151,6 +151,12 @@ export class PharmacyCustomerController {
     res.set({
       "Content-Type": mimeType,
       "Content-Disposition": `inline; filename="${encodeURIComponent(originalFilename)}"`,
+      // This is sensitive medical data behind an auth check — without an
+      // explicit no-store, a browser or intermediary proxy may retain the
+      // response and keep serving it from cache or history after logout on
+      // a shared device, since the service worker's logout cleanup only
+      // clears its own cache storage, not the browser's HTTP cache.
+      "Cache-Control": "private, no-store",
     });
     return new StreamableFile(buffer);
   }
@@ -205,6 +211,23 @@ export class PharmacyDashboardController {
     @Body() dto: AssignStaffDto,
   ) {
     return this.service.assignStaff(u.id, id, dto);
+  }
+  @Get(":id/staff") listStaff(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return this.service.listStaff(u.id, id);
+  }
+  // Deactivates (never hard-deletes, to preserve audit history) a staff
+  // member's access — the only way a departed pharmacist/employee's
+  // access is ever actually revoked, since assignStaff() only creates or
+  // reassigns a membership.
+  @Delete(":id/staff/:staffUserId") deactivateStaff(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("staffUserId", ParseUUIDPipe) staffUserId: string,
+  ) {
+    return this.service.deactivateStaff(u.id, id, staffUserId);
   }
   // Staff-facing — unlike PharmaciesController's public ":id/products"
   // (catalog()), this includes hidden products too, since staff need to

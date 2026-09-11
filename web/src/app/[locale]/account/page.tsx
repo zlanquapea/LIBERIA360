@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type ComponentType, type FormEvent } from "react";
 import { StarIcon } from "@heroicons/react/24/solid";
 import {
+  BeakerIcon,
   BuildingStorefrontIcon,
   CalendarDaysIcon,
   ClipboardDocumentListIcon,
@@ -104,6 +105,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         label: "My Tickets",
         description: "View event ticket orders",
         icon: TicketIcon,
+      },
+      {
+        href: "/account/pharmacy-orders",
+        label: "Pharmacy Orders",
+        description: "Track your pharmacy orders & prescriptions",
+        icon: BeakerIcon,
       },
     ],
   },

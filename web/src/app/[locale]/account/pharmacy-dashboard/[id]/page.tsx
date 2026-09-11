@@ -5,11 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/http";
 import {
   assignPharmacyStaff,
+  deactivatePharmacyStaff,
   deletePharmacyProduct,
   getMyPharmacyHours,
   getMyPharmacyProducts,
   getPharmacyCategoriesClient,
   getPharmacyDashboardOrders,
+  getPharmacyStaff,
   getPharmacyStats,
   reviewPharmacyPrescription,
   savePharmacyHours,
@@ -21,6 +23,7 @@ import {
   type PharmacyOrder,
   type PharmacyProduct,
   type PharmacyProductInput,
+  type PharmacyStaffMember,
   type PharmacyStats,
 } from "@/lib/pharmacy-api";
 
@@ -289,7 +292,13 @@ function ProfileForm({
   );
 }
 
-function StaffForm({ pharmacyId }: { pharmacyId: string }) {
+function StaffForm({
+  pharmacyId,
+  onChanged,
+}: {
+  pharmacyId: string;
+  onChanged: () => void;
+}) {
   const [email, setEmail] = useState(""),
     [role, setRole] = useState<"manager" | "pharmacist" | "employee">(
       "employee",
@@ -306,6 +315,7 @@ function StaffForm({ pharmacyId }: { pharmacyId: string }) {
       await assignPharmacyStaff(pharmacyId, { email, role });
       setEmail("");
       setAdded(true);
+      onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add staff member.");
     } finally {
@@ -350,6 +360,120 @@ function StaffForm({ pharmacyId }: { pharmacyId: string }) {
         </p>
       )}
     </form>
+  );
+}
+
+function StaffRoster({
+  pharmacyId,
+  isManager,
+  refreshKey,
+  onChanged,
+}: {
+  pharmacyId: string;
+  isManager: boolean;
+  refreshKey: number;
+  onChanged: () => void;
+}) {
+  const [members, setMembers] = useState<PharmacyStaffMember[] | null>(null),
+    [error, setError] = useState(""),
+    [busyUserId, setBusyUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPharmacyStaff(pharmacyId)
+      .then((m) => {
+        if (!cancelled) setMembers(m);
+      })
+      .catch((e) => {
+        if (!cancelled)
+          setError(e instanceof Error ? e.message : "Could not load staff.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pharmacyId, refreshKey]);
+
+  async function deactivate(userId: string) {
+    if (!confirm("Remove this staff member's access?")) return;
+    setBusyUserId(userId);
+    setError("");
+    try {
+      await deactivatePharmacyStaff(pharmacyId, userId);
+      onChanged();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Could not remove staff member.",
+      );
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
+  if (error)
+    return (
+      <p role="alert" className="error-state mt-3">
+        {error}
+      </p>
+    );
+  if (!members)
+    return <p className="mt-3 text-sm text-slate-500">Loading staff…</p>;
+
+  return (
+    <ul className="mt-3 divide-y divide-slate-200 dark:divide-slate-800">
+      {members.map((m) => (
+        <li
+          key={m.userId}
+          className="flex items-center justify-between gap-2 py-2 text-sm"
+        >
+          <span>
+            {m.email ?? m.userId}{" "}
+            <span className="capitalize text-slate-500">({m.role})</span>
+          </span>
+          {isManager && (
+            <button
+              type="button"
+              className="btn-secondary min-h-9 text-xs"
+              disabled={busyUserId === m.userId}
+              onClick={() => deactivate(m.userId)}
+            >
+              {busyUserId === m.userId ? "Removing…" : "Remove"}
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function StaffSection({
+  pharmacyId,
+  isManager,
+}: {
+  pharmacyId: string;
+  isManager: boolean;
+}) {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bump = () => setRefreshKey((k) => k + 1);
+  return (
+    <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
+      <h2 className="text-xl font-bold">Staff</h2>
+      <p className="mb-3 text-sm text-slate-500">
+        Only a pharmacist on staff can decide on a prescription review.
+      </p>
+      {isManager ? (
+        <StaffForm pharmacyId={pharmacyId} onChanged={bump} />
+      ) : (
+        <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          Only a manager can add or reassign staff at this pharmacy.
+        </p>
+      )}
+      <StaffRoster
+        pharmacyId={pharmacyId}
+        isManager={isManager}
+        refreshKey={refreshKey}
+        onChanged={bump}
+      />
+    </section>
   );
 }
 
@@ -1024,19 +1148,10 @@ export default function PharmacyManagePage() {
             </p>
             <OpeningHoursSection pharmacyId={pharmacy.id} />
           </section>
-          <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
-            <h2 className="text-xl font-bold">Staff</h2>
-            <p className="mb-3 text-sm text-slate-500">
-              Only a pharmacist on staff can decide on a prescription review.
-            </p>
-            {stats?.role === "manager" ? (
-              <StaffForm pharmacyId={pharmacy.id} />
-            ) : (
-              <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-                Only a manager can add or reassign staff at this pharmacy.
-              </p>
-            )}
-          </section>
+          <StaffSection
+            pharmacyId={pharmacy.id}
+            isManager={stats?.role === "manager"}
+          />
           <ProductsSection pharmacyId={pharmacy.id} />
           <OrdersSection
             pharmacyId={pharmacy.id}
