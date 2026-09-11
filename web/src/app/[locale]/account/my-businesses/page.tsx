@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRightIcon, BuildingStorefrontIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { getMyBusinesses } from '@/lib/business-api';
+import { getMyBusinesses, isPharmacyBusiness } from '@/lib/business-api';
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { resolveImageUrl } from '@/lib/images';
@@ -99,7 +99,11 @@ export default function MyBusinessesPage() {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-lg font-bold text-slate-950 dark:text-slate-50">{business.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{formatBusinessType(business.type)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {/* business.type predates the pharmacy marketplace and has no
+                        pharmacy value — see isPharmacyBusiness's doc comment. */}
+                    {isPharmacyBusiness(business) ? 'Pharmacy' : formatBusinessType(business.type)}
+                  </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <VerificationBadge status={business.verificationStatus} />
                     <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${REVIEW_BADGE[business.reviewStatus]}`}>
