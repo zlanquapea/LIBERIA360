@@ -15,6 +15,8 @@ import {
   StorageProvider,
 } from "../uploads/storage/storage-provider.interface";
 import { slugify } from "../common/slugify";
+import { Place } from "../places/entities/place.entity";
+import { CreatePlaceSubmissionDto } from "../places/dto/create-place-submission.dto";
 import {
   AssignStaffDto,
   CreateOrderDto,
@@ -177,6 +179,16 @@ export class PharmaciesService {
       .addOrderBy("p.name", "ASC")
       .getMany();
   }
+  /** Public destination-page lookup (GET /pharmacies?placeId=), same
+   * pattern and approved-only gate as BusinessesService.findByPlace — a
+   * pharmacy still PENDING/REJECTED/SUSPENDED isn't public yet, even
+   * though it's linked to an already-approved place. The owner's own
+   * pending pharmacy is still reachable via mine(), not this endpoint. */
+  findByPlace(placeId: string) {
+    return this.pharmacies.findOne({
+      where: { placeId, status: PharmacyStatus.APPROVED },
+    });
+  }
   async one(slug: string) {
     const pharmacy = await this.pharmacies.findOne({
       where: { slug, status: PharmacyStatus.APPROVED },
@@ -258,6 +270,12 @@ export class PharmaciesService {
     userId: string,
     id: string | undefined,
     dto: PharmacyProfileDto,
+    // Internal-only, never set from the controller/DTO — used solely by
+    // autoClaimSubmittedPlace to link a new application back to the Place
+    // it originated from. Ignored entirely on the `id` (edit) branch: what
+    // a pharmacy is linked to isn't something a later profile edit should
+    // ever be able to change.
+    opts?: { placeId?: string },
   ) {
     if (id) await this.assertStaff(userId, id);
     // An admin verified this exact licenceNumber (see verification()) — if
@@ -285,7 +303,10 @@ export class PharmaciesService {
         const created = Object.assign(
           pharmacyRepo.create({ status: PharmacyStatus.PENDING }),
           dto,
-          { slug: `${slugify(dto.name)}-${Date.now().toString(36)}` },
+          {
+            slug: `${slugify(dto.name)}-${Date.now().toString(36)}`,
+            placeId: opts?.placeId ?? null,
+          },
         );
         saved = await pharmacyRepo.save(created);
         await staffRepo.save(
@@ -383,6 +404,47 @@ export class PharmaciesService {
           ),
         )
       : run(this.pharmacies, this.staff, this.audits);
+  }
+  /** Auto-claims a self-submitted Place as a Pharmacy on the submitter's
+   * behalf, mirroring BusinessesService.autoClaimSubmittedPlace exactly —
+   * a submitter picking the dedicated "Pharmacy" category on the ordinary
+   * place-submission form shouldn't also have to separately find and fill
+   * out this module's own application form for the same listing. Called
+   * from PlacesService.submitPlace (gated on the place's category — see
+   * that method's own doc comment) and, like the Business auto-claim,
+   * never lets a hiccup here fail the primary place-creation response.
+   * Reuses saveProfile's own "new application" path (transaction, initial
+   * manager membership, audit entry) rather than duplicating it.
+   *
+   * Place has no separate street-address field (just city/county), so
+   * `address` seeds from the city as a starting point — ProfileForm's own
+   * required address input is where the owner narrows this to something
+   * customers can actually find. `submission.contactPhone` is required
+   * here (not optional, unlike the Business mapping's `phone`): a
+   * pharmacy's telephone column is NOT NULL, and submitPlace() itself
+   * rejects a pharmacy-category submission with no contact phone before
+   * this ever runs. */
+  autoClaimSubmittedPlace(
+    userId: string,
+    place: Place,
+    submission: CreatePlaceSubmissionDto,
+  ) {
+    return this.saveProfile(
+      userId,
+      undefined,
+      {
+        name: submission.name,
+        address: submission.city,
+        location: submission.city,
+        telephone: submission.contactPhone!,
+        pickupEnabled: true,
+        deliveryEnabled: false,
+        deliveryFee: 0,
+        latitude: submission.latitude,
+        longitude: submission.longitude,
+      },
+      { placeId: place.id },
+    );
   }
   // Staff-facing read — one() (the public storefront lookup) only works
   // for an already-approved pharmacy, so a pending application has no

@@ -47,6 +47,10 @@ const MAX_PRESCRIPTION_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export class PharmaciesController {
   constructor(private readonly service: PharmaciesService) {}
   @Get() directory(@Query() q: PharmacyQueryDto) {
+    // Destination-page lookup (?placeId=) short-circuits the rest of the
+    // directory filters and returns a single pharmacy (or null) instead
+    // of a list — mirrors BusinessesController's GET /businesses?placeId=.
+    if (q.placeId) return this.service.findByPlace(q.placeId);
     return this.service.directory(q);
   }
   @Get("categories") categories() {

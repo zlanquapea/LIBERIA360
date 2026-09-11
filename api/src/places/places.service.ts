@@ -16,6 +16,7 @@ import { UpdateMyPlaceDto } from "./dto/update-my-place.dto";
 import { isOpenAt, parseOpeningHoursText } from "./opening-hours";
 import { parseNaturalLanguageQuery } from "./nl-query";
 import { BusinessesService } from "../businesses/businesses.service";
+import { PharmaciesService } from "../pharmacies/pharmacies.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 import { clearStaleRelation } from "../common/typeorm-relations";
@@ -165,6 +166,7 @@ export class PlacesService {
     @InjectRepository(County)
     private readonly countyRepo: Repository<County>,
     private readonly businessesService: BusinessesService,
+    private readonly pharmaciesService: PharmaciesService,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
   ) {}
@@ -452,11 +454,39 @@ export class PlacesService {
    * the exact thing they just created. Admin/super-admin-created places
    * (AdminContentService.createPlace) are unaffected and stay open for
    * whoever the real owner is to claim later, same as always — this only
-   * fires for self-service submissions, where the owner is already known. */
+   * fires for self-service submissions, where the owner is already known.
+   *
+   * A submission under the dedicated "Pharmacy" category is auto-claimed
+   * a second time, as a Pharmacy (see
+   * PharmaciesService.autoClaimSubmittedPlace) — matched by category
+   * slug/name rather than PlaceType, since PlaceType (a small, fixed enum
+   * predating the pharmacy marketplace) has no pharmacy value at all, and
+   * categories are the finer-grained, admin-manageable grouping. Looked
+   * up before the place is created so a missing contact phone is rejected
+   * up front, with a clear reason, rather than silently dropped by the
+   * auto-claim's own best-effort `.catch()` below (a pharmacy's telephone
+   * column is required — there'd be nothing to show a customer without
+   * one). */
   async submitPlace(
     userId: string,
     dto: CreatePlaceSubmissionDto,
   ): Promise<Place> {
+    const category = await this.categoryRepo.findOneBy({
+      id: dto.categoryId,
+    });
+    const isPharmacyCategory =
+      ["pharmacy", "pharmacies"].includes(
+        (category?.slug ?? "").toLowerCase().trim(),
+      ) ||
+      ["pharmacy", "pharmacies"].includes(
+        (category?.name ?? "").toLowerCase().trim(),
+      );
+    if (isPharmacyCategory && !dto.contactPhone) {
+      throw new BadRequestException(
+        "A contact phone number is required for a pharmacy listing — customers use it to reach the pharmacy directly.",
+      );
+    }
+
     const place = this.placeRepo.create({
       name: dto.name,
       slug: await buildPlaceSlug(this.placeRepo, dto.name),
@@ -494,6 +524,11 @@ export class PlacesService {
     await this.businessesService
       .autoClaimSubmittedPlace(userId, saved, dto)
       .catch(() => undefined);
+    if (isPharmacyCategory) {
+      await this.pharmaciesService
+        .autoClaimSubmittedPlace(userId, saved, dto)
+        .catch(() => undefined);
+    }
     await this.notifyAdminsOfPendingPlace(saved);
 
     return this.placeRepo.findOneOrFail({

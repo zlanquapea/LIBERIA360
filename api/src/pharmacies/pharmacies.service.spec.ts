@@ -83,6 +83,7 @@ describe("pharmacy marketplace policies", () => {
 describe("PharmaciesService", () => {
   let service: PharmaciesService;
   let pharmacyRepo: {
+    findOne: jest.Mock;
     findOneBy: jest.Mock;
     findOneByOrFail: jest.Mock;
     save: jest.Mock;
@@ -282,6 +283,7 @@ describe("PharmaciesService", () => {
 
   beforeEach(async () => {
     pharmacyRepo = {
+      findOne: jest.fn(),
       findOneBy: jest.fn(),
       findOneByOrFail: jest.fn(),
       save: jest.fn((x) => Promise.resolve(x)),
@@ -2550,6 +2552,84 @@ describe("PharmaciesService", () => {
       expect(staffRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ userId: "user-1", role: "manager" }),
       );
+    });
+
+    it("links a new application to its originating place when given one internally", async () => {
+      await service.saveProfile(
+        "user-1",
+        undefined,
+        {
+          name: "New Pharmacy",
+          address: "123 Main St",
+          location: "Monrovia",
+          telephone: "+231770000000",
+          pickupEnabled: true,
+          deliveryEnabled: true,
+          deliveryFee: 5,
+        } as any,
+        { placeId: "place-1" },
+      );
+
+      expect(pharmacyRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ placeId: "place-1" }),
+      );
+    });
+
+    it("leaves placeId null for a new application submitted directly (no originating place)", async () => {
+      await service.saveProfile("user-1", undefined, {
+        name: "New Pharmacy",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+      } as any);
+
+      expect(pharmacyRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ placeId: null }),
+      );
+    });
+  });
+
+  describe("autoClaimSubmittedPlace", () => {
+    it("reuses saveProfile's new-application path, linking the pharmacy back to the place", async () => {
+      const place = { id: "place-1" } as any;
+      const submission = {
+        name: "Corner Pharmacy",
+        city: "Gbarnga",
+        contactPhone: "+231770000000",
+        latitude: 6.9,
+        longitude: -9.4,
+      } as any;
+
+      await service.autoClaimSubmittedPlace("user-1", place, submission);
+
+      expect(pharmacyRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Corner Pharmacy",
+          address: "Gbarnga",
+          location: "Gbarnga",
+          telephone: "+231770000000",
+          latitude: 6.9,
+          longitude: -9.4,
+          placeId: "place-1",
+          status: PharmacyStatus.PENDING,
+        }),
+      );
+      expect(staffRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-1", role: "manager" }),
+      );
+    });
+  });
+
+  describe("findByPlace", () => {
+    it("only ever returns an approved pharmacy", async () => {
+      pharmacyRepo.findOne.mockResolvedValue(null);
+      await service.findByPlace("place-1");
+      expect(pharmacyRepo.findOne).toHaveBeenCalledWith({
+        where: { placeId: "place-1", status: PharmacyStatus.APPROVED },
+      });
     });
   });
 });

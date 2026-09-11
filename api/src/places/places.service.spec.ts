@@ -11,6 +11,7 @@ import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { BusinessesService } from "../businesses/businesses.service";
+import { PharmaciesService } from "../pharmacies/pharmacies.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 
@@ -21,11 +22,20 @@ const PLACE_ID = "place-1";
 // Every PlacesService test module below needs these even when the test
 // itself never touches search — Nest's DI container resolves the full
 // constructor at compile() time regardless of which method is exercised.
-const emptyCategoryRepo = { find: jest.fn().mockResolvedValue([]) };
+// findOneBy resolves null (no category found) by default — submitPlace's
+// pharmacy-category check then sees isPharmacyCategory === false, same as
+// any other ordinary category, for every describe block that doesn't care.
+const emptyCategoryRepo = {
+  find: jest.fn().mockResolvedValue([]),
+  findOneBy: jest.fn().mockResolvedValue(null),
+};
 const emptyCountyRepo = { find: jest.fn().mockResolvedValue([]) };
-// Only submitPlace ever calls this — the other describe blocks below just
+// Only submitPlace ever calls these — the other describe blocks below just
 // need something here so Nest can resolve PlacesService's constructor.
 const inertBusinessesService = {
+  autoClaimSubmittedPlace: jest.fn().mockResolvedValue({}),
+};
+const inertPharmaciesService = {
   autoClaimSubmittedPlace: jest.fn().mockResolvedValue({}),
 };
 // Same reasoning as inertBusinessesService — findMine/findBySlug never
@@ -67,7 +77,9 @@ describe("PlacesService.submitPlace", () => {
     save: jest.Mock;
     findOneOrFail: jest.Mock;
   };
+  let categoryRepo: { findOneBy: jest.Mock };
   let businessesService: { autoClaimSubmittedPlace: jest.Mock };
+  let pharmaciesService: { autoClaimSubmittedPlace: jest.Mock };
   let notificationsService: { create: jest.Mock; createMany: jest.Mock };
   let usersService: { findAdminIds: jest.Mock };
 
@@ -78,10 +90,19 @@ describe("PlacesService.submitPlace", () => {
       save: jest.fn((data) => Promise.resolve({ id: PLACE_ID, ...data })),
       findOneOrFail: jest.fn((opts) => Promise.resolve({ id: opts.where.id })),
     };
+    // Defaults to "no such category" — same as emptyCategoryRepo, but a
+    // dedicated mock so individual tests below can swap in a pharmacy
+    // category without leaking that override into other describe blocks.
+    categoryRepo = { findOneBy: jest.fn().mockResolvedValue(null) };
     businessesService = {
       autoClaimSubmittedPlace: jest
         .fn()
         .mockResolvedValue({ id: "business-1" }),
+    };
+    pharmaciesService = {
+      autoClaimSubmittedPlace: jest
+        .fn()
+        .mockResolvedValue({ id: "pharmacy-1" }),
     };
     notificationsService = {
       create: jest.fn().mockResolvedValue(undefined),
@@ -95,9 +116,10 @@ describe("PlacesService.submitPlace", () => {
       providers: [
         PlacesService,
         { provide: getRepositoryToken(Place), useValue: placeRepo },
-        { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
+        { provide: getRepositoryToken(Category), useValue: categoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: businessesService },
+        { provide: PharmaciesService, useValue: pharmaciesService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: UsersService, useValue: usersService },
       ],
@@ -202,6 +224,69 @@ describe("PlacesService.submitPlace", () => {
     );
   });
 
+  // A submission under the dedicated "Pharmacy" category is auto-claimed
+  // a *second* time, as a Pharmacy — see
+  // PharmaciesService.autoClaimSubmittedPlace and this describe block's
+  // doc comment on submitPlace.
+  describe("under the dedicated Pharmacy category", () => {
+    beforeEach(() => {
+      categoryRepo.findOneBy.mockResolvedValue({
+        id: "category-1",
+        slug: "pharmacy",
+        name: "Pharmacy",
+      });
+    });
+
+    it("rejects a pharmacy submission with no contact phone, before creating the place", async () => {
+      await expect(
+        service.submitPlace(OWNER_ID, { ...dto, contactPhone: undefined }),
+      ).rejects.toThrow(/contact phone/i);
+      expect(placeRepo.create).not.toHaveBeenCalled();
+      expect(pharmaciesService.autoClaimSubmittedPlace).not.toHaveBeenCalled();
+    });
+
+    it("auto-claims the new place as a pharmacy when a contact phone is provided", async () => {
+      const withPhone = { ...dto, contactPhone: "+231770000000" };
+      await service.submitPlace(OWNER_ID, withPhone);
+      expect(pharmaciesService.autoClaimSubmittedPlace).toHaveBeenCalledWith(
+        OWNER_ID,
+        expect.objectContaining({ id: PLACE_ID }),
+        withPhone,
+      );
+    });
+
+    it("still returns the place even if the pharmacy auto-claim fails", async () => {
+      pharmaciesService.autoClaimSubmittedPlace.mockRejectedValue(
+        new Error("boom"),
+      );
+      const withPhone = { ...dto, contactPhone: "+231770000000" };
+      await expect(service.submitPlace(OWNER_ID, withPhone)).resolves.toEqual(
+        expect.objectContaining({ id: PLACE_ID }),
+      );
+    });
+
+    it("matches the category by name too, not just slug", async () => {
+      categoryRepo.findOneBy.mockResolvedValue({
+        id: "category-1",
+        slug: "some-other-slug",
+        name: "Pharmacies",
+      });
+      await expect(
+        service.submitPlace(OWNER_ID, { ...dto, contactPhone: undefined }),
+      ).rejects.toThrow(/contact phone/i);
+    });
+  });
+
+  it("does not require a contact phone or auto-claim a pharmacy for an ordinary category", async () => {
+    categoryRepo.findOneBy.mockResolvedValue({
+      id: "category-1",
+      slug: "waterfalls",
+      name: "Waterfalls",
+    });
+    await service.submitPlace(OWNER_ID, dto);
+    expect(pharmaciesService.autoClaimSubmittedPlace).not.toHaveBeenCalled();
+  });
+
   it("notifies every admin that a place is pending review", async () => {
     await service.submitPlace(OWNER_ID, dto);
     expect(usersService.findAdminIds).toHaveBeenCalled();
@@ -251,6 +336,7 @@ describe("PlacesService.updateMine", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: inertBusinessesService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: UsersService, useValue: usersService },
       ],
@@ -443,6 +529,7 @@ describe("PlacesService.findMine", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: inertBusinessesService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: NotificationsService, useValue: inertNotificationsService },
         { provide: UsersService, useValue: inertUsersService },
       ],
@@ -468,6 +555,7 @@ describe("PlacesService.findBySlug", () => {
         { provide: getRepositoryToken(Category), useValue: emptyCategoryRepo },
         { provide: getRepositoryToken(County), useValue: emptyCountyRepo },
         { provide: BusinessesService, useValue: inertBusinessesService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: NotificationsService, useValue: inertNotificationsService },
         { provide: UsersService, useValue: inertUsersService },
       ],

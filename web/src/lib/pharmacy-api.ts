@@ -89,12 +89,25 @@ const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`, { cache: "no-store" });
   if (!r.ok) throw new Error("Pharmacy service is unavailable");
-  return r.json();
+  // A Nest controller returning `null` (getPharmacyByPlace, for the far
+  // more common case of a place with no linked pharmacy) serializes to a
+  // 200 with an *empty* body, not the text "null" — r.json() throws
+  // SyntaxError on that. Same fix as apiFetch in lib/api.ts.
+  const text = await r.text();
+  return (text ? JSON.parse(text) : null) as T;
 }
 export const getPharmacies = (params: URLSearchParams) =>
   read<Pharmacy[]>(`/pharmacies?${params}`);
 export const getPharmacy = (slug: string) =>
   read<Pharmacy>(`/pharmacies/${encodeURIComponent(slug)}`);
+// GET /pharmacies?placeId=... returns `null` (200, not 404) when this
+// place has no linked pharmacy — same shape as getBusinessByPlace in
+// lib/api.ts. Only ever an APPROVED pharmacy, even when the place itself
+// is already approved — see PharmaciesService.findByPlace's doc comment.
+// Used by the place detail page to surface "order from this pharmacy" for
+// a place submitted under the dedicated "Pharmacy" category.
+export const getPharmacyByPlace = (placeId: string) =>
+  read<Pharmacy | null>(`/pharmacies?placeId=${encodeURIComponent(placeId)}`);
 export const getPharmacyProducts = (id: string, params = "") =>
   read<PharmacyProduct[]>(
     `/pharmacies/${id}/products${params ? `?${params}` : ""}`,

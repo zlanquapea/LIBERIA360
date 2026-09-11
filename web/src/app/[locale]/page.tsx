@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   MagnifyingGlassIcon,
+  BeakerIcon,
   BriefcaseIcon,
   MapIcon,
   TruckIcon,
@@ -550,13 +551,27 @@ export default async function Home() {
 
           <Link
             href="/car-rentals"
-            className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card sm:col-span-2"
+            className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{t('home.rentCar')}</p>
               <p className="truncate text-xs text-slate-500 dark:text-slate-400">{t('home.rentCarDescription')}</p>
             </div>
             <TruckIcon
+              aria-hidden
+              className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
+            />
+          </Link>
+
+          <Link
+            href="/pharmacies"
+            className="group flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-card"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{t('home.shopPharmacies')}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{t('home.shopPharmaciesDescription')}</p>
+            </div>
+            <BeakerIcon
               aria-hidden
               className="h-6 w-6 shrink-0 text-accent-600 transition-transform duration-300 group-hover:scale-110 dark:text-accent-400"
             />
