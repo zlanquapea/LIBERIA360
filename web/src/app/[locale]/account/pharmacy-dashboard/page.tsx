@@ -1,217 +1,123 @@
-"use client";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { apiRequest } from "@/lib/http";
-import {
-  createPharmacy,
-  type Pharmacy,
-  type PharmacyProfileInput,
-} from "@/lib/pharmacy-api";
+'use client';
 
-const EMPTY_APPLICATION: PharmacyProfileInput = {
-  name: "",
-  address: "",
-  location: "",
-  telephone: "",
-  licenceNumber: "",
-  pickupEnabled: true,
-  deliveryEnabled: false,
-  deliveryFee: 0,
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '@/hooks/useAuth';
+import { getMyPharmacies, type Pharmacy } from '@/lib/pharmacy-api';
+import { MY_PHARMACIES_ICON } from '@/lib/pharmacy-dashboard-nav';
+import { BrandLoader } from '@/components/BrandLoader';
+
+const STATUS_BADGE: Record<Pharmacy['status'], string> = {
+  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+  rejected: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+  suspended: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
 };
 
-// createPharmacy() lands the pharmacy in "pending" status — visible only to
-// its own staff until an admin approves it via /admin/pharmacies (see that
-// page's own licence-number check), so this form is deliberately just
-// enough to get an application on file, not the full profile editor
-// ([id]/page.tsx's ProfileForm covers logo/cover/coordinates once approved).
-function ApplicationForm({ onCreated }: { onCreated: (p: Pharmacy) => void }) {
-  const [form, setForm] = useState(EMPTY_APPLICATION);
-  const [saving, setSaving] = useState(false),
-    [error, setError] = useState("");
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      const created = await createPharmacy({
-        ...form,
-        licenceNumber: form.licenceNumber || undefined,
-      });
-      onCreated(created);
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Could not submit application.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <form
-      onSubmit={submit}
-      className="empty-state mt-2 grid gap-3 text-left sm:grid-cols-2"
-    >
-      <p className="sm:col-span-2">
-        No pharmacy is assigned to your account. Submit a pharmacy
-        application to begin.
-      </p>
-      <label>
-        Pharmacy name
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-        />
-      </label>
-      <label>
-        Telephone
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.telephone}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, telephone: e.target.value }))
-          }
-        />
-      </label>
-      <label className="sm:col-span-2">
-        Address
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.address}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, address: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Location / city
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.location}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, location: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Licence number
-        <input
-          className="input mt-1 w-full"
-          value={form.licenceNumber}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, licenceNumber: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Delivery fee (L$)
-        <input
-          required
-          type="number"
-          min={0}
-          step="0.01"
-          className="input mt-1 w-full"
-          value={form.deliveryFee}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, deliveryFee: Number(e.target.value) }))
-          }
-        />
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.pickupEnabled}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, pickupEnabled: e.target.checked }))
-          }
-        />
-        Pickup enabled
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.deliveryEnabled}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, deliveryEnabled: e.target.checked }))
-          }
-        />
-        Delivery enabled
-      </label>
-      <button disabled={saving} className="btn-primary sm:col-span-2">
-        {saving ? "Submitting…" : "Submit application"}
-      </button>
-      {error && (
-        <p role="alert" className="error-state sm:col-span-2">
-          {error}
-        </p>
-      )}
-    </form>
-  );
+function formatStatus(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export default function PharmacyDashboard() {
-  const [items, setItems] = useState<Pharmacy[] | null>(null),
-    [error, setError] = useState("");
+// The front door into managing a pharmacy — mirrors My Businesses
+// (/account/my-businesses): a pharmacy is created the exact same way as
+// any other business, by submitting or claiming a place, then goes
+// through the same admin place-review as every other business type (see
+// PharmaciesService.autoApproveForPlace's doc comment) — there is no
+// separate "apply to become a pharmacy" flow or licence-gated approval
+// step to offer here anymore. Its products/orders/staff are the
+// pharmacy-specific features that come with the "Pharmacy" category, the
+// same way a "restaurant"-category business unlocks a Menu.
+export default function PharmacyDashboardList() {
+  const { user, ready } = useAuth();
+  const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    apiRequest<Pharmacy[]>("/pharmacy-dashboard")
-      .then(setItems)
-      .catch((e) => setError(e.message));
-  }, []);
+    if (!ready || !user) {
+      if (ready) setLoading(false);
+      return;
+    }
+    getMyPharmacies()
+      .then(setPharmacies)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your pharmacies.'))
+      .finally(() => setLoading(false));
+  }, [ready, user]);
+
+  if (!ready || loading) {
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
+        <BrandLoader />
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-16 text-center">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My Pharmacies</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to manage a pharmacy.</p>
+        <Link href="/login" className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
+          Log in
+        </Link>
+      </main>
+    );
+  }
+
   return (
-    <main className="page-shell max-w-5xl">
-      <h1 className="page-title">Pharmacy dashboard</h1>
-      <p className="mb-5">
-        Manage your profiles, inventory, orders, and pharmacist reviews. Access
-        is limited to assigned pharmacy staff.
-      </p>
+    <main className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Your workspace</p>
+        <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">My Pharmacies</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Profile, products, orders, and staff — everything about a pharmacy lives in its dashboard.
+        </p>
+      </div>
+
       {error && (
         <p role="alert" className="error-state">
           {error}
         </p>
       )}
-      {items === null && !error && <p>Loading dashboard…</p>}
-      {items?.length === 0 && (
-        <ApplicationForm
-          onCreated={(p) => setItems((prev) => [...(prev ?? []), p])}
-        />
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {items?.map((p) => (
-          <article
-            key={p.id}
-            className="rounded-2xl border bg-white p-5 dark:bg-slate-900"
-          >
-            <h2 className="text-xl font-bold">{p.name}</h2>
-            <p className="capitalize">Verification: {p.status}</p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {p.status === "approved" ? (
-                <Link className="btn-secondary" href={`/pharmacies/${p.slug}`}>
-                  View storefront
-                </Link>
-              ) : (
-                // one() (the storefront page) only ever resolves an
-                // approved pharmacy — a pending/rejected/suspended one
-                // 404s, so linking there is a dead end until approval.
-                <span className="text-sm text-slate-500">
-                  {p.status === "pending"
-                    ? "Storefront available once approved"
-                    : "Storefront unavailable while " + p.status}
-                </span>
-              )}
+
+      {pharmacies.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-[2rem] border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+          <MY_PHARMACIES_ICON aria-hidden className="h-8 w-8 text-slate-400" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            You don&apos;t manage a pharmacy yet. Add your pharmacy as a place — same as adding any
+            other business — and pick <span className="font-semibold">Pharmacy</span> as its
+            category. It shows up here automatically once submitted, and goes live the moment an
+            admin approves the place.
+          </p>
+          <Link href="/places/submit" className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
+            Add a place
+          </Link>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {pharmacies.map((p) => (
+            <li key={p.id}>
               <Link
-                className="btn-primary"
                 href={`/account/pharmacy-dashboard/${p.id}`}
+                className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-brand-950/20"
               >
-                Manage profile & products
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
+                  <MY_PHARMACIES_ICON aria-hidden className="h-6 w-6 text-slate-400" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-display text-lg font-bold text-slate-950 dark:text-slate-50">{p.name}</p>
+                  <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_BADGE[p.status] ?? STATUS_BADGE.pending}`}>
+                    {formatStatus(p.status)}
+                  </span>
+                </div>
+                <ArrowRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300" />
               </Link>
-            </div>
-          </article>
-        ))}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }
