@@ -39,6 +39,7 @@ import { MailModule } from "../mail/mail.module";
 import { SettingsModule } from "../settings/settings.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { EventsModule } from "../events/events.module";
+import { PharmaciesModule } from "../pharmacies/pharmacies.module";
 import { AssistantFeedback } from "../assistant/entities/assistant-feedback.entity";
 import { AdminAssistantReviewService } from "./admin-assistant-review.service";
 import { AdminAssistantReviewController } from "./admin-assistant-review.controller";
@@ -72,6 +73,7 @@ import { AdminAssistantReviewController } from "./admin-assistant-review.control
     SettingsModule,
     NotificationsModule,
     EventsModule,
+    PharmaciesModule,
   ],
   controllers: [
     AdminController,

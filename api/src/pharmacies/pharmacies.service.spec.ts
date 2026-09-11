@@ -147,6 +147,7 @@ describe("PharmaciesService", () => {
     createQueryBuilder: jest.Mock;
   };
   let auditRepo: { save: jest.Mock; create: jest.Mock };
+  let verificationRepo: { save: jest.Mock; create: jest.Mock };
   let storageProvider: {
     save: jest.Mock;
     savePrivate: jest.Mock;
@@ -166,11 +167,15 @@ describe("PharmaciesService", () => {
   }
   // verification() opts back into the `select: false` licenceNumber column
   // via createQueryBuilder rather than a plain findOneBy — mock that chain.
+  // autoApproveForPlace() reuses the same chain with an added .andWhere()
+  // (locked lookup by placeId + status), hence that mock is included here
+  // too rather than only on the other builders below.
   function mockPharmacyQueryBuilder(pharmacy: Partial<Pharmacy> | null) {
     const builder = {
       setLock: jest.fn().mockReturnThis(),
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(pharmacy),
       getOneOrFail: pharmacy
         ? jest.fn().mockResolvedValue(pharmacy)
@@ -367,6 +372,10 @@ describe("PharmaciesService", () => {
       save: jest.fn().mockResolvedValue(undefined),
       create: jest.fn((x) => x),
     };
+    verificationRepo = {
+      save: jest.fn().mockResolvedValue(undefined),
+      create: jest.fn((x) => x),
+    };
     storageProvider = {
       save: jest.fn(),
       savePrivate: jest
@@ -412,10 +421,7 @@ describe("PharmaciesService", () => {
         },
         {
           provide: getRepositoryToken(PharmacyVerification),
-          useValue: {
-            save: jest.fn().mockResolvedValue(undefined),
-            create: jest.fn((x) => x),
-          },
+          useValue: verificationRepo,
         },
         { provide: getRepositoryToken(PharmacyAuditLog), useValue: auditRepo },
         { provide: STORAGE_PROVIDER, useValue: storageProvider },
@@ -2224,6 +2230,53 @@ describe("PharmaciesService", () => {
         { status: PharmacyStatus.REJECTED },
       );
       expect(pharmacyRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("autoApproveForPlace", () => {
+    it("approves a still-pending pharmacy linked to the given place", async () => {
+      const builder = mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.PENDING,
+      });
+
+      await service.autoApproveForPlace("place-1", "admin-1");
+
+      expect(builder.setLock).toHaveBeenCalledWith("pessimistic_write");
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        { status: PharmacyStatus.APPROVED },
+      );
+      // No licence number required — that's the whole point of this path.
+      expect(verificationRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pharmacyId: "pharmacy-1",
+          reviewerUserId: "admin-1",
+          decision: PharmacyStatus.APPROVED,
+        }),
+      );
+      expect(auditRepo.save).toHaveBeenCalled();
+    });
+
+    it("no-ops when no pharmacy is linked to that place", async () => {
+      mockPharmacyQueryBuilder(null);
+
+      await service.autoApproveForPlace("place-1", "admin-1");
+
+      expect(pharmacyRepo.update).not.toHaveBeenCalled();
+      expect(verificationRepo.save).not.toHaveBeenCalled();
+      expect(auditRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("never overrides a human decision — a rejected/suspended pharmacy is left alone", async () => {
+      // The locked lookup itself filters to status = PENDING, so a
+      // rejected/suspended pharmacy simply never matches — getOne()
+      // resolves to null, same as the "no pharmacy at all" case above.
+      mockPharmacyQueryBuilder(null);
+
+      await service.autoApproveForPlace("place-1", "admin-1");
+
+      expect(pharmacyRepo.update).not.toHaveBeenCalled();
     });
   });
 

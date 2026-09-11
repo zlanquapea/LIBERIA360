@@ -34,6 +34,7 @@ import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { AdvertisementReviewStatus } from "../advertisements/entities/advertisement.enums";
 import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
+import { PharmaciesService } from "../pharmacies/pharmacies.service";
 
 const NEW_USER_WINDOW_DAYS = 7;
 
@@ -143,6 +144,7 @@ export class AdminService {
     private readonly settingsService: SettingsService,
     private readonly notificationsService: NotificationsService,
     private readonly eventsService: EventsService,
+    private readonly pharmaciesService: PharmaciesService,
   ) {}
 
   async setPlaceVerification(
@@ -287,6 +289,18 @@ export class AdminService {
           : `"${saved.name}" was ${status}.`,
         link: "/account/my-places",
       });
+    }
+    // A self-submitted pharmacy (see PlacesService.submitPlace /
+    // PharmaciesService.autoClaimSubmittedPlace) waits on this exact
+    // moment to go live itself — see autoApproveForPlace's doc comment for
+    // why the separate /admin/pharmacies approval (and its licence-number
+    // requirement) is skipped entirely for this path. Never lets this
+    // secondary effect fail the primary place-approval action, same
+    // convention as every other auto-claim in this codebase.
+    if (status === PlaceReviewStatus.APPROVED) {
+      await this.pharmaciesService
+        .autoApproveForPlace(placeId, adminUserId)
+        .catch(() => undefined);
     }
     return this.placeRepo.findOneOrFail({
       where: { id: saved.id },
