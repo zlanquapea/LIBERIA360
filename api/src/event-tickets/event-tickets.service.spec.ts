@@ -867,6 +867,15 @@ describe("EventTicketsService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    // This test chains more real AES-GCM + QR-image (canvas) work than any
+    // other in this describe block — issueOneTicket() itself renders one QR,
+    // transferTicket() decrypts it away, acceptTransferById() decrypts and
+    // re-renders a fresh one for the recipient, and the findForBuyer() call
+    // below does a second full result build on top of that. Under CI
+    // resource contention that occasionally crosses Jest's 5000ms default
+    // (confirmed via repeated clean local/CI runs at unrelated commits —
+    // this is genuinely slow, not broken), so it gets a longer timeout
+    // rather than a rerun-and-hope every time it happens.
     it("moves ownership to the recipient once they accept, listing it as a received ticket with a restored QR", async () => {
       const { service, instance } = await issueOneTicket();
       const afterSend = await service.transferTicket(instance.id, user, {
@@ -890,7 +899,7 @@ describe("EventTicketsService", () => {
         toEmail: recipient.email,
       });
       expect(sentTicket.qrDataUrl).toBe("");
-    });
+    }, 15000);
 
     it("lets the recipient decline, leaving the ticket (and its QR) with the sender", async () => {
       const { service, instance } = await issueOneTicket();

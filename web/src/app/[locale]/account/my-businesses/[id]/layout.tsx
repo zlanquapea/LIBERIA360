@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { getMyBusinesses } from '@/lib/business-api';
+import { getMyBusinesses, isPharmacyBusiness } from '@/lib/business-api';
+import { getMyPharmacies, type Pharmacy } from '@/lib/pharmacy-api';
 import { formatBusinessReviewStatus, formatBusinessType } from '@/lib/format';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { BrandLoader } from '@/components/BrandLoader';
@@ -37,6 +38,12 @@ export default function BusinessDashboardLayout({ children }: { children: ReactN
   const [business, setBusiness] = useState<Business | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  // A pharmacy business has a second, purpose-built management surface
+  // (inventory, prescriptions, orders) that lives entirely outside this
+  // generic dashboard — see isPharmacyBusiness's doc comment. Looked up
+  // once the business itself resolves as a pharmacy, so the banner below
+  // can link straight to it instead of leaving it undiscoverable.
+  const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -59,6 +66,14 @@ export default function BusinessDashboardLayout({ children }: { children: ReactN
     }
     reload();
   }, [ready, token, reload]);
+
+  useEffect(() => {
+    if (!business || !isPharmacyBusiness(business)) return;
+    getMyPharmacies().then((list) => {
+      const match = list.find((p) => p.placeId === business.linkedPlaceId);
+      setPharmacy(match ?? null);
+    });
+  }, [business]);
 
   if (!ready || loading) {
     return (
@@ -95,6 +110,8 @@ export default function BusinessDashboardLayout({ children }: { children: ReactN
     );
   }
 
+  const isPharmacy = isPharmacyBusiness(business);
+
   return (
     <BusinessDashboardProvider value={{ business, token, onBusinessUpdated: setBusiness }}>
       <main className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
@@ -105,7 +122,9 @@ export default function BusinessDashboardLayout({ children }: { children: ReactN
         <header className="flex flex-wrap items-start justify-between gap-3 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-6">
           <div className="flex flex-col gap-1.5">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-              {formatBusinessType(business.type)}
+              {/* business.type predates the pharmacy marketplace and has no
+                  pharmacy value — see isPharmacyBusiness's doc comment. */}
+              {isPharmacy ? 'Pharmacy' : formatBusinessType(business.type)}
             </p>
             <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{business.name}</h1>
             <div className="flex flex-wrap items-center gap-2">
@@ -125,6 +144,34 @@ export default function BusinessDashboardLayout({ children }: { children: ReactN
             </Link>
           )}
         </header>
+
+        {/* Everything in this generic dashboard (Profile, Bookings, Updates,
+            Analytics — no Menu/Orders equivalent for a pharmacy) is beside
+            the point for this business: its actual inventory, prescriptions
+            and order queue live entirely in the separate Pharmacy Dashboard.
+            Without this, an owner lands here and finds nothing that says
+            "pharmacy" anywhere — the exact report this fixes. */}
+        {isPharmacy && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/20">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+                <BeakerIcon aria-hidden className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">This is a pharmacy</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Inventory, prescriptions & orders are managed in the Pharmacy Dashboard, not here.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={pharmacy ? `/account/pharmacy-dashboard/${pharmacy.id}` : '/account/pharmacy-dashboard'}
+              className="shrink-0 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              Open Pharmacy Dashboard
+            </Link>
+          </div>
+        )}
 
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
           <BusinessDashboardNav business={business} />
