@@ -1,1164 +1,162 @@
-"use client";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { apiRequest } from "@/lib/http";
+'use client';
+
+import Link from 'next/link';
 import {
-  assignPharmacyStaff,
-  deactivatePharmacyStaff,
-  deletePharmacyProduct,
-  getMyPharmacyHours,
-  getMyPharmacyProducts,
-  getPharmacyCategoriesClient,
-  getPharmacyDashboardOrders,
-  getPharmacyStaff,
-  getPharmacyStats,
-  reviewPharmacyPrescription,
-  savePharmacyHours,
-  savePharmacyProduct,
-  savePharmacyProfile,
-  transitionPharmacyOrder,
-  type Pharmacy,
-  type PharmacyOpeningHoursEntry,
-  type PharmacyOrder,
-  type PharmacyProduct,
-  type PharmacyProductInput,
-  type PharmacyStaffMember,
-  type PharmacyStats,
-} from "@/lib/pharmacy-api";
+  BanknotesIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ShoppingBagIcon,
+  Squares2X2Icon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline';
+import { usePharmacyDashboard } from '@/components/PharmacyDashboardContext';
+import { pharmacyDashboardHref } from '@/lib/pharmacy-dashboard-nav';
 
-const DAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
-const ORDER_LABELS: Record<string, string> = {
-  pending: "Pending",
-  under_review: "Under review",
-  accepted: "Accepted",
-  preparing: "Preparing",
-  ready_for_pickup: "Ready for pickup",
-  out_for_delivery: "Out for delivery",
-  completed: "Completed",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-};
-// Mirrors PharmaciesService's own NEXT[] transition map (pharmacies.service.ts)
-// so the buttons shown here only ever offer a move the API will actually
-// accept — the server re-validates every one regardless, this just avoids
-// a round trip that was always going to 409.
-const NEXT_STATUSES: Record<string, string[]> = {
-  pending: ["accepted", "cancelled"],
-  under_review: ["cancelled"],
-  accepted: ["preparing", "cancelled"],
-  preparing: ["ready_for_pickup", "out_for_delivery"],
-  ready_for_pickup: ["completed"],
-  out_for_delivery: ["completed"],
-  completed: [],
-  rejected: [],
-  cancelled: [],
-};
-// "preparing" offers both dispatch options above, but only one is ever
-// valid for a given order — the API's own NEXT[] map (and its 409) doesn't
-// distinguish by fulfillmentMethod either, it just rejects whichever one
-// doesn't match, so filter it out here rather than showing a button that's
-// guaranteed to fail.
-function nextStatusesFor(order: PharmacyOrder): string[] {
-  return (NEXT_STATUSES[order.status] ?? []).filter((next) => {
-    if (next === "ready_for_pickup") return order.fulfillmentMethod === "pickup";
-    if (next === "out_for_delivery") return order.fulfillmentMethod === "delivery";
-    return true;
-  });
-}
-
-function ProfileForm({
-  pharmacy,
-  onSaved,
-}: {
-  pharmacy: Pharmacy;
-  onSaved: (p: Pharmacy) => void;
-}) {
-  const [form, setForm] = useState({
-    name: pharmacy.name,
-    address: pharmacy.address,
-    location: pharmacy.location,
-    telephone: pharmacy.telephone,
-    logoUrl: pharmacy.logoUrl ?? "",
-    coverUrl: pharmacy.coverUrl ?? "",
-    latitude: pharmacy.latitude != null ? String(pharmacy.latitude) : "",
-    longitude: pharmacy.longitude != null ? String(pharmacy.longitude) : "",
-    pickupEnabled: pharmacy.pickupEnabled,
-    deliveryEnabled: pharmacy.deliveryEnabled,
-    deliveryFee: String(pharmacy.deliveryFee),
-    // Only present when getMyPharmacies() actually selected it — an
-    // application submitted without one (the empty-state ApplicationForm
-    // makes it optional) would otherwise never be correctable, since
-    // admin approval refuses a pharmacy with none on file.
-    licenceNumber: pharmacy.licenceNumber ?? "",
-  });
-  const [saving, setSaving] = useState(false),
-    [error, setError] = useState(""),
-    [saved, setSaved] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    setSaved(false);
-    try {
-      const updated = await savePharmacyProfile(pharmacy.id, {
-        name: form.name,
-        address: form.address,
-        location: form.location,
-        telephone: form.telephone,
-        // null (not undefined) for an emptied field: this form always
-        // submits every field, pre-populated from the current pharmacy, so
-        // there's no "the user didn't touch this" case to preserve here —
-        // an empty box means "remove this", and the API only takes that as
-        // a clear when it's explicitly null (omitting the key entirely
-        // means "leave unchanged", which would just restore the old value).
-        logoUrl: form.logoUrl || null,
-        coverUrl: form.coverUrl || null,
-        latitude: form.latitude === "" ? null : Number(form.latitude),
-        longitude: form.longitude === "" ? null : Number(form.longitude),
-        pickupEnabled: form.pickupEnabled,
-        deliveryEnabled: form.deliveryEnabled,
-        deliveryFee: Number(form.deliveryFee),
-        licenceNumber: form.licenceNumber || undefined,
-      });
-      onSaved(updated);
-      setSaved(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save changes.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-      <label>
-        Name
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-        />
-      </label>
-      <label>
-        Telephone
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.telephone}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, telephone: e.target.value }))
-          }
-        />
-      </label>
-      <label className="sm:col-span-2">
-        Address
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.address}
-          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-        />
-      </label>
-      <label>
-        Location / city
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.location}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, location: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Delivery fee (L$)
-        <input
-          required
-          type="number"
-          min={0}
-          step="0.01"
-          className="input mt-1 w-full"
-          value={form.deliveryFee}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, deliveryFee: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Licence number
-        <input
-          className="input mt-1 w-full"
-          value={form.licenceNumber}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, licenceNumber: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Logo URL
-        <input
-          className="input mt-1 w-full"
-          value={form.logoUrl}
-          onChange={(e) => setForm((f) => ({ ...f, logoUrl: e.target.value }))}
-        />
-      </label>
-      <label>
-        Cover image URL
-        <input
-          className="input mt-1 w-full"
-          value={form.coverUrl}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, coverUrl: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Latitude
-        <input
-          type="number"
-          step="any"
-          placeholder="e.g. 6.3156"
-          className="input mt-1 w-full"
-          value={form.latitude}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, latitude: e.target.value }))
-          }
-        />
-      </label>
-      <label>
-        Longitude
-        <input
-          type="number"
-          step="any"
-          placeholder="e.g. -10.8074"
-          className="input mt-1 w-full"
-          value={form.longitude}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, longitude: e.target.value }))
-          }
-        />
-      </label>
-      <p className="text-xs text-slate-500 sm:col-span-2">
-        Coordinates place this pharmacy on the marketplace map — without
-        them it stays visible in list view only.
-      </p>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.pickupEnabled}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, pickupEnabled: e.target.checked }))
-          }
-        />
-        Pickup enabled
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.deliveryEnabled}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, deliveryEnabled: e.target.checked }))
-          }
-        />
-        Delivery enabled
-      </label>
-      <button
-        className="btn-primary min-h-11 sm:col-span-2"
-        disabled={saving}
-      >
-        {saving ? "Saving…" : "Save profile"}
-      </button>
-      {saved && (
-        <p role="status" className="text-sm text-emerald-700 sm:col-span-2">
-          Profile updated.
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="error-state sm:col-span-2">
-          {error}
-        </p>
-      )}
-    </form>
-  );
-}
-
-function StaffForm({
-  pharmacyId,
-  onChanged,
-}: {
-  pharmacyId: string;
-  onChanged: () => void;
-}) {
-  const [email, setEmail] = useState(""),
-    [role, setRole] = useState<"manager" | "pharmacist" | "employee">(
-      "employee",
-    ),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [added, setAdded] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    setAdded(false);
-    try {
-      await assignPharmacyStaff(pharmacyId, { email, role });
-      setEmail("");
-      setAdded(true);
-      onChanged();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not add staff member.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
-      <label className="flex-1">
-        Colleague&apos;s email
-        <input
-          required
-          type="email"
-          className="input mt-1 w-full"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </label>
-      <label>
-        Role
-        <select
-          className="input mt-1"
-          value={role}
-          onChange={(e) => setRole(e.target.value as typeof role)}
-        >
-          <option value="manager">Manager</option>
-          <option value="pharmacist">Pharmacist</option>
-          <option value="employee">Employee</option>
-        </select>
-      </label>
-      <button className="btn-secondary min-h-11" disabled={busy}>
-        {busy ? "Adding…" : "Add staff"}
-      </button>
-      {added && (
-        <p role="status" className="w-full text-sm text-emerald-700">
-          Staff member added.
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="error-state w-full">
-          {error}
-        </p>
-      )}
-    </form>
-  );
-}
-
-function StaffRoster({
-  pharmacyId,
-  isManager,
-  refreshKey,
-  onChanged,
-}: {
-  pharmacyId: string;
-  isManager: boolean;
-  refreshKey: number;
-  onChanged: () => void;
-}) {
-  const [members, setMembers] = useState<PharmacyStaffMember[] | null>(null),
-    [error, setError] = useState(""),
-    [busyUserId, setBusyUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    getPharmacyStaff(pharmacyId)
-      .then((m) => {
-        if (!cancelled) setMembers(m);
-      })
-      .catch((e) => {
-        if (!cancelled)
-          setError(e instanceof Error ? e.message : "Could not load staff.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pharmacyId, refreshKey]);
-
-  async function deactivate(userId: string) {
-    if (!confirm("Remove this staff member's access?")) return;
-    setBusyUserId(userId);
-    setError("");
-    try {
-      await deactivatePharmacyStaff(pharmacyId, userId);
-      onChanged();
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Could not remove staff member.",
-      );
-    } finally {
-      setBusyUserId(null);
-    }
-  }
-
-  if (error)
-    return (
-      <p role="alert" className="error-state mt-3">
-        {error}
-      </p>
-    );
-  if (!members)
-    return <p className="mt-3 text-sm text-slate-500">Loading staff…</p>;
+// The dashboard's landing tab — an at-a-glance summary plus one-click
+// links into every other section, so an owner never has to guess where
+// something lives (see PharmacyDashboardLayout's doc comment for what
+// this replaces).
+export default function PharmacyDashboardOverview() {
+  const { pharmacy, stats } = usePharmacyDashboard();
 
   return (
-    <ul className="mt-3 divide-y divide-slate-200 dark:divide-slate-800">
-      {members.map((m) => (
-        <li
-          key={m.userId}
-          className="flex items-center justify-between gap-2 py-2 text-sm"
-        >
-          <span>
-            {m.email ?? m.userId}{" "}
-            <span className="capitalize text-slate-500">({m.role})</span>
-          </span>
-          {isManager && (
-            <button
-              type="button"
-              className="btn-secondary min-h-9 text-xs"
-              disabled={busyUserId === m.userId}
-              onClick={() => deactivate(m.userId)}
-            >
-              {busyUserId === m.userId ? "Removing…" : "Remove"}
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function StaffSection({
-  pharmacyId,
-  isManager,
-}: {
-  pharmacyId: string;
-  isManager: boolean;
-}) {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const bump = () => setRefreshKey((k) => k + 1);
-  return (
-    <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
-      <h2 className="text-xl font-bold">Staff</h2>
-      <p className="mb-3 text-sm text-slate-500">
-        Only a pharmacist on staff can decide on a prescription review.
-      </p>
-      {isManager ? (
-        <StaffForm pharmacyId={pharmacyId} onChanged={bump} />
-      ) : (
-        <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          Only a manager can add or reassign staff at this pharmacy.
-        </p>
-      )}
-      <StaffRoster
-        pharmacyId={pharmacyId}
-        isManager={isManager}
-        refreshKey={refreshKey}
-        onChanged={bump}
-      />
-    </section>
-  );
-}
-
-function emptyHours(): PharmacyOpeningHoursEntry[] {
-  return DAY_NAMES.map((_, dayOfWeek) => ({
-    dayOfWeek,
-    opensAt: "08:00",
-    closesAt: "20:00",
-    isClosed: false,
-  }));
-}
-
-// The only place a pharmacy can ever populate pharmacy_opening_hours —
-// without this, directory()'s "Open now" filter (which inner-joins that
-// table) can never match this pharmacy, no matter how it was created.
-function OpeningHoursSection({ pharmacyId }: { pharmacyId: string }) {
-  const [hours, setHours] = useState<PharmacyOpeningHoursEntry[] | null>(
-      null,
-    ),
-    [saving, setSaving] = useState(false),
-    [error, setError] = useState(""),
-    [saved, setSaved] = useState(false);
-  useEffect(() => {
-    getMyPharmacyHours(pharmacyId)
-      .then((rows) =>
-        setHours(
-          rows.length
-            ? DAY_NAMES.map(
-                (_, dayOfWeek) =>
-                  rows.find((r) => r.dayOfWeek === dayOfWeek) ?? {
-                    dayOfWeek,
-                    opensAt: "08:00",
-                    closesAt: "20:00",
-                    isClosed: false,
-                  },
-              )
-            : emptyHours(),
-        ),
-      )
-      .catch((e) => setError(e instanceof Error ? e.message : "Load failed"));
-  }, [pharmacyId]);
-  function updateDay(
-    dayOfWeek: number,
-    patch: Partial<PharmacyOpeningHoursEntry>,
-  ) {
-    setHours((prev) =>
-      (prev ?? emptyHours()).map((h) =>
-        h.dayOfWeek === dayOfWeek ? { ...h, ...patch } : h,
-      ),
-    );
-  }
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!hours) return;
-    setSaving(true);
-    setError("");
-    setSaved(false);
-    try {
-      const updated = await savePharmacyHours(pharmacyId, hours);
-      setHours(
-        DAY_NAMES.map(
-          (_, dayOfWeek) =>
-            updated.find((r) => r.dayOfWeek === dayOfWeek) ?? hours[dayOfWeek],
-        ),
-      );
-      setSaved(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save hours.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  if (!hours) return <p className="mt-2">Loading hours…</p>;
-  return (
-    <form onSubmit={submit} className="mt-2 space-y-2">
-      {hours.map((h) => (
-        <div key={h.dayOfWeek} className="flex flex-wrap items-center gap-2">
-          <span className="w-24 text-sm font-medium">
-            {DAY_NAMES[h.dayOfWeek]}
-          </span>
-          <label className="flex items-center gap-1 text-sm">
-            <input
-              type="checkbox"
-              checked={h.isClosed}
-              onChange={(e) =>
-                updateDay(h.dayOfWeek, { isClosed: e.target.checked })
-              }
-            />
-            Closed
-          </label>
-          {!h.isClosed && (
-            <>
-              <input
-                type="time"
-                className="input"
-                value={h.opensAt ?? "08:00"}
-                onChange={(e) =>
-                  updateDay(h.dayOfWeek, { opensAt: e.target.value })
-                }
-              />
-              <span className="text-sm text-slate-500">to</span>
-              <input
-                type="time"
-                className="input"
-                value={h.closesAt ?? "20:00"}
-                onChange={(e) =>
-                  updateDay(h.dayOfWeek, { closesAt: e.target.value })
-                }
-              />
-            </>
-          )}
+    <div className="flex flex-col gap-5">
+      {pharmacy.status === 'pending' && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          <p className="font-semibold">Waiting on admin approval.</p>
+          <p className="mt-1">
+            This pharmacy goes live automatically the moment the place it&apos;s linked to is
+            approved — no extra step needed here. In the meantime, get its{' '}
+            <Link href={pharmacyDashboardHref(pharmacy.id, 'profile')} className="font-semibold underline">
+              profile
+            </Link>
+            ,{' '}
+            <Link href={pharmacyDashboardHref(pharmacy.id, 'products')} className="font-semibold underline">
+              products
+            </Link>
+            , and{' '}
+            <Link href={pharmacyDashboardHref(pharmacy.id, 'staff')} className="font-semibold underline">
+              staff
+            </Link>{' '}
+            ready so it&apos;s fully stocked the day it opens.
+          </p>
         </div>
-      ))}
-      <button disabled={saving} className="btn-primary mt-2 min-h-9">
-        {saving ? "Saving…" : "Save hours"}
-      </button>
-      {saved && (
-        <p role="status" className="text-sm text-emerald-700">
-          Hours saved.
-        </p>
       )}
-      {error && (
-        <p role="alert" className="error-state">
-          {error}
-        </p>
+      {pharmacy.status === 'rejected' && (
+        <div className="rounded-2xl border border-flag-300 bg-flag-500/10 p-4 text-sm text-flag-700 dark:border-flag-800 dark:text-flag-300">
+          <p className="font-semibold">This pharmacy was rejected.</p>
+        </div>
       )}
-    </form>
-  );
-}
+      {pharmacy.status === 'suspended' && (
+        <div className="rounded-2xl border border-flag-300 bg-flag-500/10 p-4 text-sm text-flag-700 dark:border-flag-800 dark:text-flag-300">
+          <p className="font-semibold">This pharmacy is suspended.</p>
+        </div>
+      )}
 
-const EMPTY_PRODUCT_FORM: PharmacyProductInput = {
-  name: "",
-  categoryId: "",
-  price: 0,
-  stockQuantity: 0,
-  prescriptionRequired: false,
-  isVisible: true,
-};
-
-function ProductForm({
-  pharmacyId,
-  categories,
-  editing,
-  onDone,
-  onCancel,
-}: {
-  pharmacyId: string;
-  categories: Array<{ id: string; name: string }>;
-  editing: PharmacyProduct | null;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const [form, setForm] = useState<PharmacyProductInput>(
-    editing
-      ? {
-          name: editing.name,
-          categoryId: editing.categoryId,
-          imageUrl: editing.imageUrl ?? undefined,
-          price: Number(editing.price),
-          stockQuantity: editing.inventory?.quantity ?? 0,
-          // Captured once, at load time, so the save can be applied as a
-          // delta off whatever is actually stored by then — not resent as
-          // this fixed value on every re-render.
-          previousStockQuantity: editing.inventory?.quantity ?? 0,
-          prescriptionRequired: editing.prescriptionRequired,
-          isVisible: editing.isVisible,
-        }
-      : EMPTY_PRODUCT_FORM,
-  );
-  const [saving, setSaving] = useState(false),
-    [error, setError] = useState("");
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      await savePharmacyProduct(pharmacyId, editing?.id, form);
-      onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save product.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <form
-      onSubmit={submit}
-      className="mt-3 grid gap-2 rounded-xl border border-dashed p-3 sm:grid-cols-2"
-    >
-      <label>
-        Product name
-        <input
-          required
-          className="input mt-1 w-full"
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          icon={ShoppingBagIcon}
+          label="Total orders"
+          value={stats?.totalOrders ?? null}
+          href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
-      </label>
-      <label>
-        Category
-        <select
-          required
-          className="input mt-1 w-full"
-          value={form.categoryId}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, categoryId: e.target.value }))
-          }
-        >
-          <option value="">Select…</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Price (L$)
-        <input
-          required
-          type="number"
-          min={0}
-          step="0.01"
-          className="input mt-1 w-full"
-          value={form.price}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, price: Number(e.target.value) }))
-          }
+        <StatCard
+          icon={CheckCircleIcon}
+          label="Completed"
+          value={stats?.completedOrders ?? null}
+          href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
-      </label>
-      <label>
-        Stock quantity
-        <input
-          required
-          type="number"
-          min={0}
-          className="input mt-1 w-full"
-          value={form.stockQuantity}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, stockQuantity: Number(e.target.value) }))
-          }
+        <StatCard
+          icon={ClockIcon}
+          label="Pending / in review"
+          value={stats?.pendingOrders ?? null}
+          href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.prescriptionRequired}
-          onChange={(e) =>
-            setForm((f) => ({
-              ...f,
-              prescriptionRequired: e.target.checked,
-            }))
-          }
+        <StatCard
+          icon={BanknotesIcon}
+          label="Revenue"
+          value={stats ? `L$${stats.revenue.toFixed(2)}` : null}
+          href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
-        Prescription required
-      </label>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.isVisible ?? true}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, isVisible: e.target.checked }))
-          }
-        />
-        Visible in storefront
-      </label>
-      <div className="flex gap-2 sm:col-span-2">
-        <button className="btn-primary min-h-10" disabled={saving}>
-          {saving ? "Saving…" : editing ? "Save changes" : "Add product"}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary min-h-10"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
       </div>
-      {error && (
-        <p role="alert" className="error-state sm:col-span-2">
-          {error}
-        </p>
-      )}
-    </form>
-  );
-}
 
-function ProductsSection({ pharmacyId }: { pharmacyId: string }) {
-  const [products, setProducts] = useState<PharmacyProduct[] | null>(null),
-    [categories, setCategories] = useState<
-      Array<{ id: string; name: string }>
-    >([]),
-    [creating, setCreating] = useState(false),
-    [editingId, setEditingId] = useState<string | null>(null),
-    [error, setError] = useState("");
-  const load = useCallback(() => {
-    Promise.all([
-      getMyPharmacyProducts(pharmacyId),
-      getPharmacyCategoriesClient(),
-    ])
-      .then(([p, c]) => {
-        setProducts(p);
-        setCategories(c);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Load failed"));
-  }, [pharmacyId]);
-  useEffect(load, [load]);
-  async function remove(product: PharmacyProduct) {
-    if (!window.confirm(`Remove "${product.name}" from your catalog?`))
-      return;
-    try {
-      await deletePharmacyProduct(pharmacyId, product.id);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not remove product.");
-    }
-  }
-  const editingProduct = products?.find((p) => p.id === editingId) ?? null;
-  return (
-    <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Products</h2>
-        {!creating && (
-          <button
-            className="btn-secondary min-h-9"
-            onClick={() => {
-              setEditingId(null);
-              setCreating(true);
-            }}
-          >
-            Add product
-          </button>
-        )}
-      </div>
-      {error && (
-        <p role="alert" className="error-state mt-2">
-          {error}
+      <div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+          Manage
         </p>
-      )}
-      {creating && (
-        <ProductForm
-          pharmacyId={pharmacyId}
-          categories={categories}
-          editing={null}
-          onDone={() => {
-            setCreating(false);
-            load();
-          }}
-          onCancel={() => setCreating(false)}
-        />
-      )}
-      {products === null && !error && <p className="mt-2">Loading products…</p>}
-      {products?.length === 0 && (
-        <p className="empty-state mt-2">No products yet.</p>
-      )}
-      <ul className="mt-3 space-y-2">
-        {products?.map((p) => (
-          <li key={p.id} className="rounded-xl border p-3">
-            {editingProduct?.id === p.id ? (
-              <ProductForm
-                pharmacyId={pharmacyId}
-                categories={categories}
-                editing={p}
-                onDone={() => {
-                  setEditingId(null);
-                  load();
-                }}
-                onCancel={() => setEditingId(null)}
-              />
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="font-semibold">
-                    {p.name}
-                    {!p.isVisible && (
-                      <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs dark:bg-slate-700">
-                        Hidden
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    L${Number(p.price).toFixed(2)} ·{" "}
-                    {p.inventory?.quantity ?? 0} in stock
-                    {p.prescriptionRequired && " · prescription required"}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="btn-secondary min-h-9"
-                    onClick={() => setEditingId(p.id)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn-secondary min-h-9 text-red-700"
-                    onClick={() => remove(p)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function ReviewForm({
-  pharmacyId,
-  prescriptionId,
-  prescriptionVersion,
-  onDone,
-}: {
-  pharmacyId: string;
-  prescriptionId: string;
-  prescriptionVersion: number | null;
-  onDone: () => void;
-}) {
-  const [notes, setNotes] = useState(""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  async function decide(decision: "accepted" | "rejected" | "clarification_requested") {
-    if (prescriptionVersion == null) {
-      setError("Could not determine the current prescription version — reload the page.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      await reviewPharmacyPrescription(pharmacyId, prescriptionId, {
-        decision,
-        notes: notes.trim() || undefined,
-        prescriptionVersion,
-      });
-      onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not record decision.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-        Prescription review required
-      </p>
-      {/* Streams the actual bytes through the cookie-authenticated API
-          route (see PharmaciesController#prescriptionFile) — there's no
-          public URL for this file, so a plain <img>/href to the storage
-          provider is never an option. */}
-      <a
-        href={`/api/v1/pharmacy-marketplace/prescriptions/${prescriptionId}/file`}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-1 inline-block text-sm font-semibold text-brand-700 underline"
-      >
-        View uploaded prescription
-      </a>
-      <label className="mt-2 block text-sm">
-        Notes (shown to the customer on a clarification request)
-        <textarea
-          className="input mt-1 w-full"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </label>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button
-          disabled={busy}
-          onClick={() => decide("accepted")}
-          className="btn-primary min-h-9"
-        >
-          Accept
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => decide("rejected")}
-          className="btn-secondary min-h-9 text-red-700"
-        >
-          Reject
-        </button>
-        <button
-          disabled={busy}
-          onClick={() => decide("clarification_requested")}
-          className="btn-secondary min-h-9"
-        >
-          Request clarification
-        </button>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <QuickLink
+            icon={Squares2X2Icon}
+            label="Products"
+            description="See your catalog, add or edit products"
+            href={pharmacyDashboardHref(pharmacy.id, 'products')}
+          />
+          <QuickLink
+            icon={ShoppingBagIcon}
+            label="Orders"
+            description="Incoming orders & prescription review"
+            href={pharmacyDashboardHref(pharmacy.id, 'orders')}
+          />
+          <QuickLink
+            icon={UserGroupIcon}
+            label="Staff"
+            description="Managers, pharmacists, employees"
+            href={pharmacyDashboardHref(pharmacy.id, 'staff')}
+          />
+        </div>
       </div>
-      {error && (
-        <p role="alert" className="error-state mt-2">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
 
-function OrdersSection({
-  pharmacyId,
-  isPharmacist,
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  href,
 }: {
-  pharmacyId: string;
-  isPharmacist: boolean;
+  icon: typeof ShoppingBagIcon;
+  label: string;
+  value: number | string | null;
+  href: string;
 }) {
-  const [orders, setOrders] = useState<PharmacyOrder[] | null>(null),
-    [error, setError] = useState(""),
-    [transitioning, setTransitioning] = useState<string | null>(null);
-  const load = useCallback(() => {
-    getPharmacyDashboardOrders(pharmacyId)
-      .then(setOrders)
-      .catch((e) => setError(e instanceof Error ? e.message : "Load failed"));
-  }, [pharmacyId]);
-  useEffect(load, [load]);
-  async function transition(orderId: string, status: string) {
-    setTransitioning(orderId);
-    setError("");
-    try {
-      await transitionPharmacyOrder(pharmacyId, orderId, status);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not update order.");
-    } finally {
-      setTransitioning(null);
-    }
-  }
   return (
-    <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
-      <h2 className="text-xl font-bold">Orders</h2>
-      {error && (
-        <p role="alert" className="error-state mt-2">
-          {error}
-        </p>
-      )}
-      {orders === null && !error && <p className="mt-2">Loading orders…</p>}
-      {orders?.length === 0 && (
-        <p className="empty-state mt-2">No orders yet.</p>
-      )}
-      <ul className="mt-3 space-y-3">
-        {orders?.map((o) => (
-          <li key={o.id} className="rounded-xl border p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="font-semibold">Order {o.id.slice(0, 8)}</p>
-                <p className="text-sm text-slate-500">
-                  {o.fulfillmentMethod} · L${Number(o.finalTotal).toFixed(2)}
-                </p>
-              </div>
-              <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-800">
-                {ORDER_LABELS[o.status] ?? o.status}
-              </span>
-            </div>
-            {o.items && o.items.length > 0 && (
-              <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                {o.items.map((item) => (
-                  <li key={item.id}>
-                    {item.name} × {item.quantity}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {o.status === "under_review" && o.prescriptionId && !isPharmacist && (
-              <p className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-                Awaiting pharmacist review — only a pharmacist on staff can
-                accept, reject, or request clarification on a prescription.
-              </p>
-            )}
-            {o.status === "under_review" && o.prescriptionId && isPharmacist && (
-              <ReviewForm
-                pharmacyId={pharmacyId}
-                prescriptionId={o.prescriptionId}
-                prescriptionVersion={o.prescriptionVersion ?? null}
-                onDone={load}
-              />
-            )}
-            {nextStatusesFor(o).length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {nextStatusesFor(o).map((next) => (
-                  <button
-                    key={next}
-                    disabled={transitioning === o.id}
-                    onClick={() => transition(o.id, next)}
-                    className="btn-secondary min-h-9"
-                  >
-                    Mark {ORDER_LABELS[next] ?? next}
-                  </button>
-                ))}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Link
+      href={href}
+      className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-brand-300 dark:border-slate-800 dark:bg-slate-900"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+        <Icon aria-hidden className="h-5 w-5" />
+      </span>
+      <span>
+        <span className="block text-2xl font-bold text-slate-950 dark:text-slate-50">{value ?? '—'}</span>
+        <span className="block text-sm text-slate-500 dark:text-slate-400">{label}</span>
+      </span>
+    </Link>
   );
 }
 
-export default function PharmacyManagePage() {
-  const params = useParams<{ id: string }>();
-  const pharmacyId = params.id;
-  const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null),
-    [stats, setStats] = useState<PharmacyStats | null>(null),
-    [error, setError] = useState("");
-  useEffect(() => {
-    if (!pharmacyId) return;
-    apiRequest<Pharmacy[]>("/pharmacy-dashboard")
-      .then((all) => {
-        const mine = all.find((p) => p.id === pharmacyId);
-        if (!mine) {
-          setError("This pharmacy isn't assigned to your account.");
-          return;
-        }
-        setPharmacy(mine);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Load failed"));
-    getPharmacyStats(pharmacyId)
-      .then(setStats)
-      .catch(() => {
-        /* statistics are a nice-to-have — don't block the rest of the page */
-      });
-  }, [pharmacyId]);
+function QuickLink({
+  icon: Icon,
+  label,
+  description,
+  href,
+}: {
+  icon: typeof ShoppingBagIcon;
+  label: string;
+  description: string;
+  href: string;
+}) {
   return (
-    <main className="page-shell max-w-4xl">
-      <Link
-        href="/account/pharmacy-dashboard"
-        className="text-sm text-brand-700 underline"
-      >
-        ← All pharmacies
-      </Link>
-      <h1 className="page-title mt-2">
-        {pharmacy ? pharmacy.name : "Manage pharmacy"}
-      </h1>
-      {error && (
-        <p role="alert" className="error-state">
-          {error}
-        </p>
-      )}
-      {!pharmacy && !error && <p>Loading…</p>}
-      {pharmacy && (
-        <div className="space-y-6">
-          {stats && (
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                ["Total orders", stats.totalOrders],
-                ["Completed", stats.completedOrders],
-                ["Pending / in review", stats.pendingOrders],
-                ["Revenue", `L$${stats.revenue.toFixed(2)}`],
-              ].map(([label, value]) => (
-                <div
-                  key={label as string}
-                  className="rounded-xl border bg-white p-3 dark:bg-slate-900"
-                >
-                  <dt className="text-xs text-slate-500">{label}</dt>
-                  <dd className="text-lg font-bold">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
-            <h2 className="text-xl font-bold">Profile</h2>
-            <p className="mb-3 capitalize text-sm text-slate-500">
-              Verification: {pharmacy.status}
-            </p>
-            <ProfileForm pharmacy={pharmacy} onSaved={setPharmacy} />
-          </section>
-          <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
-            <h2 className="text-xl font-bold">Opening hours</h2>
-            <p className="mb-3 text-sm text-slate-500">
-              Required for this pharmacy to ever appear under the
-              marketplace&apos;s &quot;Open now&quot; filter.
-            </p>
-            <OpeningHoursSection pharmacyId={pharmacy.id} />
-          </section>
-          <StaffSection
-            pharmacyId={pharmacy.id}
-            isManager={stats?.role === "manager"}
-          />
-          <ProductsSection pharmacyId={pharmacy.id} />
-          <OrdersSection
-            pharmacyId={pharmacy.id}
-            isPharmacist={stats?.role === "pharmacist"}
-          />
-        </div>
-      )}
-    </main>
+    <Link
+      href={href}
+      className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-brand-950/20"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
+        <Icon aria-hidden className="h-4 w-4" />
+      </span>
+      <span className="text-sm font-semibold text-slate-900 dark:text-slate-50">{label}</span>
+      <span className="text-xs text-slate-500 dark:text-slate-400">{description}</span>
+    </Link>
   );
 }
