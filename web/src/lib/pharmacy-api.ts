@@ -89,7 +89,12 @@ const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`, { cache: "no-store" });
   if (!r.ok) throw new Error("Pharmacy service is unavailable");
-  return r.json();
+  // A Nest controller returning `null` (getPharmacyByPlace, for the far
+  // more common case of a place with no linked pharmacy) serializes to a
+  // 200 with an *empty* body, not the text "null" — r.json() throws
+  // SyntaxError on that. Same fix as apiFetch in lib/api.ts.
+  const text = await r.text();
+  return (text ? JSON.parse(text) : null) as T;
 }
 export const getPharmacies = (params: URLSearchParams) =>
   read<Pharmacy[]>(`/pharmacies?${params}`);
