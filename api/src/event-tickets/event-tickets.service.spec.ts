@@ -1048,5 +1048,42 @@ describe("EventTicketsService", () => {
         expect(row.toUserId).toBe(recipient.id);
       });
     });
+
+    describe("QR decryption resilience (buildTicketQr)", () => {
+      it("keeps the rest of a buyer's tickets loading when one ticket's QR token can't be decrypted", async () => {
+        const context = setup();
+        const { service, orderRepo, saved, instances } = context;
+        const order = await service.createOrder("event-1", user, {
+          quantity: 2,
+          paymentReference: "MM-corrupt",
+        });
+        await service.reviewOrder(order.id, organizer, {
+          status: EventTicketOrderStatus.APPROVED,
+        });
+        withBuyerOrdersFilter(orderRepo, saved);
+
+        const issued = instances.filter((i) => i.orderId === order.id);
+        expect(issued).toHaveLength(2);
+        // Simulate a ticket issued under a QR key this process no longer
+        // has (e.g. TICKET_QR_SECRET/JWT_SECRET rotated since) — this is
+        // the exact "Unsupported state or unable to authenticate data"
+        // GCM failure seen in production. It used to be left uncaught
+        // inside buildTicketQr, taking down this buyer's *entire* ticket
+        // list via serializeBuyerOrder's Promise.all.
+        issued[0].tokenCiphertext = "not.a.valid-envelope";
+
+        const result = await service.findForBuyer(user.id);
+
+        expect(result.orders).toHaveLength(1);
+        const tickets = result.orders[0].tickets;
+        expect(tickets).toHaveLength(2);
+        const corrupted = tickets.find((t: any) => t.id === issued[0].id)!;
+        const healthy = tickets.find((t: any) => t.id === issued[1].id)!;
+        expect(corrupted.qrDataUrl).toBe("");
+        expect(corrupted.qrUnavailable).toBe(true);
+        expect(healthy.qrUnavailable).toBeUndefined();
+        expect(healthy.qrDataUrl).not.toBe("");
+      });
+    });
   });
 });
