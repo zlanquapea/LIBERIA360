@@ -35,6 +35,7 @@ const pharmacy: Pharmacy = {
   id: "pharmacy-1",
   name: "Test Pharmacy",
   slug: "test-pharmacy",
+  placeId: null,
   address: "1 Test St",
   location: "Monrovia",
   telephone: "+231770000000",
