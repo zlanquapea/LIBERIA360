@@ -84,7 +84,9 @@
     "meetCreators": "认识利比里亚的创作者",
     "meetCreatorsDescription": "来自当地讲述者的视频、照片和攻略",
     "rentCar": "为你的行程租一辆车",
-    "rentCarDescription": "向本地运营商租用车辆，可选配或不配司机"
+    "rentCarDescription": "向本地运营商租用车辆，可选配或不配司机",
+    "shopPharmacies": "在本地药店购物",
+    "shopPharmaciesDescription": "在线订购药品，可选自提或配送"
   },
   "explore": {
     "title": "探索利比里亚",

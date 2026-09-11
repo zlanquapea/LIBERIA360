@@ -11,6 +11,7 @@ import {
   getPublicTrips,
   getReviews,
 } from "@/lib/api";
+import { getPharmacyByPlace } from "@/lib/pharmacy-api";
 import { colorForCategory } from "@/lib/category-colors";
 import {
   estimateTravelTime,
@@ -27,6 +28,7 @@ import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
 import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
 import { MenuPreviewSection } from "@/components/MenuPreviewSection";
+import { PharmacyPreviewSection } from "@/components/PharmacyPreviewSection";
 import { ShareMenu } from "@/components/ShareMenu";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { BusinessClaimSection } from "@/components/BusinessClaimSection";
@@ -95,15 +97,21 @@ export default async function PlaceProfilePage({
     notFound();
   }
 
-  const [nearbyResult, reviewsResult, business, publicTripsResult] = await Promise.all([
-    getCountyPlaces(place.county.slug, { limit: 30 }),
-    getReviews(place.id, { limit: 20 }),
-    getBusinessByPlace(place.id),
-    // Section 17's "surface public trips on destination pages" — trips
-    // whose destination is this exact place, discoverable by anyone
-    // browsing it, not just the trip's own creator/roster.
-    getPublicTrips({ destinationPlaceId: place.id, limit: 6 }),
-  ]);
+  const [nearbyResult, reviewsResult, business, pharmacy, publicTripsResult] =
+    await Promise.all([
+      getCountyPlaces(place.county.slug, { limit: 30 }),
+      getReviews(place.id, { limit: 20 }),
+      getBusinessByPlace(place.id),
+      // A place submitted under the dedicated "Pharmacy" category is
+      // auto-claimed as one (see PharmaciesService.autoClaimSubmittedPlace)
+      // — null for every other place, and for a pharmacy still awaiting
+      // admin approval (findByPlace's own APPROVED-only gate).
+      getPharmacyByPlace(place.id),
+      // Section 17's "surface public trips on destination pages" — trips
+      // whose destination is this exact place, discoverable by anyone
+      // browsing it, not just the trip's own creator/roster.
+      getPublicTrips({ destinationPlaceId: place.id, limit: 6 }),
+    ]);
   // The menu is information about *this place* to a visitor, not about the
   // separate "Business" management entity — it belongs here, not gated
   // behind a trip to the business page. Only restaurants have one; see
@@ -209,6 +217,8 @@ export default async function PlaceProfilePage({
       </section>
 
       {business && <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} />}
+
+      {pharmacy && <PharmacyPreviewSection pharmacy={pharmacy} />}
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>

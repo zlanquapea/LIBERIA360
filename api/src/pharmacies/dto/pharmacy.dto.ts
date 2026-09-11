@@ -26,6 +26,11 @@ import {
 } from "../entities/pharmacy.enums";
 
 export class PharmacyQueryDto {
+  // Public destination-page lookup (?placeId=), same pattern as
+  // BusinessesService.findByPlace/GET /businesses?placeId= — short-
+  // circuits the rest of the directory filters below when present (see
+  // PharmaciesController.directory).
+  @IsOptional() @IsUUID() placeId?: string;
   @IsOptional() @IsString() @Length(0, 100) search?: string;
   @IsOptional() @IsString() @Length(0, 80) location?: string;
   @IsOptional()

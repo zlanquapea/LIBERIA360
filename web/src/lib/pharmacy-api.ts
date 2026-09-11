@@ -95,6 +95,14 @@ export const getPharmacies = (params: URLSearchParams) =>
   read<Pharmacy[]>(`/pharmacies?${params}`);
 export const getPharmacy = (slug: string) =>
   read<Pharmacy>(`/pharmacies/${encodeURIComponent(slug)}`);
+// GET /pharmacies?placeId=... returns `null` (200, not 404) when this
+// place has no linked pharmacy — same shape as getBusinessByPlace in
+// lib/api.ts. Only ever an APPROVED pharmacy, even when the place itself
+// is already approved — see PharmaciesService.findByPlace's doc comment.
+// Used by the place detail page to surface "order from this pharmacy" for
+// a place submitted under the dedicated "Pharmacy" category.
+export const getPharmacyByPlace = (placeId: string) =>
+  read<Pharmacy | null>(`/pharmacies?placeId=${encodeURIComponent(placeId)}`);
 export const getPharmacyProducts = (id: string, params = "") =>
   read<PharmacyProduct[]>(
     `/pharmacies/${id}/products${params ? `?${params}` : ""}`,

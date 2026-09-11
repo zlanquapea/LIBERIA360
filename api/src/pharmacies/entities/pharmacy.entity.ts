@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
+import { Place } from "../../places/entities/place.entity";
 import { PharmacyStaffRole, PharmacyStatus } from "./pharmacy.enums";
 
 @Entity("pharmacies")
@@ -16,6 +17,22 @@ export class Pharmacy {
   @PrimaryGeneratedColumn("uuid") id: string;
   @Index() @Column({ length: 160 }) name: string;
   @Column({ unique: true, length: 180 }) slug: string;
+  // Set when this pharmacy originated from a self-service Place submission
+  // under the dedicated "Pharmacy" category (see
+  // PharmaciesService.autoClaimSubmittedPlace) — lets the place's own
+  // detail page (and its map marker) surface this pharmacy's ordering
+  // functionality, the way BusinessesService links a Business back to its
+  // originating Place via linkedPlaceId. Nullable: a pharmacy applied for
+  // directly through /account/pharmacy-dashboard (the original flow) has
+  // no originating place at all. ON DELETE SET NULL, not CASCADE — the
+  // pharmacy and its order history outlive the catalog listing that
+  // introduced it.
+  @Index({ unique: true })
+  @Column({ name: "place_id", type: "uuid", nullable: true })
+  placeId: string | null;
+  @ManyToOne(() => Place, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "place_id" })
+  place: Place | null;
   @Column({ length: 240 }) address: string;
   @Column({ length: 80, default: "Monrovia" }) location: string;
   @Column({ length: 40 }) telephone: string;
