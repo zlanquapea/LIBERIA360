@@ -14,6 +14,7 @@ import {
   Matches,
   Max,
   Min,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import {
@@ -147,13 +148,18 @@ export class AssignStaffDto {
 }
 export class OpeningHoursEntryDto {
   @Type(() => Number) @IsInt() @Min(0) @Max(6) dayOfWeek: number;
-  @IsOptional()
+  // Required whenever the day is open — an entry with isClosed: false and
+  // no times used to pass validation and persist with null opens_at/
+  // closes_at, a day the directory's openNow filter can never match (and
+  // the dashboard's `??` fallback rendering masked the underlying nulls,
+  // so re-saving never repaired it). Closed days still omit both freely.
+  @ValidateIf((o: OpeningHoursEntryDto) => !o.isClosed)
   @IsString()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d(:00)?$/, {
     message: "opensAt must be in HH:MM (24-hour) format",
   })
   opensAt?: string;
-  @IsOptional()
+  @ValidateIf((o: OpeningHoursEntryDto) => !o.isClosed)
   @IsString()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d(:00)?$/, {
     message: "closesAt must be in HH:MM (24-hour) format",

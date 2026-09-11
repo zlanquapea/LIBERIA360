@@ -649,12 +649,26 @@ export class PharmaciesService {
           .setLock("pessimistic_write")
           .where("inv.productId = :productId", { productId: saved.id })
           .getOne();
-        const delta = dto.stockQuantity - dto.previousStockQuantity;
-        const nextQuantity = Math.max(0, (current?.quantity ?? 0) + delta);
-        await inventoryRepo.upsert(
-          { productId: saved.id, quantity: nextQuantity },
-          ["productId"],
-        );
+        // Idempotency guard: a lost response (network drop, double click)
+        // retries this exact request, and without this check the delta
+        // below gets applied a second time on top of the count the first
+        // attempt already committed — e.g. 10→15 commits, the retry still
+        // carries previousStockQuantity: 10, and re-adding +5 writes 20.
+        // Once the stored quantity already matches this edit's own target,
+        // treat it as already applied and skip — same outcome, no double
+        // credit. This only short-circuits an exact match with what this
+        // save already asked for; a genuine concurrent change (the
+        // decrement race this delta exists to handle) leaves the stored
+        // quantity different from the target, so the delta still applies
+        // normally below.
+        if (current?.quantity !== dto.stockQuantity) {
+          const delta = dto.stockQuantity - dto.previousStockQuantity;
+          const nextQuantity = Math.max(0, (current?.quantity ?? 0) + delta);
+          await inventoryRepo.upsert(
+            { productId: saved.id, quantity: nextQuantity },
+            ["productId"],
+          );
+        }
       }
       // else: an edit that didn't say what it originally saw leaves stock
       // untouched entirely — same "omitted means unchanged" convention as

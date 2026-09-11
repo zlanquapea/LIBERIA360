@@ -106,6 +106,16 @@ export function PharmacyShop({
       // (PharmaciesService.createOrder), so reusing the id here is safe:
       // nothing else could have consumed it between attempts.
       const cached = uploadedPrescriptionRef.current;
+      // The cart can lose its only prescription-required item (e.g. the
+      // customer removes it but keeps other products) after an earlier
+      // checkout attempt already uploaded and cached one — without this,
+      // that cached upload is simply abandoned here (never attached to an
+      // order, never deleted), permanently orphaning the sensitive row and
+      // its storage object. Clean it up before dropping the reference.
+      if (!needsPrescription && cached) {
+        uploadedPrescriptionRef.current = null;
+        deleteUnattachedPrescription(cached.id).catch(() => {});
+      }
       const prescriptionId = !needsPrescription
         ? undefined
         : cached && cached.file === prescriptionFile

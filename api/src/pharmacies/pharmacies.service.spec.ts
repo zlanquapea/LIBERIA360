@@ -1958,6 +1958,30 @@ describe("PharmaciesService", () => {
       );
     });
 
+    it("skips a retried edit once the stored quantity already matches this edit's own target", async () => {
+      productRepo.findOneBy.mockResolvedValue({
+        id: "product-1",
+        pharmacyId: "pharmacy-1",
+        name: "Paracetamol",
+      });
+      // The first attempt (10 -> 15) already committed, but its response
+      // was lost and the client retries the identical request — it still
+      // carries previousStockQuantity: 10, which would otherwise re-apply
+      // the +5 delta on top of the 15 already stored and write 20.
+      mockInventoryQueryBuilder({ quantity: 15 });
+
+      await service.saveProduct("user-1", "pharmacy-1", "product-1", {
+        name: "Paracetamol",
+        categoryId: "category-1",
+        price: 10,
+        stockQuantity: 15,
+        previousStockQuantity: 10,
+        prescriptionRequired: false,
+      } as any);
+
+      expect(inventoryRepo.upsert).not.toHaveBeenCalled();
+    });
+
     it("leaves stock untouched when the edit omits previousStockQuantity", async () => {
       productRepo.findOneBy.mockResolvedValue({
         id: "product-1",

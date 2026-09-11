@@ -151,6 +151,12 @@ export class PharmacyCustomerController {
     res.set({
       "Content-Type": mimeType,
       "Content-Disposition": `inline; filename="${encodeURIComponent(originalFilename)}"`,
+      // This is sensitive medical data behind an auth check — without an
+      // explicit no-store, a browser or intermediary proxy may retain the
+      // response and keep serving it from cache or history after logout on
+      // a shared device, since the service worker's logout cleanup only
+      // clears its own cache storage, not the browser's HTTP cache.
+      "Cache-Control": "private, no-store",
     });
     return new StreamableFile(buffer);
   }
