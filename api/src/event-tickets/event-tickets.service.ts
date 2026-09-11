@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -61,6 +62,13 @@ export interface BuyerTicketQr {
   ticketTypeName: string;
   status: EventTicketInstanceStatus;
   qrDataUrl: string;
+  // Set when the ticket's encrypted token couldn't be decrypted (see
+  // buildTicketQr) — the ticket itself is fine and still redeemable at the
+  // door (redemption checks tokenHash, never this ciphertext), but we can't
+  // currently regenerate its QR image for display/download. Distinguishes
+  // this from an ordinary voided/withheld ticket, which also has an empty
+  // qrDataUrl but no problem to report.
+  qrUnavailable?: boolean;
   redeemedAt: Date | null;
   transfer?: TicketTransferInfo;
 }
@@ -80,6 +88,8 @@ export interface ReceivedTicketSummary {
   ticketTypeName: string;
   status: EventTicketInstanceStatus;
   qrDataUrl: string;
+  // See BuyerTicketQr.qrUnavailable's doc comment.
+  qrUnavailable?: boolean;
   redeemedAt: Date | null;
   event: {
     id: string;
@@ -228,6 +238,8 @@ export interface EventTicketMetrics {
 
 @Injectable()
 export class EventTicketsService {
+  private readonly logger = new Logger(EventTicketsService.name);
+
   constructor(
     @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
@@ -263,6 +275,13 @@ export class EventTicketsService {
     }
   }
 
+  // Falling back to JWT_SECRET when TICKET_QR_SECRET isn't set means a
+  // session-secret rotation (or any change to whichever of these two ends
+  // up in use) silently changes this derived key too — every
+  // tokenCiphertext already encrypted under the old key becomes
+  // permanently undecryptable (buildTicketQr's catch handles that
+  // gracefully, but the affected tickets' QR can never be redisplayed).
+  // Set TICKET_QR_SECRET explicitly and keep it stable to avoid that.
   private getQrKey(): Buffer {
     return createHash("sha256")
       .update(
@@ -356,17 +375,37 @@ export class EventTicketsService {
     withheld = false,
   ): Promise<Omit<BuyerTicketQr, "transfer">> {
     let qrDataUrl = "";
+    let qrUnavailable = false;
     if (instance.status !== EventTicketInstanceStatus.VOID && !withheld) {
-      const token = this.decryptToken(instance.tokenCiphertext);
-      qrDataUrl = await QRCode.toDataURL(
-        this.ticketPayload(instance.id, token),
-        {
-          errorCorrectionLevel: "H",
-          margin: 2,
-          width: 640,
-          color: { dark: "#071a52", light: "#ffffff" },
-        },
-      );
+      // decryptToken throws if instance.tokenCiphertext was encrypted under
+      // a QR key (see getQrKey) this process no longer has — most likely
+      // TICKET_QR_SECRET/JWT_SECRET changed since the ticket was issued.
+      // That's unrecoverable here (the plaintext token only ever existed
+      // inside that ciphertext), but it must never take the rest of this
+      // buyer's tickets down with it: this used to be an uncaught throw
+      // inside a Promise.all in serializeBuyerOrder, so one undecryptable
+      // ticket 500'd their *entire* "My Tickets" page. Redemption at the
+      // door is unaffected either way — it checks tokenHash, never this
+      // ciphertext (see redeemTicket) — so a ticket already printed/saved
+      // before the key changed still scans fine; only *redisplaying* the
+      // QR here is impossible until the ticket is reissued.
+      try {
+        const token = this.decryptToken(instance.tokenCiphertext);
+        qrDataUrl = await QRCode.toDataURL(
+          this.ticketPayload(instance.id, token),
+          {
+            errorCorrectionLevel: "H",
+            margin: 2,
+            width: 640,
+            color: { dark: "#071a52", light: "#ffffff" },
+          },
+        );
+      } catch (err) {
+        qrUnavailable = true;
+        this.logger.error(
+          `Failed to decrypt QR token for ticket instance ${instance.id}: ${(err as Error).message}`,
+        );
+      }
     }
     return {
       id: instance.id,
@@ -375,6 +414,7 @@ export class EventTicketsService {
       ticketTypeName: instance.ticketTypeName,
       status: instance.status,
       qrDataUrl,
+      ...(qrUnavailable ? { qrUnavailable } : {}),
       redeemedAt: instance.redeemedAt,
     };
   }

@@ -56,6 +56,8 @@ describe("validateProductionConfig", () => {
   let errorSpy: jest.SpyInstance;
   let warnSpy: jest.SpyInstance;
 
+  const originalTicketQrSecret = process.env.TICKET_QR_SECRET;
+
   beforeEach(() => {
     exitSpy = jest
       .spyOn(process, "exit")
@@ -63,10 +65,19 @@ describe("validateProductionConfig", () => {
     // Suppress Nest Logger output in test runs and let us assert on it.
     errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
     warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+    // Read directly from process.env (not ConfigService/AppConfig) — same
+    // as EventTicketsService.getQrKey() — so default every test to a
+    // secure baseline; the one test below that cares about it unsets it.
+    process.env.TICKET_QR_SECRET = "a-real-random-secret";
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+    if (originalTicketQrSecret === undefined) {
+      delete process.env.TICKET_QR_SECRET;
+    } else {
+      process.env.TICKET_QR_SECRET = originalTicketQrSecret;
+    }
   });
 
   it("does nothing at all outside production", () => {
@@ -214,5 +225,15 @@ describe("validateProductionConfig", () => {
     validateProductionConfig(configService);
     expect(exitSpy).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("SENTRY_DSN"));
+  });
+
+  it("warns but does not exit when TICKET_QR_SECRET is unset", () => {
+    delete process.env.TICKET_QR_SECRET;
+    const configService = buildConfigService();
+    validateProductionConfig(configService);
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("TICKET_QR_SECRET"),
+    );
   });
 });

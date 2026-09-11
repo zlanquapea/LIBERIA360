@@ -112,4 +112,20 @@ export function validateProductionConfig(
       "SENTRY_DSN is not set in production — crashes are only logged locally, not reported anywhere. Safe to run without it, just less visibility.",
     );
   }
+  // EventTicketsService.getQrKey() falls back to JWT_SECRET when this is
+  // unset, deriving the AES key that encrypts every issued ticket's QR
+  // token from it. JWT_SECRET is meant to be rotatable (that's exactly
+  // what makes it a good session secret); rotating it here silently
+  // changes this derived key too, and every ticket QR encrypted under the
+  // old one becomes permanently undecryptable (the ticket itself stays
+  // valid and scannable — only redisplaying its QR breaks). Not fatal:
+  // buildTicketQr degrades a broken ticket gracefully rather than crashing.
+  if (!process.env.TICKET_QR_SECRET) {
+    logger.warn(
+      "TICKET_QR_SECRET is not set in production — event ticket QR codes are being encrypted with JWT_SECRET " +
+        "instead. Any future JWT_SECRET rotation will make every previously-issued ticket's QR code permanently " +
+        "undecryptable for display (tickets stay valid and scannable at the door either way). Set a dedicated, " +
+        "stable TICKET_QR_SECRET before launch to avoid that.",
+    );
+  }
 }

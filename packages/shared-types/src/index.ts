@@ -633,6 +633,14 @@ export interface EventTicketInstance {
   ticketTypeName: string;
   status: EventTicketInstanceStatus;
   qrDataUrl?: string;
+  // Set when the API couldn't decrypt this ticket's stored token to
+  // regenerate its QR image (e.g. an encryption-key change since the
+  // ticket was issued) — the ticket itself is still valid and redeemable
+  // at the door (that check never touches this ciphertext), only its QR
+  // can't currently be redisplayed here. Distinguishes this from an
+  // ordinary voided/withheld ticket, which also has no qrDataUrl but
+  // nothing wrong to report.
+  qrUnavailable?: boolean;
   redeemedAt: string | null;
   transfer?: TicketTransferInfo;
 }
@@ -756,6 +764,8 @@ export interface ReceivedTicketSummary {
   ticketTypeName: string;
   status: EventTicketInstanceStatus;
   qrDataUrl: string;
+  // See EventTicketInstance.qrUnavailable's doc comment.
+  qrUnavailable?: boolean;
   redeemedAt: string | null;
   event: {
     id: string;

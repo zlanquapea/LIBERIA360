@@ -241,6 +241,8 @@ export default function MyTicketsPage() {
                       <p className="issued-pass-note">Scanned on {ticket.redeemedAt ? new Date(ticket.redeemedAt).toLocaleString() : "event day"}.</p>
                     ) : ticket.status === "void" ? (
                       <p className="issued-pass-note">This ticket has been cancelled and can no longer be used.</p>
+                    ) : ticket.qrUnavailable ? (
+                      <p className="issued-pass-note">We can&apos;t display this ticket&apos;s QR code right now. It&apos;s still valid at the door — contact support if you need it reissued.</p>
                     ) : (
                       <>
                         {ticket.qrDataUrl && (
@@ -405,6 +407,8 @@ export default function MyTicketsPage() {
                             <p className="issued-pass-note">Scanned on {ticket.redeemedAt ? new Date(ticket.redeemedAt).toLocaleString() : "event day"}.</p>
                           ) : ticket.status === "void" ? (
                             <p className="issued-pass-note">This ticket has been cancelled and can no longer be used.</p>
+                          ) : ticket.qrUnavailable ? (
+                            <p className="issued-pass-note">We can&apos;t display this ticket&apos;s QR code right now. It&apos;s still valid at the door — contact support if you need it reissued.</p>
                           ) : ticket.qrDataUrl ? (
                             <a href={ticket.qrDataUrl} download={`liberia360-${ticket.event.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${ticket.ticketNumber}.png`} className="issued-pass-download"><ArrowDownTrayIcon aria-hidden className="h-4 w-4" /> Download QR</a>
                           ) : null}
