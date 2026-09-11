@@ -1860,6 +1860,82 @@ export class PharmaciesService {
         )
       : run(this.pharmacies, this.verifications, this.audits);
   }
+  /** Auto-approves a still-pending pharmacy the instant its originating
+   * Place is approved — see AdminService.setPlaceReviewStatus, the sole
+   * caller. A pharmacy created via the self-service place-submission flow
+   * (autoClaimSubmittedPlace) previously needed a *second*, fully separate
+   * admin decision here at /admin/pharmacies before it could ever go
+   * live — one gated on a licence number the place-submission form never
+   * even collects, so it could never actually be satisfied without a
+   * manual profile edit first. That second gate is removed for this path:
+   * the place's own approval is treated as sufficient oversight, so a
+   * self-submitted pharmacy goes live the moment its place does, with no
+   * licence number and no separate click required.
+   *
+   * Deliberately narrower than the manual verification() flow above, which
+   * still enforces the licence-number check — that endpoint remains the
+   * only approval path for a pharmacy applied for directly through
+   * /account/pharmacy-dashboard (placeId: null, no originating place to
+   * piggyback this on, and therefore no other oversight signal at all).
+   *
+   * Never overrides a human decision: only a still-PENDING pharmacy is
+   * touched, so one an admin already rejected or suspended stays that way
+   * even if its place is separately approved later.
+   *
+   * Non-blocking secondary effect at the call site (same convention as
+   * PlacesService.submitPlace's auto-claims) — a hiccup here must never
+   * fail the primary place-approval action.
+   */
+  async autoApproveForPlace(
+    placeId: string,
+    approvingAdminUserId: string,
+  ): Promise<void> {
+    const run = async (
+      pharmacyRepo: Repository<Pharmacy>,
+      verificationRepo: Repository<PharmacyVerification>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const pharmacy = await pharmacyRepo
+        .createQueryBuilder("p")
+        .setLock("pessimistic_write")
+        .where("p.place_id = :placeId", { placeId })
+        .andWhere("p.status = :status", { status: PharmacyStatus.PENDING })
+        .getOne();
+      if (!pharmacy) return;
+      await pharmacyRepo.update(
+        { id: pharmacy.id },
+        { status: PharmacyStatus.APPROVED },
+      );
+      await verificationRepo.save(
+        verificationRepo.create({
+          pharmacyId: pharmacy.id,
+          reviewerUserId: approvingAdminUserId,
+          decision: PharmacyStatus.APPROVED,
+          notes:
+            "Auto-approved: licence number and manual pharmacy review are waived when the originating place is approved directly.",
+        }),
+      );
+      await this.audit(
+        approvingAdminUserId,
+        pharmacy.id,
+        "verification.auto_approved_on_place_approval",
+        "pharmacy",
+        pharmacy.id,
+        { placeId },
+        auditRepo,
+      );
+    };
+    const manager = this.pharmacies.manager;
+    return manager?.transaction
+      ? manager.transaction((tx) =>
+          run(
+            tx.getRepository(Pharmacy),
+            tx.getRepository(PharmacyVerification),
+            tx.getRepository(PharmacyAuditLog),
+          ),
+        )
+      : run(this.pharmacies, this.verifications, this.audits);
+  }
   applications() {
     return this.pharmacies
       .createQueryBuilder("p")

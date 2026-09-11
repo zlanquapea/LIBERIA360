@@ -22,6 +22,7 @@ import { Advertisement } from "../advertisements/entities/advertisement.entity";
 import { AdvertisementReviewStatus } from "../advertisements/entities/advertisement.enums";
 import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
+import { PharmaciesService } from "../pharmacies/pharmacies.service";
 
 const ADMIN_ID = "admin-1";
 const PLACE_ID = "place-1";
@@ -35,6 +36,14 @@ const inertNotificationsService = { create: jest.fn(), createMany: jest.fn() };
 // DI-satisfying stand-in for describe blocks that don't exercise
 // setEventReviewStatus's "notify nearby residents on approval" call.
 const inertEventsService = { notifyNearby: jest.fn() };
+
+// DI-satisfying stand-in for describe blocks that don't exercise
+// setPlaceReviewStatus's "auto-approve a linked pharmacy" call — resolves
+// to undefined either way, same as `.catch(() => undefined)` at the call
+// site would see for a pharmacy-less place.
+const inertPharmaciesService = {
+  autoApproveForPlace: jest.fn().mockResolvedValue(undefined),
+};
 
 // The defaults ApplicationSettings' columns used to be — matches what
 // the hardcoded constants this replaced used to be, so these tests
@@ -67,6 +76,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
   };
   let adminAuditService: { log: jest.Mock };
   let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let pharmaciesService: { autoApproveForPlace: jest.Mock };
 
   beforeEach(async () => {
     placeRepo = {
@@ -84,6 +94,9 @@ describe("AdminService.setPlaceReviewStatus", () => {
       create: jest.fn().mockResolvedValue(undefined),
       createMany: jest.fn().mockResolvedValue(undefined),
     };
+    pharmaciesService = {
+      autoApproveForPlace: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -95,6 +108,7 @@ describe("AdminService.setPlaceReviewStatus", () => {
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
         { provide: EventsService, useValue: inertEventsService },
+        { provide: PharmaciesService, useValue: pharmaciesService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -238,6 +252,44 @@ describe("AdminService.setPlaceReviewStatus", () => {
     );
     expect(notificationsService.create).not.toHaveBeenCalled();
   });
+
+  it("auto-approves a linked pharmacy the instant the place is approved", async () => {
+    await service.setPlaceReviewStatus(
+      ADMIN_ID,
+      PLACE_ID,
+      PlaceReviewStatus.APPROVED,
+    );
+    expect(pharmaciesService.autoApproveForPlace).toHaveBeenCalledWith(
+      PLACE_ID,
+      ADMIN_ID,
+    );
+  });
+
+  it("does NOT trigger pharmacy auto-approval for a non-approval transition", async () => {
+    await service.setPlaceReviewStatus(
+      ADMIN_ID,
+      PLACE_ID,
+      PlaceReviewStatus.REJECTED,
+      "Photos are too blurry",
+    );
+    expect(pharmaciesService.autoApproveForPlace).not.toHaveBeenCalled();
+  });
+
+  it("still approves the place even if pharmacy auto-approval throws", async () => {
+    pharmaciesService.autoApproveForPlace.mockRejectedValueOnce(
+      new Error("boom"),
+    );
+    await expect(
+      service.setPlaceReviewStatus(
+        ADMIN_ID,
+        PLACE_ID,
+        PlaceReviewStatus.APPROVED,
+      ),
+    ).resolves.toBeDefined();
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewStatus: PlaceReviewStatus.APPROVED }),
+    );
+  });
 });
 
 describe("AdminService.bulkSetPlaceReviewStatus", () => {
@@ -272,6 +324,7 @@ describe("AdminService.bulkSetPlaceReviewStatus", () => {
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
         { provide: EventsService, useValue: inertEventsService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -358,6 +411,7 @@ describe("AdminService bulk review-status: business and business-content", () =>
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
         { provide: EventsService, useValue: inertEventsService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -493,6 +547,7 @@ describe("AdminService.getModerationQueue", () => {
         },
         { provide: getRepositoryToken(Event), useValue: eventRepo },
         { provide: EventsService, useValue: inertEventsService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         {
           provide: getRepositoryToken(ContentReport),
           useValue: { createQueryBuilder: jest.fn(() => contentQb) },
@@ -622,6 +677,7 @@ describe("AdminService.setAdvertisementReviewStatus", () => {
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
         { provide: EventsService, useValue: inertEventsService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -784,6 +840,7 @@ describe("AdminService.setEventReviewStatus", () => {
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: eventRepo },
         { provide: EventsService, useValue: eventsService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
@@ -915,6 +972,7 @@ describe("AdminService.setCarListingReviewStatus", () => {
         { provide: getRepositoryToken(PlaceFreshnessReport), useValue: {} },
         { provide: getRepositoryToken(Event), useValue: {} },
         { provide: EventsService, useValue: inertEventsService },
+        { provide: PharmaciesService, useValue: inertPharmaciesService },
         { provide: getRepositoryToken(ContentReport), useValue: {} },
         { provide: getRepositoryToken(User), useValue: {} },
         { provide: getRepositoryToken(Booking), useValue: {} },
