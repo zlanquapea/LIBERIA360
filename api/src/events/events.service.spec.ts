@@ -234,32 +234,67 @@ describe("EventsService", () => {
   });
 
   describe("findAll — past-event filtering", () => {
-    it("defaults to hiding past events (no dateFrom, no includePast)", async () => {
-      await service.findAll({});
-      const startDateWhere = queryBuilder.wheres.find((w) =>
-        w.sql.includes("event.startDate >= :now"),
+    function dateFromBound(): Date {
+      const where = queryBuilder.wheres.find((w) =>
+        w.sql.includes("event.startDate >= :dateFrom"),
       );
-      expect(startDateWhere).toBeDefined();
+      return (where!.params as { dateFrom: Date }).dateFrom;
+    }
+
+    it("defaults to hiding past events (no dateFrom, no includePast)", async () => {
+      const before = Date.now();
+      await service.findAll({});
+      const after = Date.now();
+      const bound = dateFromBound();
+      expect(bound.getTime()).toBeGreaterThanOrEqual(before);
+      expect(bound.getTime()).toBeLessThanOrEqual(after);
     });
 
-    it("does not add the implicit now-filter when includePast is set", async () => {
+    it("does not filter by date at all when includePast is set", async () => {
       await service.findAll({ includePast: true } as never);
       const startDateWhere = queryBuilder.wheres.find((w) =>
-        w.sql.includes("event.startDate >= :now"),
+        w.sql.includes("event.startDate >="),
       );
       expect(startDateWhere).toBeUndefined();
     });
 
-    it("does not add the implicit now-filter when dateFrom is given explicitly", async () => {
-      await service.findAll({ dateFrom: "2020-01-01" } as never);
-      const nowWhere = queryBuilder.wheres.find((w) =>
-        w.sql.includes("event.startDate >= :now"),
-      );
-      const dateFromWhere = queryBuilder.wheres.find((w) =>
+    it("still honors an explicit dateFrom when includePast is set", async () => {
+      await service.findAll({
+        includePast: true,
+        dateFrom: "2020-01-01",
+      } as never);
+      const where = queryBuilder.wheres.find((w) =>
         w.sql.includes("event.startDate >= :dateFrom"),
       );
-      expect(nowWhere).toBeUndefined();
-      expect(dateFromWhere).toBeDefined();
+      expect((where!.params as { dateFrom: string }).dateFrom).toBe(
+        "2020-01-01",
+      );
+    });
+
+    // The bug this clamp fixes: EventFilters.tsx's "Today" quick-filter
+    // sends a `dateFrom` fixed to midnight of the current calendar day —
+    // clicked any time after midnight, that's already in the past. Passing
+    // it straight through as the query's lower bound (the old behavior)
+    // let an event that ran earlier the same day keep matching
+    // `startDate >= dateFrom` long after it was over.
+    it("clamps a same-day/past dateFrom up to now, so a completed event doesn't resurface", async () => {
+      const before = Date.now();
+      await service.findAll({ dateFrom: "2020-01-01" } as never);
+      const after = Date.now();
+      const bound = dateFromBound();
+      expect(bound.getTime()).toBeGreaterThanOrEqual(before);
+      expect(bound.getTime()).toBeLessThanOrEqual(after);
+    });
+
+    // "This weekend"/"This month" almost always send a dateFrom that's
+    // still ahead of now — that one must pass through untouched, or every
+    // upcoming-only filter would collapse back to "from right now".
+    it("keeps a future dateFrom as-is", async () => {
+      const future = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      await service.findAll({ dateFrom: future } as never);
+      expect(dateFromBound()).toEqual(new Date(future));
     });
   });
 
