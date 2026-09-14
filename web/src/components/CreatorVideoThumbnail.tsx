@@ -21,15 +21,6 @@ export function CreatorVideoThumbnail({
   const isVisibleRef = useRef(false);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !autoplayOnView) return;
-    video.muted = true;
-    video.pause();
-    video.currentTime = 0;
-    setPlaying(false);
-  }, [autoplayOnView, src]);
-
-  useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReducedMotion(query.matches);
     update();
@@ -125,7 +116,7 @@ export function CreatorVideoThumbnail({
       <video
         ref={videoRef}
         src={src}
-        preload={autoplayOnView ? "auto" : "metadata"}
+        preload={autoplayOnView ? "metadata" : "metadata"}
         poster={poster ?? undefined}
         muted
         loop={!reducedMotion}

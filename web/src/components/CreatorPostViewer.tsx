@@ -627,11 +627,9 @@ export function CreatorPostViewerImagePreview({
 export function CreatorPostViewerVideoPreview({
   post,
   onOpen,
-  autoplayOnView = false,
 }: {
   post: CreatorPost;
   onOpen: () => void;
-  autoplayOnView?: boolean;
 }) {
   const poster = creatorVideoPosterUrl(post.mediaUrl);
   return (
@@ -646,7 +644,6 @@ export function CreatorPostViewerVideoPreview({
             src={post.mediaUrl}
             poster={poster}
             label={`Open ${post.creator.name}'s video post`}
-            autoplayOnView={autoplayOnView}
           />
       ) : poster ? (
         // eslint-disable-next-line @next/next/no-img-element

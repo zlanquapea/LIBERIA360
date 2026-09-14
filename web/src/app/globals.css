@@ -1043,12 +1043,6 @@ html[data-splash-seen='1'] .splash-screen {
 .creator-feed-ad > div {
   min-height: 14rem;
 }
-.creator-video-feed {
-  overflow-x: hidden;
-}
-.creator-video-feed-item {
-  min-width: 0;
-}
 .creator-video-viewer {
   touch-action: pan-y;
   overscroll-behavior: none;
@@ -1102,38 +1096,5 @@ html[data-splash-seen='1'] .splash-screen {
   .creator-video-slide-next,
   .creator-video-slide-previous {
     animation: none;
-  }
-}
-
-@media (max-width: 1023px) {
-  .creator-video-feed {
-    max-height: calc(100dvh - 4.25rem);
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
-    touch-action: pan-y;
-  }
-  .creator-video-feed-item {
-    height: calc(100dvh - 4.25rem);
-    min-height: calc(100dvh - 4.25rem);
-    overflow: hidden;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    touch-action: pan-y;
-  }
-  .creator-video-feed-item > article {
-    height: 100%;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-  }
-  .creator-video-feed-item > article > :is(.creator-post-media, .creator-post-media-placeholder) {
-    flex: 0 0 auto;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .creator-video-feed {
-    scroll-behavior: auto;
   }
 }
