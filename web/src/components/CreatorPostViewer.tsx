@@ -389,10 +389,11 @@ export function CreatorPostViewer({
   const touchStartX = useRef<number | null>(null);
   const [transition, setTransition] = useState<"next" | "previous">("next");
   const previousPostId = useRef(post.id);
+  const pendingTransition = useRef<"next" | "previous">("next");
 
   useEffect(() => {
     if (previousPostId.current !== post.id) {
-      setTransition("next");
+      setTransition(pendingTransition.current);
       previousPostId.current = post.id;
     }
   }, [post.id]);
@@ -404,11 +405,13 @@ export function CreatorPostViewer({
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowUp" || event.key === "PageUp") {
         event.preventDefault();
+        pendingTransition.current = "previous";
         setTransition("previous");
         onPrevious?.();
       }
       if (event.key === "ArrowDown" || event.key === "PageDown") {
         event.preventDefault();
+        pendingTransition.current = "next";
         setTransition("next");
         onNext?.();
       }
@@ -444,10 +447,12 @@ export function CreatorPostViewer({
     touchStartX.current = null;
     touchDeltaY.current = 0;
     if (delta <= -56) {
+      pendingTransition.current = "next";
       setTransition("next");
       onNext?.();
     }
     if (delta >= 56) {
+      pendingTransition.current = "previous";
       setTransition("previous");
       onPrevious?.();
     }
