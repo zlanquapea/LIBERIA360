@@ -639,7 +639,7 @@ describe("Phase 2 (e2e)", () => {
       expect(byCategory.body.meta.total).toBe(0);
     });
 
-    it("hides a past event from the default listing, but surfaces it via includePast or an explicit dateFrom", async () => {
+    it("hides a past event from the default listing and from a past-dateFrom filter alike, but surfaces it via includePast", async () => {
       const past = await request(app.getHttpServer())
         .post("/api/v1/events")
         .set("Cookie", userAToken)
@@ -673,12 +673,16 @@ describe("Phase 2 (e2e)", () => {
         withIncludePast.body.data.some((e: { id: string }) => e.id === pastId),
       ).toBe(true);
 
-      const withDateFrom = await request(app.getHttpServer())
+      // A past dateFrom (e.g. EventFilters.tsx's "Today" quick-filter,
+      // clicked any time after midnight) must not resurrect an already-
+      // completed event — the lower bound gets clamped up to "now" rather
+      // than passed through as-is. See EventsService.findAll's doc comment.
+      const withPastDateFrom = await request(app.getHttpServer())
         .get("/api/v1/events?dateFrom=2019-01-01")
         .expect(200);
       expect(
-        withDateFrom.body.data.some((e: { id: string }) => e.id === pastId),
-      ).toBe(true);
+        withPastDateFrom.body.data.some((e: { id: string }) => e.id === pastId),
+      ).toBe(false);
     });
 
     it("GET /events/mine returns only the caller's own events and requires auth", async () => {
