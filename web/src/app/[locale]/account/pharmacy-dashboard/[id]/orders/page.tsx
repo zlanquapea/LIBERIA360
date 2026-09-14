@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePharmacyDashboard } from '@/components/PharmacyDashboardContext';
 import {
   getPharmacyDashboardOrders,
+  restorePharmacyOrder,
   reviewPharmacyPrescription,
   transitionPharmacyOrder,
   type PharmacyOrder,
@@ -20,6 +21,29 @@ const ORDER_LABELS: Record<string, string> = {
   rejected: 'Rejected',
   cancelled: 'Cancelled',
 };
+// A colored pill per status, grouped by what it means for staff at a
+// glance: amber = needs a decision, blue = actively being worked,
+// emerald = done right, slate/red = done, nothing left to do.
+const STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+  under_review: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+  accepted: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',
+  preparing: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',
+  ready_for_pickup: 'bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300',
+  out_for_delivery: 'bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300',
+  completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300',
+  cancelled: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+};
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-sm font-semibold ${STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+    >
+      {ORDER_LABELS[status] ?? status}
+    </span>
+  );
+}
 // Mirrors PharmaciesService's own NEXT[] transition map (pharmacies.service.ts)
 // so the buttons shown here only ever offer a move the API will actually
 // accept — the server re-validates every one regardless, this just avoids
@@ -83,7 +107,7 @@ function ReviewForm({
     }
   }
   return (
-    <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+    <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
       <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
         Prescription review required
       </p>
@@ -133,7 +157,8 @@ export default function PharmacyOrdersPage() {
   const isPharmacist = stats?.role === 'pharmacist';
   const [orders, setOrders] = useState<PharmacyOrder[] | null>(null),
     [error, setError] = useState(''),
-    [transitioning, setTransitioning] = useState<string | null>(null);
+    [transitioning, setTransitioning] = useState<string | null>(null),
+    [restoreError, setRestoreError] = useState<Record<string, string>>({});
   const load = useCallback(() => {
     getPharmacyDashboardOrders(pharmacyId)
       .then(setOrders)
@@ -156,9 +181,34 @@ export default function PharmacyOrdersPage() {
       setTransitioning(null);
     }
   }
+  // Undoes a mistaken cancellation. Its own per-order error slot (rather
+  // than the shared banner above) because a restore failure — most likely
+  // "this stock sold out while the order sat cancelled" — is specific to
+  // the one order the staff member just clicked Restore on, not a
+  // page-wide problem.
+  async function restore(orderId: string) {
+    setTransitioning(orderId);
+    setRestoreError((e) => ({ ...e, [orderId]: '' }));
+    try {
+      await restorePharmacyOrder(pharmacyId, orderId);
+      reload();
+    } catch (e) {
+      setRestoreError((prev) => ({
+        ...prev,
+        [orderId]: e instanceof Error ? e.message : 'Could not restore this order.',
+      }));
+    } finally {
+      setTransitioning(null);
+    }
+  }
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="text-xl font-bold text-slate-950 dark:text-slate-50">Orders</h2>
+      <div>
+        <h2 className="text-xl font-bold text-slate-950 dark:text-slate-50">Orders</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Newest first — accept, prepare, and dispatch orders as they come in.
+        </p>
+      </div>
       {error && (
         <p role="alert" className="error-state mt-2">
           {error}
@@ -166,31 +216,41 @@ export default function PharmacyOrdersPage() {
       )}
       {orders === null && !error && <p className="mt-2">Loading orders…</p>}
       {orders?.length === 0 && <p className="empty-state mt-2">No orders yet.</p>}
-      <ul className="mt-3 space-y-3">
+      <ul className="mt-4 space-y-3">
         {orders?.map((o) => (
-          <li key={o.id} className="rounded-xl border p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <li
+            key={o.id}
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-semibold">Order {o.id.slice(0, 8)}</p>
-                <p className="text-sm text-slate-500">
-                  {o.fulfillmentMethod} · L${Number(o.finalTotal).toFixed(2)}
+                <p className="font-semibold text-slate-900 dark:text-slate-50">
+                  Order #{o.id.slice(0, 8).toUpperCase()}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {o.fulfillmentMethod === 'delivery' ? 'Delivery' : 'Pickup'} · L$
+                  {Number(o.finalTotal).toFixed(2)}
+                  {o.createdAt && ` · ${new Date(o.createdAt).toLocaleString()}`}
                 </p>
               </div>
-              <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-semibold text-brand-800">
-                {ORDER_LABELS[o.status] ?? o.status}
-              </span>
+              <StatusPill status={o.status} />
             </div>
             {o.items && o.items.length > 0 && (
-              <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+              <ul className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-100 text-sm dark:divide-slate-800 dark:border-slate-800">
                 {o.items.map((item) => (
-                  <li key={item.id}>
-                    {item.name} × {item.quantity}
+                  <li key={item.id} className="flex items-center justify-between px-3 py-1.5">
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {item.name} <span className="text-slate-400">× {item.quantity}</span>
+                    </span>
+                    <span className="font-medium text-slate-600 dark:text-slate-400">
+                      L${(Number(item.unitPrice) * item.quantity).toFixed(2)}
+                    </span>
                   </li>
                 ))}
               </ul>
             )}
             {o.status === 'under_review' && o.prescriptionId && !isPharmacist && (
-              <p className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+              <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                 Awaiting pharmacist review — only a pharmacist on staff can accept, reject, or
                 request clarification on a prescription.
               </p>
@@ -204,17 +264,50 @@ export default function PharmacyOrdersPage() {
               />
             )}
             {nextStatusesFor(o).length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {nextStatusesFor(o).map((next) => (
                   <button
                     key={next}
                     disabled={transitioning === o.id}
                     onClick={() => transition(o.id, next)}
-                    className="btn-secondary min-h-9"
+                    className={
+                      next === 'cancelled'
+                        ? 'btn-secondary min-h-9 text-red-700 disabled:opacity-50'
+                        : 'btn-primary min-h-9 disabled:opacity-50'
+                    }
                   >
-                    Mark {ORDER_LABELS[next] ?? next}
+                    {transitioning === o.id
+                      ? 'Working…'
+                      : next === 'cancelled'
+                        ? 'Cancel order'
+                        : `Mark ${ORDER_LABELS[next] ?? next}`}
                   </button>
                 ))}
+              </div>
+            )}
+            {/* Undoes a mistaken cancellation — the one thing the button
+                row above can never offer, since NEXT[cancelled] is
+                deliberately empty on the API side. Only shown once we know
+                there's actually something to go back to. */}
+            {o.status === 'cancelled' && o.previousStatus && (
+              <div className="mt-3 flex flex-col items-start gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/60">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Cancelled by mistake?
+                </p>
+                <button
+                  disabled={transitioning === o.id}
+                  onClick={() => restore(o.id)}
+                  className="btn-secondary min-h-9 disabled:opacity-50"
+                >
+                  {transitioning === o.id
+                    ? 'Restoring…'
+                    : `Restore to ${ORDER_LABELS[o.previousStatus] ?? o.previousStatus}`}
+                </button>
+                {restoreError[o.id] && (
+                  <p role="alert" className="error-state">
+                    {restoreError[o.id]}
+                  </p>
+                )}
               </div>
             )}
           </li>

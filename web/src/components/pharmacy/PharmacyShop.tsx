@@ -1,12 +1,47 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { SafeImage } from "@/components/SafeImage";
+import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
 import {
   createPharmacyOrder,
   deleteUnattachedPrescription,
   uploadPrescription,
 } from "@/lib/pharmacy-api";
+
+// A product with no photo on file — most customers recognize a medication
+// by its box/blister pack on sight, so the shop leans on this rather than a
+// generic "no image" icon wherever one is missing.
+function ProductImagePlaceholder({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden
+      className={`flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-brand-50 text-3xl dark:from-emerald-950/40 dark:to-brand-950/40 ${className}`}
+    >
+      💊
+    </div>
+  );
+}
+function ProductThumbnail({
+  product,
+  className,
+}: {
+  product: Pick<PharmacyProduct, "imageUrl">;
+  className: string;
+}) {
+  return product.imageUrl ? (
+    <SafeImage
+      src={resolveImageUrl(product.imageUrl)}
+      thumbSrc={resolveThumbUrl(product.imageUrl)}
+      alt=""
+      className={`object-cover ${className}`}
+      fallback={<ProductImagePlaceholder className={className} />}
+    />
+  ) : (
+    <ProductImagePlaceholder className={className} />
+  );
+}
 
 // Matches CartItemDto's @Max(100) on the API — without this cap, a product
 // with more than 100 units in stock let this button stay enabled past
@@ -203,20 +238,22 @@ export function PharmacyShop({
             {shown.map((p) => (
               <article
                 key={p.id}
-                className="rounded-2xl border bg-white p-4 dark:bg-slate-900"
+                className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
               >
-                <h3 className="font-bold">{p.name}</h3>
-                <p className="text-sm">
-                  L${Number(p.price).toFixed(2)} ·{" "}
-                  {p.inventory?.quantity
-                    ? `${p.inventory.quantity} available`
-                    : "Out of stock"}
-                </p>
-                {p.prescriptionRequired && (
-                  <p className="mt-2 text-xs font-semibold text-amber-700">
-                    Prescription required · pharmacist review only
+                <ProductThumbnail product={p} className="h-20 w-20 shrink-0 rounded-xl" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-slate-900 dark:text-slate-50">{p.name}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    L${Number(p.price).toFixed(2)} ·{" "}
+                    {p.inventory?.quantity
+                      ? `${p.inventory.quantity} available`
+                      : "Out of stock"}
                   </p>
-                )}
+                  {p.prescriptionRequired && (
+                    <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      Prescription required · pharmacist review only
+                    </p>
+                  )}
                 <button
                   disabled={
                     !p.inventory?.quantity ||
@@ -237,45 +274,79 @@ export function PharmacyShop({
                       return { ...x, [p.id]: next };
                     })
                   }
-                  className="btn-secondary mt-3 min-h-11 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Add to cart
-                </button>
+                    className="btn-secondary mt-3 min-h-11 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Add to cart
+                  </button>
+                </div>
               </article>
             ))}
           </div>
         )}
       </section>
-      <aside className="h-fit rounded-2xl border bg-white p-5 dark:bg-slate-900">
-        <h2 className="text-xl font-bold">Your cart</h2>
+      <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-slate-50">
+          🛒 Your cart
+        </h2>
         {cartIsEmpty ? (
           <p className="my-4 text-sm text-slate-500">Your cart is empty.</p>
         ) : (
-          <ul className="my-4 space-y-2 text-sm">
+          <ul className="my-4 space-y-3 text-sm">
             {products
               .filter((p) => cart[p.id])
               .map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label={`Remove one ${p.name}`}
-                      onClick={() =>
-                        setCart((x) => {
-                          const next = { ...x };
-                          if (next[p.id] <= 1) delete next[p.id];
-                          else next[p.id] -= 1;
-                          return next;
-                        })
-                      }
-                      className="min-h-8 min-w-8 rounded-full border text-base leading-none"
-                    >
-                      −
-                    </button>
-                    {p.name} × {cart[p.id]}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    L${(Number(p.price) * cart[p.id]).toFixed(2)}
+                <li key={p.id} className="flex items-center gap-3">
+                  <ProductThumbnail product={p} className="h-12 w-12 shrink-0 rounded-lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-800 dark:text-slate-200">
+                      {p.name}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Remove one ${p.name}`}
+                        onClick={() =>
+                          setCart((x) => {
+                            const next = { ...x };
+                            if (next[p.id] <= 1) delete next[p.id];
+                            else next[p.id] -= 1;
+                            return next;
+                          })
+                        }
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-base leading-none dark:border-slate-700"
+                      >
+                        −
+                      </button>
+                      <span className="w-5 text-center">{cart[p.id]}</span>
+                      <button
+                        type="button"
+                        aria-label={`Add one more ${p.name}`}
+                        disabled={
+                          !p.inventory?.quantity ||
+                          cart[p.id] >=
+                            Math.min(p.inventory.quantity, MAX_CART_QUANTITY_PER_ITEM)
+                        }
+                        onClick={() =>
+                          setCart((x) => {
+                            const next = (x[p.id] || 0) + 1;
+                            const max = Math.min(
+                              p.inventory?.quantity ?? 0,
+                              MAX_CART_QUANTITY_PER_ITEM,
+                            );
+                            if (next > max) return x;
+                            return { ...x, [p.id]: next };
+                          })
+                        }
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-base leading-none disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-semibold text-slate-900 dark:text-slate-50">
+                      L${(Number(p.price) * cart[p.id]).toFixed(2)}
+                    </span>
                     <button
                       type="button"
                       aria-label={`Remove all ${p.name} from cart`}
@@ -290,34 +361,52 @@ export function PharmacyShop({
                     >
                       Remove
                     </button>
-                  </span>
+                  </div>
                 </li>
               ))}
           </ul>
         )}
         {hasFulfillmentMethod ? (
-          <fieldset className="space-y-2">
-            <legend className="font-semibold">Fulfillment</legend>
-            {pharmacy.pickupEnabled && (
-              <label className="block">
-                <input
-                  type="radio"
-                  checked={method === "pickup"}
-                  onChange={() => setMethod("pickup")}
-                />{" "}
-                Pickup
-              </label>
-            )}
-            {pharmacy.deliveryEnabled && (
-              <label className="block">
-                <input
-                  type="radio"
-                  checked={method === "delivery"}
-                  onChange={() => setMethod("delivery")}
-                />{" "}
-                Delivery
-              </label>
-            )}
+          <fieldset className="border-t border-slate-100 pt-4 dark:border-slate-800">
+            <legend className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Fulfillment
+            </legend>
+            <div className="flex gap-2">
+              {pharmacy.pickupEnabled && (
+                <label
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                    method === "pickup"
+                      ? "border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-200"
+                      : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    className="sr-only"
+                    checked={method === "pickup"}
+                    onChange={() => setMethod("pickup")}
+                  />
+                  🏬 Pickup
+                </label>
+              )}
+              {pharmacy.deliveryEnabled && (
+                <label
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                    method === "delivery"
+                      ? "border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-950/40 dark:text-brand-200"
+                      : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    className="sr-only"
+                    checked={method === "delivery"}
+                    onChange={() => setMethod("delivery")}
+                  />
+                  🚴 Delivery
+                </label>
+              )}
+            </div>
           </fieldset>
         ) : (
           <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
@@ -366,20 +455,20 @@ export function PharmacyShop({
             </label>
           </div>
         )}
-        <dl className="my-4 space-y-1 text-sm">
-          <div className="flex justify-between">
+        <dl className="my-4 space-y-1.5 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
+          <div className="flex justify-between text-slate-600 dark:text-slate-300">
             <dt>Product subtotal</dt>
             <dd>L${subtotal.toFixed(2)}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between text-slate-600 dark:text-slate-300">
             <dt>Delivery fee</dt>
             <dd>L${delivery.toFixed(2)}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between text-slate-600 dark:text-slate-300">
             <dt>Platform fee</dt>
             <dd>L$0.00</dd>
           </div>
-          <div className="flex justify-between border-t pt-2 font-bold">
+          <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900 dark:border-slate-700 dark:text-slate-50">
             <dt>Final total</dt>
             <dd>L${total.toFixed(2)}</dd>
           </div>
@@ -393,21 +482,30 @@ export function PharmacyShop({
             (needsPrescription && (!prescriptionFile || !consent))
           }
           onClick={checkout}
-          className="btn-primary min-h-12 w-full"
+          className="btn-primary min-h-12 w-full text-base shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {placing ? "Placing order…" : "Place order"}
+          {placing ? "Placing order…" : `Place order · L$${total.toFixed(2)}`}
         </button>
         {notice && (
-          <p role="status" className="mt-3 text-sm">
+          <p
+            role="status"
+            className={`mt-3 rounded-xl border p-3 text-sm ${
+              placing
+                ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300"
+                : orderPlaced
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  : "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+            }`}
+          >
             {notice}
             {orderPlaced && (
               <>
                 {" "}
                 <Link
                   href="/account/pharmacy-orders"
-                  className="font-semibold text-brand-700 underline"
+                  className="font-semibold underline"
                 >
-                  Track your order
+                  Track your order →
                 </Link>
               </>
             )}

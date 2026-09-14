@@ -92,6 +92,11 @@ export type PharmacyOrder = {
   // ReviewForm must resubmit alongside its decision; see
   // PrescriptionReviewDto.prescriptionVersion.
   prescriptionVersion?: number | null;
+  // Set only while status is "cancelled" (captured by transition() at the
+  // moment of cancellation) — lets the dashboard offer "Restore" only on an
+  // order that actually has somewhere safe to go back to. See
+  // restorePharmacyOrder() below.
+  previousStatus?: string | null;
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
@@ -360,6 +365,15 @@ export const transitionPharmacyOrder = (
   apiRequest<PharmacyOrder>(
     `/pharmacy-dashboard/${pharmacyId}/orders/${orderId}/status`,
     { method: "PATCH", body: JSON.stringify({ status }) },
+  );
+
+// Undoes a mistaken cancellation — only possible while status is still
+// "cancelled" and previousStatus was actually recorded (see
+// PharmaciesService.restoreOrder on the API side).
+export const restorePharmacyOrder = (pharmacyId: string, orderId: string) =>
+  apiRequest<PharmacyOrder>(
+    `/pharmacy-dashboard/${pharmacyId}/orders/${orderId}/restore`,
+    { method: "PATCH" },
   );
 
 export const reviewPharmacyPrescription = (
