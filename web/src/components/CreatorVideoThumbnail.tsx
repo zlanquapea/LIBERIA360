@@ -31,6 +31,7 @@ export function CreatorVideoThumbnail({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    const revealFallback = window.setTimeout(() => setReady(true), 800);
 
     const showFirstFrame = () => setReady(true);
     const seekToOpeningFrame = () => {
@@ -41,12 +42,14 @@ export function CreatorVideoThumbnail({
           // Some remote files do not allow seeking during metadata load.
         }
       }
+      setReady(true);
     };
 
     video.addEventListener("loadeddata", showFirstFrame);
     video.addEventListener("loadedmetadata", seekToOpeningFrame);
     video.addEventListener("seeked", showFirstFrame);
     return () => {
+      window.clearTimeout(revealFallback);
       video.removeEventListener("loadeddata", showFirstFrame);
       video.removeEventListener("loadedmetadata", seekToOpeningFrame);
       video.removeEventListener("seeked", showFirstFrame);
@@ -116,7 +119,7 @@ export function CreatorVideoThumbnail({
       <video
         ref={videoRef}
         src={src}
-        preload={autoplayOnView ? "metadata" : "metadata"}
+        preload={autoplayOnView ? "metadata" : "auto"}
         poster={poster ?? undefined}
         muted
         loop={!reducedMotion}

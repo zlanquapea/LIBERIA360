@@ -739,7 +739,7 @@ export function CreatorPostViewerVideoPreview({
         className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10"
       />
       <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
-        Watch video
+        Video preview
       </span>
     </button>
   );
