@@ -502,7 +502,7 @@ export function PharmacyShop({
               <>
                 {" "}
                 <Link
-                  href="/account/pharmacy-orders"
+                  href="/account/my-orders"
                   className="font-semibold underline"
                 >
                   Track your order →

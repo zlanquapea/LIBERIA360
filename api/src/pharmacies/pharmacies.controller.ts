@@ -26,6 +26,7 @@ import { User } from "../users/entities/user.entity";
 import {
   AssignStaffDto,
   CreateOrderDto,
+  OrderFeedbackDto,
   PharmacyProfileDto,
   PharmacyQueryDto,
   PrescriptionReviewDto,
@@ -78,6 +79,31 @@ export class PharmacyCustomerController {
   }
   @Get("orders/mine") mine(@CurrentUser() u: User) {
     return this.service.customerOrders(u.id);
+  }
+  // One rating per completed order — see PharmaciesService.submitOrderFeedback.
+  @Post("orders/:orderId/feedback") submitFeedback(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+    @Body() dto: OrderFeedbackDto,
+  ) {
+    return this.service.submitOrderFeedback(u.id, orderId, dto);
+  }
+  // A downloadable receipt, once the order is complete — streamed with an
+  // attachment disposition (like prescriptionFile() below) so the browser
+  // downloads it under a friendly filename instead of navigating to it.
+  @Get("orders/:orderId/receipt")
+  async receipt(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { html, filename } = await this.service.orderReceipt(u.id, orderId);
+    res.set({
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "private, no-store",
+    });
+    return new StreamableFile(Buffer.from(html, "utf-8"));
   }
   // Uploaded *before* checkout — returns the prescriptionId the cart then
   // submits as CreateOrderDto.prescriptionId.

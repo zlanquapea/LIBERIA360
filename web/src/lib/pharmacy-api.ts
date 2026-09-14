@@ -97,6 +97,11 @@ export type PharmacyOrder = {
   // order that actually has somewhere safe to go back to. See
   // restorePharmacyOrder() below.
   previousStatus?: string | null;
+  // Customer-facing only (customerOrders()) — null until the customer
+  // leaves a post-purchase rating (submitPharmacyOrderFeedback() below),
+  // so the order history can show "thanks for your feedback" instead of
+  // re-prompting once one exists.
+  feedback?: { rating: number; comment: string | null } | null;
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
@@ -146,6 +151,23 @@ export const createPharmacyOrder = (body: unknown) =>
   });
 export const getMyPharmacyOrders = () =>
   apiRequest<PharmacyOrder[]>("/pharmacy-marketplace/orders/mine");
+
+// One rating per completed order — see PharmaciesService.submitOrderFeedback.
+export const submitPharmacyOrderFeedback = (
+  orderId: string,
+  body: { rating: number; comment?: string },
+) =>
+  apiRequest<{ rating: number; comment: string | null }>(
+    `/pharmacy-marketplace/orders/${orderId}/feedback`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+
+// Not a fetch — a plain, cookie-authenticated URL for a same-origin <a
+// href> (or window.location), same pattern as prescriptionFile() above:
+// the browser downloads it directly via the Content-Disposition the API
+// sets, so there's nothing to hand back here but the path itself.
+export const pharmacyOrderReceiptUrl = (orderId: string) =>
+  `/api/v1/pharmacy-marketplace/orders/${orderId}/receipt`;
 // POST /pharmacy-marketplace/prescriptions — multipart, so this bypasses
 // http.ts's apiRequest (which always sets Content-Type: application/json);
 // see lib/uploads-api.ts's uploadImage for the same pattern. Uploaded
