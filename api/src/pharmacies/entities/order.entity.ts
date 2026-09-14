@@ -75,6 +75,19 @@ export class PharmacyOrder {
     default: PharmacyOrderStatus.PENDING,
   })
   status: PharmacyOrderStatus;
+  // Captured only at the moment an order is cancelled (see
+  // PharmaciesService.transition) — what to put `status` back to if staff
+  // restore it later (restoreOrder()). Every other transition leaves this
+  // untouched; restoreOrder() clears it back to null once used, since a
+  // restored order isn't cancelled anymore and this would otherwise read as
+  // stale leftover state from a cancellation that's long since been undone.
+  @Column({
+    name: "previous_status",
+    type: "enum",
+    enum: PharmacyOrderStatus,
+    nullable: true,
+  })
+  previousStatus: PharmacyOrderStatus | null;
   @Column({ name: "fulfillment_method", type: "enum", enum: FulfillmentMethod })
   fulfillmentMethod: FulfillmentMethod;
   @Column({ name: "delivery_address", type: "text", nullable: true })

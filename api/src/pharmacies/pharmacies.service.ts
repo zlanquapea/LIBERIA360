@@ -1382,9 +1382,14 @@ export class PharmaciesService {
       // restoreInventory, inflating stock by an entire order. This UPDATE's
       // row lock serializes that: whichever commits first wins, the other
       // affects zero rows and throws instead of restoring inventory twice.
+      // Cancelling additionally records what to restore the order to later
+      // (see restoreOrder()) — every other transition leaves previousStatus
+      // untouched.
       const result = await orderRepo.update(
         { id: orderId, pharmacyId, status: fromStatus },
-        { status },
+        status === PharmacyOrderStatus.CANCELLED
+          ? { status, previousStatus: fromStatus }
+          : { status },
       );
       if (!result.affected)
         throw new ConflictException(
@@ -1426,6 +1431,97 @@ export class PharmaciesService {
     }
 
     order.status = status;
+    if (status === PharmacyOrderStatus.CANCELLED)
+      order.previousStatus = fromStatus;
+    return order;
+  }
+  // Undoes a mistaken cancellation — the one thing transition() itself
+  // can't do, since NEXT[CANCELLED] is deliberately empty (see its own
+  // comment). Only reachable from CANCELLED, and only when previousStatus
+  // was actually recorded there (transition() is the only path that sets
+  // it, so a CANCELLED order predating this column, or already restored
+  // once, has nothing to safely go back to). Re-reserves the stock
+  // cancelling gave back — an order that's been sitting cancelled for a
+  // while may find that stock already sold to someone else, so this can
+  // fail with a clear conflict rather than oversell.
+  async restoreOrder(userId: string, pharmacyId: string, orderId: string) {
+    await this.assertStaff(userId, pharmacyId);
+    const order = await this.orders.findOneBy({ id: orderId, pharmacyId });
+    if (!order) throw new NotFoundException("Order not found in this pharmacy");
+    if (order.status !== PharmacyOrderStatus.CANCELLED)
+      throw new ConflictException("Only a cancelled order can be restored");
+    if (!order.previousStatus)
+      throw new ConflictException(
+        "This order cannot be restored — it has no recorded status to return to",
+      );
+    const restoredStatus = order.previousStatus;
+
+    const run = async (
+      orderRepo: Repository<PharmacyOrder>,
+      itemRepo: Repository<PharmacyOrderItem>,
+      inventoryRepo: Repository<PharmacyInventory>,
+      auditRepo: Repository<PharmacyAuditLog>,
+    ) => {
+      const items = (await itemRepo.find({ where: { orderId } })).filter(
+        (item) => item.productId,
+      );
+      const ids = items.map((item) => item.productId as string);
+      const inventories = ids.length
+        ? await inventoryRepo.find({ where: { productId: In(ids) } })
+        : [];
+      const inventoryByProductId = new Map(
+        inventories.map((inv) => [inv.productId, inv]),
+      );
+      for (const item of items) {
+        const inventory = inventoryByProductId.get(item.productId as string);
+        if (!inventory || inventory.quantity < item.quantity)
+          throw new ConflictException(
+            `${item.name} no longer has enough stock to restore this order`,
+          );
+      }
+      // Same conditional-update guard as transition() above — only a row
+      // still actually CANCELLED gets moved, so a concurrent restore (or
+      // any other status change racing this one) can't re-reserve this
+      // order's stock twice.
+      const result = await orderRepo.update(
+        { id: orderId, pharmacyId, status: PharmacyOrderStatus.CANCELLED },
+        { status: restoredStatus, previousStatus: null },
+      );
+      if (!result.affected)
+        throw new ConflictException("This order is no longer cancelled");
+      for (const item of items) {
+        await inventoryRepo.decrement(
+          { productId: item.productId as string },
+          "quantity",
+          item.quantity,
+        );
+      }
+      await this.audit(
+        userId,
+        pharmacyId,
+        "order.restored",
+        "order",
+        order.id,
+        { status: restoredStatus },
+        auditRepo,
+      );
+    };
+    const manager = this.orders.manager;
+    if (manager?.transaction) {
+      await manager.transaction((tx) =>
+        run(
+          tx.getRepository(PharmacyOrder),
+          tx.getRepository(PharmacyOrderItem),
+          tx.getRepository(PharmacyInventory),
+          tx.getRepository(PharmacyAuditLog),
+        ),
+      );
+    } else {
+      await run(this.orders, this.orderItems, this.inventory, this.audits);
+    }
+
+    order.status = restoredStatus;
+    order.previousStatus = null;
     return order;
   }
   async review(

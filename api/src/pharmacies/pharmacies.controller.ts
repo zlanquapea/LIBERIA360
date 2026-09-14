@@ -278,6 +278,14 @@ export class PharmacyDashboardController {
   ) {
     return this.service.transition(u.id, id, orderId, dto.status);
   }
+  // Undoes a mistaken cancellation — see PharmaciesService.restoreOrder.
+  @Patch(":id/orders/:orderId/restore") restore(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+  ) {
+    return this.service.restoreOrder(u.id, id, orderId);
+  }
   @Post(":id/prescriptions/:prescriptionId/reviews") review(
     @CurrentUser() u: User,
     @Param("id", ParseUUIDPipe) id: string,

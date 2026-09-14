@@ -1627,7 +1627,63 @@ describe("PharmaciesService", () => {
           pharmacyId: "pharmacy-1",
           status: PharmacyOrderStatus.UNDER_REVIEW,
         },
-        { status: PharmacyOrderStatus.CANCELLED },
+        {
+          status: PharmacyOrderStatus.CANCELLED,
+          previousStatus: PharmacyOrderStatus.UNDER_REVIEW,
+        },
+      );
+    });
+
+    it("records what to restore the order to when it's cancelled", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.ACCEPTED,
+      });
+      orderItemRepo.find.mockResolvedValue([]);
+
+      const result = await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+        PharmacyOrderStatus.CANCELLED,
+      );
+
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        {
+          id: "order-1",
+          pharmacyId: "pharmacy-1",
+          status: PharmacyOrderStatus.ACCEPTED,
+        },
+        {
+          status: PharmacyOrderStatus.CANCELLED,
+          previousStatus: PharmacyOrderStatus.ACCEPTED,
+        },
+      );
+      expect(result.previousStatus).toBe(PharmacyOrderStatus.ACCEPTED);
+    });
+
+    it("does not record a previousStatus for a non-cancelling transition", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.PENDING,
+      });
+
+      await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+        PharmacyOrderStatus.ACCEPTED,
+      );
+
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        {
+          id: "order-1",
+          pharmacyId: "pharmacy-1",
+          status: PharmacyOrderStatus.PENDING,
+        },
+        { status: PharmacyOrderStatus.ACCEPTED },
       );
     });
 
@@ -1692,6 +1748,112 @@ describe("PharmaciesService", () => {
         },
         { status: PharmacyOrderStatus.OUT_FOR_DELIVERY },
       );
+    });
+  });
+
+  describe("restoreOrder", () => {
+    it("restores a cancelled order to whatever it was before, and re-reserves its stock", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.CANCELLED,
+        previousStatus: PharmacyOrderStatus.ACCEPTED,
+      });
+      orderItemRepo.find.mockResolvedValue([
+        { productId: "product-1", name: "Paracetamol", quantity: 3 },
+      ]);
+      inventoryRepo.find.mockResolvedValue([
+        { productId: "product-1", quantity: 10 },
+      ]);
+
+      const result = await service.restoreOrder(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+      );
+
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        {
+          id: "order-1",
+          pharmacyId: "pharmacy-1",
+          status: PharmacyOrderStatus.CANCELLED,
+        },
+        { status: PharmacyOrderStatus.ACCEPTED, previousStatus: null },
+      );
+      expect(inventoryRepo.decrement).toHaveBeenCalledWith(
+        { productId: "product-1" },
+        "quantity",
+        3,
+      );
+      expect(result.status).toBe(PharmacyOrderStatus.ACCEPTED);
+      expect(result.previousStatus).toBeNull();
+    });
+
+    it("refuses to restore an order that isn't cancelled", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.ACCEPTED,
+        previousStatus: null,
+      });
+
+      await expect(
+        service.restoreOrder("user-1", "pharmacy-1", "order-1"),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses to restore a cancelled order with no recorded previous status", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.CANCELLED,
+        previousStatus: null,
+      });
+
+      await expect(
+        service.restoreOrder("user-1", "pharmacy-1", "order-1"),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses to restore when stock has since sold out from under the order", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.CANCELLED,
+        previousStatus: PharmacyOrderStatus.PENDING,
+      });
+      orderItemRepo.find.mockResolvedValue([
+        { productId: "product-1", name: "Paracetamol", quantity: 5 },
+      ]);
+      inventoryRepo.find.mockResolvedValue([
+        { productId: "product-1", quantity: 2 },
+      ]);
+
+      await expect(
+        service.restoreOrder("user-1", "pharmacy-1", "order-1"),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+      expect(inventoryRepo.decrement).not.toHaveBeenCalled();
+    });
+
+    it("refuses a concurrent restore of the same order", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.CANCELLED,
+        previousStatus: PharmacyOrderStatus.PENDING,
+      });
+      orderItemRepo.find.mockResolvedValue([]);
+      // Another request already restored (or otherwise moved) the order
+      // between this call's read and its conditional update.
+      orderRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.restoreOrder("user-1", "pharmacy-1", "order-1"),
+      ).rejects.toThrow(ConflictException);
+      expect(inventoryRepo.decrement).not.toHaveBeenCalled();
     });
   });
 
