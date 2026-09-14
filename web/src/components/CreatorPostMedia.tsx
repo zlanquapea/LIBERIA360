@@ -12,6 +12,7 @@ import {
 type CreatorPostMediaProps = {
   post: CreatorPost;
   videoPosts?: CreatorPost[];
+  isActiveVideo?: boolean;
   liked: boolean;
   saved: boolean;
   likeCount: number;
@@ -31,6 +32,7 @@ type CreatorPostMediaProps = {
 export function CreatorPostMedia({
   post,
   videoPosts = [],
+  isActiveVideo = false,
   liked,
   saved,
   likeCount,
@@ -79,7 +81,11 @@ export function CreatorPostMedia({
   return (
     <>
       {post.mediaType === "video" ? (
-        <CreatorPostViewerVideoPreview post={post} onOpen={openViewer} />
+        <CreatorPostViewerVideoPreview
+          post={post}
+          onOpen={openViewer}
+          autoplayOnView={isActiveVideo}
+        />
       ) : (
         <CreatorPostViewerImagePreview post={post} onOpen={openViewer} />
       )}

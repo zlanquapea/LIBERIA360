@@ -106,6 +106,7 @@ function PostCaption({ text }: { text: string | null }) {
 export interface CreatorPostCardProps {
   post: CreatorPost;
   videoPosts?: CreatorPost[];
+  isActiveVideo?: boolean;
   onEdit?: (postId: string, postData: CreatorPost) => void;
   onDelete?: (postId: string) => void | Promise<void>;
   onSave?: (postId: string) => void | Promise<void>;
@@ -115,6 +116,7 @@ export interface CreatorPostCardProps {
 export function CreatorPostCard({
   post,
   videoPosts = [],
+  isActiveVideo = false,
   onEdit,
   onDelete,
   onSave,
@@ -576,6 +578,7 @@ export function CreatorPostCard({
       <CreatorPostMedia
         post={post}
         videoPosts={videoPosts}
+        isActiveVideo={isActiveVideo}
         liked={liked}
         saved={saved}
         likeCount={likeCount}

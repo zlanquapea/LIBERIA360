@@ -94,10 +94,12 @@ export function CreatorFeed({
   const [error, setError] = useState<string | null>(null);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const refreshLockRef = useRef(false);
   const refreshFeedRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const pullDistanceRef = useRef(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const videoSlideRefs = useRef(new Map<string, HTMLElement>());
 
   const feedItems = useMemo(
     () =>
@@ -112,6 +114,45 @@ export function CreatorFeed({
     () => posts.filter((post) => post.mediaType === "video"),
     [posts],
   );
+
+  useEffect(() => {
+    if (videoPosts.length === 0) {
+      setActiveVideoId(null);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.65)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) {
+          const postId = visible.target.getAttribute("data-video-post-id");
+          if (postId) setActiveVideoId(postId);
+        }
+      },
+      { threshold: [0.65, 0.85, 1] },
+    );
+    videoSlideRefs.current.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [feedItems, videoPosts.length]);
+
+  useEffect(() => {
+    function handleVideoKeydown(event: KeyboardEvent) {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, button, [contenteditable='true']")) return;
+      const currentIndex = videoPosts.findIndex((post) => post.id === activeVideoId);
+      const nextIndex = event.key === "ArrowDown" ? currentIndex + 1 : currentIndex - 1;
+      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= videoPosts.length) return;
+      event.preventDefault();
+      videoSlideRefs.current.get(videoPosts[nextIndex].id)?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+    window.addEventListener("keydown", handleVideoKeydown);
+    return () => window.removeEventListener("keydown", handleVideoKeydown);
+  }, [activeVideoId, videoPosts]);
 
   useEffect(() => {
     if (mode !== "discover") return;
@@ -365,21 +406,36 @@ export function CreatorFeed({
           </p>
         </div>
       ) : posts.length > 0 ? (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {feedItems.map((item, index) =>
-            item.kind === "ad" ? (
-              <SponsoredCreatorAdCard
-                key={`ad-${item.ad.id}-${index}`}
-                ad={item.ad}
-              />
-            ) : (
-              <CreatorPostCard
-                key={item.post.id}
-                post={item.post}
-                videoPosts={videoPosts}
-              />
-            ),
-          )}
+        <div className="creator-video-feed grid gap-5 lg:grid-cols-2">
+          {feedItems.map((item, index) => {
+            const postId =
+              item.kind === "post" && item.post.mediaType === "video"
+                ? item.post.id
+                : null;
+            const setVideoSlideRef = (element: HTMLElement | null) => {
+              if (!postId) return;
+              if (element) videoSlideRefs.current.set(postId, element);
+              else videoSlideRefs.current.delete(postId);
+            };
+            return (
+              <div
+                key={item.kind === "ad" ? `ad-${item.ad.id}-${index}` : item.post.id}
+                ref={setVideoSlideRef}
+                data-video-post-id={item.kind === "post" && item.post.mediaType === "video" ? item.post.id : undefined}
+                className="creator-video-feed-item"
+              >
+                {item.kind === "ad" ? (
+                  <SponsoredCreatorAdCard ad={item.ad} />
+                ) : (
+                  <CreatorPostCard
+                    post={item.post}
+                    videoPosts={videoPosts}
+                    isActiveVideo={item.post.id === activeVideoId}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
