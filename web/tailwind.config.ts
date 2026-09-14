@@ -157,6 +157,21 @@ const config: Config = {
           '65%': { transform: 'scale(1.25)' },
           '100%': { transform: 'scale(1)' },
         },
+        // Homepage hero background (Sep 2026 "wow the arrival" pass): three
+        // real photos take turns, each fading in, holding with a slow
+        // Ken-Burns zoom, then fading out while the next one's already
+        // creeping in underneath. One shared keyframe per layer, offset via
+        // a *negative* animation-delay (see page.tsx) so the three layers
+        // interleave instead of all animating in lockstep — a much slower,
+        // more cinematic cadence than the rejected `float` "breathing"
+        // effect (3.5s, fast, infinite up/down) this is deliberately
+        // nothing like.
+        heroKenBurns: {
+          '0%, 100%': { opacity: '0', transform: 'scale(1)' },
+          '8%': { opacity: '1', transform: 'scale(1.04)' },
+          '33%': { opacity: '1', transform: 'scale(1.12)' },
+          '41%': { opacity: '0', transform: 'scale(1.16)' },
+        },
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.5s ease-out both',
@@ -164,6 +179,7 @@ const config: Config = {
         float: 'float 3.5s ease-in-out infinite',
         'splash-bar': 'splashBar 1.1s ease-in-out infinite',
         pop: 'pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+        'hero-ken-burns': 'heroKenBurns 24s ease-in-out infinite',
       },
     },
   },

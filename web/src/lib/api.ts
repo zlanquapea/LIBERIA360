@@ -29,6 +29,7 @@ import type {
   PaginatedReviews,
   Place,
   PlacesQuery,
+  PlatformStats,
   PublicTripSummary,
   SponsoredPlacement,
 } from "./types";
@@ -186,6 +187,14 @@ export function getPlaceBySlug(slug: string): Promise<Place> {
 
 export function getCounties(): Promise<County[]> {
   return apiFetch<County[]>("/counties", undefined, []);
+}
+
+// Feeds the homepage hero's "join N travelers" stat — public, no auth.
+// Falls back to 0 at build time (see apiFetch's build-fallback comment
+// above) rather than failing the build were it a real number the catalog
+// might not have yet.
+export function getPlatformStats(): Promise<PlatformStats> {
+  return apiFetch<PlatformStats>("/users/stats", undefined, { totalUsers: 0 });
 }
 
 export function getCountyPlaces(

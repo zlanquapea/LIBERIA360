@@ -111,4 +111,18 @@ export class UsersService {
     if (ids.length === 0) return [];
     return this.userRepo.findBy({ id: In(ids) });
   }
+
+  /** Public "join our community" headline count — the homepage hero's
+   * stats line. Deliberately its own query rather than a reuse of
+   * AdminService.getPlatformKpis' totalUsers: that one is a super-admin
+   * internal figure with no soft-delete filtering, while this is shown to
+   * every visitor and so excludes deleted/anonymized accounts the same
+   * way searchByNameOrEmail does — a public count should never include
+   * people who closed their account. */
+  async countActive(): Promise<number> {
+    return this.userRepo
+      .createQueryBuilder("user")
+      .where("user.deletedAt IS NULL")
+      .getCount();
+  }
 }

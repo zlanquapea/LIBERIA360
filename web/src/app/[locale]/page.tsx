@@ -145,7 +145,47 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // Creators / Rent a car utility links, as one clearly-bounded "quick
 // actions" cluster instead of four separate interruptions scattered
 // through the scroll.
-import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPublicTrips } from '@/lib/api';
+//
+// Hero "first impression" rebuild (Sep 2026): direct product feedback on
+// a screenshot of the section above — "the first section of the home
+// page is noisy... use a beautiful background image, animate things...
+// wow people when they just arrive." Three changes, all scoped to the
+// hero:
+//
+// 1. A real, functional search bar is back directly under the headline —
+//    a deliberate reversal of the "hero decluttering" pass above,
+//    which replaced it with a text link on the reasoning that the
+//    Header's own persistent search made a second input redundant. That
+//    reasoning didn't survive this feedback: a plain GET form (no client
+//    JS, submits straight to /search?q=...) rather than a client
+//    component, since a text input posting to a known route needs none.
+// 2. The right-column HeroPhotoMosaic (a bento grid of dynamically
+//    -selected catalog photos) is gone, replaced by a full-bleed
+//    animated background behind the *entire* hero. Deliberately NOT
+//    reusing the dynamic-catalog-photo approach for this: OnboardingTour
+//    already tried exactly that pattern for a similar "wow" moment and
+//    walked it back (see that component's own doc comment) because
+//    catalog photos "read poorly" and didn't match the moment they were
+//    meant to sell. This reuses OnboardingTour's fix instead — the same
+//    three static, product-supplied real Liberia photos already bundled
+//    under public/onboarding/ — as a slow-crossfade Ken-Burns background
+//    (HeroBackground below), so the "no stock photography" rule (see the
+//    layout-pass note above) still holds: these are genuine, previously
+//    approved photos of Liberia, not purchased stock.
+// 3. The stats footnote's "15 counties" swapped for a real "join N
+//    travelers" count (GET /users/stats, public, soft-deleted accounts
+//    excluded — see UsersService.countActive) — a rollout-stage number
+//    like counties-covered undersold a maturing platform; a growing
+//    user count says "people are already here" instead.
+//
+// The entrance itself stays a one-time staggered fade/slide-in
+// (animate-fade-in-up per element, increasing delay) rather than
+// anything looping — the "Events re-ordering + motion cleanup" pass
+// above already had this exact fight once (`animate-float`'s infinite
+// drift read as "breathing," not professional) and HeroBackground's own
+// Ken-Burns motion is a deliberately slower, cinematic cadence, not a
+// repeat of that mistake.
+import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPlatformStats, getPublicTrips } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { CountyGrid } from '@/components/CountyGrid';
@@ -153,7 +193,7 @@ import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { EventCarousel } from '@/components/EventCarousel';
 import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
 import { PublicTripCard } from '@/components/PublicTripCard';
-import { HeroPhotoMosaic } from '@/components/HeroPhotoMosaic';
+import { HeroBackground } from '@/components/HeroBackground';
 import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
 import { getTranslations } from 'next-intl/server';
 
@@ -171,7 +211,7 @@ const COMMUNITY_TRIPS_LIMIT = 6;
 // page reuses rather than duplicating, e.g. "Near Me" and "View all").
 export default async function Home() {
   const t = await getTranslations();
-  const [categories, counties, trending, discoverThisWeek, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips] = await Promise.all([
+  const [categories, counties, trending, discoverThisWeek, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips, platformStats] = await Promise.all([
     getCategories(),
     getCounties(),
     getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
@@ -188,6 +228,9 @@ export default async function Home() {
     // the most recently-created public trips, same source the /trips/community
     // page pulls its full list from.
     getPublicTrips({ limit: COMMUNITY_TRIPS_LIMIT }),
+    // Hero stats line's "join N travelers" — see the hero rebuild doc
+    // comment above for why this replaced the counties-covered count.
+    getPlatformStats(),
   ]);
 
   // Rollout order, not alphabetical — the first tab is the flagship county
@@ -212,101 +255,95 @@ export default async function Home() {
     businesses.data.map((business) => [business.linkedPlaceId, business.verificationStatus]),
   );
 
-  // Hero photo mosaic's showcase picks — reuses the trending/this-week
-  // data already fetched above rather than a fifth API call. Places with
-  // at least one real photo sort first so the mosaic reaches for genuine
-  // imagery whenever the catalog has it; a place with none still renders
-  // fine via HeroPhotoMosaic's own category-color fallback, so this never
-  // needs to filter anything out.
-  const heroShowcasePlaces = (() => {
-    const seen = new Set<string>();
-    const candidates = [...trending.data, ...discoverThisWeek.data].filter((place) => {
-      if (seen.has(place.id)) return false;
-      seen.add(place.id);
-      return true;
-    });
-    return [...candidates]
-      .sort((a, b) => (b.images.length > 0 ? 1 : 0) - (a.images.length > 0 ? 1 : 0))
-      .slice(0, 4);
-  })();
-
   return (
     <main className="mx-auto flex max-w-7xl flex-col">
-      <section className="relative overflow-hidden rounded-b-[2rem] bg-gradient-to-br from-brand-800 via-brand-900 to-[#050b24] px-4 pb-8 pt-8 text-white shadow-[0_14px_36px_rgba(8,26,80,0.35)] animate-fade-in-up sm:px-6 lg:rounded-none lg:px-10 lg:pb-14 lg:pt-12">
-        {/* Decorative depth — soft glow shapes, no imagery dependency.
-            Unconditional now (previously lg:block-only, so the hero looked
-            flat below that breakpoint) — sized down on small screens so
-            they read as ambient light rather than crowding the card. */}
+      <section className="relative isolate overflow-hidden rounded-b-[2rem] px-4 pb-10 pt-10 text-white shadow-[0_14px_36px_rgba(8,26,80,0.35)] sm:px-6 sm:pb-12 sm:pt-14 lg:rounded-none lg:px-10 lg:pb-20 lg:pt-20">
+        <HeroBackground />
+        {/* A gradient scrim over the photos below, not a flat fill — dark
+            enough at the bottom-left (where the text sits) to guarantee
+            legibility against any of the three photos, sheer enough at the
+            top-right to still read as "a real place", not just a dark
+            panel with a photo behind it. Matches the app's existing navy
+            brand gradient so it stays recognizably *this* app's hero
+            rather than a generic photo banner. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -end-10 -top-16 h-32 w-32 rounded-full bg-gold-400/20 blur-3xl sm:h-40 sm:w-40 lg:h-48 lg:w-48"
+          className="absolute inset-0 bg-gradient-to-t from-[#050b24] via-brand-900/85 to-brand-800/40"
+        />
+        {/* Ambient glow accents, kept from the pre-photo hero — still read
+            as intentional brand color on top of a photo, same as they did
+            on the flat gradient. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -end-10 -top-16 h-32 w-32 rounded-full bg-gold-400/25 blur-3xl sm:h-40 sm:w-40 lg:h-48 lg:w-48"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-6 -start-8 h-28 w-28 rounded-full bg-accent-400/20 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
+          className="pointer-events-none absolute -bottom-6 -start-8 h-28 w-28 rounded-full bg-accent-400/25 blur-3xl sm:h-36 sm:w-36 lg:h-40 lg:w-40"
         />
-        {/* Stylized night skyline standing in for the mock-up's photo — see
-            the layout-pass note above for why there's no stock image here. */}
-        <svg
-          aria-hidden
-          viewBox="0 0 400 60"
-          preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 w-full text-black/30 sm:h-14 lg:h-16"
-        >
-          <rect x="0" y="30" width="18" height="30" fill="currentColor" />
-          <rect x="22" y="20" width="14" height="40" fill="currentColor" />
-          <rect x="40" y="36" width="20" height="24" fill="currentColor" />
-          <rect x="64" y="12" width="16" height="48" fill="currentColor" />
-          <rect x="84" y="26" width="22" height="34" fill="currentColor" />
-          <rect x="110" y="38" width="14" height="22" fill="currentColor" />
-          <rect x="128" y="18" width="18" height="42" fill="currentColor" />
-          <rect x="150" y="32" width="24" height="28" fill="currentColor" />
-          <rect x="178" y="10" width="16" height="50" fill="currentColor" />
-          <rect x="198" y="28" width="20" height="32" fill="currentColor" />
-          <rect x="222" y="40" width="14" height="20" fill="currentColor" />
-          <rect x="240" y="16" width="18" height="44" fill="currentColor" />
-          <rect x="262" y="34" width="22" height="26" fill="currentColor" />
-          <rect x="288" y="22" width="16" height="38" fill="currentColor" />
-          <rect x="308" y="38" width="20" height="22" fill="currentColor" />
-          <rect x="332" y="14" width="14" height="46" fill="currentColor" />
-          <rect x="350" y="30" width="24" height="30" fill="currentColor" />
-          <rect x="378" y="22" width="22" height="38" fill="currentColor" />
-          <g fill="#ffc63d" opacity="0.7">
-            <circle cx="30" cy="32" r="1.4" />
-            <circle cx="92" cy="36" r="1.4" />
-            <circle cx="186" cy="24" r="1.4" />
-            <circle cx="266" cy="40" r="1.4" />
-            <circle cx="360" cy="34" r="1.4" />
-          </g>
-        </svg>
 
-        <div className="relative grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:gap-12">
-          <div className="max-w-2xl">
-            {/* The site's own tagline (previously sr-only in the Header)
-                surfaced as a visible eyebrow — the first thing a new
-                visitor reads is a one-line answer to "what is this",
-                reusing established brand copy instead of inventing new. */}
-            <p className="inline-flex w-fit items-center rounded-full border border-gold-400/40 bg-gold-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold-400 sm:text-xs">
-              {t('home.eyebrow')}
-            </p>
-            <h1 className="mt-3 max-w-xl font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
-              {t.rich('home.headline', {
-                highlight: (chunks) => <span className="text-gold-400">{chunks}</span>,
-                br: () => <br />,
-              })}
-            </h1>
-          <p className="max-w-xl text-brand-100 sm:text-lg sm:leading-7">
+        {/* One-time staggered entrance, not a loop — see the doc comment
+            above the imports for why this deliberately isn't another
+            `animate-float`. Each element's own `animate-fade-in-up` fires
+            with an increasing delay so the section builds top-to-bottom
+            instead of popping in all at once. */}
+        <div className="relative mx-auto flex max-w-2xl flex-col items-center text-center">
+          <p
+            className="animate-fade-in-up inline-flex w-fit items-center rounded-full border border-gold-400/40 bg-gold-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gold-400 backdrop-blur-sm sm:text-xs"
+            style={{ animationDelay: '0.05s' }}
+          >
+            {t('home.eyebrow')}
+          </p>
+          <h1
+            className="animate-fade-in-up mt-4 font-display text-4xl font-extrabold leading-[1.02] tracking-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.45)] sm:text-5xl lg:text-6xl"
+            style={{ animationDelay: '0.15s' }}
+          >
+            {t.rich('home.headline', {
+              highlight: (chunks) => <span className="text-gold-400">{chunks}</span>,
+              br: () => <br />,
+            })}
+          </h1>
+          <p
+            className="animate-fade-in-up mt-3 max-w-xl text-brand-100 sm:text-lg sm:leading-7"
+            style={{ animationDelay: '0.25s' }}
+          >
             {t('home.subheadline')}
           </p>
 
-          {/* Co-primary discovery tools, front and center with nothing
-              competing above them. The hero's own search input was dropped
-              here — the Header already carries a persistent Search entry
-              point, so repeating a full-width input directly beneath it
-              was pure duplication; a lightweight link below still gets
-              people there in one tap. See the review readout comment above
-              for why Near Me/Explore are elevated over a buried footer link. */}
-          <div className="grid grid-cols-2 gap-3 pt-5 sm:max-w-xl">
+          {/* A real search bar, back after the "hero decluttering" pass
+              above dropped it in favor of a text link — see this pass's
+              doc comment for why. Plain GET form: submits to /search?q=...
+              with no client JS needed, exactly like Help Center's search
+              (app/[locale]/help/page.tsx). */}
+          <form
+            action="/search"
+            method="GET"
+            className="animate-fade-in-up mt-6 flex w-full max-w-xl overflow-hidden rounded-full border border-white/20 bg-white/95 shadow-xl backdrop-blur-sm transition-shadow focus-within:ring-2 focus-within:ring-gold-400"
+            style={{ animationDelay: '0.35s' }}
+          >
+            <input
+              type="search"
+              name="q"
+              placeholder={t('search.searchPlaceholder')}
+              className="w-full bg-transparent px-5 py-4 text-sm text-slate-900 outline-none placeholder:text-slate-500 sm:text-base"
+            />
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 bg-brand-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-800"
+              aria-label={t('search.searchAriaLabel')}
+            >
+              <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
+              <span className="hidden sm:inline">{t('search.searchAriaLabel')}</span>
+            </button>
+          </form>
+
+          {/* Co-primary discovery tools — kept exactly as the review
+              readout pass elevated them, just re-centered under the new
+              search bar instead of sitting alone under the headline. */}
+          <div
+            className="animate-fade-in-up mt-4 grid w-full max-w-xl grid-cols-2 gap-3"
+            style={{ animationDelay: '0.45s' }}
+          >
             <Link
               href="/near-me"
               className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-accent-300/50 bg-accent-600 px-4 py-3 text-sm font-semibold shadow-lg transition-colors hover:bg-accent-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
@@ -316,45 +353,28 @@ export default async function Home() {
             </Link>
             <Link
               href="/explore"
-              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold backdrop-blur-sm transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <MapIcon aria-hidden className="h-5 w-5" />
               {t('home.exploreMap')}
             </Link>
           </div>
 
-          <Link
-            href="/search"
-            className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-brand-100 transition-colors hover:text-white"
-          >
-            <MagnifyingGlassIcon aria-hidden className="h-4 w-4" />
-            {t('home.searchSomethingSpecific')}
-            <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
-          </Link>
-
           {/* Quick credibility signal — real counts from this same
               request, not marketing copy, so it never claims more than the
-              catalog actually has. Condensed from three separate chips into
-              one quiet line so it reads as a footnote, not a fourth CTA. */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-5 text-xs font-medium text-brand-200/80 sm:text-sm">
-            <span>{t('home.statsCounties', { count: counties.length })}</span>
+              catalog actually has. The counties count (a rollout-stage
+              number) is now a live "join N travelers" count instead — see
+              this pass's doc comment for why. */}
+          <div
+            className="animate-fade-in-up mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-medium text-brand-200/80 sm:text-sm"
+            style={{ animationDelay: '0.55s' }}
+          >
+            <span>{t('home.statsUsers', { count: platformStats.totalUsers })}</span>
             <span aria-hidden>·</span>
             <span>{t('home.statsCategories', { count: categories.length })}</span>
             <span aria-hidden>·</span>
             <span>{t('home.statsPlaces', { count: trending.meta.total })}</span>
           </div>
-          </div>
-          {heroShowcasePlaces.length > 0 && (
-            <aside className="hidden flex-col gap-4 lg:flex">
-              <HeroPhotoMosaic places={heroShowcasePlaces} />
-              <div className="text-center">
-                <p className="font-display text-base font-semibold text-white">{t('home.mosaicHeading')}</p>
-                <p className="mx-auto mt-1 max-w-sm text-sm leading-5 text-brand-100">
-                  {t('home.mosaicCaption')}
-                </p>
-              </div>
-            </aside>
-          )}
         </div>
       </section>
 
