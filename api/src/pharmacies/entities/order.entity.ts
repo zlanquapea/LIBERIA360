@@ -135,6 +135,29 @@ export class PharmacyOrderItem {
   @Column({ type: "int" }) quantity: number;
   @Column({ name: "prescription_required" }) prescriptionRequired: boolean;
 }
+// A customer's satisfaction rating for one completed order — deliberately
+// its own lightweight table rather than routing through the general
+// Review entity (reviews/entities/review.entity.ts): Review targets a
+// Place/Creator/CarListing, but a pharmacy only has a Place at all when it
+// originated from a self-service place submission (Pharmacy.placeId is
+// nullable), so a Review-based prompt would silently have nowhere to
+// attach for every pharmacy that applied directly. This is also
+// deliberately per-*order* ("how did this delivery go"), not a public
+// storefront rating — see PharmaciesService.submitOrderFeedback, which
+// only accepts one per order, and only once that order is COMPLETED.
+@Entity("pharmacy_order_feedback")
+export class PharmacyOrderFeedback {
+  @PrimaryGeneratedColumn("uuid") id: string;
+  @Column({ name: "order_id", unique: true }) orderId: string;
+  @ManyToOne(() => PharmacyOrder, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "order_id" })
+  order: PharmacyOrder;
+  @Column({ name: "customer_user_id" }) customerUserId: string;
+  @Column({ name: "pharmacy_id" }) pharmacyId: string;
+  @Column({ type: "smallint" }) rating: number;
+  @Column({ type: "text", nullable: true }) comment: string | null;
+  @CreateDateColumn({ name: "created_at" }) createdAt: Date;
+}
 @Entity("prescriptions")
 export class Prescription {
   @PrimaryGeneratedColumn("uuid") id: string;

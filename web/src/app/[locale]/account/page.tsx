@@ -13,6 +13,7 @@ import {
   BookmarkIcon,
   ChevronRightIcon,
   MegaphoneIcon,
+  ShoppingBagIcon,
   TruckIcon,
   TicketIcon,
   LifebuoyIcon,
@@ -106,11 +107,16 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         description: "View event ticket orders",
         icon: TicketIcon,
       },
+      // One entry point for every kind of order (food, pharmacy, …) — see
+      // /account/my-orders's own doc comment. Previously "Pharmacy Orders"
+      // had its own separate tile here; product feedback was that an
+      // order is an order, not its own dedicated portion of the account
+      // page.
       {
-        href: "/account/pharmacy-orders",
-        label: "Pharmacy Orders",
-        description: "Track your pharmacy orders & prescriptions",
-        icon: BeakerIcon,
+        href: "/account/my-orders",
+        label: "My Orders",
+        description: "Track your food & pharmacy orders",
+        icon: ShoppingBagIcon,
       },
     ],
   },
@@ -146,7 +152,7 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
       // "Pharmacy" category — anyone who missed that screen (or is coming
       // back later) had no way at all to find their pharmacy again, even
       // though PharmaciesService.mine() already had it. This is the
-      // permanent entry point pharmacy-orders (the customer side, above)
+      // permanent entry point "My Orders" (the customer side, above)
       // already had and this — the owner/staff side — was missing.
       {
         href: "/account/pharmacy-dashboard",

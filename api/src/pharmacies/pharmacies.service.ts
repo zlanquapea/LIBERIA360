@@ -20,6 +20,7 @@ import { CreatePlaceSubmissionDto } from "../places/dto/create-place-submission.
 import {
   AssignStaffDto,
   CreateOrderDto,
+  OrderFeedbackDto,
   PharmacyProfileDto,
   PharmacyQueryDto,
   PrescriptionReviewDto,
@@ -49,6 +50,7 @@ import {
 import {
   PharmacyAuditLog,
   PharmacyOrder,
+  PharmacyOrderFeedback,
   PharmacyOrderItem,
   Prescription,
   PrescriptionReview,
@@ -121,6 +123,8 @@ export class PharmaciesService {
     @InjectRepository(PharmacyOrder) private orders: Repository<PharmacyOrder>,
     @InjectRepository(PharmacyOrderItem)
     private orderItems: Repository<PharmacyOrderItem>,
+    @InjectRepository(PharmacyOrderFeedback)
+    private orderFeedback: Repository<PharmacyOrderFeedback>,
     @InjectRepository(Prescription)
     private prescriptions: Repository<Prescription>,
     @InjectRepository(PrescriptionReview)
@@ -1073,11 +1077,19 @@ export class PharmaciesService {
       if (!latestReviewByPrescriptionId.has(review.prescriptionId))
         latestReviewByPrescriptionId.set(review.prescriptionId, review);
     }
+    // Lets the order-history page show "thanks for your feedback" instead
+    // of re-prompting for a rating it already has — see
+    // submitOrderFeedback() below, the only place a row here is created.
+    const feedback = orderIds.length
+      ? await this.orderFeedback.find({ where: { orderId: In(orderIds) } })
+      : [];
+    const feedbackByOrderId = new Map(feedback.map((f) => [f.orderId, f]));
     return orders.map((o) => {
       const prescriptionId = prescriptionIdByOrderId.get(o.id) ?? null;
       const latestReview = prescriptionId
         ? latestReviewByPrescriptionId.get(prescriptionId)
         : undefined;
+      const orderFeedback = feedbackByOrderId.get(o.id);
       return {
         ...o,
         items: itemsByOrderId.get(o.id) ?? [],
@@ -1093,8 +1105,134 @@ export class PharmaciesService {
           PrescriptionDecision.CLARIFICATION_REQUESTED
             ? (latestReview?.notes ?? null)
             : null,
+        feedback: orderFeedback
+          ? { rating: orderFeedback.rating, comment: orderFeedback.comment }
+          : null,
       };
     });
+  }
+  // The one-time post-purchase rating prompt — only once an order has
+  // actually been fulfilled (COMPLETED), and only once per order (the
+  // table's own unique(order_id) is the authoritative guard against a
+  // race; this pre-check just gives a friendlier message than a raw
+  // constraint violation).
+  async submitOrderFeedback(
+    userId: string,
+    orderId: string,
+    dto: OrderFeedbackDto,
+  ) {
+    const order = await this.orders.findOneBy({
+      id: orderId,
+      customerUserId: userId,
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== PharmacyOrderStatus.COMPLETED)
+      throw new ConflictException(
+        "Feedback can only be left once an order is completed",
+      );
+    const existing = await this.orderFeedback.findOneBy({ orderId });
+    if (existing)
+      throw new ConflictException(
+        "You've already left feedback for this order",
+      );
+    try {
+      return await this.orderFeedback.save(
+        this.orderFeedback.create({
+          orderId,
+          customerUserId: userId,
+          pharmacyId: order.pharmacyId,
+          rating: dto.rating,
+          comment: dto.comment?.trim() || null,
+        }),
+      );
+    } catch {
+      // Two submissions racing each other both pass the findOneBy check
+      // above and both attempt to save — the table's unique(order_id)
+      // rejects the loser, which lands here rather than as a raw 500.
+      throw new ConflictException(
+        "You've already left feedback for this order",
+      );
+    }
+  }
+  // A downloadable record of a completed order — see the controller for
+  // how this is streamed back with a Content-Disposition that makes the
+  // browser download it. Deliberately plain, semantic HTML rather than a
+  // PDF: no new rendering dependency, still opens and prints cleanly from
+  // any browser, and a customer who wants a PDF can "Print > Save as PDF"
+  // from there.
+  async orderReceipt(userId: string, orderId: string) {
+    const order = await this.orders.findOneBy({
+      id: orderId,
+      customerUserId: userId,
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.status !== PharmacyOrderStatus.COMPLETED)
+      throw new ConflictException(
+        "A receipt is only available once an order is completed",
+      );
+    const items = await this.orderItems.find({ where: { orderId } });
+    const escape = (s: string) =>
+      s.replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c]!,
+      );
+    const money = (n: number | string) => `L$${Number(n).toFixed(2)}`;
+    const rows = items
+      .map(
+        (item) => `
+          <tr>
+            <td>${escape(item.name)}</td>
+            <td style="text-align:center">${item.quantity}</td>
+            <td style="text-align:right">${money(item.unitPrice)}</td>
+            <td style="text-align:right">${money(Number(item.unitPrice) * item.quantity)}</td>
+          </tr>`,
+      )
+      .join("");
+    const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Receipt — Order ${escape(order.id.slice(0, 8).toUpperCase())}</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #0f172a; max-width: 620px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+  .muted { color: #64748b; font-size: 0.875rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+  th { text-align: left; border-bottom: 2px solid #e2e8f0; padding: 0.5rem 0; font-size: 0.8rem; text-transform: uppercase; color: #64748b; }
+  td { padding: 0.5rem 0; border-bottom: 1px solid #f1f5f9; }
+  .totals td { border: none; padding: 0.2rem 0; }
+  .totals .label { color: #64748b; }
+  .grand { font-weight: 700; font-size: 1.1rem; border-top: 2px solid #e2e8f0; padding-top: 0.5rem; }
+</style>
+</head>
+<body>
+  <h1>${escape(order.pharmacy?.name ?? "Pharmacy")}</h1>
+  <p class="muted">Receipt for Order #${escape(order.id.slice(0, 8).toUpperCase())} · ${escape(order.createdAt.toLocaleString())}</p>
+  <p class="muted">${order.fulfillmentMethod === "delivery" ? "Delivered to" : "Picked up at"}: ${escape(order.fulfillmentMethod === "delivery" ? (order.deliveryAddress ?? "") : (order.pharmacy?.address ?? ""))}</p>
+  <table>
+    <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit price</th><th style="text-align:right">Line total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <table class="totals" style="max-width:260px;margin-left:auto">
+    <tr><td class="label">Subtotal</td><td style="text-align:right">${money(order.productSubtotal)}</td></tr>
+    <tr><td class="label">Delivery fee</td><td style="text-align:right">${money(order.deliveryFee)}</td></tr>
+    <tr><td class="label">Platform fee</td><td style="text-align:right">${money(order.platformFee)}</td></tr>
+    <tr class="grand"><td>Total paid</td><td style="text-align:right">${money(order.finalTotal)}</td></tr>
+  </table>
+  <p class="muted" style="margin-top:2rem">Thank you for your order.</p>
+</body>
+</html>`;
+    return {
+      html,
+      filename: `receipt-${order.id.slice(0, 8)}.html`,
+    };
   }
   // Lets a customer reply to a pharmacist's clarification_requested
   // decision by uploading a replacement prescription file for the same

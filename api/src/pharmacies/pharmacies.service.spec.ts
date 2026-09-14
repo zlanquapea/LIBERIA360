@@ -33,6 +33,7 @@ import {
 import {
   PharmacyAuditLog,
   PharmacyOrder,
+  PharmacyOrderFeedback,
   PharmacyOrderItem,
   Prescription,
   PrescriptionReview,
@@ -129,6 +130,12 @@ describe("PharmaciesService", () => {
     manager: undefined;
   };
   let orderItemRepo: { create: jest.Mock; save: jest.Mock; find: jest.Mock };
+  let orderFeedbackRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    find: jest.Mock;
+    findOneBy: jest.Mock;
+  };
   let prescriptionRepo: {
     findOne: jest.Mock;
     find: jest.Mock;
@@ -349,6 +356,12 @@ describe("PharmaciesService", () => {
       save: jest.fn().mockResolvedValue(undefined),
       find: jest.fn().mockResolvedValue([]),
     };
+    orderFeedbackRepo = {
+      create: jest.fn((x) => x),
+      save: jest.fn((x) => Promise.resolve({ id: "feedback-1", ...x })),
+      find: jest.fn().mockResolvedValue([]),
+      findOneBy: jest.fn().mockResolvedValue(null),
+    };
     prescriptionRepo = {
       findOne: jest.fn(),
       find: jest.fn().mockResolvedValue([]),
@@ -410,6 +423,10 @@ describe("PharmaciesService", () => {
         {
           provide: getRepositoryToken(PharmacyOrderItem),
           useValue: orderItemRepo,
+        },
+        {
+          provide: getRepositoryToken(PharmacyOrderFeedback),
+          useValue: orderFeedbackRepo,
         },
         {
           provide: getRepositoryToken(Prescription),
@@ -1253,6 +1270,198 @@ describe("PharmaciesService", () => {
           latestReviewNotes: null,
         }),
       ]);
+    });
+
+    it("attaches previously left feedback so the order history doesn't re-prompt for a rating", async () => {
+      orderRepo.find.mockResolvedValue([
+        { id: "order-1", status: PharmacyOrderStatus.COMPLETED },
+        { id: "order-2", status: PharmacyOrderStatus.COMPLETED },
+      ]);
+      orderFeedbackRepo.find.mockResolvedValue([
+        { orderId: "order-1", rating: 5, comment: "Fast and friendly" },
+      ]);
+
+      const orders = await service.customerOrders("customer-1");
+
+      expect(orders).toEqual([
+        expect.objectContaining({
+          id: "order-1",
+          feedback: { rating: 5, comment: "Fast and friendly" },
+        }),
+        expect.objectContaining({ id: "order-2", feedback: null }),
+      ]);
+    });
+  });
+
+  describe("submitOrderFeedback", () => {
+    it("records a rating for a completed order owned by the caller", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        customerUserId: "customer-1",
+        status: PharmacyOrderStatus.COMPLETED,
+      });
+
+      const result = await service.submitOrderFeedback(
+        "customer-1",
+        "order-1",
+        {
+          rating: 5,
+          comment: "Great service",
+        },
+      );
+
+      expect(orderFeedbackRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId: "order-1",
+          customerUserId: "customer-1",
+          pharmacyId: "pharmacy-1",
+          rating: 5,
+          comment: "Great service",
+        }),
+      );
+      expect(result).toMatchObject({ rating: 5, comment: "Great service" });
+    });
+
+    it("trims a blank comment down to null rather than storing whitespace", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.COMPLETED,
+      });
+
+      await service.submitOrderFeedback("customer-1", "order-1", {
+        rating: 4,
+        comment: "   ",
+      });
+
+      expect(orderFeedbackRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ comment: null }),
+      );
+    });
+
+    it("refuses feedback on an order that isn't completed yet", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.PREPARING,
+      });
+
+      await expect(
+        service.submitOrderFeedback("customer-1", "order-1", { rating: 5 }),
+      ).rejects.toThrow(ConflictException);
+      expect(orderFeedbackRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a second rating for the same order", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.COMPLETED,
+      });
+      orderFeedbackRepo.findOneBy.mockResolvedValue({ id: "feedback-1" });
+
+      await expect(
+        service.submitOrderFeedback("customer-1", "order-1", { rating: 3 }),
+      ).rejects.toThrow(ConflictException);
+      expect(orderFeedbackRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a caller who doesn't own the order", async () => {
+      orderRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        service.submitOrderFeedback("someone-else", "order-1", { rating: 5 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("turns a racing duplicate insert into a friendly conflict instead of a raw DB error", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.COMPLETED,
+      });
+      // Passed the findOneBy check above, but another request's insert won
+      // the race and the table's unique(order_id) rejects this one.
+      orderFeedbackRepo.save.mockRejectedValue(
+        new Error("duplicate key value violates unique constraint"),
+      );
+
+      await expect(
+        service.submitOrderFeedback("customer-1", "order-1", { rating: 5 }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe("orderReceipt", () => {
+    it("renders a downloadable receipt for a completed order", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1234-5678",
+        customerUserId: "customer-1",
+        pharmacyId: "pharmacy-1",
+        status: PharmacyOrderStatus.COMPLETED,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        productSubtotal: "20.00",
+        deliveryFee: "0.00",
+        platformFee: "0.00",
+        finalTotal: "20.00",
+        createdAt: new Date("2026-01-01T12:00:00Z"),
+        pharmacy: { name: "CarePoint Pharmacy", address: "1 Main St" },
+      });
+      orderItemRepo.find.mockResolvedValue([
+        { name: "Paracetamol", unitPrice: "10.00", quantity: 2 },
+      ]);
+
+      const { html, filename } = await service.orderReceipt(
+        "customer-1",
+        "order-1234-5678",
+      );
+
+      expect(filename).toBe("receipt-order-12.html");
+      expect(html).toContain("CarePoint Pharmacy");
+      expect(html).toContain("Paracetamol");
+      expect(html).toContain("L$20.00");
+    });
+
+    it("escapes untrusted text so it can't break out of the receipt's markup", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        customerUserId: "customer-1",
+        status: PharmacyOrderStatus.COMPLETED,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        productSubtotal: "10.00",
+        deliveryFee: "0.00",
+        platformFee: "0.00",
+        finalTotal: "10.00",
+        createdAt: new Date("2026-01-01T12:00:00Z"),
+        pharmacy: { name: "<script>evil()</script>", address: "1 Main St" },
+      });
+      orderItemRepo.find.mockResolvedValue([]);
+
+      const { html } = await service.orderReceipt("customer-1", "order-1");
+
+      expect(html).not.toContain("<script>evil()</script>");
+      expect(html).toContain("&lt;script&gt;");
+    });
+
+    it("refuses a receipt for an order that isn't completed", async () => {
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        customerUserId: "customer-1",
+        status: PharmacyOrderStatus.PENDING,
+      });
+
+      await expect(
+        service.orderReceipt("customer-1", "order-1"),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("refuses a caller who doesn't own the order", async () => {
+      orderRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(
+        service.orderReceipt("someone-else", "order-1"),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
