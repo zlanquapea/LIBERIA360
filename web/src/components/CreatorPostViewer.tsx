@@ -219,6 +219,7 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -228,7 +229,10 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
       () => setPlaying(true),
       () => setPlaying(false),
     );
-    return () => video.pause();
+    return () => {
+      video.pause();
+      video.currentTime = 0;
+    };
   }, []);
 
   function togglePlay() {
@@ -265,10 +269,16 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
         controls={false}
         aria-label={`${post.creator.name}'s video post`}
         onClick={togglePlay}
+        onLoadedData={() => setLoaded(true)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         className="h-full w-full object-contain"
       />
+      {!loaded && (
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm" role="status">
+          Loading video…
+        </span>
+      )}
       {!playing && (
         <button
           type="button"
@@ -376,14 +386,32 @@ export function CreatorPostViewer({
 }) {
   const touchStartY = useRef<number | null>(null);
   const touchDeltaY = useRef(0);
+  const touchStartX = useRef<number | null>(null);
+  const [transition, setTransition] = useState<"next" | "previous">("next");
+  const previousPostId = useRef(post.id);
+
+  useEffect(() => {
+    if (previousPostId.current !== post.id) {
+      setTransition("next");
+      previousPostId.current = post.id;
+    }
+  }, [post.id]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
-      if (event.key === "ArrowUp" || event.key === "PageUp") onPrevious?.();
-      if (event.key === "ArrowDown" || event.key === "PageDown") onNext?.();
+      if (event.key === "ArrowUp" || event.key === "PageUp") {
+        event.preventDefault();
+        setTransition("previous");
+        onPrevious?.();
+      }
+      if (event.key === "ArrowDown" || event.key === "PageDown") {
+        event.preventDefault();
+        setTransition("next");
+        onNext?.();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => {
@@ -394,6 +422,7 @@ export function CreatorPostViewer({
 
   function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
     touchStartY.current = event.touches[0]?.clientY ?? null;
+    touchStartX.current = event.touches[0]?.clientX ?? null;
     touchDeltaY.current = 0;
   }
 
@@ -401,15 +430,27 @@ export function CreatorPostViewer({
     if (touchStartY.current === null) return;
     touchDeltaY.current =
       (event.touches[0]?.clientY ?? touchStartY.current) - touchStartY.current;
-    if (Math.abs(touchDeltaY.current) > 24) event.preventDefault();
+    const deltaX =
+      (event.touches[0]?.clientX ?? touchStartX.current ?? 0) -
+      (touchStartX.current ?? 0);
+    if (Math.abs(touchDeltaY.current) > 24 || Math.abs(deltaX) > 12) {
+      event.preventDefault();
+    }
   }
 
   function handleTouchEnd() {
     const delta = touchDeltaY.current;
     touchStartY.current = null;
+    touchStartX.current = null;
     touchDeltaY.current = 0;
-    if (delta <= -56) onNext?.();
-    if (delta >= 56) onPrevious?.();
+    if (delta <= -56) {
+      setTransition("next");
+      onNext?.();
+    }
+    if (delta >= 56) {
+      setTransition("previous");
+      onPrevious?.();
+    }
   }
 
   if (mode === "image") {
@@ -471,12 +512,12 @@ export function CreatorPostViewer({
       role="dialog"
       aria-modal="true"
       aria-label={`${post.creator.name}'s video post`}
-      className="fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col overscroll-contain bg-black text-white"
+      className="creator-video-viewer fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col overscroll-contain bg-black text-white"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div className="creator-video-snap-stage relative min-h-0 flex-1 overflow-hidden" aria-live="polite">
         {onPrevious && (
           <button
             type="button"
@@ -497,11 +538,13 @@ export function CreatorPostViewer({
             Next video
           </button>
         )}
-        {isDirectVideoFile(post.mediaUrl) ? (
-          <DirectVideoViewer key={post.id} post={post} />
-        ) : (
-          <EmbedVideoViewer key={post.id} post={post} />
-        )}
+        <div key={post.id} className={`creator-video-snap-slide creator-video-slide-${transition}`}>
+          {isDirectVideoFile(post.mediaUrl) ? (
+            <DirectVideoViewer post={post} />
+          ) : (
+            <EmbedVideoViewer post={post} />
+          )}
+        </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent px-4 pb-12 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <button
             type="button"
@@ -597,12 +640,11 @@ export function CreatorPostViewerVideoPreview({
       className="group relative block aspect-[4/5] w-full overflow-hidden bg-slate-950"
     >
       {isDirectVideoFile(post.mediaUrl) ? (
-        <CreatorVideoThumbnail
-          src={post.mediaUrl}
-          poster={poster}
-          label={`Open ${post.creator.name}'s video post`}
-          autoplayOnView
-        />
+          <CreatorVideoThumbnail
+            src={post.mediaUrl}
+            poster={poster}
+            label={`Open ${post.creator.name}'s video post`}
+          />
       ) : poster ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
