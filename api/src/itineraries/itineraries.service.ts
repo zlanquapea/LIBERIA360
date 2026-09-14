@@ -1149,9 +1149,14 @@ export class ItinerariesService {
     };
   }
 
-  /** "Trips You Can Join" (Section 5/17) — every PUBLIC, non-cancelled
-   * trip, newest first. No auth required: this is exactly the discovery
-   * surface a visitor with no account should be able to browse. */
+  /** "Trips You Can Join" (Section 5/17) — every PUBLIC, non-cancelled,
+   * not-yet-COMPLETED trip, newest first. No auth required: this is
+   * exactly the discovery surface a visitor with no account should be
+   * able to browse. There's nothing to "join" once a trip is over, so a
+   * trip whose `endDate` has passed — the same definition
+   * computeTripStatus uses for TripStatus.COMPLETED — is excluded outright
+   * rather than merely labeled; an itinerary with no endDate (most
+   * AI-generated ones) or one still UPCOMING/ONGOING keeps showing. */
   async findPublicTrips(query: QueryPublicTripsDto): Promise<{
     data: PublicTripSummary[];
     meta: { total: number; page: number; limit: number; totalPages: number };
@@ -1167,6 +1172,9 @@ export class ItinerariesService {
         visibility: TripVisibility.PUBLIC,
       })
       .andWhere("itinerary.cancelledAt IS NULL")
+      .andWhere("(itinerary.endDate IS NULL OR itinerary.endDate >= :now)", {
+        now: new Date(),
+      })
       .orderBy("itinerary.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);

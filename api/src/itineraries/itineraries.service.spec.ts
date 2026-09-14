@@ -823,8 +823,10 @@ describe("ItinerariesService (collaboration)", () => {
   });
 
   describe("public trip discovery", () => {
-    it("queries only PUBLIC, non-cancelled trips", async () => {
+    it("queries only PUBLIC, non-cancelled, not-yet-completed trips", async () => {
+      const before = Date.now();
       await service.findPublicTrips({});
+      const after = Date.now();
       expect(publicTripsQueryBuilder.where).toHaveBeenCalledWith(
         "itinerary.visibility = :visibility",
         { visibility: TripVisibility.PUBLIC },
@@ -832,6 +834,19 @@ describe("ItinerariesService (collaboration)", () => {
       expect(publicTripsQueryBuilder.andWhere).toHaveBeenCalledWith(
         "itinerary.cancelledAt IS NULL",
       );
+      // There's nothing to "join" once a trip is over — this is the exact
+      // definition computeTripStatus uses for TripStatus.COMPLETED
+      // (endDate in the past), so a completed trip is excluded outright
+      // rather than merely labeled in the response.
+      const endDateCall = publicTripsQueryBuilder.andWhere.mock.calls.find(
+        (call: unknown[]) =>
+          call[0] ===
+          "(itinerary.endDate IS NULL OR itinerary.endDate >= :now)",
+      );
+      expect(endDateCall).toBeDefined();
+      const now = (endDateCall![1] as { now: Date }).now;
+      expect(now.getTime()).toBeGreaterThanOrEqual(before);
+      expect(now.getTime()).toBeLessThanOrEqual(after);
     });
 
     it("counts the admin themself alongside collaborators", async () => {
