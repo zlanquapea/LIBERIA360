@@ -1060,6 +1060,43 @@ describe("Phase 2 (e2e)", () => {
         .set("Cookie", userBToken)
         .expect(404);
     });
+
+    it("excludes a completed public trip from discovery but keeps an upcoming one", async () => {
+      const completed = await request(app.getHttpServer())
+        .post("/api/v1/itineraries")
+        .set("Cookie", userAToken)
+        .send({
+          title: "Already Over Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "public",
+          startDate: "2020-01-01",
+          endDate: "2020-01-02",
+          interests: [],
+          budgetBand: "moderate",
+        })
+        .expect(201);
+
+      const upcoming = await request(app.getHttpServer())
+        .post("/api/v1/itineraries")
+        .set("Cookie", userAToken)
+        .send({
+          title: "Still Ahead Trip",
+          destinationPlaceId: museumPlace.id,
+          visibility: "public",
+          startDate: "2099-01-01",
+          endDate: "2099-01-02",
+          interests: [],
+          budgetBand: "moderate",
+        })
+        .expect(201);
+
+      const publicTrips = await request(app.getHttpServer())
+        .get("/api/v1/itineraries/public")
+        .expect(200);
+      const ids = publicTrips.body.data.map((t: { id: string }) => t.id);
+      expect(ids).not.toContain(completed.body.id);
+      expect(ids).toContain(upcoming.body.id);
+    });
   });
 
   describe("Trip rename and delete", () => {
