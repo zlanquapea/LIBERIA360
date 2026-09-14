@@ -191,7 +191,7 @@ import { CategoryGrid } from '@/components/CategoryGrid';
 import { CountyGrid } from '@/components/CountyGrid';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { EventCarousel } from '@/components/EventCarousel';
-import { FeaturedDestinationCard } from '@/components/FeaturedDestinationCard';
+import { FeaturedPlacementsCarousel } from '@/components/FeaturedPlacementsCarousel';
 import { PublicTripCard } from '@/components/PublicTripCard';
 import { HeroBackground } from '@/components/HeroBackground';
 import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
@@ -418,15 +418,13 @@ export default async function Home() {
                 </Link>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {featuredPlacements.map((placement) => (
-                <FeaturedDestinationCard
-                  key={placement.id}
-                  place={placement.place}
-                  verificationStatus={businessVerificationByPlaceId.get(placement.place.id)}
-                />
-              ))}
-            </div>
+            <FeaturedPlacementsCarousel
+              placements={featuredPlacements.map((placement) => ({
+                id: placement.id,
+                place: placement.place,
+                verificationStatus: businessVerificationByPlaceId.get(placement.place.id),
+              }))}
+            />
           </section>
         )}
 
