@@ -229,10 +229,13 @@ function DirectVideoViewer({
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    setLoadError(false);
+    setLoaded(false);
     video.preload = preload;
     if (!active) {
       video.pause();
@@ -274,6 +277,20 @@ function DirectVideoViewer({
     setMuted(video.muted);
   }
 
+  function retryLoad() {
+    const video = videoRef.current;
+    if (!video) return;
+    setLoadError(false);
+    setLoaded(false);
+    video.load();
+    if (active) {
+      void video.play().then(
+        () => setPlaying(true),
+        () => setPlaying(false),
+      );
+    }
+  }
+
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-black">
       <video
@@ -289,6 +306,11 @@ function DirectVideoViewer({
         aria-label={`${post.creator.name}'s video post`}
         onClick={togglePlay}
         onLoadedData={() => setLoaded(true)}
+        onLoadedMetadata={() => setLoaded(true)}
+        onError={() => {
+          setLoadError(true);
+          setPlaying(false);
+        }}
         onCanPlay={() => {
           if (active && videoRef.current?.paused) {
             void videoRef.current.play().then(
@@ -304,10 +326,24 @@ function DirectVideoViewer({
         onPause={() => setPlaying(false)}
         className="h-full w-full object-contain"
       />
-      {!loaded && (
+      {!loaded && !loadError && (
         <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm" role="status">
           Loading video…
         </span>
+      )}
+      {loadError && (
+        <div className="absolute inset-x-6 top-1/2 flex -translate-y-1/2 flex-col items-center gap-3 text-center" role="alert">
+          <p className="rounded-full bg-black/65 px-4 py-2 text-xs font-semibold text-white">
+            This video could not be loaded.
+          </p>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-brand-950"
+          >
+            Try again
+          </button>
+        </div>
       )}
       {!playing && (
         <button
@@ -548,7 +584,7 @@ export function CreatorPostViewer({
                   <DirectVideoViewer
                     post={item}
                     active={isActive}
-                    preload="auto"
+                    preload={isActive ? "auto" : "metadata"}
                     onEnded={
                       isActive && currentIndex < playlist.length - 1
                         ? onNext
