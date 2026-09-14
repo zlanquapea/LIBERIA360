@@ -218,10 +218,12 @@ function DirectVideoViewer({
   post,
   active = true,
   preload = "auto",
+  onEnded,
 }: {
   post: CreatorPost;
   active?: boolean;
   preload?: "none" | "metadata" | "auto";
+  onEnded?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
@@ -280,7 +282,7 @@ function DirectVideoViewer({
         preload={preload}
         poster={creatorVideoPosterUrl(post.mediaUrl) ?? undefined}
         muted
-        loop
+        loop={false}
         playsInline
         autoPlay={active}
         controls={false}
@@ -294,6 +296,9 @@ function DirectVideoViewer({
               () => setPlaying(false),
             );
           }
+        }}
+        onEnded={() => {
+          if (active) onEnded?.();
         }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
@@ -544,6 +549,11 @@ export function CreatorPostViewer({
                     post={item}
                     active={isActive}
                     preload="auto"
+                    onEnded={
+                      isActive && currentIndex < playlist.length - 1
+                        ? onNext
+                        : undefined
+                    }
                   />
                 ) : (
                   <EmbedVideoViewer post={item} />
