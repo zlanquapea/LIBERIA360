@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { TouchEvent } from "react";
 import {
   BookmarkIcon,
@@ -215,7 +215,13 @@ function CreatorIdentity({ post }: { post: CreatorPost }) {
   );
 }
 
-function DirectVideoViewer({ post }: { post: CreatorPost }) {
+function DirectVideoViewer({
+  post,
+  active = true,
+}: {
+  post: CreatorPost;
+  active?: boolean;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -224,6 +230,12 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    if (!active) {
+      video.pause();
+      video.currentTime = 0;
+      setPlaying(false);
+      return;
+    }
     video.muted = true;
     video.play().then(
       () => setPlaying(true),
@@ -233,7 +245,7 @@ function DirectVideoViewer({ post }: { post: CreatorPost }) {
       video.pause();
       video.currentTime = 0;
     };
-  }, []);
+  }, [active]);
 
   function togglePlay() {
     const video = videoRef.current;
@@ -353,6 +365,7 @@ function EmbedVideoViewer({ post }: { post: CreatorPost }) {
 
 export function CreatorPostViewer({
   post,
+  videoPosts = [],
   mode,
   shareUrl,
   liked,
@@ -369,6 +382,7 @@ export function CreatorPostViewer({
   onNext,
 }: {
   post: CreatorPost;
+  videoPosts?: CreatorPost[];
   mode: "video" | "image";
   shareUrl: string;
   liked: boolean;
@@ -390,6 +404,44 @@ export function CreatorPostViewer({
   const [transition, setTransition] = useState<"next" | "previous">("next");
   const previousPostId = useRef(post.id);
   const pendingTransition = useRef<"next" | "previous">("next");
+  const reelStageRef = useRef<HTMLDivElement>(null);
+
+  const playlist = useMemo(
+    () => (videoPosts.length > 0 ? videoPosts : [post]),
+    [post, videoPosts],
+  );
+
+  useEffect(() => {
+    if (mode !== "video" || playlist.length < 2 || !reelStageRef.current) return;
+    const stage = reelStageRef.current;
+    const currentIndex = playlist.findIndex((item) => item.id === post.id);
+    if (currentIndex >= 0) {
+      stage.scrollTop = currentIndex * stage.clientHeight;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.7)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const visibleId = visible?.target.getAttribute("data-reel-post-id");
+        if (!visibleId || visibleId === post.id) return;
+        const currentIndex = playlist.findIndex((item) => item.id === post.id);
+        const visibleIndex = playlist.findIndex((item) => item.id === visibleId);
+        if (visibleIndex > currentIndex) {
+          pendingTransition.current = "next";
+          setTransition("next");
+          onNext?.();
+        } else if (visibleIndex >= 0 && visibleIndex < currentIndex) {
+          pendingTransition.current = "previous";
+          setTransition("previous");
+          onPrevious?.();
+        }
+      },
+      { root: stage, threshold: [0.7, 0.9, 1] },
+    );
+    stage.querySelectorAll<HTMLElement>("[data-reel-post-id]").forEach((slide) => observer.observe(slide));
+    return () => observer.disconnect();
+  }, [mode, onNext, onPrevious, playlist, post.id]);
 
   useEffect(() => {
     if (previousPostId.current !== post.id) {
@@ -522,32 +574,42 @@ export function CreatorPostViewer({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="creator-video-snap-stage relative min-h-0 flex-1 overflow-hidden" aria-live="polite">
-        {onPrevious && (
-          <button
-            type="button"
-            onClick={onPrevious}
-            aria-label="Previous video"
-            className="absolute left-1/2 top-4 z-20 hidden -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/65 sm:block"
+      <div className="creator-video-reel relative min-h-0 flex-1 overflow-hidden">
+        <div ref={reelStageRef} className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain" aria-live="polite">
+        {playlist.map((item) => (
+          <div
+            key={item.id}
+            data-reel-post-id={item.id}
+            className={`creator-video-snap-slide creator-video-reel-slide ${item.id === post.id ? `creator-video-slide-${transition}` : ""}`}
           >
-            Previous video
-          </button>
-        )}
-        {onNext && (
-          <button
-            type="button"
-            onClick={onNext}
-            aria-label="Next video"
-            className="absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/65 sm:block"
-          >
-            Next video
-          </button>
-        )}
-        <div key={post.id} className={`creator-video-snap-slide creator-video-slide-${transition}`}>
-          {isDirectVideoFile(post.mediaUrl) ? (
-            <DirectVideoViewer post={post} />
-          ) : (
-            <EmbedVideoViewer post={post} />
+            {isDirectVideoFile(item.mediaUrl) ? (
+              <DirectVideoViewer post={item} active={item.id === post.id} />
+            ) : (
+              <EmbedVideoViewer post={item} />
+            )}
+          </div>
+        ))}
+        </div>
+        <div className="pointer-events-none absolute inset-0">
+          {onPrevious && (
+            <button
+              type="button"
+              onClick={onPrevious}
+              aria-label="Previous video"
+              className="pointer-events-auto absolute left-1/2 top-4 z-20 hidden -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/65 sm:block"
+            >
+              Previous video
+            </button>
+          )}
+          {onNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              aria-label="Next video"
+              className="pointer-events-auto absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/65 sm:block"
+            >
+              Next video
+            </button>
           )}
         </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent px-4 pb-12 pt-[calc(0.75rem+env(safe-area-inset-top))]">

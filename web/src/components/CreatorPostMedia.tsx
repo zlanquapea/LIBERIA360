@@ -88,6 +88,7 @@ export function CreatorPostMedia({
         createPortal(
           <CreatorPostViewer
             post={activePost}
+            videoPosts={videoPosts}
             mode={mode}
             shareUrl={
               typeof window !== "undefined"
