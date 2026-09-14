@@ -218,9 +218,11 @@ function CreatorIdentity({ post }: { post: CreatorPost }) {
 function DirectVideoViewer({
   post,
   active = true,
+  preload = "auto",
 }: {
   post: CreatorPost;
   active?: boolean;
+  preload?: "none" | "metadata" | "auto";
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
@@ -230,13 +232,16 @@ function DirectVideoViewer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    video.preload = preload;
     if (!active) {
       video.pause();
       video.currentTime = 0;
       setPlaying(false);
+      if (preload !== "none") video.load();
       return;
     }
     video.muted = true;
+    video.load();
     video.play().then(
       () => setPlaying(true),
       () => setPlaying(false),
@@ -245,7 +250,7 @@ function DirectVideoViewer({
       video.pause();
       video.currentTime = 0;
     };
-  }, [active]);
+  }, [active, preload]);
 
   function togglePlay() {
     const video = videoRef.current;
@@ -273,15 +278,24 @@ function DirectVideoViewer({
       <video
         ref={videoRef}
         src={post.mediaUrl}
-        preload="auto"
+        preload={preload}
+        poster={creatorVideoPosterUrl(post.mediaUrl) ?? undefined}
         muted
         loop
         playsInline
-        autoPlay
+        autoPlay={active}
         controls={false}
         aria-label={`${post.creator.name}'s video post`}
         onClick={togglePlay}
         onLoadedData={() => setLoaded(true)}
+        onCanPlay={() => {
+          if (active && videoRef.current?.paused) {
+            void videoRef.current.play().then(
+              () => setPlaying(true),
+              () => setPlaying(false),
+            );
+          }
+        }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         className="h-full w-full object-contain"
@@ -577,17 +591,29 @@ export function CreatorPostViewer({
       <div className="creator-video-reel relative min-h-0 flex-1 overflow-hidden">
         <div ref={reelStageRef} className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain" aria-live="polite">
         {playlist.map((item) => (
-          <div
-            key={item.id}
-            data-reel-post-id={item.id}
-            className={`creator-video-snap-slide creator-video-reel-slide ${item.id === post.id ? `creator-video-slide-${transition}` : ""}`}
-          >
-            {isDirectVideoFile(item.mediaUrl) ? (
-              <DirectVideoViewer post={item} active={item.id === post.id} />
-            ) : (
-              <EmbedVideoViewer post={item} />
-            )}
-          </div>
+          (() => {
+            const itemIndex = playlist.findIndex((entry) => entry.id === item.id);
+            const currentIndex = playlist.findIndex((entry) => entry.id === post.id);
+            const isActive = item.id === post.id;
+            const isAdjacent = Math.abs(itemIndex - currentIndex) === 1;
+            return (
+              <div
+                key={item.id}
+                data-reel-post-id={item.id}
+                className={`creator-video-snap-slide creator-video-reel-slide ${isActive ? `creator-video-slide-${transition}` : ""}`}
+              >
+                {isDirectVideoFile(item.mediaUrl) ? (
+                  <DirectVideoViewer
+                    post={item}
+                    active={isActive}
+                    preload={isActive || isAdjacent ? "auto" : "none"}
+                  />
+                ) : (
+                  <EmbedVideoViewer post={item} />
+                )}
+              </div>
+            );
+          })()
         ))}
         </div>
         <div className="pointer-events-none absolute inset-0">
