@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { TouchEvent } from "react";
 import {
   BookmarkIcon,
   ChatBubbleOvalLeftIcon,
@@ -412,57 +411,25 @@ export function CreatorPostViewer({
   onPrevious?: () => void;
   onNext?: () => void;
 }) {
-  const touchStartY = useRef<number | null>(null);
-  const touchDeltaY = useRef(0);
-  const touchStartX = useRef<number | null>(null);
-  const [transition, setTransition] = useState<"next" | "previous">("next");
-  const previousPostId = useRef(post.id);
-  const pendingTransition = useRef<"next" | "previous">("next");
+  const [activeIndex, setActiveIndex] = useState(0);
   const reelStageRef = useRef<HTMLDivElement>(null);
+  const navigationLockRef = useRef(false);
 
   const playlist = useMemo(
     () => (videoPosts.length > 0 ? videoPosts : [post]),
     [post, videoPosts],
   );
+  const currentIndex = Math.max(0, playlist.findIndex((item) => item.id === post.id));
+  const windowStart = Math.max(0, Math.min(currentIndex - 1, playlist.length - 3));
+  const reelWindow = playlist.slice(windowStart, windowStart + 3);
 
   useEffect(() => {
-    if (mode !== "video" || playlist.length < 2 || !reelStageRef.current) return;
-    const stage = reelStageRef.current;
-    const currentIndex = playlist.findIndex((item) => item.id === post.id);
-    if (currentIndex >= 0) {
-      stage.scrollTop = currentIndex * stage.clientHeight;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.7)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        const visibleId = visible?.target.getAttribute("data-reel-post-id");
-        if (!visibleId || visibleId === post.id) return;
-        const currentIndex = playlist.findIndex((item) => item.id === post.id);
-        const visibleIndex = playlist.findIndex((item) => item.id === visibleId);
-        if (visibleIndex > currentIndex) {
-          pendingTransition.current = "next";
-          setTransition("next");
-          onNext?.();
-        } else if (visibleIndex >= 0 && visibleIndex < currentIndex) {
-          pendingTransition.current = "previous";
-          setTransition("previous");
-          onPrevious?.();
-        }
-      },
-      { root: stage, threshold: [0.7, 0.9, 1] },
-    );
-    stage.querySelectorAll<HTMLElement>("[data-reel-post-id]").forEach((slide) => observer.observe(slide));
-    return () => observer.disconnect();
-  }, [mode, onNext, onPrevious, playlist, post.id]);
-
-  useEffect(() => {
-    if (previousPostId.current !== post.id) {
-      setTransition(pendingTransition.current);
-      previousPostId.current = post.id;
-    }
-  }, [post.id]);
+    if (mode !== "video" || !reelStageRef.current) return;
+    const localIndex = Math.max(0, currentIndex - windowStart);
+    setActiveIndex(localIndex);
+    reelStageRef.current.scrollTop = reelStageRef.current.clientHeight * localIndex;
+    navigationLockRef.current = false;
+  }, [currentIndex, mode, post.id, reelWindow.length, windowStart]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -471,14 +438,10 @@ export function CreatorPostViewer({
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowUp" || event.key === "PageUp") {
         event.preventDefault();
-        pendingTransition.current = "previous";
-        setTransition("previous");
         onPrevious?.();
       }
       if (event.key === "ArrowDown" || event.key === "PageDown") {
         event.preventDefault();
-        pendingTransition.current = "next";
-        setTransition("next");
         onNext?.();
       }
     }
@@ -489,38 +452,18 @@ export function CreatorPostViewer({
     };
   }, [onClose, onNext, onPrevious]);
 
-  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
-    touchStartY.current = event.touches[0]?.clientY ?? null;
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-    touchDeltaY.current = 0;
-  }
-
-  function handleTouchMove(event: TouchEvent<HTMLDivElement>) {
-    if (touchStartY.current === null) return;
-    touchDeltaY.current =
-      (event.touches[0]?.clientY ?? touchStartY.current) - touchStartY.current;
-    const deltaX =
-      (event.touches[0]?.clientX ?? touchStartX.current ?? 0) -
-      (touchStartX.current ?? 0);
-    if (Math.abs(touchDeltaY.current) > 24 || Math.abs(deltaX) > 12) {
-      event.preventDefault();
-    }
-  }
-
-  function handleTouchEnd() {
-    const delta = touchDeltaY.current;
-    touchStartY.current = null;
-    touchStartX.current = null;
-    touchDeltaY.current = 0;
-    if (delta <= -56) {
-      pendingTransition.current = "next";
-      setTransition("next");
-      onNext?.();
-    }
-    if (delta >= 56) {
-      pendingTransition.current = "previous";
-      setTransition("previous");
+  function handleReelScroll() {
+    const stage = reelStageRef.current;
+    if (!stage || reelWindow.length < 2 || navigationLockRef.current) return;
+    const nextVisibleIndex = Math.round(stage.scrollTop / stage.clientHeight);
+    if (nextVisibleIndex === activeIndex) return;
+    setActiveIndex(nextVisibleIndex);
+    if (nextVisibleIndex === 0 && currentIndex > 0) {
+      navigationLockRef.current = true;
       onPrevious?.();
+    } else if (nextVisibleIndex === reelWindow.length - 1 && currentIndex < playlist.length - 1) {
+      navigationLockRef.current = true;
+      onNext?.();
     }
   }
 
@@ -584,29 +527,23 @@ export function CreatorPostViewer({
       aria-modal="true"
       aria-label={`${post.creator.name}'s video post`}
       className="creator-video-viewer fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col overscroll-contain bg-black text-white"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       <div className="creator-video-reel relative min-h-0 flex-1 overflow-hidden">
-        <div ref={reelStageRef} className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain" aria-live="polite">
-        {playlist.map((item) => (
+        <div ref={reelStageRef} onScroll={handleReelScroll} className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain" aria-live="polite">
+        {reelWindow.map((item) => (
           (() => {
-            const itemIndex = playlist.findIndex((entry) => entry.id === item.id);
-            const currentIndex = playlist.findIndex((entry) => entry.id === post.id);
             const isActive = item.id === post.id;
-            const isAdjacent = Math.abs(itemIndex - currentIndex) === 1;
             return (
               <div
                 key={item.id}
                 data-reel-post-id={item.id}
-                className={`creator-video-snap-slide creator-video-reel-slide ${isActive ? `creator-video-slide-${transition}` : ""}`}
+                className="creator-video-snap-slide creator-video-reel-slide"
               >
                 {isDirectVideoFile(item.mediaUrl) ? (
                   <DirectVideoViewer
                     post={item}
                     active={isActive}
-                    preload={isActive || isAdjacent ? "auto" : "none"}
+                    preload="auto"
                   />
                 ) : (
                   <EmbedVideoViewer post={item} />
