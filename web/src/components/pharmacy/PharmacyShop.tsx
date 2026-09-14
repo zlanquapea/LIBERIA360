@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { SafeImage } from "@/components/SafeImage";
+import { SuccessCheck } from "@/components/SuccessCheck";
 import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import type { Pharmacy, PharmacyProduct } from "@/lib/pharmacy-api";
 import {
@@ -487,9 +488,9 @@ export function PharmacyShop({
           {placing ? "Placing order…" : `Place order · L$${total.toFixed(2)}`}
         </button>
         {notice && (
-          <p
+          <div
             role="status"
-            className={`mt-3 rounded-xl border p-3 text-sm ${
+            className={`mt-3 flex items-start gap-3 rounded-xl border p-3 text-sm ${
               placing
                 ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300"
                 : orderPlaced
@@ -497,19 +498,28 @@ export function PharmacyShop({
                   : "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
             }`}
           >
-            {notice}
+            {/* The one moment on this whole page worth a beat of its own —
+                everything up to here has been filling a cart; this is the
+                payoff. See SuccessCheck's own doc comment for why it's a
+                one-shot checkmark draw rather than anything busier. */}
             {orderPlaced && (
-              <>
-                {" "}
-                <Link
-                  href="/account/my-orders"
-                  className="font-semibold underline"
-                >
-                  Track your order →
-                </Link>
-              </>
+              <SuccessCheck className="mt-0.5 h-6 w-6 shrink-0 text-emerald-600 dark:text-emerald-400" />
             )}
-          </p>
+            <p>
+              {notice}
+              {orderPlaced && (
+                <>
+                  {" "}
+                  <Link
+                    href="/account/my-orders"
+                    className="font-semibold underline"
+                  >
+                    Track your order →
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
         )}
         <p className="mt-4 text-xs text-slate-500">
           Payment provider checkout will be enabled later. Raw card details are

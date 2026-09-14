@@ -60,10 +60,29 @@ const config: Config = {
           // they existed; none of them did, so that card's tint silently
           // never rendered in either theme.
           50: '#fef6e3',
+          // 100/200/700/800/900 added after a follow-up audit found the
+          // same "used as if it existed, never defined" bug still live in
+          // five more places — PlaceCard's rating badge (`bg-gold-100`/
+          // `text-gold-800`/`dark:bg-gold-900`, rendered on every place
+          // card app-wide), NearMeClient's callout (`text-gold-900`/
+          // `text-gold-800`, `dark:border-gold-700`), and the admin
+          // layout's Super Admin badge (`text-gold-700` in light mode).
+          // Interpolated between the existing anchors (50->300 for
+          // 100/200, 600->950 for 700/800/900) rather than picked by eye,
+          // and contrast-checked against the exact surfaces above:
+          // gold-800-on-gold-100 6.0:1, gold-900-on-gold-50 10.4:1,
+          // gold-800-on-gold-50 6.5:1, gold-700-on-gold-50 4.8:1 — all
+          // clear WCAG AA's 4.5:1 floor for the small/bold text each is
+          // actually used as.
+          100: '#feedc5',
+          200: '#ffe5a8',
           300: '#ffdc8a',
           400: '#ffc63d',
           500: '#fbb308',
           600: '#d99400',
+          700: '#936401',
+          800: '#795201',
+          900: '#513602',
           950: '#2b1c02',
         },
         // Full LIBERIA360 logo palette for the responsive product UI. Keep
