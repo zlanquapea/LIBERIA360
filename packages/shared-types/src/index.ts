@@ -1658,6 +1658,15 @@ export interface PlatformKpis {
   bookingsByStatus: Record<BookingStatus, number>;
 }
 
+// api/src/users/users.controller.ts's getStats() — GET /users/stats, public
+// (no guard). A much smaller, visitor-facing cousin of PlatformKpis: just
+// the one "join N travelers" headline number for the homepage hero, with
+// soft-deleted accounts excluded (see UsersService.countActive's doc
+// comment for why that differs from PlatformKpis.totalUsers).
+export interface PlatformStats {
+  totalUsers: number;
+}
+
 // api/src/notifications/entities/notification.entity.ts — the in-app
 // notification center, shared by regular users and admins alike (see that
 // file's doc comment for why there's no separate "admin notification"
