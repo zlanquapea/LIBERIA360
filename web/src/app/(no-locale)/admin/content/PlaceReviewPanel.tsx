@@ -42,10 +42,11 @@ function formatDateTime(iso: string | null): string | null {
 // see exactly what a submitter provided — every photo, the full
 // description, contact info, location — before deciding, not just flip a
 // verify/unverify switch (that's the separate, pre-existing trust-badge
-// workflow — see VerificationBadge). This sits above the regular
-// PlaceEditForm on the admin detail view for any place that either isn't
-// APPROVED yet or was self-submitted, so a reviewer always has this full
-// picture before the plain edit form underneath it.
+// workflow — see VerificationBadge). Sits above the regular PlaceEditForm
+// on every place's admin detail view, not just a pending/self-submitted
+// one: an already-approved, admin-authored place has nothing to *review*,
+// but still needs the Suspend/Reinstate action below to come off (or back
+// onto) the public site without a super admin having to delete it outright.
 export function PlaceReviewPanel({
   token,
   place,
@@ -283,7 +284,9 @@ export function PlaceReviewPanel({
           </div>
         )}
 
-        {place.reviewStatus === 'approved' && place.ownerUserId && (
+        {/* Not gated on place.ownerUserId — an admin-authored place needs
+            to be suspendable too, not just a self-submitted one. */}
+        {place.reviewStatus === 'approved' && (
           <button
             type="button"
             disabled={submitting !== null}

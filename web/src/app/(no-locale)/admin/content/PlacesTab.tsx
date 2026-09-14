@@ -255,26 +255,22 @@ function PlaceDetail({
     return <LoadingState />;
   }
 
-  // A pending/rejected/suspended place — or any place a user submitted
-  // themselves, even once approved — gets the full review panel above the
-  // plain edit form below it, so a reviewer always sees the "what was
-  // submitted" context, not just raw editable fields. An admin-authored
-  // place (ownerUserId null, always APPROVED) never shows it — there's
-  // nothing to review.
-  const showReviewPanel = place.reviewStatus !== 'approved' || place.ownerUserId !== null;
-
   return (
     <div className="flex flex-col gap-6">
-      {showReviewPanel && (
-        <PlaceReviewPanel
-          token={token}
-          place={place}
-          onUpdated={(updated) => {
-            setPlace(updated);
-            onChanged();
-          }}
-        />
-      )}
+      {/* Every place gets this panel, not just a pending/rejected/
+          self-submitted one — an admin-authored, already-approved place
+          (ownerUserId null) has nothing to *review*, but it still needs the
+          same Suspend/Reinstate control every other place gets, so a super
+          admin has a way to pull a place off the public site without
+          deleting it outright. */}
+      <PlaceReviewPanel
+        token={token}
+        place={place}
+        onUpdated={(updated) => {
+          setPlace(updated);
+          onChanged();
+        }}
+      />
       <PlaceEditForm
         token={token}
         place={place}
@@ -585,7 +581,23 @@ function PlaceEditForm({
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Place details</h3>
         {isSuperAdmin && (
-          <DeleteButton label="Delete place" onDelete={() => deletePlace(token, place.id)} onDeleted={onDeleted} />
+          <div className="flex flex-col items-end gap-1">
+            <DeleteButton label="Delete place" onDelete={() => deletePlace(token, place.id)} onDeleted={onDeleted} />
+            {/* Deleting a place with a linked business, or with events held
+                there, is blocked server-side on purpose (see
+                AdminContentService.deletePlace) rather than silently taking
+                either down with it — this points straight at where to
+                actually resolve that instead of leaving the admin to guess
+                from a bare error message. Want it gone from the public site
+                without deleting it? Use Suspend listing above instead. */}
+            <p className="max-w-[16rem] text-right text-xs text-slate-400 dark:text-slate-500">
+              Blocked by a linked business?{' '}
+              <a href="#place-business-editor" className="underline hover:text-brand-700 dark:hover:text-brand-300">
+                Remove it below
+              </a>
+              . Blocked by events here? Reassign or delete them from the Events tab first.
+            </p>
+          </div>
         )}
       </div>
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
@@ -901,7 +913,16 @@ function BusinessEditor({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+    // id target for the "Delete place" flow's jump-link below — deleting a
+    // place with a linked business is blocked server-side (see
+    // AdminContentService.deletePlace) specifically so this section is
+    // where that gets resolved, not a place a super admin has to go hunt
+    // for.
+    <form
+      id="place-business-editor"
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
+    >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
           {business ? 'Business listing' : 'Seed a business listing (unclaimed until an owner claims it)'}
