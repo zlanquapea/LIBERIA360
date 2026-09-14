@@ -720,6 +720,7 @@ export function CreatorPostViewerVideoPreview({
             src={post.mediaUrl}
             poster={poster}
             label={`Open ${post.creator.name}'s video post`}
+            autoplayOnView
           />
       ) : poster ? (
         // eslint-disable-next-line @next/next/no-img-element
