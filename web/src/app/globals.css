@@ -168,6 +168,40 @@ body {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 transition duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:text-brand-800 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 active:translate-y-0 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-brand-500 dark:hover:text-white;
   }
 
+  /* Aliases for the pharmacy marketplace's markup (PharmacyShop, the
+     pharmacy dashboard's every tab, the admin pharmacies queue) — built
+     against `btn-primary`/`btn-secondary`/`input`/`error-state` instead of
+     this file's actual `button-primary`/`button-secondary` names, and a
+     dedicated boxed error style that never existed at all. None of those
+     four were ever defined, so every button, form control, and error
+     message across that entire feature has been rendering with zero
+     button/input chrome — plain unstyled text where a pill button
+     belonged — since the day it shipped. Aliasing here fixes every one of
+     those call sites at once, without rewriting markup that's otherwise
+     correct, and keeps the two names from drifting apart again since one
+     is now defined purely in terms of the other. */
+  .btn-primary {
+    @apply button-primary;
+  }
+
+  .btn-secondary {
+    @apply button-secondary;
+  }
+
+  .input {
+    /* Colors intentionally omitted — every text input already gets a
+       theme-aware border/background/min-height from the `:where(input,
+       select, textarea)` base rule above regardless of class, so
+       hardcoding a color here would just risk this one feature's inputs
+       drifting out of sync with that shared baseline. This adds only the
+       geometry and focus treatment the base rule doesn't set. */
+    @apply w-full rounded-xl px-3.5 py-2.5 text-sm shadow-sm transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 dark:focus-visible:ring-brand-900;
+  }
+
+  .error-state {
+    @apply rounded-xl border border-flag-300 bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:border-flag-800 dark:text-flag-300;
+  }
+
   .skeleton {
     @apply relative overflow-hidden bg-slate-200 dark:bg-slate-800;
   }
@@ -266,6 +300,21 @@ html.dark {
   .brand-loader {
     opacity: 1;
     transform: none;
+  }
+
+  /* SuccessCheck (components/SuccessCheck.tsx) — the checkmark still shows
+     (a caller relies on it being there, just not the two beats it takes to
+     draw), it just appears fully drawn instantly instead of animating in;
+     the halo bloom is dropped entirely rather than snapped to a visible
+     resting state, since its whole purpose is the pulse itself. */
+  .success-check__ring,
+  .success-check__tick {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .success-check__halo {
+    animation: none !important;
+    opacity: 0 !important;
   }
 }
 
@@ -625,6 +674,66 @@ html[data-splash-seen='1'] .splash-screen {
 @keyframes brand-loader-spin-reverse {
   to {
     transform: rotate(-360deg);
+  }
+}
+
+/* SuccessCheck (src/components/SuccessCheck.tsx) — the "this actually
+   worked" moment for a completed action (an order placed, a checkout
+   finished) that deserves a beat of its own rather than a line of green
+   text appearing with no ceremony. Same restrained register as
+   BrandLoader above: nothing spins or bounces, just a checkmark stroke
+   that draws itself in once and a soft halo that breathes once behind it,
+   then everything settles at rest. `pathLength="1"` on both SVG paths
+   (set in the component) lets stroke-dashoffset animate from 1 to 0 here
+   regardless of each path's actual geometry. */
+.success-check {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.success-check__halo {
+  position: absolute;
+  inset: -30%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(95 187 66 / 0.4), transparent 70%);
+  filter: blur(10px);
+  animation: success-halo-bloom 900ms var(--ease-product) both;
+}
+.success-check__ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: success-draw 480ms var(--ease-product) both;
+}
+.success-check__tick {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: success-draw 320ms var(--ease-product) 420ms both;
+}
+@keyframes success-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes success-halo-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
   }
 }
 

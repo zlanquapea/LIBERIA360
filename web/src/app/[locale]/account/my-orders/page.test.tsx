@@ -130,8 +130,12 @@ describe("My Orders — unified food + pharmacy order history", () => {
         comment: undefined,
       }),
     );
-    expect(await screen.findByText(/thanks for your feedback/i)).toBeInTheDocument();
+    const thanks = await screen.findByText(/thanks for your feedback/i);
+    expect(thanks).toBeInTheDocument();
     expect(screen.queryByText(/how was this order/i)).not.toBeInTheDocument();
+    // The checkmark celebration is for the submission that just happened —
+    // see PharmacyFeedbackPrompt's own `justSubmitted` doc comment.
+    expect(thanks.closest("div")?.parentElement?.querySelector(".success-check")).toBeInTheDocument();
   });
 
   it("never re-prompts for feedback once an order already has some, but still offers the receipt", async () => {
@@ -145,9 +149,15 @@ describe("My Orders — unified food + pharmacy order history", () => {
 
     renderWithMessages(<MyOrdersPage />);
 
-    expect(await screen.findByText(/thanks for your feedback/i)).toBeInTheDocument();
+    const thanks = await screen.findByText(/thanks for your feedback/i);
+    expect(thanks).toBeInTheDocument();
     expect(screen.queryByText(/how was this order/i)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /download receipt/i })).toBeInTheDocument();
+    // Feedback that already existed when this order first loaded (not one
+    // just submitted in this session) never gets the checkmark celebration
+    // — it would replay on every visit otherwise, for a rating given days
+    // ago.
+    expect(thanks.closest("div")?.parentElement?.querySelector(".success-check")).not.toBeInTheDocument();
   });
 
   it("still lets a food order be cancelled, unaffected by pharmacy orders sharing the page", async () => {

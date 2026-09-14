@@ -12,6 +12,7 @@ import {
 import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import { BrandLoader } from '@/components/BrandLoader';
+import { SuccessCheck } from '@/components/SuccessCheck';
 import FoodOrderMessageThread from '@/components/FoodOrderMessageThread';
 import { cancelFoodOrder, getMyFoodOrders } from '@/lib/food-orders-api';
 import { formatCost, formatFoodOrderStatus } from '@/lib/format';
@@ -169,26 +170,37 @@ function PharmacyFeedbackPrompt({
   const [rating, setRating] = useState(5),
     [comment, setComment] = useState(''),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    // Only true for the request this component instance itself just made —
+    // not for feedback that already existed when this order first loaded
+    // (e.g. revisiting the page days later). The checkmark below is a
+    // one-time "that worked" moment for the action just taken, not
+    // something that should replay every time an old rating is displayed.
+    [justSubmitted, setJustSubmitted] = useState(false);
 
   if (order.feedback) {
     return (
-      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-800/50">
-        <p className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-200">
-          Thanks for your feedback
-          <span className="ml-1 flex items-center gap-0.5">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <StarIcon
-                key={i}
-                aria-hidden
-                className={`h-4 w-4 ${i < order.feedback!.rating ? 'text-gold-500' : 'text-slate-300 dark:text-slate-700'}`}
-              />
-            ))}
-          </span>
-        </p>
-        {order.feedback.comment && (
-          <p className="mt-1 text-slate-600 dark:text-slate-300">&ldquo;{order.feedback.comment}&rdquo;</p>
+      <div className="mt-3 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-800/50">
+        {justSubmitted && (
+          <SuccessCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
         )}
+        <div>
+          <p className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-200">
+            Thanks for your feedback
+            <span className="ml-1 flex items-center gap-0.5">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <StarIcon
+                  key={i}
+                  aria-hidden
+                  className={`h-4 w-4 ${i < order.feedback!.rating ? 'text-gold-500' : 'text-slate-300 dark:text-slate-700'}`}
+                />
+              ))}
+            </span>
+          </p>
+          {order.feedback.comment && (
+            <p className="mt-1 text-slate-600 dark:text-slate-300">&ldquo;{order.feedback.comment}&rdquo;</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -201,6 +213,7 @@ function PharmacyFeedbackPrompt({
         rating,
         comment: comment.trim() || undefined,
       });
+      setJustSubmitted(true);
       onSubmitted(saved);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not submit feedback.');
