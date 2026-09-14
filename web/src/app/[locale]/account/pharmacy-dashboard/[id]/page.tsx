@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { usePharmacyDashboard } from '@/components/PharmacyDashboardContext';
 import { pharmacyDashboardHref } from '@/lib/pharmacy-dashboard-nav';
+import { formatCompactCurrency, formatCompactNumber } from '@/lib/format';
 
 // The dashboard's landing tab — an at-a-glance summary plus one-click
 // links into every other section, so an owner never has to guess where
@@ -57,25 +58,29 @@ export default function PharmacyDashboardOverview() {
         <StatCard
           icon={ShoppingBagIcon}
           label="Total orders"
-          value={stats?.totalOrders ?? null}
+          value={stats ? formatCompactNumber(stats.totalOrders) : null}
           href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
         <StatCard
           icon={CheckCircleIcon}
           label="Completed"
-          value={stats?.completedOrders ?? null}
+          value={stats ? formatCompactNumber(stats.completedOrders) : null}
           href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
         <StatCard
           icon={ClockIcon}
           label="Pending / in review"
-          value={stats?.pendingOrders ?? null}
+          value={stats ? formatCompactNumber(stats.pendingOrders) : null}
           href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
         <StatCard
           icon={BanknotesIcon}
           label="Revenue"
-          value={stats ? `L$${stats.revenue.toFixed(2)}` : null}
+          // formatCompactCurrency, not a plain toFixed(2) — a busy pharmacy's
+          // revenue crossing 1000 used to overflow this tile's fixed width
+          // (e.g. "L$1000.00"); above that threshold this abbreviates to
+          // "L$1k"/"L$1.2k" instead, matching the counts above.
+          value={stats ? `L$${formatCompactCurrency(stats.revenue)}` : null}
           href={pharmacyDashboardHref(pharmacy.id, 'orders')}
         />
       </div>
@@ -128,8 +133,10 @@ function StatCard({
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
         <Icon aria-hidden className="h-5 w-5" />
       </span>
-      <span>
-        <span className="block text-2xl font-bold text-slate-950 dark:text-slate-50">{value ?? '—'}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-2xl font-bold text-slate-950 dark:text-slate-50">
+          {value ?? '—'}
+        </span>
         <span className="block text-sm text-slate-500 dark:text-slate-400">{label}</span>
       </span>
     </Link>

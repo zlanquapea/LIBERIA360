@@ -5,6 +5,8 @@ import {
   formatBudgetBand,
   formatBusinessReviewStatus,
   formatBusinessType,
+  formatCompactCurrency,
+  formatCompactNumber,
   formatCost,
   formatCreatorCategory,
   formatDistance,
@@ -104,6 +106,44 @@ describe('formatCost', () => {
     // A field the backend omitted from a JSON response (rather than
     // sending an explicit null) comes through as `undefined` at runtime.
     expect(formatCost(undefined)).toBe('Not listed');
+  });
+});
+
+describe('formatCompactNumber', () => {
+  it('leaves anything below 1000 unabbreviated', () => {
+    expect(formatCompactNumber(0)).toBe('0');
+    expect(formatCompactNumber(999)).toBe('999');
+  });
+
+  it('abbreviates thousands, dropping a whole-number remainder', () => {
+    expect(formatCompactNumber(1000)).toBe('1k');
+    expect(formatCompactNumber(2000)).toBe('2k');
+  });
+
+  it('keeps one decimal place when the remainder needs only one', () => {
+    expect(formatCompactNumber(1200)).toBe('1.2k');
+  });
+
+  it('keeps two decimal places when the remainder needs both', () => {
+    expect(formatCompactNumber(1050)).toBe('1.05k');
+  });
+
+  it('abbreviates millions and billions the same way', () => {
+    expect(formatCompactNumber(2_500_000)).toBe('2.5m');
+    expect(formatCompactNumber(1_000_000_000)).toBe('1b');
+  });
+});
+
+describe('formatCompactCurrency', () => {
+  it('keeps exact cents below 1000', () => {
+    expect(formatCompactCurrency(450)).toBe('450.00');
+    expect(formatCompactCurrency(12.5)).toBe('12.50');
+  });
+
+  it('abbreviates at 1000 and above, same as formatCompactNumber', () => {
+    expect(formatCompactCurrency(1000)).toBe('1k');
+    expect(formatCompactCurrency(1200)).toBe('1.2k');
+    expect(formatCompactCurrency(1050)).toBe('1.05k');
   });
 });
 

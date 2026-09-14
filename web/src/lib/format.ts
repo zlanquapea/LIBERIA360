@@ -230,6 +230,38 @@ export function formatCost(amount: number | null | undefined): string {
   return `US$${amount.toFixed(2)}`;
 }
 
+// Abbreviates a large number for a fixed-width UI spot (a stat tile, a
+// dashboard card) where a full value like "1000.00" would overflow its
+// box — 1000 -> "1k", 1200 -> "1.2k", 1050 -> "1.05k", 2_500_000 -> "2.5m".
+// Below 1000 there's nothing worth abbreviating, so the plain number
+// passes through unchanged. Up to 2 decimal places, with trailing zeros
+// (and a now-bare trailing ".") trimmed — toFixed(2) always produces
+// exactly two digits after the point, which "1k" and "1.2k" don't want.
+export function formatCompactNumber(n: number): string {
+  const abs = Math.abs(n);
+  const units: Array<[number, string]> = [
+    [1_000_000_000, 'b'],
+    [1_000_000, 'm'],
+    [1_000, 'k'],
+  ];
+  for (const [threshold, suffix] of units) {
+    if (abs >= threshold) {
+      const value = (n / threshold).toFixed(2).replace(/\.?0+$/, '');
+      return `${value}${suffix}`;
+    }
+  }
+  return String(n);
+}
+
+// Same compact notation as formatCompactNumber above, but for a currency
+// amount under 1000 keeps the exact cents (e.g. "450.00") instead of
+// dropping them — only the magnitude at 1000 or above gets abbreviated,
+// where the cents wouldn't be legible in a compact tile anyway.
+export function formatCompactCurrency(amount: number): string {
+  if (Math.abs(amount) < 1000) return amount.toFixed(2);
+  return formatCompactNumber(amount);
+}
+
 export function formatRating(rating: number, reviewCount: number): string {
   if (reviewCount === 0) return 'Not yet rated';
   return `${rating.toFixed(1)} (${reviewCount} review${reviewCount === 1 ? '' : 's'})`;
