@@ -18,6 +18,9 @@ export function CreatorVideoThumbnail({
   const [ready, setReady] = useState(Boolean(poster));
   const [playing, setPlaying] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [slowConnection, setSlowConnection] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const isVisibleRef = useRef(false);
 
   useEffect(() => {
@@ -29,9 +32,26 @@ export function CreatorVideoThumbnail({
   }, []);
 
   useEffect(() => {
+    const connection = (
+      navigator as Navigator & {
+        connection?: { effectiveType?: string; saveData?: boolean };
+      }
+    ).connection;
+    setSlowConnection(
+      Boolean(
+        connection?.saveData ||
+          connection?.effectiveType === "slow-2g" ||
+          connection?.effectiveType === "2g",
+      ),
+    );
+  }, []);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const revealFallback = window.setTimeout(() => setReady(true), 800);
+    setTimedOut(false);
+    setLoadError(false);
+    const slowPreviewTimer = window.setTimeout(() => setTimedOut(true), 3500);
 
     const showFirstFrame = () => setReady(true);
     const seekToOpeningFrame = () => {
@@ -49,12 +69,12 @@ export function CreatorVideoThumbnail({
     video.addEventListener("loadedmetadata", seekToOpeningFrame);
     video.addEventListener("seeked", showFirstFrame);
     return () => {
-      window.clearTimeout(revealFallback);
+      window.clearTimeout(slowPreviewTimer);
       video.removeEventListener("loadeddata", showFirstFrame);
       video.removeEventListener("loadedmetadata", seekToOpeningFrame);
       video.removeEventListener("seeked", showFirstFrame);
     };
-  }, [poster]);
+  }, [poster, src]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -111,6 +131,18 @@ export function CreatorVideoThumbnail({
     );
   };
 
+  const retryLoad = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    setLoadError(false);
+    setTimedOut(false);
+    setReady(Boolean(poster));
+    video.load();
+    if (autoplayOnView && isVisibleRef.current && !reducedMotion) {
+      retryVisiblePlayback();
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -119,7 +151,7 @@ export function CreatorVideoThumbnail({
       <video
         ref={videoRef}
         src={src}
-        preload={autoplayOnView ? "metadata" : "auto"}
+        preload={slowConnection ? "metadata" : "auto"}
         poster={poster ?? undefined}
         muted
         loop={!reducedMotion}
@@ -128,6 +160,11 @@ export function CreatorVideoThumbnail({
         aria-label={label}
         onLoadedData={() => setReady(true)}
         onCanPlay={retryVisiblePlayback}
+        onWaiting={() => setPlaying(false)}
+        onError={() => {
+          setLoadError(true);
+          setPlaying(false);
+        }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         className={`h-full w-full object-cover ${ready ? "opacity-100" : "opacity-0"}`}
@@ -137,6 +174,34 @@ export function CreatorVideoThumbnail({
           aria-hidden
           className="absolute inset-0 bg-gradient-to-br from-slate-950 via-brand-950 to-slate-800"
         />
+      )}
+      {!ready && !loadError && timedOut && (
+        <div className="absolute inset-x-4 top-1/2 flex -translate-y-1/2 flex-col items-center gap-2 text-center text-xs font-semibold text-white">
+          <span className="rounded-full bg-black/65 px-3 py-1.5">
+            Preview is taking longer to load…
+          </span>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="rounded-full bg-white px-3 py-1.5 text-brand-950"
+          >
+            Retry preview
+          </button>
+        </div>
+      )}
+      {loadError && (
+        <div className="absolute inset-x-4 top-1/2 flex -translate-y-1/2 flex-col items-center gap-2 text-center text-xs font-semibold text-white">
+          <span className="rounded-full bg-black/65 px-3 py-1.5">
+            Preview unavailable
+          </span>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="rounded-full bg-white px-3 py-1.5 text-brand-950"
+          >
+            Retry preview
+          </button>
+        </div>
       )}
       <div
         aria-hidden
