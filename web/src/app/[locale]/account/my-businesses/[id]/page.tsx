@@ -145,8 +145,11 @@ function StatCard({
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300">
         <Icon aria-hidden className="h-5 w-5" />
       </span>
-      <span>
-        <span className="block text-2xl font-bold text-slate-950 dark:text-slate-50">{value ?? '—'}</span>
+      {/* min-w-0 on this flex sibling of a shrink-0 icon, truncate on the
+          value itself — a busy restaurant's pending-order count shouldn't
+          be able to push this tile wider than its grid track. */}
+      <span className="min-w-0">
+        <span className="block truncate text-2xl font-bold text-slate-950 dark:text-slate-50">{value ?? '—'}</span>
         <span className="block text-sm text-slate-500 dark:text-slate-400">{label}</span>
       </span>
     </Link>

@@ -169,7 +169,7 @@ export function PlaceGallery({
           aria-label={`View ${alt} photo full-screen`}
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white opacity-0 backdrop-blur-sm transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:opacity-100"
         >
-          <MagnifyingGlassPlusIcon className="h-4.5 w-4.5" />
+          <MagnifyingGlassPlusIcon className="h-5 w-5" />
         </button>
 
         {images.length > 1 && (
