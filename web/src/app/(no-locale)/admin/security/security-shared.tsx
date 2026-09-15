@@ -22,10 +22,15 @@ export function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 shadow-card ${tone === 'warning' ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 dark:border-slate-800'}`}
+      className={`min-w-0 rounded-xl border p-3 shadow-card ${tone === 'warning' ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30' : 'border-slate-200 dark:border-slate-800'}`}
     >
       <Icon aria-hidden className={`h-5 w-5 ${tone === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600 dark:text-brand-300'}`} />
-      <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value}</p>
+      {/* truncate — under an actual login-attack spike this count is
+          exactly the number an admin most needs to read at a glance;
+          it shouldn't be the one time it overflows its tile. (`value` is
+          `number | string` — the "87%" adoption stat comes through as a
+          string — so no toLocaleString() here.) */}
+      <p className="mt-1 truncate text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-50">{value}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   );

@@ -238,7 +238,13 @@ export function CreatorPhotoActionMenu({
                 role="menuitem"
                 disabled={!value || uploading}
                 onClick={handleDelete}
-                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-flag-700 hover:bg-flag-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-flag-300 dark:hover:bg-flag-950/30"
+                // dark:hover:bg-red-950/30, not a flag-950 that doesn't
+                // exist (the flag scale stops at 800) — matches the same
+                // dark-mode destructive-hover tint every other delete/cancel
+                // control in the app already uses (FoodOrdersManager, the
+                // ticket order page's cancel/decline buttons), rather than
+                // inventing a one-off brand shade for a single menu item.
+                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-flag-700 hover:bg-flag-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-flag-300 dark:hover:bg-red-950/30"
               >
                 <TrashIcon aria-hidden className="h-5 w-5" />
                 Delete photo

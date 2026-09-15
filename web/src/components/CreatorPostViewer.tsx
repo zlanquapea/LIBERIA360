@@ -569,7 +569,7 @@ export function CreatorPostViewer({
       aria-label={`${post.creator.name}'s video post`}
       className="creator-video-viewer fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col overscroll-contain bg-black text-white"
     >
-      <div className="creator-video-reel relative min-h-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={reelStageRef} onScroll={handleReelScroll} className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain" aria-live="polite">
         {reelWindow.map((item) => (
           (() => {

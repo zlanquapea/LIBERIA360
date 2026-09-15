@@ -3,7 +3,7 @@ import type { Pharmacy } from "@/lib/pharmacy-api";
 
 export function PharmacyCard({ pharmacy }: { pharmacy: Pharmacy }) {
   return (
-    <article className="card overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <article className="shadow-card overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div
         className="h-28 bg-gradient-to-br from-emerald-700 to-brand-900 bg-cover bg-center"
         style={

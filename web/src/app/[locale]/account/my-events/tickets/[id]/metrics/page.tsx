@@ -17,10 +17,21 @@ import { getEvent } from "@/lib/api";
 import { getEventAnalytics } from "@/lib/analytics-api";
 import { getEventTicketMetrics } from "@/lib/event-ticket-api";
 import { HttpError } from "@/lib/http";
+import { formatCompactCurrency } from "@/lib/format";
 import type { Event, EventTicketMetrics, TicketTypeMetrics } from "@/lib/types";
 
 function formatMoney(currency: string, amount: string | number) {
   return `${currency} ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Same overflow this app already hit on the pharmacy dashboard's revenue
+// tile (see formatCompactCurrency's own doc comment) — a well-selling
+// event's gross revenue running past 4 digits shouldn't be able to bust
+// out of a fixed-width stat tile or a narrow 2-column grid cell. Used only
+// for those narrow spots; the itemized Gross/Fees/Refunds/Net breakdown
+// below has room for, and benefits from, the exact figure via formatMoney.
+function formatMoneyCompact(currency: string, amount: string | number) {
+  return `${currency} ${formatCompactCurrency(Number(amount))}`;
 }
 
 // A simple ASCII/CSS progress bar for "X of Y sold" — no chart library
@@ -53,11 +64,11 @@ function StatCard({
   icon: typeof ChartBarIcon;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         <Icon aria-hidden className="h-4 w-4" /> {label}
       </p>
-      <p className="mt-1.5 text-2xl font-black text-slate-900 dark:text-slate-50">
+      <p className="mt-1.5 truncate text-2xl font-black text-slate-900 dark:text-slate-50">
         {value}
       </p>
     </div>
@@ -116,8 +127,8 @@ function TicketTypeCard({
           <dt className="text-xs text-slate-500 dark:text-slate-400">
             Revenue
           </dt>
-          <dd className="font-semibold text-slate-900 dark:text-slate-50">
-            {formatMoney(currency, type.revenue)}
+          <dd className="truncate font-semibold text-slate-900 dark:text-slate-50">
+            {formatMoneyCompact(currency, type.revenue)}
           </dd>
         </div>
         <div>
@@ -334,7 +345,7 @@ export default function EventTicketMetricsPage() {
                   />
                   <StatCard
                     label="Total Revenue"
-                    value={formatMoney(metrics.currency, metrics.overview.totalRevenue)}
+                    value={formatMoneyCompact(metrics.currency, metrics.overview.totalRevenue)}
                     icon={BanknotesIcon}
                   />
                   <StatCard

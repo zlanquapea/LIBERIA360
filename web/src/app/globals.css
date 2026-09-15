@@ -969,6 +969,15 @@ html[data-splash-seen='1'] .splash-screen {
 .issued-pass-note { color: var(--ticket-slate); font-size: .72rem; line-height: 1.4; margin: .85rem 0 0; text-align: center; }
 .ticket-order-message { border-left: 3px solid var(--ticket-yellow); color: var(--ticket-slate); font-size: .83rem; line-height: 1.5; margin: 0 1.4rem 1.4rem; padding: .8rem 1rem; }
 .ticket-order-message-rejected { border-left-color: var(--ticket-coral); color: #ad4a3a; }
+/* "approved, issuance pending" / "awaiting organizer verification" — used
+   as if it existed (order.status "approved" / "pending_payment_review"
+   in my-tickets/page.tsx) but never defined, so both states silently fell
+   back to the plain slate-on-yellow-border default with no visual signal
+   that anything is in progress. Reuses the same warm amber already used
+   for the "pending, needs attention" issued-pass-id box above, distinct
+   from both the neutral default and the coral rejected state. */
+.ticket-order-message-review { color: #7f5a0e; }
+.dark .ticket-order-message-review { color: #ffe08a; }
 .ticket-order-foot { align-items: center; border-top: 1px solid var(--ticket-line); color: var(--ticket-slate); display: flex; font-size: .68rem; gap: 1rem; justify-content: space-between; padding: .9rem 1.4rem; }
 .ticket-order-foot span, .ticket-order-foot a { align-items: center; display: inline-flex; gap: .35rem; }
 .ticket-order-foot a { color: var(--ticket-ink); font-weight: 700; }

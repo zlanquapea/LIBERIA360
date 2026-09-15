@@ -79,9 +79,15 @@ function StatCard({
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center shadow-card">
+    <div className="min-w-0 rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-center shadow-card">
       <Icon aria-hidden className="mx-auto h-5 w-5 text-brand-600 dark:text-brand-300" />
-      <p className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-50">{value}</p>
+      {/* truncate + min-w-0 above: a popular listing's view/save count can
+          run into 5-6 digits, and a grid item won't shrink its text below
+          its intrinsic width by default — the same overflow this app hit
+          on the pharmacy dashboard's revenue tile (see formatCompactNumber's
+          own doc comment), just with a counter instead of a currency
+          amount here. */}
+      <p className="mt-1 truncate text-xl font-bold text-slate-900 dark:text-slate-50">{value.toLocaleString()}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   );
