@@ -1180,6 +1180,16 @@ html[data-splash-seen='1'] .splash-screen {
 .creator-video-reel-slide {
   min-height: 100%;
 }
+.creator-reel-heart-burst {
+  animation: creator-reel-heart-burst 620ms cubic-bezier(.23, 1, .32, 1) both;
+  transform-origin: center;
+}
+@keyframes creator-reel-heart-burst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.35) rotate(-10deg); }
+  28% { opacity: 1; transform: translate(-50%, -50%) scale(1.16) rotate(4deg); }
+  62% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.28) rotate(0); }
+}
 .dark .creator-feed-refresh-indicator,
 .dark .creator-feed-refresh-indicator.is-refreshing {
   color: var(--brand-300);
@@ -1194,6 +1204,10 @@ html[data-splash-seen='1'] .splash-screen {
   to { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .creator-reel-heart-burst {
+    animation: none;
+    opacity: 1;
+  }
   .creator-feed-refresh-indicator,
   .creator-feed-refresh-icon {
     transition: none;

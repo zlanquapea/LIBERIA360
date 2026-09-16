@@ -219,11 +219,13 @@ function DirectVideoViewer({
   active = true,
   preload = "auto",
   onEnded,
+  onDoubleTap,
 }: {
   post: CreatorPost;
   active?: boolean;
   preload?: "none" | "metadata" | "auto";
   onEnded?: () => void;
+  onDoubleTap?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
@@ -305,6 +307,7 @@ function DirectVideoViewer({
         controls={false}
         aria-label={`${post.creator.name}'s video post`}
         onClick={togglePlay}
+        onDoubleClick={onDoubleTap}
         onLoadedData={() => setLoaded(true)}
         onLoadedMetadata={() => setLoaded(true)}
         onError={() => {
@@ -453,6 +456,7 @@ export function CreatorPostViewer({
   onNext?: () => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [heartBurstId, setHeartBurstId] = useState(0);
   const reelStageRef = useRef<HTMLDivElement>(null);
   const navigationLockRef = useRef(false);
 
@@ -506,6 +510,11 @@ export function CreatorPostViewer({
       navigationLockRef.current = true;
       onNext?.();
     }
+  }
+
+  function handleDoubleTap() {
+    if (!liked) onLike();
+    setHeartBurstId((id) => id + 1);
   }
 
   if (mode === "image") {
@@ -585,6 +594,7 @@ export function CreatorPostViewer({
                     post={item}
                     active={isActive}
                     preload={isActive ? "auto" : "metadata"}
+                    onDoubleTap={isActive ? handleDoubleTap : undefined}
                     onEnded={
                       isActive && currentIndex < playlist.length - 1
                         ? onNext
@@ -599,6 +609,15 @@ export function CreatorPostViewer({
           })()
         ))}
         </div>
+        {heartBurstId > 0 && (
+          <div
+            key={heartBurstId}
+            className="creator-reel-heart-burst pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+            aria-hidden="true"
+          >
+            <HeartSolidIcon className="h-28 w-28 fill-rose-500 text-white drop-shadow-[0_8px_20px_rgba(0,0,0,0.45)]" />
+          </div>
+        )}
         <div className="pointer-events-none absolute inset-0">
           {onPrevious && (
             <button
