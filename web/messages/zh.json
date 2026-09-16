@@ -58,7 +58,9 @@
     "somethingWentWrong": "出错了",
     "errorDescription": "抱歉，此页面遇到意外错误。您可以重试，或返回首页。",
     "tryAgain": "重试",
-    "goHome": "返回首页"
+    "goHome": "返回首页",
+    "pageNotFoundTitle": "找不到页面",
+    "pageNotFoundDescription": "看起来这个页面偏离了地图。让我们带你回到正确的路线上。"
   },
   "home": {
     "eyebrow": "畅游利比里亚，尽在此处。",
