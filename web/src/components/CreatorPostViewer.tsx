@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookmarkIcon,
   ChatBubbleOvalLeftIcon,
@@ -79,10 +79,53 @@ function ViewerActions({
   layout,
 }: ViewerActionsProps) {
   const isRail = layout === "rail";
+  const [floatingHearts, setFloatingHearts] = useState<number[]>([]);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heartIdRef = useRef(0);
+  const holdStartedRef = useRef(false);
+  const suppressClickRef = useRef(false);
   const itemClass = isRail
     ? "flex flex-col items-center gap-1 text-white drop-shadow-md"
     : "flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-2 text-sm font-semibold text-white hover:bg-white/10";
   const iconClass = isRail ? "h-7 w-7" : "h-6 w-6";
+
+  const clearHoldTimers = useCallback(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
+    holdTimerRef.current = null;
+    holdIntervalRef.current = null;
+  }, []);
+
+  function emitFloatingHeart() {
+    const id = ++heartIdRef.current;
+    setFloatingHearts((hearts) => [...hearts.slice(-5), id]);
+    window.setTimeout(() => {
+      setFloatingHearts((hearts) => hearts.filter((heartId) => heartId !== id));
+    }, 1100);
+  }
+
+  function sendHoldLike() {
+    if (!liked) onLike();
+    emitFloatingHeart();
+  }
+
+  function startHold() {
+    clearHoldTimers();
+    holdStartedRef.current = false;
+    holdTimerRef.current = setTimeout(() => {
+      holdStartedRef.current = true;
+      suppressClickRef.current = true;
+      sendHoldLike();
+      holdIntervalRef.current = setInterval(sendHoldLike, 260);
+    }, 280);
+  }
+
+  function endHold() {
+    clearHoldTimers();
+  }
+
+  useEffect(() => clearHoldTimers, [clearHoldTimers]);
 
   return (
     <div
@@ -90,26 +133,48 @@ function ViewerActions({
         isRail ? "flex flex-col items-center gap-5" : "flex items-center gap-1"
       }
     >
-      <button
-        type="button"
-        onClick={onLike}
-        aria-pressed={liked}
-        aria-label={liked ? "Unlike post" : "Like post"}
-        className={itemClass}
-      >
-        {liked ? (
-          <HeartSolidIcon
-            aria-hidden
-            className={`${iconClass} text-rose-400`}
-          />
-        ) : (
-          <HeartIcon aria-hidden className={iconClass} />
-        )}
-        <span className={isRail ? "text-xs font-semibold" : "truncate"}>
-          {formatCount(likeCount)}
-          {!isRail && " Like"}
-        </span>
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => {
+            if (suppressClickRef.current) {
+              suppressClickRef.current = false;
+              return;
+            }
+            onLike();
+          }}
+          onPointerDown={startHold}
+          onPointerUp={endHold}
+          onPointerCancel={endHold}
+          onPointerLeave={endHold}
+          onContextMenu={(event) => event.preventDefault()}
+          aria-pressed={liked}
+          aria-label={liked ? "Unlike post. Hold to send hearts" : "Like post. Hold to send hearts"}
+          className={itemClass}
+        >
+          {liked ? (
+            <HeartSolidIcon
+              aria-hidden
+              className={`${iconClass} text-rose-400`}
+            />
+          ) : (
+            <HeartIcon aria-hidden className={iconClass} />
+          )}
+          <span className={isRail ? "text-xs font-semibold" : "truncate"}>
+            {formatCount(likeCount)}
+            {!isRail && " Like"}
+          </span>
+        </button>
+        <div className="pointer-events-none absolute bottom-1/2 left-1/2 z-40 h-2 w-2" aria-hidden="true">
+          {floatingHearts.map((heartId, index) => (
+            <HeartSolidIcon
+              key={heartId}
+              className="creator-floating-heart absolute h-7 w-7 fill-rose-400 text-rose-200"
+              style={{ left: `${(index % 3) * 10 - 10}px` }}
+            />
+          ))}
+        </div>
+      </div>
       <button
         type="button"
         onClick={onComment}

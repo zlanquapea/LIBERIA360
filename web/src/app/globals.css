@@ -1184,11 +1184,20 @@ html[data-splash-seen='1'] .splash-screen {
   animation: creator-reel-heart-burst 620ms cubic-bezier(.23, 1, .32, 1) both;
   transform-origin: center;
 }
+.creator-floating-heart {
+  animation: creator-floating-heart 1.1s cubic-bezier(.23, 1, .32, 1) both;
+  bottom: 0;
+}
 @keyframes creator-reel-heart-burst {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.35) rotate(-10deg); }
   28% { opacity: 1; transform: translate(-50%, -50%) scale(1.16) rotate(4deg); }
   62% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.28) rotate(0); }
+}
+@keyframes creator-floating-heart {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(.45) rotate(-12deg); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0); }
+  100% { opacity: 0; transform: translate(calc(-50% + 8px), -82px) scale(.78) rotate(14deg); }
 }
 .dark .creator-feed-refresh-indicator,
 .dark .creator-feed-refresh-indicator.is-refreshing {
@@ -1207,6 +1216,11 @@ html[data-splash-seen='1'] .splash-screen {
   .creator-reel-heart-burst {
     animation: none;
     opacity: 1;
+  }
+  .creator-floating-heart {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, -18px);
   }
   .creator-feed-refresh-indicator,
   .creator-feed-refresh-icon {
