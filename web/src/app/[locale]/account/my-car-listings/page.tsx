@@ -185,7 +185,7 @@ export default function MyCarListingsPage() {
         />
       )}
 
-      {listings.length > 0 && (
+      {!creating && listings.length > 0 && (
         <ul className="flex flex-col gap-3">
           {listings.map((listing) => (
             <li key={listing.id} className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">
