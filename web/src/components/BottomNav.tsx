@@ -94,7 +94,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label={t("primaryNavigation")}
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-brand-900/95 pt-1 text-white shadow-[0_-8px_24px_rgba(8,26,80,0.16)] backdrop-blur supports-[backdrop-filter]:bg-brand-900/85 lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-lagoon-900/95 pt-1 text-white shadow-[0_-8px_24px_rgba(0,67,84,0.16)] backdrop-blur supports-[backdrop-filter]:bg-lagoon-900/85 lg:hidden"
     >
       <div className="relative mx-auto flex w-full max-w-md pb-[env(safe-area-inset-bottom)]">
         {/* One shared indicator that slides between tabs (translateX by

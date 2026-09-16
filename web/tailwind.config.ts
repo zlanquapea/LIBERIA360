@@ -85,6 +85,43 @@ const config: Config = {
           900: '#513602',
           950: '#2b1c02',
         },
+        // Sampled from the redesigned logo (Sep 2026 refresh — sunset pin
+        // over a coastline): the dark teal of the palm-tree/headland
+        // silhouette, hue ~192° across the sampled pixels (a histogram over
+        // the artwork's opaque pixels, not eyeballed). Dedicated to the
+        // site's navigation chrome specifically (Header, BottomNav,
+        // MobileMenu's own nav-item icons) — a clean, single-hue "coastal
+        // lagoon" identity for the one thing every page shares, rather than
+        // recoloring `brand` (the interactive/link blue used everywhere
+        // else) for a change that was only ever about the nav bar. `gold`
+        // above already sits almost exactly on this same logo's sun/arc
+        // color (gold-500 #fbb308 vs. a sampled #fec00d — hue 42° vs. 45°,
+        // lightness 51% vs. 52%) and needed no change — it's kept as the
+        // nav's one accent color (active-tab indicator, focus rings),
+        // unchanged.
+        // Built as an 11-stop HSL ramp at that one hue rather than picked
+        // per-shade by eye, then contrast-checked against how each is
+        // actually used: white text on lagoon-900 (the nav bar itself)
+        // 10.9:1, white/65%-on-900 (BottomNav's inactive tab labels) 5.5:1,
+        // gold-400 on lagoon-900 (the active-tab indicator) 6.9:1,
+        // lagoon-700 on white and lagoon-300 on slate-900 (MobileMenu's
+        // light/dark nav-icon color) 5.8:1 / 11.6:1 — all clear WCAG AA's
+        // 4.5:1 text floor (most clear AAA's 7:1 too), and comparable to or
+        // better than the navy bar's own prior contrast (16.5:1 white-on-
+        // brand-900) it replaces.
+        lagoon: {
+          50: '#f3fafc',
+          100: '#e2f4f9',
+          200: '#baebf7',
+          300: '#77def8',
+          400: '#2ed1fa',
+          500: '#00b4e0',
+          600: '#008bad',
+          700: '#006e8a',
+          800: '#00586e',
+          900: '#004354',
+          950: '#002933',
+        },
         // Full LIBERIA360 logo palette for the responsive product UI. Keep
         // semantic states on the existing `flag` scale; these named tokens
         // are for brand expression, category accents, and editorial framing.
