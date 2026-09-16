@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CreatorPost, CreatorPostComment } from "@/lib/types";
+import { getCreatorPostComments } from "@/lib/creator-feed-api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   CreatorPostViewer,
   CreatorPostViewerImagePreview,
@@ -49,8 +51,10 @@ export function CreatorPostMedia({
   onSave,
   onShare,
 }: CreatorPostMediaProps) {
+  const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [activePostId, setActivePostId] = useState(post.id);
+  const [viewerComments, setViewerComments] = useState<CreatorPostComment[]>(comments ?? []);
   const activePost = useMemo(
     () => videoPosts.find((item) => item.id === activePostId) ?? post,
     [activePostId, post, videoPosts],
@@ -59,6 +63,10 @@ export function CreatorPostMedia({
   const hasPlaylist = post.mediaType === "video" && videoPosts.length > 1;
   const mode = activePost.mediaType === "video" ? "video" : "image";
   const isInitialPost = activePost.id === post.id;
+
+  useEffect(() => {
+    if (isInitialPost) setViewerComments(comments ?? []);
+  }, [comments, isInitialPost]);
 
   useEffect(() => {
     if (!open) setActivePostId(post.id);
@@ -72,6 +80,12 @@ export function CreatorPostMedia({
   function navigateTo(index: number) {
     if (!hasPlaylist || index < 0 || index >= videoPosts.length) return;
     setActivePostId(videoPosts[index].id);
+  }
+
+  async function loadViewerComments() {
+    const loaded = await getCreatorPostComments(activePost.id, token ?? undefined);
+    if (isInitialPost) setViewerComments(loaded);
+    return loaded;
   }
 
   if (post.mediaType === "text") {
@@ -117,7 +131,8 @@ export function CreatorPostMedia({
             onCommentSubmit={isInitialPost ? onCommentSubmit : undefined}
             onCommentLike={isInitialPost ? onCommentLike : undefined}
             onCommentReply={isInitialPost ? onCommentReply : undefined}
-            comments={isInitialPost ? comments : undefined}
+            onCommentsOpen={loadViewerComments}
+            comments={isInitialPost ? viewerComments : undefined}
             onSave={isInitialPost ? onSave : () => undefined}
             onShare={isInitialPost ? onShare : () => undefined}
             onClose={() => setOpen(false)}

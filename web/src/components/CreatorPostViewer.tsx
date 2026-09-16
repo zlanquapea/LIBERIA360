@@ -500,6 +500,7 @@ export function CreatorPostViewer({
   onCommentSubmit,
   onCommentLike,
   onCommentReply,
+  onCommentsOpen,
   comments = [],
   onSave,
   onShare,
@@ -521,6 +522,7 @@ export function CreatorPostViewer({
   onCommentSubmit?: (body: string, parentId?: string) => void;
   onCommentLike?: (commentId: string) => void;
   onCommentReply?: (commentId: string) => void;
+  onCommentsOpen?: () => Promise<CreatorPostComment[]>;
   comments?: CreatorPostComment[];
   onSave: () => void;
   onShare: () => void;
@@ -533,6 +535,7 @@ export function CreatorPostViewer({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const reelStageRef = useRef<HTMLDivElement>(null);
   const navigationLockRef = useRef(false);
 
@@ -593,8 +596,15 @@ export function CreatorPostViewer({
     setHeartBurstId((id) => id + 1);
   }
 
-  function openComments() {
+  async function openComments() {
     setCommentsOpen(true);
+    if (!onCommentsOpen) return;
+    setCommentsLoading(true);
+    try {
+      await onCommentsOpen();
+    } finally {
+      setCommentsLoading(false);
+    }
   }
 
   if (mode === "image") {
@@ -774,7 +784,9 @@ export function CreatorPostViewer({
               </button>
             </div>
             <div className="min-h-24 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm">
-              {comments.length === 0 ? (
+              {commentsLoading ? (
+                <p className="py-6 text-center text-slate-500 dark:text-white/60">Loading comments…</p>
+              ) : comments.length === 0 ? (
                 <p className="py-6 text-center text-slate-500 dark:text-white/60">Be the first to comment on this Reel.</p>
               ) : comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
