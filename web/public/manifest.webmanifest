@@ -4,8 +4,8 @@
   "description": "Discover Liberia's destinations, food, stays, and experiences — one place, map-first.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#081a50",
-  "theme_color": "#081a50",
+  "background_color": "#002f3b",
+  "theme_color": "#002f3b",
   "icons": [
     {
       "src": "/icons/icon-192.png",

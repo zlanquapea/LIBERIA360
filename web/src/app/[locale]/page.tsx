@@ -257,7 +257,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col">
-      <section className="relative isolate overflow-hidden rounded-b-[2rem] px-4 pb-10 pt-10 text-white shadow-[0_14px_36px_rgba(8,26,80,0.35)] sm:px-6 sm:pb-12 sm:pt-14 lg:rounded-none lg:px-10 lg:pb-20 lg:pt-20">
+      <section className="relative isolate overflow-hidden rounded-b-[2rem] px-4 pb-10 pt-10 text-white shadow-[0_14px_36px_rgba(0,47,59,0.35)] sm:px-6 sm:pb-12 sm:pt-14 lg:rounded-none lg:px-10 lg:pb-20 lg:pt-20">
         <HeroBackground />
         {/* A gradient scrim over the photos below, not a flat fill — dark
             enough at the bottom-left (where the text sits) to guarantee
@@ -268,7 +268,7 @@ export default async function Home() {
             rather than a generic photo banner. */}
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-[#050b24] via-brand-900/85 to-brand-800/40"
+          className="absolute inset-0 bg-gradient-to-t from-[#001f26] via-brand-900/85 to-brand-800/40"
         />
         {/* Ambient glow accents, kept from the pre-photo hero — still read
             as intentional brand color on top of a photo, same as they did

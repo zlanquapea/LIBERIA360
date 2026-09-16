@@ -579,14 +579,14 @@ export function Liberia360Assistant() {
         aria-controls="liberia360-assistant-panel"
         title="LIBERIA360 Assistant — drag to move"
         tabIndex={open ? -1 : 0}
-        className={`fixed z-[80] flex h-[58px] w-[58px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-[0_10px_30px_rgba(8,26,80,0.35)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
+        className={`fixed z-[80] flex h-[58px] w-[58px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-[0_10px_30px_rgba(0,47,59,0.35)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
           position
             ? ""
             : "right-4 bottom-[calc(8.75rem+env(safe-area-inset-bottom))] lg:bottom-[calc(5.6rem+env(safe-area-inset-bottom))]"
         } ${
           open
             ? "pointer-events-none scale-90 opacity-0"
-            : "opacity-100 hover:scale-105 hover:shadow-[0_14px_34px_rgba(8,26,80,0.45)] active:scale-95"
+            : "opacity-100 hover:scale-105 hover:shadow-[0_14px_34px_rgba(0,47,59,0.45)] active:scale-95"
         }`}
         style={launcherStyle}
       >

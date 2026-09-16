@@ -20,7 +20,7 @@ export default function NotFound() {
   return (
     <BrandedErrorState
       icon={MagnifyingGlassIcon}
-      iconTone="lagoon"
+      iconTone="brand"
       title={t('pageNotFoundTitle')}
       description={t('pageNotFoundDescription')}
       homeAction={

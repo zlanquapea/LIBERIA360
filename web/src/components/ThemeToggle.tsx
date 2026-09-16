@@ -20,7 +20,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={label}
       title={label}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/5 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-lagoon-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/5 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
       <SunIcon aria-hidden className={`h-5 w-5 ${theme === 'dark' ? 'hidden' : 'block'}`} />
       <MoonIcon aria-hidden className={`h-5 w-5 ${theme === 'dark' ? 'block' : 'hidden'}`} />
