@@ -21,8 +21,8 @@ type CreatorPostMediaProps = {
   shareCount: number;
   onLike: () => void;
   onComment: () => void;
-  onCommentSubmit?: (body: string, parentId?: string) => void;
-  onCommentLike?: (commentId: string) => void;
+  onCommentSubmit?: (body: string, parentId?: string) => void | Promise<void>;
+  onCommentLike?: (commentId: string) => void | Promise<void>;
   onCommentReply?: (commentId: string) => void;
   comments?: CreatorPostComment[];
   onSave: () => void;

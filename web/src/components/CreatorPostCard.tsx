@@ -583,8 +583,8 @@ export function CreatorPostCard({
         shareCount={shareCount}
         onLike={() => void handleLike()}
         onComment={() => void toggleComments()}
-        onCommentSubmit={(body, parentId) => void submitComment(body, parentId)}
-        onCommentLike={(commentId) => void toggleCommentLike(commentId)}
+        onCommentSubmit={(body, parentId) => submitComment(body, parentId)}
+        onCommentLike={(commentId) => toggleCommentLike(commentId)}
         onCommentReply={(commentId) => setReplyingTo(commentId)}
         comments={comments}
         onSave={() => void handleSave()}

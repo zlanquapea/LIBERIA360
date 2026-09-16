@@ -519,8 +519,8 @@ export function CreatorPostViewer({
   shareCount: number;
   onLike: () => void;
   onComment: () => void;
-  onCommentSubmit?: (body: string, parentId?: string) => void;
-  onCommentLike?: (commentId: string) => void;
+  onCommentSubmit?: (body: string, parentId?: string) => void | Promise<void>;
+  onCommentLike?: (commentId: string) => void | Promise<void>;
   onCommentReply?: (commentId: string) => void;
   onCommentsOpen?: () => Promise<CreatorPostComment[]>;
   comments?: CreatorPostComment[];
@@ -536,6 +536,7 @@ export function CreatorPostViewer({
   const [commentDraft, setCommentDraft] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [loadedComments, setLoadedComments] = useState<CreatorPostComment[] | null>(null);
   const reelStageRef = useRef<HTMLDivElement>(null);
   const navigationLockRef = useRef(false);
 
@@ -601,11 +602,28 @@ export function CreatorPostViewer({
     if (!onCommentsOpen) return;
     setCommentsLoading(true);
     try {
-      await onCommentsOpen();
+      setLoadedComments(await onCommentsOpen());
     } finally {
       setCommentsLoading(false);
     }
   }
+
+  async function refreshComments() {
+    if (!onCommentsOpen) return;
+    setLoadedComments(await onCommentsOpen());
+  }
+
+  async function handleViewerCommentLike(commentId: string) {
+    await onCommentLike?.(commentId);
+    await refreshComments();
+  }
+
+  async function handleViewerCommentSubmit(body: string, parentId?: string) {
+    await onCommentSubmit?.(body, parentId);
+    await refreshComments();
+  }
+
+  const visibleComments = loadedComments ?? comments;
 
   if (mode === "image") {
     return (
@@ -777,7 +795,7 @@ export function CreatorPostViewer({
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
               <div>
                 <h2 className="text-base font-bold">Comments</h2>
-                <p className="text-xs text-slate-500 dark:text-white/55">{formatCount(commentCount)} comments</p>
+                <p className="text-xs text-slate-500 dark:text-white/55">{formatCount(loadedComments?.length ?? commentCount)} comments</p>
               </div>
               <button type="button" onClick={() => setCommentsOpen(false)} aria-label="Close comments" className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-white/70 dark:hover:bg-white/10">
                 <XMarkIcon aria-hidden className="h-6 w-6" />
@@ -786,9 +804,9 @@ export function CreatorPostViewer({
             <div className="min-h-24 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm">
               {commentsLoading ? (
                 <p className="py-6 text-center text-slate-500 dark:text-white/60">Loading comments…</p>
-              ) : comments.length === 0 ? (
+              ) : visibleComments.length === 0 ? (
                 <p className="py-6 text-center text-slate-500 dark:text-white/60">Be the first to comment on this Reel.</p>
-              ) : comments.map((comment) => (
+              ) : visibleComments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-900/50 dark:text-brand-200">
                     {(comment.user?.name?.trim().charAt(0) || "L").toUpperCase()}
@@ -798,7 +816,7 @@ export function CreatorPostViewer({
                     <p className="break-words text-slate-700 dark:text-white/80">{comment.body}</p>
                     <p className="mt-1 text-xs text-slate-400">{timeAgo(comment.createdAt)}</p>
                     <div className="mt-2 flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-white/60">
-                      <button type="button" onClick={() => onCommentLike?.(comment.id)} aria-pressed={Boolean(comment.viewerLiked)} className={comment.viewerLiked ? "text-rose-600 dark:text-rose-400" : "hover:text-rose-600 dark:hover:text-rose-400"}>
+                      <button type="button" onClick={() => void handleViewerCommentLike(comment.id)} aria-pressed={Boolean(comment.viewerLiked)} className={comment.viewerLiked ? "text-rose-600 dark:text-rose-400" : "hover:text-rose-600 dark:hover:text-rose-400"}>
                         {comment.viewerLiked ? "Liked" : "Like"} · {comment.likeCount}
                       </button>
                       <button type="button" onClick={() => { setReplyingTo(comment.id); onCommentReply?.(comment.id); }} className="hover:text-brand-700 dark:hover:text-brand-300">
@@ -815,7 +833,7 @@ export function CreatorPostViewer({
                   {replyingTo && <p className="mb-1 flex items-center justify-between px-2 text-xs text-brand-700 dark:text-brand-300"><span>Replying to comment</span><button type="button" onClick={() => setReplyingTo(null)} className="font-semibold">Cancel</button></p>}
                   <textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} rows={1} maxLength={1000} placeholder={replyingTo ? "Write a reply…" : "Write a comment…"} aria-label={replyingTo ? "Write a reply" : "Write a comment"} className="min-h-11 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45" />
                 </div>
-                <button type="button" onClick={() => { if (!commentDraft.trim()) return; if (onCommentSubmit) onCommentSubmit(commentDraft.trim(), replyingTo ?? undefined); else onComment(); setCommentsOpen(false); setCommentDraft(""); setReplyingTo(null); }} disabled={!commentDraft.trim()} className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40">
+                <button type="button" onClick={() => { if (!commentDraft.trim()) return; void handleViewerCommentSubmit(commentDraft.trim(), replyingTo ?? undefined); setCommentsOpen(false); setCommentDraft(""); setReplyingTo(null); }} disabled={!commentDraft.trim()} className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40">
                   Post
                 </button>
               </div>
