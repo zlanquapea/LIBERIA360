@@ -108,7 +108,11 @@ function DashboardMetric({
   return (
     <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-3">
-        <p className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+        {/* No `truncate` here on purpose: at 2-up on a narrow phone, "Contact
+            clicks" / "Booking requests" clipped to "CONTACT CLI…" /
+            "BOOKING REQ…" — letting the label wrap to two lines instead
+            keeps it legible while still fitting the card. */}
+        <p className="text-xs font-semibold uppercase leading-tight tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
           <Icon aria-hidden className="h-5 w-5" />
         </span>
@@ -118,6 +122,15 @@ function DashboardMetric({
     </div>
   );
 }
+
+type DashboardTab = "overview" | "content" | "bookings" | "profile";
+
+const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "content", label: "Content" },
+  { id: "bookings", label: "Bookings" },
+  { id: "profile", label: "Profile" },
+];
 
 function CreatorDashboard({
   creator,
@@ -130,6 +143,7 @@ function CreatorDashboard({
   posts: CreatorPost[];
   bookings: Booking[];
 }) {
+  const [tab, setTab] = useState<DashboardTab>("overview");
   const totalLikes = posts.reduce((sum, post) => sum + post.likeCount, 0);
   const totalComments = posts.reduce((sum, post) => sum + post.commentCount, 0);
   const totalShares = posts.reduce((sum, post) => sum + post.shareCount, 0);
@@ -139,57 +153,81 @@ function CreatorDashboard({
   const completion = completionPercent(creator);
 
   return (
-    <section id="dashboard" className="-mx-4 flex flex-col gap-5 rounded-[2rem] bg-[#081a50] px-4 py-5 text-white shadow-card sm:-mx-0 sm:p-6">
+    <section id="dashboard" className="-mx-4 flex flex-col gap-5 overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 px-4 py-5 text-white shadow-card sm:-mx-0 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-300">Creator studio</p>
           <h2 className="mt-1 font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Good to see you, {creator.name.split(" ")[0]}</h2>
-          <p className="mt-1 max-w-xl text-sm leading-6 text-blue-100/75">A clear view of your audience, content performance, and booking activity.</p>
+          <p className="mt-1 max-w-xl text-sm leading-6 text-brand-100/75">A clear view of your audience, content performance, and booking activity.</p>
         </div>
         <ChartBarIcon aria-hidden className="hidden h-10 w-10 text-gold-300 sm:block" />
       </div>
 
-      <nav aria-label="Creator dashboard sections" className="-mx-1 flex gap-2 overflow-x-auto pb-1">
-        {["Overview", "Content", "Bookings", "Profile"].map((label, index) => (
-          <a key={label} href={index === 0 ? "#dashboard" : index === 1 ? "#content" : index === 2 ? "#bookings" : "#profile"} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${index === 0 ? "bg-white text-[#081a50]" : "bg-white/10 text-blue-100 hover:bg-white/20"}`}>
+      {/* Real tab state, not anchor links to sections that were all
+          rendered (and scrolled past) at once — the previous version's
+          "active" pill was hardcoded to whichever tab came first in the
+          array, regardless of what was actually on screen, and every
+          section always rendered whether you were looking at it or not.
+          Splitting into panels is what actually shortens the page. */}
+      <div role="tablist" aria-label="Creator dashboard sections" className="-mx-1 flex gap-2 overflow-x-auto pb-1">
+        {DASHBOARD_TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`dashboard-tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`dashboard-panel-${id}`}
+            onClick={() => setTab(id)}
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${tab === id ? "bg-white text-brand-900" : "bg-white/10 text-brand-100 hover:bg-white/20"}`}
+          >
             {label}
-          </a>
+          </button>
         ))}
-      </nav>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <DashboardMetric label="Profile views" value={analytics ? compactNumber(analytics.totals.view) : "—"} detail="Last 30 days" icon={EyeIcon} />
-        <DashboardMetric label="Contact clicks" value={analytics ? compactNumber(analytics.totals.contact_click) : "—"} detail="People reaching out" icon={ChatBubbleLeftRightIcon} tone="gold" />
-        <DashboardMetric label="Followers" value={compactNumber(creator.followerCount)} detail="Your community" icon={UserGroupIcon} tone="violet" />
-        <DashboardMetric label="Booking requests" value={analytics ? compactNumber(analytics.totals.booking_request) : "—"} detail={pendingBookings ? `${pendingBookings} need your reply` : "No pending requests"} icon={CalendarDaysIcon} tone="emerald" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <div id="content" className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="font-display text-lg font-bold">Content pulse</h3>
-              <p className="text-xs text-blue-100/65">How your published work is performing</p>
+      <div key={tab} className="animate-fade-in-up">
+        {tab === "overview" && (
+          <div id="dashboard-panel-overview" role="tabpanel" aria-labelledby="dashboard-tab-overview" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <DashboardMetric label="Profile views" value={analytics ? compactNumber(analytics.totals.view) : "—"} detail="Last 30 days" icon={EyeIcon} />
+            <DashboardMetric label="Contact clicks" value={analytics ? compactNumber(analytics.totals.contact_click) : "—"} detail="People reaching out" icon={ChatBubbleLeftRightIcon} tone="gold" />
+            <DashboardMetric label="Followers" value={compactNumber(creator.followerCount)} detail="Your community" icon={UserGroupIcon} tone="violet" />
+            <DashboardMetric label="Booking requests" value={analytics ? compactNumber(analytics.totals.booking_request) : "—"} detail={pendingBookings ? `${pendingBookings} need your reply` : "No pending requests"} icon={CalendarDaysIcon} tone="emerald" />
+          </div>
+        )}
+
+        {tab === "content" && (
+          <div id="dashboard-panel-content" role="tabpanel" aria-labelledby="dashboard-tab-content" className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-display text-lg font-bold">Content pulse</h3>
+                <p className="text-xs text-brand-100/65">How your published work is performing</p>
+              </div>
+              <Link href="/creators/me/create" className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-gold-400 px-3 py-2 text-xs font-bold text-brand-900 hover:bg-gold-300"><PlusIcon aria-hidden className="h-4 w-4" />New post</Link>
             </div>
-            <Link href="/creators/me/create" className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-gold-400 px-3 py-2 text-xs font-bold text-[#081a50] hover:bg-gold-300"><PlusIcon aria-hidden className="h-4 w-4" />New post</Link>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{posts.length}</p><p className="text-xs text-brand-100/65">Posts</p></div>
+              <div className="rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{compactNumber(totalLikes)}</p><p className="text-xs text-brand-100/65">Likes</p></div>
+              <div className="rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{compactNumber(totalComments + totalShares)}</p><p className="text-xs text-brand-100/65">Conversations &amp; shares</p></div>
+            </div>
+            {topPost ? <p className="mt-4 flex items-center gap-2 text-xs text-brand-100/75"><ArrowTrendingUpIcon aria-hidden className="h-4 w-4 shrink-0 text-emerald-300" />Top post: <span className="truncate font-semibold text-white">{topPost.caption || "Untitled post"}</span></p> : <p className="mt-4 text-xs text-brand-100/65">Publish your first post to start tracking performance.</p>}
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{posts.length}</p><p className="text-xs text-blue-100/65">Posts</p></div>
-            <div className="rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{compactNumber(totalLikes)}</p><p className="text-xs text-blue-100/65">Likes</p></div>
-            <div className="rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{compactNumber(totalComments + totalShares)}</p><p className="text-xs text-blue-100/65">Conversations &amp; shares</p></div>
-          </div>
-          {topPost ? <p className="mt-4 flex items-center gap-2 text-xs text-blue-100/75"><ArrowTrendingUpIcon aria-hidden className="h-4 w-4 text-emerald-300" />Top post: <span className="truncate font-semibold text-white">{topPost.caption || "Untitled post"}</span></p> : <p className="mt-4 text-xs text-blue-100/65">Publish your first post to start tracking performance.</p>}
-        </div>
-        <div id="bookings" className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-3"><div><h3 className="font-display text-lg font-bold">Booking inbox</h3><p className="text-xs text-blue-100/65">Requests from travelers</p></div><CalendarDaysIcon aria-hidden className="h-6 w-6 text-gold-300" /></div>
-          <div className="mt-4 flex items-center gap-3"><div className="flex-1 rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{pendingBookings}</p><p className="text-xs text-blue-100/65">Awaiting reply</p></div><div className="flex-1 rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{confirmedBookings}</p><p className="text-xs text-blue-100/65">Confirmed</p></div></div>
-          <Link href="/account/bookings" className="mt-4 inline-flex items-center text-sm font-bold text-gold-300 hover:text-gold-200">Open booking inbox <span aria-hidden className="ml-1">→</span></Link>
-        </div>
-      </div>
+        )}
 
-      <div id="profile" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 p-4">
-        <div><p className="font-semibold">Profile strength</p><p className="text-xs text-blue-100/65">Complete your profile to build visitor confidence.</p><div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-black/20"><div className="h-full rounded-full bg-gold-400" style={{ width: `${completion}%` }} /></div></div>
-        <div className="flex items-center gap-3"><span className="text-sm font-bold text-gold-300">{completion}% complete</span><a href="#profile-editor" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/20 px-3 py-2 text-xs font-bold hover:bg-white/10"><PencilSquareIcon aria-hidden className="h-4 w-4" />Edit profile</a></div>
+        {tab === "bookings" && (
+          <div id="dashboard-panel-bookings" role="tabpanel" aria-labelledby="dashboard-tab-bookings" className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3"><div><h3 className="font-display text-lg font-bold">Booking inbox</h3><p className="text-xs text-brand-100/65">Requests from travelers</p></div><CalendarDaysIcon aria-hidden className="h-6 w-6 text-gold-300" /></div>
+            <div className="mt-4 flex items-center gap-3"><div className="flex-1 rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{pendingBookings}</p><p className="text-xs text-brand-100/65">Awaiting reply</p></div><div className="flex-1 rounded-xl bg-black/15 p-3"><p className="text-2xl font-extrabold">{confirmedBookings}</p><p className="text-xs text-brand-100/65">Confirmed</p></div></div>
+            <Link href="/account/bookings" className="mt-4 inline-flex items-center text-sm font-bold text-gold-300 hover:text-gold-200">Open booking inbox <span aria-hidden className="ml-1">→</span></Link>
+          </div>
+        )}
+
+        {tab === "profile" && (
+          <div id="dashboard-panel-profile" role="tabpanel" aria-labelledby="dashboard-tab-profile" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div><p className="font-semibold">Profile strength</p><p className="text-xs text-brand-100/65">Complete your profile to build visitor confidence.</p><div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-black/20"><div className="h-full rounded-full bg-gold-400" style={{ width: `${completion}%` }} /></div></div>
+            <div className="flex items-center gap-3"><span className="text-sm font-bold text-gold-300">{completion}% complete</span><a href="#profile-editor" className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/20 px-3 py-2 text-xs font-bold hover:bg-white/10"><PencilSquareIcon aria-hidden className="h-4 w-4" />Edit profile</a></div>
+          </div>
+        )}
       </div>
     </section>
   );
