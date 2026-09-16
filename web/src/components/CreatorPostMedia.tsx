@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import type { CreatorPost } from "@/lib/types";
+import type { CreatorPost, CreatorPostComment } from "@/lib/types";
 import {
   CreatorPostViewer,
   CreatorPostViewerImagePreview,
@@ -19,6 +19,8 @@ type CreatorPostMediaProps = {
   shareCount: number;
   onLike: () => void;
   onComment: () => void;
+  onCommentSubmit?: (body: string) => void;
+  comments?: CreatorPostComment[];
   onSave: () => void;
   onShare: () => void;
 };
@@ -38,6 +40,8 @@ export function CreatorPostMedia({
   shareCount,
   onLike,
   onComment,
+  onCommentSubmit,
+  comments,
   onSave,
   onShare,
 }: CreatorPostMediaProps) {
@@ -104,9 +108,10 @@ export function CreatorPostMedia({
             shareCount={isInitialPost ? shareCount : activePost.shareCount}
             onLike={isInitialPost ? onLike : () => undefined}
             onComment={() => {
-              setOpen(false);
               onComment();
             }}
+            onCommentSubmit={isInitialPost ? onCommentSubmit : undefined}
+            comments={isInitialPost ? comments : undefined}
             onSave={isInitialPost ? onSave : () => undefined}
             onShare={isInitialPost ? onShare : () => undefined}
             onClose={() => setOpen(false)}

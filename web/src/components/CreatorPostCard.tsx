@@ -294,15 +294,15 @@ export function CreatorPostCard({
     }
   }
 
-  async function submitComment() {
-    if (!token || !commentBody.trim()) return;
+  async function submitComment(body = commentBody) {
+    if (!token || !body.trim()) return;
     setSubmittingComment(true);
     setError(null);
     try {
       const comment = await addCreatorPostComment(
         token,
         post.id,
-        commentBody.trim(),
+        body.trim(),
         replyingTo ?? undefined,
       );
       setComments((current) => [...current, comment]);
@@ -583,6 +583,8 @@ export function CreatorPostCard({
         shareCount={shareCount}
         onLike={() => void handleLike()}
         onComment={() => void toggleComments()}
+        onCommentSubmit={(body) => void submitComment(body)}
+        comments={comments}
         onSave={() => void handleSave()}
         onShare={() => void handleShare()}
       />
@@ -724,7 +726,7 @@ export function CreatorPostCard({
                   <div className="flex shrink-0 flex-col gap-1">
                     <button
                       type="button"
-                      onClick={submitComment}
+                      onClick={() => void submitComment()}
                       disabled={submittingComment || !commentBody.trim()}
                       className="min-h-11 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
                     >

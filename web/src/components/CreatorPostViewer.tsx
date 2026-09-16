@@ -21,7 +21,7 @@ import {
   creatorVideoPosterUrl,
   isDirectVideoFile,
 } from "@/lib/creator-media";
-import type { CreatorPost } from "@/lib/types";
+import type { CreatorPost, CreatorPostComment } from "@/lib/types";
 import { ShareMenu } from "./ShareMenu";
 import { VerificationBadge } from "./VerificationBadge";
 import { CreatorVideoThumbnail } from "./CreatorVideoThumbnail";
@@ -497,6 +497,8 @@ export function CreatorPostViewer({
   shareCount,
   onLike,
   onComment,
+  onCommentSubmit,
+  comments = [],
   onSave,
   onShare,
   onClose,
@@ -514,6 +516,8 @@ export function CreatorPostViewer({
   shareCount: number;
   onLike: () => void;
   onComment: () => void;
+  onCommentSubmit?: (body: string) => void;
+  comments?: CreatorPostComment[];
   onSave: () => void;
   onShare: () => void;
   onClose: () => void;
@@ -522,6 +526,8 @@ export function CreatorPostViewer({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [heartBurstId, setHeartBurstId] = useState(0);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
   const reelStageRef = useRef<HTMLDivElement>(null);
   const navigationLockRef = useRef(false);
 
@@ -580,6 +586,10 @@ export function CreatorPostViewer({
   function handleDoubleTap() {
     if (!liked) onLike();
     setHeartBurstId((id) => id + 1);
+  }
+
+  function openComments() {
+    setCommentsOpen(true);
   }
 
   if (mode === "image") {
@@ -733,7 +743,7 @@ export function CreatorPostViewer({
             commentCount={commentCount}
             shareCount={shareCount}
             onLike={onLike}
-            onComment={onComment}
+            onComment={openComments}
             onSave={onSave}
             onShare={onShare}
             layout="rail"
@@ -747,10 +757,47 @@ export function CreatorPostViewer({
             </p>
           </div>
         </div>
+        {commentsOpen && (
+          <div className="creator-reels-comments-sheet absolute inset-x-0 bottom-0 z-50 flex max-h-[68%] flex-col rounded-t-[1.75rem] bg-white text-slate-900 shadow-2xl dark:bg-slate-950 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
+              <div>
+                <h2 className="text-base font-bold">Comments</h2>
+                <p className="text-xs text-slate-500 dark:text-white/55">{formatCount(commentCount)} comments</p>
+              </div>
+              <button type="button" onClick={() => setCommentsOpen(false)} aria-label="Close comments" className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-white/70 dark:hover:bg-white/10">
+                <XMarkIcon aria-hidden className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="min-h-24 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm">
+              {comments.length === 0 ? (
+                <p className="py-6 text-center text-slate-500 dark:text-white/60">Be the first to comment on this Reel.</p>
+              ) : comments.map((comment) => (
+                <div key={comment.id} className="flex gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-900/50 dark:text-brand-200">
+                    {(comment.user?.name?.trim().charAt(0) || "L").toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold">{comment.user?.name?.trim() || "LIBERIA360 member"}</p>
+                    <p className="break-words text-slate-700 dark:text-white/80">{comment.body}</p>
+                    <p className="mt-1 text-xs text-slate-400">{timeAgo(comment.createdAt)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-white/10">
+              <div className="flex items-end gap-2">
+                <textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} rows={1} maxLength={1000} placeholder="Write a comment…" aria-label="Write a comment" className="min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45" />
+                <button type="button" onClick={() => { if (!commentDraft.trim()) return; if (onCommentSubmit) onCommentSubmit(commentDraft.trim()); else onComment(); setCommentsOpen(false); setCommentDraft(""); }} disabled={!commentDraft.trim()} className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40">
+                  Post
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <button
         type="button"
-        onClick={onComment}
+        onClick={openComments}
         className="mx-4 mb-[calc(0.75rem+env(safe-area-inset-bottom))] mt-2 flex min-h-12 items-center rounded-full bg-[#242424] px-5 text-left text-sm text-white/65"
       >
         Add a comment…
