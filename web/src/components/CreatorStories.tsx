@@ -2,18 +2,35 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeftIcon, CameraIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, EllipsisHorizontalIcon, PhotoIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, CameraIcon, CheckIcon, ChatBubbleLeftIcon, ChevronLeftIcon, ChevronRightIcon, EllipsisHorizontalIcon, PhotoIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { HttpError } from "@/lib/http";
-import { createCreatorStory, getActiveCreatorStories, getCreatorStoryEligibility, recordCreatorStoryView, reportCreatorStory, type CreatorStoryInput } from "@/lib/creator-feed-api";
-import type { CreatorStory } from "@/lib/types";
+import { addCreatorStoryComment, createCreatorStory, getActiveCreatorStories, getCreatorStoryComments, getCreatorStoryEligibility, reactToCreatorStory, recordCreatorStoryView, reportCreatorStory, type CreatorStoryInput } from "@/lib/creator-feed-api";
+import { STORY_REACTION_EMOJIS, type CreatorStory, type CreatorStoryComment } from "@/lib/types";
 import { SingleImageUploader } from "./SingleImageUploader";
 import { uploadVideo, validateVideoFile } from "@/lib/video-uploads-api";
 
-const PHOTO_DURATION_MS = 6000;
+// Was 6s — trimmed to a snappier 5s per product feedback ("like 5
+// seconds before going to the next"). Holding the image (see
+// handleTouchStart/onMouseDown below) already pauses it indefinitely for
+// anyone who wants longer, so 5s is just the *default* pace, not a hard cap.
+const PHOTO_DURATION_MS = 5000;
 // A swipe (touch move) further than this many pixels closes the viewer —
 // the same "pull down to dismiss" gesture Facebook/Instagram stories use.
 const SWIPE_DISMISS_THRESHOLD_PX = 80;
+
+// "1h ago" / "Just now" — same shape as CreatorPostCard's own timeAgo,
+// just with the explicit "ago" the story header reads better with
+// (a post's timestamp sits next to other metadata; a story's is the only
+// thing in its header row, so the bare "6h" read ambiguous there).
+function timeAgo(value: string): string {
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+  if (seconds < 60) return "Just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
+}
 
 export function CreatorStories() {
   const { token, ready } = useAuth();
@@ -91,8 +108,31 @@ export function CreatorStories() {
     setComposerOpen(false);
   }
 
+  // Bails out (returns the exact same array reference) once a story is
+  // already marked viewed, rather than unconditionally mapping a fresh
+  // object every call. Skipping that is load-bearing, not a micro-
+  // optimization: StoryViewer's "mark seen" effect depends on `story`,
+  // which is read out of `reels` — itself derived from `stories` via a
+  // chain of useMemo — so every unconditional update here produces a new
+  // `story` object for whichever item is currently open, which re-fires
+  // that same effect, which calls this again... an infinite render loop
+  // (confirmed via Playwright: "Maximum update depth exceeded" plus a
+  // wall of 429s from the resulting recordCreatorStoryView spam) the
+  // instant anyone actually opened a story.
   function handleStoryViewed(storyId: string) {
-    setStories((current) => current.map((story) => story.id === storyId ? { ...story, viewedByMe: true } : story));
+    setStories((current) => {
+      const target = current.find((story) => story.id === storyId);
+      if (!target || target.viewedByMe) return current;
+      return current.map((story) => story.id === storyId ? { ...story, viewedByMe: true } : story);
+    });
+  }
+
+  function handleStoryReacted(storyId: string, reactionCount: number, myReaction: string | null) {
+    setStories((current) => current.map((story) => story.id === storyId ? { ...story, reactionCount, myReaction } : story));
+  }
+
+  function handleStoryCommented(storyId: string, commentCount: number) {
+    setStories((current) => current.map((story) => story.id === storyId ? { ...story, commentCount } : story));
   }
 
   return (
@@ -115,9 +155,21 @@ export function CreatorStories() {
             // unseen; muted once every one of them has been viewed — the
             // exact Instagram/Facebook "seen" convention.
             const hasUnseen = reels[creatorIndex]?.some((item) => !item.viewedByMe) ?? true;
+            // The ring itself shows the actual story content (most recent
+            // first — "what's new"), not just the creator's static profile
+            // picture again — a picture of a face tells you nothing about
+            // which of your feed's stories is worth tapping. The profile
+            // photo still shows, just as a small attribution badge in the
+            // corner, same spot Instagram/TikTok put a verified badge.
+            const latestStory = reels[creatorIndex]?.[reels[creatorIndex].length - 1] ?? story;
             return (
               <button key={story.creatorId} type="button" onClick={() => setViewerReelIndex(creatorIndex)} className="group flex w-[82px] shrink-0 flex-col items-center gap-1.5 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
-                <span className={`relative block h-[68px] w-[68px] rounded-full p-[3px] ${hasUnseen ? "bg-gradient-to-br from-brand-700 via-gold-400 to-emerald-500" : "bg-slate-300 dark:bg-slate-700"}`}><span className="block h-full w-full overflow-hidden rounded-full border-2 border-white bg-slate-100 dark:border-slate-900">{story.creator.profileImage ? <img src={story.creator.profileImage} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-xl font-bold text-brand-800">{story.creator.name.slice(0, 1)}</span>}</span></span>
+                <span className={`relative block h-[68px] w-[68px] rounded-full p-[3px] ${hasUnseen ? "bg-gradient-to-br from-brand-700 via-gold-400 to-emerald-500" : "bg-slate-300 dark:bg-slate-700"}`}>
+                  <span className="block h-full w-full overflow-hidden rounded-full border-2 border-white bg-slate-100 dark:border-slate-900">
+                    {latestStory.mediaType === "video" ? <video src={latestStory.mediaUrl} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={latestStory.mediaUrl} alt="" className="h-full w-full object-cover" />}
+                  </span>
+                  {story.creator.profileImage ? <img src={story.creator.profileImage} alt="" className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full border-2 border-white object-cover dark:border-slate-900" /> : <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-brand-700 text-[10px] font-bold text-white dark:border-slate-900">{story.creator.name.slice(0, 1)}</span>}
+                </span>
                 <span className="w-full truncate text-xs font-semibold text-slate-800 dark:text-slate-200">{story.creator.name}</span>
               </button>
             );
@@ -126,7 +178,7 @@ export function CreatorStories() {
         </div>
       </section>
       {composerOpen && <StoryComposer token={token!} onClose={() => setComposerOpen(false)} onPublished={handlePublished} />}
-      {viewerReelIndex !== null && <StoryViewer reels={reels} initialReelIndex={viewerReelIndex} token={token} onClose={() => setViewerReelIndex(null)} onStoryViewed={handleStoryViewed} />}
+      {viewerReelIndex !== null && <StoryViewer reels={reels} initialReelIndex={viewerReelIndex} token={token} onClose={() => setViewerReelIndex(null)} onStoryViewed={handleStoryViewed} onStoryReacted={handleStoryReacted} onStoryCommented={handleStoryCommented} />}
     </>
   );
 }
@@ -175,7 +227,7 @@ function StoryComposer({ token, onClose, onPublished }: { token: string; onClose
 
   return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="story-composer-title">
     <section className="max-h-[94vh] w-full max-w-xl overflow-y-auto rounded-t-[2rem] bg-white shadow-2xl dark:bg-slate-900 sm:rounded-[2rem]">
-      <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800"><button type="button" onClick={onClose} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Close story composer"><XMarkIcon className="h-6 w-6" /></button><h2 id="story-composer-title" className="font-display text-lg font-bold text-slate-950 dark:text-white">Create a Story</h2><button type="button" onClick={() => void publish()} disabled={submitting || previewing} className="min-h-11 rounded-full bg-brand-800 px-4 text-sm font-bold text-white disabled:opacity-50">{submitting ? "Publishing…" : "Publish"}</button></header>
+      <header className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800"><button type="button" onClick={onClose} className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Close story composer"><XMarkIcon className="h-6 w-6" /></button><h2 id="story-composer-title" className="font-display text-lg font-bold text-slate-950 dark:text-white">Create a Story</h2><button type="button" onClick={() => void publish()} disabled={submitting} className="min-h-11 rounded-full bg-brand-800 px-4 text-sm font-bold text-white disabled:opacity-50">{submitting ? "Publishing…" : "Publish"}</button></header>
       <div className="space-y-5 p-5">
         {previewing ? <div className="relative flex aspect-[9/16] max-h-[56vh] items-end overflow-hidden rounded-[1.5rem] bg-slate-950 p-5 text-white">{mediaType === "image" && imageUrl ? <img src={imageUrl} alt="Story preview" className="absolute inset-0 h-full w-full object-cover opacity-90" /> : videoPreview ? <video src={videoPreview} controls className="absolute inset-0 h-full w-full object-contain" /> : null}<div className="relative z-10 w-full rounded-xl bg-black/35 p-3 text-center text-lg font-semibold">{caption || "Your story caption"}</div></div> : <>
           <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800"><button type="button" onClick={() => setMediaType("image")} aria-pressed={mediaType === "image"} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold ${mediaType === "image" ? "bg-white text-brand-800 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500"}`}><PhotoIcon className="h-5 w-5" /> Photo</button><button type="button" onClick={() => setMediaType("video")} aria-pressed={mediaType === "video"} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm font-bold ${mediaType === "video" ? "bg-white text-brand-800 shadow-sm dark:bg-slate-700 dark:text-white" : "text-slate-500"}`}><CameraIcon className="h-5 w-5" /> Video</button></div>
@@ -195,15 +247,41 @@ function StoryComposer({ token, onClose, onPublished }: { token: string; onClose
 // animation — the only way to track a video's actual length instead of a
 // hardcoded guess, and it doubles as the photo timer too so both media
 // types share one implementation.
-function StoryViewer({ reels, initialReelIndex, token, onClose, onStoryViewed }: { reels: CreatorStory[][]; initialReelIndex: number; token: string | null; onClose: () => void; onStoryViewed: (storyId: string) => void }) {
+function StoryViewer({
+  reels,
+  initialReelIndex,
+  token,
+  onClose,
+  onStoryViewed,
+  onStoryReacted,
+  onStoryCommented,
+}: {
+  reels: CreatorStory[][];
+  initialReelIndex: number;
+  token: string | null;
+  onClose: () => void;
+  onStoryViewed: (storyId: string) => void;
+  onStoryReacted: (storyId: string, reactionCount: number, myReaction: string | null) => void;
+  onStoryCommented: (storyId: string, commentCount: number) => void;
+}) {
   const [reelIndex, setReelIndex] = useState(initialReelIndex);
   const [itemIndex, setItemIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reported, setReported] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [reacting, setReacting] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<CreatorStoryComment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentBody, setCommentBody] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const touchStartY = useRef<number | null>(null);
+  // Opening the comment panel should hold the story exactly like a
+  // press-and-hold does — you're reading/typing, not watching — without
+  // tangling that into the same `paused` the hold gesture toggles.
+  const effectivePaused = paused || commentsOpen;
 
   const reel = reels[reelIndex] ?? [];
   const story = reel[itemIndex];
@@ -245,10 +323,20 @@ function StoryViewer({ reels, initialReelIndex, token, onClose, onStoryViewed }:
     if (token) void recordCreatorStoryView(token, story.id).catch(() => undefined);
   }, [story, token, onStoryViewed]);
 
-  // Photo timer: JS-driven so pausing/resuming (hold-to-pause) resumes
-  // from the exact progress it left off at, instead of restarting.
+  // The comment panel is per-story — switching to the next item (or the
+  // next person's reel entirely) closes it rather than carrying a stale
+  // comment list over onto unrelated media.
   useEffect(() => {
-    if (!story || story.mediaType !== "image" || paused) return;
+    setCommentsOpen(false);
+    setComments([]);
+    setCommentBody("");
+  }, [story?.id]);
+
+  // Photo timer: JS-driven so pausing/resuming (hold-to-pause, or the
+  // comment panel being open) resumes from the exact progress it left
+  // off at, instead of restarting.
+  useEffect(() => {
+    if (!story || story.mediaType !== "image" || effectivePaused) return;
     const start = Date.now() - progress * PHOTO_DURATION_MS;
     const id = window.setInterval(() => {
       const elapsed = Date.now() - start;
@@ -260,18 +348,18 @@ function StoryViewer({ reels, initialReelIndex, token, onClose, onStoryViewed }:
     }, 50);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `progress` is read once to resume, not to restart on every tick
-  }, [story, paused, advance]);
+  }, [story, effectivePaused, advance]);
 
-  // Video: hold-to-pause actually pauses playback (not just the internal
-  // timer), the progress bar tracks real playback position, and reaching
-  // the end auto-advances — none of which a bare <video controls autoPlay>
-  // gives you for free.
+  // Video: hold-to-pause (or the comment panel being open) actually
+  // pauses playback (not just the internal timer), the progress bar
+  // tracks real playback position, and reaching the end auto-advances —
+  // none of which a bare <video controls autoPlay> gives you for free.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !story || story.mediaType !== "video") return;
-    if (paused) video.pause();
+    if (effectivePaused) video.pause();
     else void video.play().catch(() => undefined);
-  }, [paused, story]);
+  }, [effectivePaused, story]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -313,17 +401,138 @@ function StoryViewer({ reels, initialReelIndex, token, onClose, onStoryViewed }:
 
   if (!story) return null;
   async function report() { if (!token) return; await reportCreatorStory(token, story.id, "Reported by viewer").catch(() => undefined); setReported(true); setMenuOpen(false); }
-  return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950" role="dialog" aria-modal="true" aria-label={`${story.creator.name}'s story`} onMouseDown={() => setPaused(true)} onMouseUp={() => setPaused(false)} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+
+  async function toggleReaction(emoji: string) {
+    if (!token || reacting) return;
+    setReacting(true);
+    try {
+      const result = await reactToCreatorStory(token, story.id, emoji);
+      onStoryReacted(story.id, result.reactionCount, result.myReaction);
+    } catch {
+      // Best-effort — a failed reaction tap isn't worth interrupting the story for.
+    } finally {
+      setReacting(false);
+    }
+  }
+
+  async function openComments() {
+    const nextOpen = !commentsOpen;
+    setCommentsOpen(nextOpen);
+    if (!nextOpen || comments.length > 0) return;
+    setLoadingComments(true);
+    try {
+      setComments(await getCreatorStoryComments(story.id, token ?? undefined));
+    } catch {
+      // Best-effort — an empty/stale comment list isn't worth blocking the panel for.
+    } finally {
+      setLoadingComments(false);
+    }
+  }
+
+  async function submitComment() {
+    if (!token || !commentBody.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const comment = await addCreatorStoryComment(token, story.id, commentBody.trim());
+      setComments((current) => [...current, comment]);
+      onStoryCommented(story.id, story.commentCount + 1);
+      setCommentBody("");
+    } catch {
+      // Best-effort — the input just keeps whatever the user typed to retry.
+    } finally {
+      setSubmittingComment(false);
+    }
+  }
+
+  // z-[90] — was z-[60], which sat *under* the persistent assistant
+  // launcher FAB (z-[80] in Liberia360Assistant.tsx). Harmless while the
+  // viewer's footer was just a centered text hint, but the new comment
+  // panel's close button lands in that exact bottom-right corner, where
+  // the FAB then silently ate its clicks (confirmed via Playwright: the
+  // button was "visible, enabled and stable" yet every click attempt hit
+  // the assistant's subtree instead). A full-screen story modal should
+  // out-z everything else on the page while it's open, anyway.
+  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950" role="dialog" aria-modal="true" aria-label={`${story.creator.name}'s story`} onMouseDown={() => setPaused(true)} onMouseUp={() => setPaused(false)} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
     <div className="relative flex h-full w-full max-w-2xl flex-col overflow-hidden bg-slate-950 sm:h-[92vh] sm:rounded-[2rem]">
       <div className="relative z-10 flex gap-1 px-4 pt-4">{reel.map((item, idx) => <div key={item.id} className="h-1 flex-1 overflow-hidden rounded-full bg-white/25"><div className="h-full origin-left bg-white" style={{ width: idx < itemIndex ? "100%" : idx > itemIndex ? "0%" : `${Math.min(progress, 1) * 100}%` }} /></div>)}</div>
-      <div className="relative z-10 flex items-center justify-between px-4 py-4 text-white"><div className="flex items-center gap-3"><div className="h-10 w-10 overflow-hidden rounded-full bg-brand-700">{story.creator.profileImage ? <img src={story.creator.profileImage} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center font-bold">{story.creator.name.slice(0, 1)}</span>}</div><div><p className="text-sm font-bold">{story.creator.name}</p><p className="text-xs text-white/65">{story.publishedAt ? new Date(story.publishedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Now"}</p></div></div><div className="relative flex items-center gap-1"><button type="button" onClick={() => setMenuOpen((current) => !current)} className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Story actions"><EllipsisHorizontalIcon className="h-6 w-6" /></button>{menuOpen && <div className="absolute right-0 top-12 z-20 w-44 rounded-2xl bg-white p-1 text-slate-900 shadow-xl"><button type="button" onClick={() => void report()} disabled={reported} className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold hover:bg-slate-100">{reported ? "Reported" : "Report story"}</button></div>}<button type="button" onClick={onClose} className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close story viewer"><XMarkIcon className="h-6 w-6" /></button></div></div>
+      <div className="relative z-10 flex items-center justify-between px-4 py-4 text-white"><div className="flex items-center gap-3"><div className="h-10 w-10 overflow-hidden rounded-full bg-brand-700">{story.creator.profileImage ? <img src={story.creator.profileImage} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center font-bold">{story.creator.name.slice(0, 1)}</span>}</div><div><p className="text-sm font-bold">{story.creator.name}</p><p className="text-xs text-white/65">{story.publishedAt ? timeAgo(story.publishedAt) : "Now"}</p></div></div><div className="relative flex items-center gap-1"><button type="button" onClick={() => setMenuOpen((current) => !current)} className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Story actions"><EllipsisHorizontalIcon className="h-6 w-6" /></button>{menuOpen && <div className="absolute right-0 top-12 z-20 w-44 rounded-2xl bg-white p-1 text-slate-900 shadow-xl"><button type="button" onClick={() => void report()} disabled={reported} className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold hover:bg-slate-100">{reported ? "Reported" : "Report story"}</button></div>}<button type="button" onClick={onClose} className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close story viewer"><XMarkIcon className="h-6 w-6" /></button></div></div>
       <div className="relative flex min-h-0 flex-1 items-center justify-center" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX - rect.left < rect.width / 2) goBack(); else advance(); }}>
         {story.mediaType === "image" ? <img key={story.id} src={story.mediaUrl} alt={story.caption || `${story.creator.name}'s story`} className="h-full w-full object-contain" /> : <video key={story.id} ref={videoRef} src={story.mediaUrl} autoPlay playsInline className="h-full w-full object-contain" />}
         {story.caption && <p className="pointer-events-none absolute bottom-8 left-5 right-5 rounded-2xl bg-black/45 px-4 py-3 text-center text-base font-semibold text-white">{story.caption}</p>}
         <button type="button" onClick={(event) => { event.stopPropagation(); goBack(); }} className="absolute left-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/25 text-white hover:bg-black/45" aria-label="Previous story"><ChevronLeftIcon className="h-7 w-7" /></button>
         <button type="button" onClick={(event) => { event.stopPropagation(); advance(); }} className="absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/25 text-white hover:bg-black/45" aria-label="Next story"><ChevronRightIcon className="h-7 w-7" /></button>
       </div>
-      <div className="relative z-10 flex items-center justify-center gap-2 px-4 pb-5 pt-3 text-xs text-white/65"><CheckIcon className="h-4 w-4" /> {paused ? "Paused" : "Tap either side to navigate, swipe down to close"}</div>
+
+      <div className="relative z-10 px-4 pb-5 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-0.5">
+            {STORY_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={(event) => { event.stopPropagation(); void toggleReaction(emoji); }}
+                disabled={reacting}
+                aria-pressed={story.myReaction === emoji}
+                aria-label={`React with ${emoji}`}
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition-transform active:scale-90 disabled:opacity-60 ${story.myReaction === emoji ? "scale-110 bg-white/20" : "hover:bg-white/10"}`}
+              >
+                {emoji}
+              </button>
+            ))}
+            {story.reactionCount > 0 && <span className="ml-1 text-xs font-bold text-white/75">{story.reactionCount}</span>}
+          </div>
+          <button type="button" onClick={(event) => { event.stopPropagation(); void openComments(); }} aria-expanded={commentsOpen} aria-label="View comments" className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-bold text-white/85 hover:bg-white/10">
+            <ChatBubbleLeftIcon className="h-5 w-5" />
+            {story.commentCount > 0 ? story.commentCount : "Comment"}
+          </button>
+        </div>
+        {!commentsOpen && <p className="mt-2 flex items-center justify-center gap-2 text-xs text-white/50"><CheckIcon className="h-3.5 w-3.5" /> {paused ? "Paused" : "Tap either side to navigate, swipe down to close"}</p>}
+      </div>
+
+      {commentsOpen && (
+        <div className="absolute inset-x-0 bottom-0 z-20 flex max-h-[65%] flex-col rounded-t-[1.75rem] bg-slate-900 text-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <p className="text-sm font-bold">Comments</p>
+            <button type="button" onClick={() => setCommentsOpen(false)} aria-label="Close comments" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"><XMarkIcon className="h-5 w-5" /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {loadingComments ? (
+              <p className="text-sm text-white/60">Loading…</p>
+            ) : comments.length > 0 ? (
+              <div className="space-y-3">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="flex items-start gap-2">
+                    <span aria-hidden className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold">{(comment.user?.name || "?").charAt(0).toUpperCase()}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white/90">{comment.user?.name ?? "LIBERIA360 member"} <span className="ml-1 font-normal text-white/40">{timeAgo(comment.createdAt)}</span></p>
+                      <p className="whitespace-pre-wrap text-sm text-white/85">{comment.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-white/60">No comments yet. Be the first to say something.</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 border-t border-white/10 px-4 py-3">
+            {token ? (
+              <>
+                <input
+                  value={commentBody}
+                  onChange={(event) => setCommentBody(event.target.value)}
+                  maxLength={500}
+                  placeholder="Add a comment…"
+                  className="min-h-11 flex-1 rounded-full border border-white/20 bg-white/5 px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/40"
+                  onKeyDown={(event) => { if (event.key === "Enter") void submitComment(); }}
+                />
+                <button type="button" onClick={() => void submitComment()} disabled={submittingComment || !commentBody.trim()} className="min-h-11 shrink-0 rounded-full bg-white px-4 text-sm font-bold text-slate-950 disabled:opacity-50">{submittingComment ? "…" : "Post"}</button>
+              </>
+            ) : (
+              <Link href="/login" className="text-sm font-bold text-white/85 hover:underline">Log in to comment</Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   </div>;
 }

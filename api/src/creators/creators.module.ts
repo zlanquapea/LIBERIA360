@@ -5,8 +5,11 @@ import { CreatorPortfolioItem } from "./entities/creator-portfolio-item.entity";
 import { CreatorOffering } from "./entities/creator-offering.entity";
 import { CreatorFollow } from "./entities/creator-follow.entity";
 import { CreatorPost } from "./entities/creator-post.entity";
+import { User } from "../users/entities/user.entity";
 import {
   CreatorStory,
+  CreatorStoryComment,
+  CreatorStoryReaction,
   CreatorStoryReport,
   CreatorStoryView,
 } from "./entities/creator-story.entity";
@@ -38,6 +41,9 @@ import { CreatorStoriesController } from "./creator-stories.controller";
       CreatorStory,
       CreatorStoryView,
       CreatorStoryReport,
+      CreatorStoryReaction,
+      CreatorStoryComment,
+      User,
     ]),
   ],
   // Order matters: Nest/Express matches routes in controller-registration

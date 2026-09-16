@@ -10,6 +10,8 @@ import { Creator } from "./entities/creator.entity";
 import { CreatorVerificationStatus } from "./entities/creator.enums";
 import {
   CreatorStory,
+  CreatorStoryComment,
+  CreatorStoryReaction,
   CreatorStoryReport,
   CreatorStoryStatus,
   CreatorStoryView,
@@ -17,10 +19,14 @@ import {
   STORY_VISIBILITY_HOURS,
 } from "./entities/creator-story.entity";
 import {
+  CreateCreatorStoryCommentDto,
   CreateCreatorStoryDto,
+  CreateCreatorStoryReactionDto,
   ReportCreatorStoryDto,
 } from "./dto/create-creator-story.dto";
 import { CreatorFollow } from "./entities/creator-follow.entity";
+import { User } from "../users/entities/user.entity";
+import { toPublicProfile } from "../users/user.serializer";
 
 @Injectable()
 export class CreatorStoriesService {
@@ -33,8 +39,14 @@ export class CreatorStoriesService {
     private readonly viewRepo: Repository<CreatorStoryView>,
     @InjectRepository(CreatorStoryReport)
     private readonly reportRepo: Repository<CreatorStoryReport>,
+    @InjectRepository(CreatorStoryReaction)
+    private readonly reactionRepo: Repository<CreatorStoryReaction>,
+    @InjectRepository(CreatorStoryComment)
+    private readonly commentRepo: Repository<CreatorStoryComment>,
     @InjectRepository(CreatorFollow)
     private readonly followRepo: Repository<CreatorFollow>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   async listActive(viewerUserId?: string) {
@@ -67,18 +79,48 @@ export class CreatorStoriesService {
       .getMany();
     // Facebook-style "seen" ring on the story tray needs to know which of
     // these are already viewed by this exact viewer — one query for the
-    // whole batch rather than N+1 per story.
+    // whole batch rather than N+1 per story. Same idea for "which emoji
+    // (if any) did I already react with" so the viewer can open a story
+    // already showing your prior tap highlighted.
     const viewedIds = await this.viewedStoryIds(viewerUserId, stories);
+    const myReactions = await this.myReactions(viewerUserId, stories);
     return stories.map((story) =>
-      this.serialize(story, viewedIds.has(story.id)),
+      this.serialize(
+        story,
+        viewedIds.has(story.id),
+        myReactions.get(story.id) ?? null,
+      ),
     );
   }
 
   async getStory(id: string, viewerUserId?: string) {
-    const story = await this.storyRepo.findOne({
-      where: { id },
-      relations: ["creator", "creator.county"],
-    });
+    const story = await this.assertViewable(
+      await this.storyRepo.findOne({
+        where: { id },
+        relations: ["creator", "creator.county"],
+      }),
+      viewerUserId,
+    );
+    const viewedIds = await this.viewedStoryIds(viewerUserId, [story]);
+    const myReactions = await this.myReactions(viewerUserId, [story]);
+    return this.serialize(
+      story,
+      viewedIds.has(story.id),
+      myReactions.get(story.id) ?? null,
+    );
+  }
+
+  // Shared by getStory/toggleReaction/listComments/addComment — a story
+  // that's expired, unapproved, or followers-only to a non-follower reads
+  // as 404 everywhere, not just on the read endpoint (same "don't reveal
+  // whether it ever existed" reasoning as getStory always used). Returns
+  // the (now known non-null) story rather than using a TS assertion
+  // signature — `asserts x is T` isn't allowed on an async method, since
+  // the narrowing can't be guaranteed across an awaited boundary.
+  private async assertViewable(
+    story: CreatorStory | null,
+    viewerUserId?: string,
+  ): Promise<CreatorStory> {
     if (!story || !this.isPubliclyActive(story))
       throw new NotFoundException("Story not found");
     if (story.visibility === CreatorStoryVisibility.FOLLOWERS) {
@@ -88,8 +130,23 @@ export class CreatorStoriesService {
       });
       if (!follow) throw new NotFoundException("Story not found");
     }
-    const viewedIds = await this.viewedStoryIds(viewerUserId, [story]);
-    return this.serialize(story, viewedIds.has(story.id));
+    return story;
+  }
+
+  private async myReactions(
+    viewerUserId: string | undefined,
+    stories: CreatorStory[],
+  ): Promise<Map<string, string>> {
+    if (!viewerUserId || stories.length === 0) return new Map();
+    const reactions = await this.reactionRepo.find({
+      where: {
+        storyId: In(stories.map((story) => story.id)),
+        userId: viewerUserId,
+      },
+    });
+    return new Map(
+      reactions.map((reaction) => [reaction.storyId, reaction.emoji]),
+    );
   }
 
   private async viewedStoryIds(
@@ -215,6 +272,114 @@ export class CreatorStoriesService {
     return { reported: true };
   }
 
+  // Tapping the same emoji again removes it (toggle off); tapping a
+  // different one swaps it — either way it's still "one reaction per
+  // person", so `reactionCount` only moves on the create/remove edges,
+  // never on a swap.
+  async toggleReaction(
+    userId: string,
+    id: string,
+    dto: CreateCreatorStoryReactionDto,
+  ) {
+    const story = await this.assertViewable(
+      await this.storyRepo.findOne({ where: { id } }),
+      userId,
+    );
+    const existing = await this.reactionRepo.findOne({
+      where: { storyId: id, userId },
+    });
+    if (existing && existing.emoji === dto.emoji) {
+      await this.reactionRepo.remove(existing);
+      await this.storyRepo.decrement({ id }, "reactionCount", 1);
+      return {
+        reactionCount: Math.max(0, story.reactionCount - 1),
+        myReaction: null,
+      };
+    }
+    if (existing) {
+      existing.emoji = dto.emoji;
+      await this.reactionRepo.save(existing);
+      return { reactionCount: story.reactionCount, myReaction: dto.emoji };
+    }
+    await this.reactionRepo.save(
+      this.reactionRepo.create({ storyId: id, userId, emoji: dto.emoji }),
+    );
+    await this.storyRepo.increment({ id }, "reactionCount", 1);
+    return { reactionCount: story.reactionCount + 1, myReaction: dto.emoji };
+  }
+
+  async listComments(id: string, viewerUserId?: string) {
+    await this.assertViewable(
+      await this.storyRepo.findOne({ where: { id } }),
+      viewerUserId,
+    );
+    const comments = await this.commentRepo.find({
+      where: { storyId: id },
+      order: { createdAt: "ASC" },
+    });
+    const users =
+      comments.length > 0
+        ? await this.userRepo.findBy({
+            id: In(comments.map((comment) => comment.userId)),
+          })
+        : [];
+    const usersById = new Map(users.map((user) => [user.id, user]));
+    return comments.map((comment) =>
+      this.serializeComment(comment, usersById.get(comment.userId) ?? null),
+    );
+  }
+
+  async addComment(
+    userId: string,
+    id: string,
+    dto: CreateCreatorStoryCommentDto,
+  ) {
+    await this.assertViewable(
+      await this.storyRepo.findOne({ where: { id } }),
+      userId,
+    );
+    const body = dto.body.trim();
+    if (!body) throw new BadRequestException("Comment cannot be empty");
+    const comment = await this.commentRepo.save(
+      this.commentRepo.create({ storyId: id, userId, body }),
+    );
+    await this.storyRepo.increment({ id }, "commentCount", 1);
+    const author = await this.userRepo.findOneBy({ id: userId });
+    return this.serializeComment(comment, author ?? null);
+  }
+
+  async removeComment(userId: string, id: string, commentId: string) {
+    const comment = await this.commentRepo.findOne({
+      where: { id: commentId, storyId: id },
+    });
+    if (!comment) throw new NotFoundException("Comment not found");
+    const story = await this.storyRepo.findOne({
+      where: { id },
+      relations: ["creator"],
+    });
+    if (!story) throw new NotFoundException("Story not found");
+    if (comment.userId !== userId && story.creator.userId !== userId) {
+      throw new ForbiddenException("You cannot remove this comment");
+    }
+    await this.commentRepo.remove(comment);
+    await this.storyRepo.decrement({ id }, "commentCount", 1);
+  }
+
+  private serializeComment(comment: CreatorStoryComment, user: User | null) {
+    return {
+      id: comment.id,
+      storyId: comment.storyId,
+      userId: comment.userId,
+      body: comment.body,
+      createdAt: comment.createdAt,
+      // toPublicProfile (id + name only), not toPublicUser — GET comments
+      // is reachable anonymously (OptionalJwtAuthGuard), so nothing more
+      // than a name to attribute the comment to belongs in this response.
+      // See toPublicUser's own doc comment for the PII this is protecting.
+      user: user ? toPublicProfile(user) : null,
+    };
+  }
+
   private async getOwnedCreator(userId: string) {
     const creator = await this.creatorRepo.findOne({ where: { userId } });
     if (!creator)
@@ -233,7 +398,11 @@ export class CreatorStoriesService {
     );
   }
 
-  private serialize(story: CreatorStory, viewedByMe = false) {
+  private serialize(
+    story: CreatorStory,
+    viewedByMe = false,
+    myReaction: string | null = null,
+  ) {
     return {
       id: story.id,
       creatorId: story.creatorId,
@@ -248,6 +417,9 @@ export class CreatorStoriesService {
       creatorProfileId: story.creatorProfileId,
       viewCount: story.viewCount,
       viewedByMe,
+      reactionCount: story.reactionCount,
+      commentCount: story.commentCount,
+      myReaction,
       publishedAt: story.publishedAt,
       expiresAt: story.expiresAt,
       createdAt: story.createdAt,
