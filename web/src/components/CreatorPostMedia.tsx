@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CreatorPost, CreatorPostComment } from "@/lib/types";
-import { getCreatorPostComments } from "@/lib/creator-feed-api";
+import {
+  addCreatorPostComment,
+  getCreatorPostComments,
+  toggleCreatorPostCommentLike,
+} from "@/lib/creator-feed-api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   CreatorPostViewer,
@@ -88,6 +92,24 @@ export function CreatorPostMedia({
     return loaded;
   }
 
+  async function submitViewerComment(body: string, parentId?: string) {
+    if (isInitialPost) {
+      await onCommentSubmit?.(body, parentId);
+      return;
+    }
+    if (!token) return;
+    await addCreatorPostComment(token, activePost.id, body, parentId);
+  }
+
+  async function likeViewerComment(commentId: string) {
+    if (isInitialPost) {
+      await onCommentLike?.(commentId);
+      return;
+    }
+    if (!token) return;
+    await toggleCreatorPostCommentLike(token, activePost.id, commentId);
+  }
+
   if (post.mediaType === "text") {
     return (
       <div className="flex min-h-52 items-center justify-center bg-gradient-to-br from-brand-950 via-brand-800 to-brand-600 px-6 py-10 text-center text-white">
@@ -128,8 +150,8 @@ export function CreatorPostMedia({
             onComment={() => {
               onComment();
             }}
-            onCommentSubmit={isInitialPost ? onCommentSubmit : undefined}
-            onCommentLike={isInitialPost ? onCommentLike : undefined}
+            onCommentSubmit={submitViewerComment}
+            onCommentLike={likeViewerComment}
             onCommentReply={isInitialPost ? onCommentReply : undefined}
             onCommentsOpen={loadViewerComments}
             comments={isInitialPost ? viewerComments : undefined}
