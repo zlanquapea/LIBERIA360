@@ -498,6 +498,8 @@ export function CreatorPostViewer({
   onLike,
   onComment,
   onCommentSubmit,
+  onCommentLike,
+  onCommentReply,
   comments = [],
   onSave,
   onShare,
@@ -516,7 +518,9 @@ export function CreatorPostViewer({
   shareCount: number;
   onLike: () => void;
   onComment: () => void;
-  onCommentSubmit?: (body: string) => void;
+  onCommentSubmit?: (body: string, parentId?: string) => void;
+  onCommentLike?: (commentId: string) => void;
+  onCommentReply?: (commentId: string) => void;
   comments?: CreatorPostComment[];
   onSave: () => void;
   onShare: () => void;
@@ -528,6 +532,7 @@ export function CreatorPostViewer({
   const [heartBurstId, setHeartBurstId] = useState(0);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const reelStageRef = useRef<HTMLDivElement>(null);
   const navigationLockRef = useRef(false);
 
@@ -780,14 +785,25 @@ export function CreatorPostViewer({
                     <p className="font-semibold">{comment.user?.name?.trim() || "LIBERIA360 member"}</p>
                     <p className="break-words text-slate-700 dark:text-white/80">{comment.body}</p>
                     <p className="mt-1 text-xs text-slate-400">{timeAgo(comment.createdAt)}</p>
+                    <div className="mt-2 flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-white/60">
+                      <button type="button" onClick={() => onCommentLike?.(comment.id)} aria-pressed={Boolean(comment.viewerLiked)} className={comment.viewerLiked ? "text-rose-600 dark:text-rose-400" : "hover:text-rose-600 dark:hover:text-rose-400"}>
+                        {comment.viewerLiked ? "Liked" : "Like"} · {comment.likeCount}
+                      </button>
+                      <button type="button" onClick={() => { setReplyingTo(comment.id); onCommentReply?.(comment.id); }} className="hover:text-brand-700 dark:hover:text-brand-300">
+                        Reply
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
             <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-white/10">
               <div className="flex items-end gap-2">
-                <textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} rows={1} maxLength={1000} placeholder="Write a comment…" aria-label="Write a comment" className="min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45" />
-                <button type="button" onClick={() => { if (!commentDraft.trim()) return; if (onCommentSubmit) onCommentSubmit(commentDraft.trim()); else onComment(); setCommentsOpen(false); setCommentDraft(""); }} disabled={!commentDraft.trim()} className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40">
+                <div className="min-w-0 flex-1">
+                  {replyingTo && <p className="mb-1 flex items-center justify-between px-2 text-xs text-brand-700 dark:text-brand-300"><span>Replying to comment</span><button type="button" onClick={() => setReplyingTo(null)} className="font-semibold">Cancel</button></p>}
+                  <textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} rows={1} maxLength={1000} placeholder={replyingTo ? "Write a reply…" : "Write a comment…"} aria-label={replyingTo ? "Write a reply" : "Write a comment"} className="min-h-11 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45" />
+                </div>
+                <button type="button" onClick={() => { if (!commentDraft.trim()) return; if (onCommentSubmit) onCommentSubmit(commentDraft.trim(), replyingTo ?? undefined); else onComment(); setCommentsOpen(false); setCommentDraft(""); setReplyingTo(null); }} disabled={!commentDraft.trim()} className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40">
                   Post
                 </button>
               </div>

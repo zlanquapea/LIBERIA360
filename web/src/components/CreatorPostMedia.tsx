@@ -19,7 +19,9 @@ type CreatorPostMediaProps = {
   shareCount: number;
   onLike: () => void;
   onComment: () => void;
-  onCommentSubmit?: (body: string) => void;
+  onCommentSubmit?: (body: string, parentId?: string) => void;
+  onCommentLike?: (commentId: string) => void;
+  onCommentReply?: (commentId: string) => void;
   comments?: CreatorPostComment[];
   onSave: () => void;
   onShare: () => void;
@@ -41,6 +43,8 @@ export function CreatorPostMedia({
   onLike,
   onComment,
   onCommentSubmit,
+  onCommentLike,
+  onCommentReply,
   comments,
   onSave,
   onShare,
@@ -111,6 +115,8 @@ export function CreatorPostMedia({
               onComment();
             }}
             onCommentSubmit={isInitialPost ? onCommentSubmit : undefined}
+            onCommentLike={isInitialPost ? onCommentLike : undefined}
+            onCommentReply={isInitialPost ? onCommentReply : undefined}
             comments={isInitialPost ? comments : undefined}
             onSave={isInitialPost ? onSave : () => undefined}
             onShare={isInitialPost ? onShare : () => undefined}

@@ -294,7 +294,7 @@ export function CreatorPostCard({
     }
   }
 
-  async function submitComment(body = commentBody) {
+  async function submitComment(body = commentBody, parentId = replyingTo ?? undefined) {
     if (!token || !body.trim()) return;
     setSubmittingComment(true);
     setError(null);
@@ -303,7 +303,7 @@ export function CreatorPostCard({
         token,
         post.id,
         body.trim(),
-        replyingTo ?? undefined,
+        parentId,
       );
       setComments((current) => [...current, comment]);
       setCommentCount((current) => current + 1);
@@ -583,7 +583,9 @@ export function CreatorPostCard({
         shareCount={shareCount}
         onLike={() => void handleLike()}
         onComment={() => void toggleComments()}
-        onCommentSubmit={(body) => void submitComment(body)}
+        onCommentSubmit={(body, parentId) => void submitComment(body, parentId)}
+        onCommentLike={(commentId) => void toggleCommentLike(commentId)}
+        onCommentReply={(commentId) => setReplyingTo(commentId)}
         comments={comments}
         onSave={() => void handleSave()}
         onShare={() => void handleShare()}
