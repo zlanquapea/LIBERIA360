@@ -1888,6 +1888,9 @@ export type CreatorStoryMediaType = "image" | "video";
 export type CreatorStoryStatus = "pending" | "approved" | "rejected" | "expired" | "deleted";
 export type CreatorStoryVisibility = "public" | "followers";
 
+export const STORY_REACTION_EMOJIS = ["❤️", "😂", "😮", "😢", "👏", "🔥"] as const;
+export type StoryReactionEmoji = (typeof STORY_REACTION_EMOJIS)[number];
+
 export interface CreatorStory {
   id: string;
   creatorId: string;
@@ -1906,6 +1909,11 @@ export interface CreatorStory {
   // Instagram-style "seen" ring (muted once every story in a creator's
   // reel has been viewed, colorful while any remain unseen).
   viewedByMe: boolean;
+  reactionCount: number;
+  commentCount: number;
+  // Which emoji (if any) the current caller already reacted with — null
+  // for a signed-out caller or one who hasn't reacted yet.
+  myReaction: string | null;
   publishedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
@@ -1917,4 +1925,16 @@ export interface CreatorStory {
     profileImage: string | null;
     verificationStatus: CreatorVerificationStatus;
   };
+}
+
+// Minimal author on purpose — the GET endpoint is reachable anonymously,
+// so the API only ever sends back { id, name } (toPublicProfile), never
+// email/admin flags/etc. See toPublicUser's doc comment on the API side.
+export interface CreatorStoryComment {
+  id: string;
+  storyId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  user: { id: string; name: string } | null;
 }

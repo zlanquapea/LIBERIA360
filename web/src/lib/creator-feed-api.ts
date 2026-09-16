@@ -183,7 +183,7 @@ export function removeCreatorPostComment(
 }
 
 
-import type { CreatorStory, CreatorStoryMediaType, CreatorStoryVisibility } from "./types";
+import type { CreatorStory, CreatorStoryComment, CreatorStoryMediaType, CreatorStoryVisibility } from "./types";
 
 export interface CreatorStoryInput {
   mediaType: CreatorStoryMediaType;
@@ -226,6 +226,35 @@ export function reportCreatorStory(token: string, storyId: string, reason: strin
     method: "POST",
     headers: authHeader(token),
     body: JSON.stringify({ reason }),
+  });
+}
+
+export function reactToCreatorStory(token: string, storyId: string, emoji: string) {
+  return apiRequest<{ reactionCount: number; myReaction: string | null }>(`/creators/stories/${storyId}/reactions`, {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify({ emoji }),
+  });
+}
+
+export function getCreatorStoryComments(storyId: string, token?: string): Promise<CreatorStoryComment[]> {
+  return apiRequest<CreatorStoryComment[]>(`/creators/stories/${storyId}/comments`, {
+    headers: token ? authHeader(token) : undefined,
+  });
+}
+
+export function addCreatorStoryComment(token: string, storyId: string, body: string): Promise<CreatorStoryComment> {
+  return apiRequest<CreatorStoryComment>(`/creators/stories/${storyId}/comments`, {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function removeCreatorStoryComment(token: string, storyId: string, commentId: string) {
+  return apiRequest<void>(`/creators/stories/${storyId}/comments/${commentId}`, {
+    method: "DELETE",
+    headers: authHeader(token),
   });
 }
 

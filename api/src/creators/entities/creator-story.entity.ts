@@ -81,6 +81,16 @@ export class CreatorStory {
   @Column({ name: "view_count", type: "int", default: 0 })
   viewCount: number;
 
+  // Denormalized counters (like `viewCount` above) so the tray/list
+  // endpoints never need a COUNT(*) join across every active story just
+  // to show a badge — kept in sync by CreatorStoriesService's
+  // toggleReaction/addComment/removeComment.
+  @Column({ name: "reaction_count", type: "int", default: 0 })
+  reactionCount: number;
+
+  @Column({ name: "comment_count", type: "int", default: 0 })
+  commentCount: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
@@ -124,6 +134,70 @@ export class CreatorStoryReport {
 
   @Column({ type: "varchar", length: 500 })
   reason: string;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt: Date;
+}
+
+// Fixed quick-tap set (Instagram/Snapchat-style story reactions) rather
+// than a free-text emoji field — keeps the reaction bar a known, always-
+// renderable list of buttons instead of an open-ended picker, and keeps
+// `reactionCount` groupable by a small enum on the read side.
+export const STORY_REACTION_EMOJIS = [
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "👏",
+  "🔥",
+] as const;
+export type StoryReactionEmoji = (typeof STORY_REACTION_EMOJIS)[number];
+
+// One row per (story, user) — tapping a new emoji swaps this row's emoji
+// rather than adding a second one, same "one reaction per person" rule
+// Instagram/Facebook stories use. `reactionCount` on CreatorStory counts
+// *people*, not emoji picks, so swapping emoji never changes it.
+@Entity("creator_story_reactions")
+@Index(["storyId", "userId"], { unique: true })
+export class CreatorStoryReaction {
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
+
+  @Column({ name: "story_id", type: "uuid" })
+  storyId: string;
+
+  @Column({ name: "user_id", type: "uuid" })
+  userId: string;
+
+  @Column({ type: "varchar", length: 8 })
+  emoji: string;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt: Date;
+}
+
+// Flat (no threading/likes, unlike CreatorPostComment) — a story is gone
+// in 24h, so a full reply-thread + per-comment-like model is more
+// machinery than that lifetime justifies. Visible to anyone who can view
+// the story (same public/followers rule as the story itself), same as
+// post comments are visible to anyone who can see the post.
+@Entity("creator_story_comments")
+@Index(["storyId", "createdAt"])
+export class CreatorStoryComment {
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
+
+  @Column({ name: "story_id", type: "uuid" })
+  storyId: string;
+
+  @Column({ name: "user_id", type: "uuid" })
+  userId: string;
+
+  @Column({ type: "text" })
+  body: string;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

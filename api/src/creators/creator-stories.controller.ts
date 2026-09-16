@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   UseGuards,
@@ -13,7 +15,9 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { User } from "../users/entities/user.entity";
 import {
+  CreateCreatorStoryCommentDto,
   CreateCreatorStoryDto,
+  CreateCreatorStoryReactionDto,
   ReportCreatorStoryDto,
 } from "./dto/create-creator-story.dto";
 import { CreatorStoriesService } from "./creator-stories.service";
@@ -88,5 +92,48 @@ export class CreatorStoriesController {
   @UseGuards(JwtAuthGuard)
   remove(@CurrentUser() user: User, @Param("id") id: string) {
     return this.stories.remove(user.id, id);
+  }
+
+  @Post(":id/reactions")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  react(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreateCreatorStoryReactionDto,
+  ) {
+    return this.stories.toggleReaction(user.id, id, dto);
+  }
+
+  // Public — same reasoning as listActive above: OptionalJwtAuthGuard so
+  // a signed-in viewer's followers-only-story access check runs, instead
+  // of every reader silently reading as signed-out and 404ing.
+  @Get(":id/comments")
+  @UseGuards(OptionalJwtAuthGuard)
+  listComments(@Param("id") id: string, @CurrentUser() user?: User) {
+    return this.stories.listComments(id, user?.id);
+  }
+
+  @Post(":id/comments")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  addComment(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreateCreatorStoryCommentDto,
+  ) {
+    return this.stories.addComment(user.id, id, dto);
+  }
+
+  @Delete(":id/comments/:commentId")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeComment(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Param("commentId") commentId: string,
+  ) {
+    return this.stories.removeComment(user.id, id, commentId);
   }
 }

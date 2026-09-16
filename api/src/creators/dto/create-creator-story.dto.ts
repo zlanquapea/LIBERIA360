@@ -1,13 +1,16 @@
 import {
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
+  MinLength,
 } from "class-validator";
 import {
   CreatorStoryMediaType,
   CreatorStoryVisibility,
+  STORY_REACTION_EMOJIS,
 } from "../entities/creator-story.entity";
 
 export class CreateCreatorStoryDto {
@@ -48,4 +51,16 @@ export class ReportCreatorStoryDto {
   @IsString()
   @MaxLength(500)
   reason: string;
+}
+
+export class CreateCreatorStoryReactionDto {
+  @IsIn(STORY_REACTION_EMOJIS)
+  emoji: string;
+}
+
+export class CreateCreatorStoryCommentDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  body: string;
 }

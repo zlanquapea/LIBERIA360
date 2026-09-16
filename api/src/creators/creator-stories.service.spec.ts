@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { CreatorStoriesService } from "./creator-stories.service";
@@ -6,13 +6,16 @@ import { Creator } from "./entities/creator.entity";
 import { CreatorVerificationStatus } from "./entities/creator.enums";
 import {
   CreatorStory,
+  CreatorStoryComment,
   CreatorStoryMediaType,
+  CreatorStoryReaction,
   CreatorStoryReport,
   CreatorStoryView,
   CreatorStoryVisibility,
   STORY_VISIBILITY_HOURS,
 } from "./entities/creator-story.entity";
 import { CreatorFollow } from "./entities/creator-follow.entity";
+import { User } from "../users/entities/user.entity";
 
 const CREATOR = {
   id: "creator-1",
@@ -30,9 +33,25 @@ describe("CreatorStoriesService", () => {
     save: jest.Mock;
     create: jest.Mock;
     increment: jest.Mock;
+    decrement: jest.Mock;
   };
   let viewRepo: { find: jest.Mock; insert: jest.Mock; create: jest.Mock };
   let reportRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock };
+  let reactionRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+    remove: jest.Mock;
+    find: jest.Mock;
+  };
+  let commentRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+    remove: jest.Mock;
+  };
+  let userRepo: { findBy: jest.Mock; findOneBy: jest.Mock };
   let followRepo: { find: jest.Mock; findOne: jest.Mock };
   let storyQueryBuilder: {
     innerJoinAndSelect: jest.Mock;
@@ -65,6 +84,8 @@ describe("CreatorStoriesService", () => {
       tripId: null,
       creatorProfileId: null,
       viewCount: 0,
+      reactionCount: 0,
+      commentCount: 0,
       createdAt: publishedAt,
       updatedAt: publishedAt,
       publishedAt,
@@ -92,6 +113,7 @@ describe("CreatorStoriesService", () => {
       ),
       create: jest.fn((entity) => entity),
       increment: jest.fn(),
+      decrement: jest.fn(),
     };
     viewRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -102,6 +124,26 @@ describe("CreatorStoriesService", () => {
       findOne: jest.fn(),
       save: jest.fn(),
       create: jest.fn((entity) => entity),
+    };
+    reactionRepo = {
+      findOne: jest.fn(),
+      save: jest.fn((entity) => Promise.resolve(entity)),
+      create: jest.fn((entity) => entity),
+      remove: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
+    };
+    commentRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      save: jest.fn((entity) =>
+        Promise.resolve({ id: "comment-1", createdAt: new Date(), ...entity }),
+      ),
+      create: jest.fn((entity) => entity),
+      remove: jest.fn(),
+    };
+    userRepo = {
+      findBy: jest.fn().mockResolvedValue([]),
+      findOneBy: jest.fn(),
     };
     followRepo = { find: jest.fn().mockResolvedValue([]), findOne: jest.fn() };
 
@@ -115,7 +157,16 @@ describe("CreatorStoriesService", () => {
           provide: getRepositoryToken(CreatorStoryReport),
           useValue: reportRepo,
         },
+        {
+          provide: getRepositoryToken(CreatorStoryReaction),
+          useValue: reactionRepo,
+        },
+        {
+          provide: getRepositoryToken(CreatorStoryComment),
+          useValue: commentRepo,
+        },
         { provide: getRepositoryToken(CreatorFollow), useValue: followRepo },
+        { provide: getRepositoryToken(User), useValue: userRepo },
       ],
     }).compile();
 
@@ -209,6 +260,180 @@ describe("CreatorStoriesService", () => {
       await expect(service.recordView(expired.id, "viewer-1")).rejects.toThrow(
         "Story not found",
       );
+    });
+  });
+
+  describe("toggleReaction", () => {
+    it("adds a reaction and increments reactionCount on a first tap", async () => {
+      const story = makeStory({ reactionCount: 2 });
+      storyRepo.findOne.mockResolvedValue(story);
+      reactionRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.toggleReaction("viewer-1", story.id, {
+        emoji: "🔥",
+      });
+
+      expect(reactionRepo.save).toHaveBeenCalled();
+      expect(storyRepo.increment).toHaveBeenCalledWith(
+        { id: story.id },
+        "reactionCount",
+        1,
+      );
+      expect(result).toEqual({ reactionCount: 3, myReaction: "🔥" });
+    });
+
+    it("removes the reaction (toggle off) when tapping the same emoji again", async () => {
+      const story = makeStory({ reactionCount: 3 });
+      storyRepo.findOne.mockResolvedValue(story);
+      reactionRepo.findOne.mockResolvedValue({
+        id: "reaction-1",
+        storyId: story.id,
+        userId: "viewer-1",
+        emoji: "🔥",
+      });
+
+      const result = await service.toggleReaction("viewer-1", story.id, {
+        emoji: "🔥",
+      });
+
+      expect(reactionRepo.remove).toHaveBeenCalled();
+      expect(result).toEqual({ reactionCount: 2, myReaction: null });
+    });
+
+    it("swaps the emoji without changing reactionCount when picking a different one", async () => {
+      const story = makeStory({ reactionCount: 5 });
+      storyRepo.findOne.mockResolvedValue(story);
+      const existing = {
+        id: "reaction-1",
+        storyId: story.id,
+        userId: "viewer-1",
+        emoji: "🔥",
+      };
+      reactionRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.toggleReaction("viewer-1", story.id, {
+        emoji: "😮",
+      });
+
+      expect(reactionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ emoji: "😮" }),
+      );
+      expect(storyRepo.increment).not.toHaveBeenCalled();
+      expect(result).toEqual({ reactionCount: 5, myReaction: "😮" });
+    });
+
+    it("404s reacting to a story a non-follower can't see", async () => {
+      const story = makeStory({ visibility: CreatorStoryVisibility.FOLLOWERS });
+      storyRepo.findOne.mockResolvedValue(story);
+      followRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.toggleReaction("viewer-1", story.id, { emoji: "🔥" }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("comments", () => {
+    it("lists comments with a minimal public author (no email/PII)", async () => {
+      const story = makeStory();
+      storyRepo.findOne.mockResolvedValue(story);
+      commentRepo.find.mockResolvedValue([
+        {
+          id: "c1",
+          storyId: story.id,
+          userId: "author-1",
+          body: "Nice!",
+          createdAt: new Date(),
+        },
+      ]);
+      userRepo.findBy.mockResolvedValue([
+        { id: "author-1", name: "Ama", email: "ama@example.com" },
+      ]);
+
+      const result = await service.listComments(story.id, "viewer-1");
+
+      expect(result[0].user).toEqual({ id: "author-1", name: "Ama" });
+      expect(result[0].user).not.toHaveProperty("email");
+    });
+
+    it("adds a comment and increments commentCount", async () => {
+      const story = makeStory({ commentCount: 1 });
+      storyRepo.findOne.mockResolvedValue(story);
+      userRepo.findOneBy.mockResolvedValue({ id: "viewer-1", name: "Kojo" });
+
+      const comment = await service.addComment("viewer-1", story.id, {
+        body: "Love this!",
+      });
+
+      expect(storyRepo.increment).toHaveBeenCalledWith(
+        { id: story.id },
+        "commentCount",
+        1,
+      );
+      expect(comment.body).toBe("Love this!");
+      expect(comment.user).toEqual({ id: "viewer-1", name: "Kojo" });
+    });
+
+    it("rejects a blank comment", async () => {
+      const story = makeStory();
+      storyRepo.findOne.mockResolvedValue(story);
+
+      await expect(
+        service.addComment("viewer-1", story.id, { body: "   " }),
+      ).rejects.toThrow("Comment cannot be empty");
+    });
+
+    it("lets the comment's own author remove it", async () => {
+      const story = makeStory();
+      commentRepo.findOne.mockResolvedValue({
+        id: "c1",
+        storyId: story.id,
+        userId: "author-1",
+        body: "hi",
+      });
+      storyRepo.findOne.mockResolvedValue(story);
+
+      await service.removeComment("author-1", story.id, "c1");
+
+      expect(commentRepo.remove).toHaveBeenCalled();
+      expect(storyRepo.decrement).toHaveBeenCalledWith(
+        { id: story.id },
+        "commentCount",
+        1,
+      );
+    });
+
+    it("lets the story owner remove someone else's comment", async () => {
+      const story = makeStory({
+        creator: { userId: CREATOR.userId } as unknown as Creator,
+      });
+      commentRepo.findOne.mockResolvedValue({
+        id: "c1",
+        storyId: story.id,
+        userId: "someone-else",
+        body: "hi",
+      });
+      storyRepo.findOne.mockResolvedValue(story);
+
+      await service.removeComment(CREATOR.userId, story.id, "c1");
+
+      expect(commentRepo.remove).toHaveBeenCalled();
+    });
+
+    it("forbids a random viewer from removing someone else's comment", async () => {
+      const story = makeStory();
+      commentRepo.findOne.mockResolvedValue({
+        id: "c1",
+        storyId: story.id,
+        userId: "someone-else",
+        body: "hi",
+      });
+      storyRepo.findOne.mockResolvedValue(story);
+
+      await expect(
+        service.removeComment("random-viewer", story.id, "c1"),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(commentRepo.remove).not.toHaveBeenCalled();
     });
   });
 });
