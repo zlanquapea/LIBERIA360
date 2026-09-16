@@ -106,6 +106,15 @@ body {
   font: inherit;
 }
 
+/* iOS Safari zooms the entire page whenever a text control has a computed
+   font size below 16px. Keep controls at the native no-zoom threshold on
+   phones; larger screens retain the component's intentional type scale. */
+@media (max-width: 639px) {
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    font-size: 16px !important;
+  }
+}
+
 :where(input, select, textarea)::placeholder {
   color: rgb(100 116 139 / 0.9);
   opacity: 1;
