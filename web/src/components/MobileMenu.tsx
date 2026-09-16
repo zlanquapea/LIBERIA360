@@ -122,7 +122,7 @@ export function MobileMenu() {
                     onClick={close}
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    <Icon aria-hidden className="h-5 w-5 text-brand-700 dark:text-brand-300" />
+                    <Icon aria-hidden className="h-5 w-5 text-lagoon-700 dark:text-lagoon-300" />
                     {t(labelKey)}
                   </Link>
                 ))}
