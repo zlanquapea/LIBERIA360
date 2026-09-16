@@ -17,7 +17,7 @@ export default function NotFound() {
   return (
     <BrandedErrorState
       icon={MagnifyingGlassIcon}
-      iconTone="lagoon"
+      iconTone="brand"
       title="Page not found"
       description="Looks like this page wandered off the map. Let's get you back on the trail."
       homeAction={

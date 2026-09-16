@@ -16,12 +16,12 @@
   --ink-strong: #0f172a;
   --ink-muted: #526077;
   --border-subtle: #dce3ed;
-  --focus-ring: #3355ad;
+  --focus-ring: #007a99;
   --radius-control: 0.875rem;
   --radius-card: 1.25rem;
   --radius-panel: 1.75rem;
-  --shadow-card: 0 2px 8px -2px rgb(8 26 80 / 0.08), 0 12px 32px -10px rgb(8 26 80 / 0.14);
-  --shadow-float: 0 20px 55px -20px rgb(8 26 80 / 0.3);
+  --shadow-card: 0 2px 8px -2px rgb(0 47 59 / 0.08), 0 12px 32px -10px rgb(0 47 59 / 0.14);
+  --shadow-float: 0 20px 55px -20px rgb(0 47 59 / 0.3);
   --ease-product: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -32,7 +32,7 @@
   --ink-strong: #f8fafc;
   --ink-muted: #a9b5c8;
   --border-subtle: #26344b;
-  --focus-ring: #93a1d6;
+  --focus-ring: #51d5f6;
   --shadow-card: 0 2px 10px rgb(0 0 0 / 0.24), 0 18px 40px -18px rgb(0 0 0 / 0.7);
   --shadow-float: 0 22px 60px -22px rgb(0 0 0 / 0.8);
 }
@@ -50,7 +50,7 @@ html {
 body {
   min-width: 320px;
   background-color: var(--surface-canvas);
-  background-image: radial-gradient(circle at 12% -8%, rgb(51 85 173 / 0.07), transparent 28rem);
+  background-image: radial-gradient(circle at 12% -8%, rgb(0 180 224 / 0.07), transparent 28rem);
 }
 
 /* A quiet entrance gives route changes continuity without making the
@@ -65,7 +65,7 @@ body {
 }
 
 ::selection {
-  color: #081a50;
+  color: #002f3b;
   background: #ffdc8a;
 }
 
@@ -77,7 +77,7 @@ body {
   z-index: 4000;
   padding: 0.7rem 1rem;
   border-radius: 0.75rem;
-  color: #081a50;
+  color: #002f3b;
   background: #fff;
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.24);
   font-weight: 800;
@@ -94,7 +94,7 @@ body {
 /* Shared interaction defaults keep every feature usable even when an
    individual screen has not supplied its own focus or disabled styling. */
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid #3355ad;
+  outline: 3px solid #007a99;
   outline-offset: 2px;
 }
 
@@ -141,7 +141,7 @@ body {
 }
 
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):hover:not(:disabled) {
-  border-color: #93a1d6;
+  border-color: #51d5f6;
 }
 
 @layer components {
@@ -338,9 +338,9 @@ html.dark {
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(circle at 50% 44%, rgb(29 73 151 / 0.62), transparent 30%),
+    radial-gradient(circle at 50% 44%, rgb(0 122 153 / 0.62), transparent 30%),
     radial-gradient(circle at 12% 12%, rgb(255 198 61 / 0.12), transparent 24%),
-    linear-gradient(145deg, #061641 0%, #081a50 48%, #030a25 100%);
+    linear-gradient(145deg, #003f4f 0%, #002f3b 48%, #001f26 100%);
   animation: splash-screen-in 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 .splash-screen--leaving {
@@ -584,7 +584,7 @@ html[data-splash-seen='1'] .splash-screen {
 /* BrandLoader (src/components/BrandLoader.tsx) — the "still loading" moment
    used by app/loading.tsx on every route transition, so unlike the one-time
    splash above this needs to look equally at home for 100ms or several
-   seconds. Two rings in the logo's own navy/gold/green palette orbit at
+   seconds. Two rings in the logo's own teal/gold/green palette orbit at
    different speeds and directions around a static copy of the mark itself
    (the mark never spins — a spinning logo reads as broken, not premium).
    The whole thing fades in on a short delay so a near-instant load never
@@ -602,7 +602,7 @@ html[data-splash-seen='1'] .splash-screen {
   position: absolute;
   inset: -35%;
   border-radius: 999px;
-  background: radial-gradient(circle, rgb(255 198 61 / 0.35), rgb(22 48 122 / 0.2) 55%, transparent 72%);
+  background: radial-gradient(circle, rgb(255 198 61 / 0.35), rgb(0 80 99 / 0.2) 55%, transparent 72%);
   filter: blur(14px);
   animation: brand-loader-halo-pulse 2.6s ease-in-out infinite;
 }
@@ -613,7 +613,7 @@ html[data-splash-seen='1'] .splash-screen {
   border-radius: 999px;
 }
 .brand-loader__ring--outer {
-  border-top-color: #16307a;
+  border-top-color: #005063;
   border-right-color: #ffc63d;
   animation: brand-loader-spin 1.3s cubic-bezier(0.55, 0.05, 0.35, 0.95) infinite;
 }
@@ -621,14 +621,14 @@ html[data-splash-seen='1'] .splash-screen {
   inset: 18%;
   border-width: 2.5px;
   border-bottom-color: #5fbb42;
-  border-left-color: #3355ad;
+  border-left-color: #007a99;
   animation: brand-loader-spin-reverse 1.85s cubic-bezier(0.55, 0.05, 0.35, 0.95) infinite;
 }
 .dark .brand-loader__ring--outer {
-  border-top-color: #6478c2;
+  border-top-color: #06b8e5;
 }
 .dark .brand-loader__ring--inner {
-  border-left-color: #93a1d6;
+  border-left-color: #51d5f6;
 }
 .brand-loader__mark {
   position: relative;
@@ -640,7 +640,7 @@ html[data-splash-seen='1'] .splash-screen {
   overflow: hidden;
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 6px 18px rgb(8 26 80 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.4);
+  box-shadow: 0 6px 18px rgb(0 47 59 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.4);
 }
 .brand-loader--sm {
   width: 1.75rem;
@@ -746,11 +746,11 @@ html[data-splash-seen='1'] .splash-screen {
   }
 }
 
-/* Atlantic Signal ticketing surface: modern pass cards, warm paper panels, navy framing, and signal-yellow orientation cues. Visual-only refinement; business logic remains in the existing ticket components. */
+/* Atlantic Signal ticketing surface: modern pass cards, warm paper panels, teal framing, and signal-yellow orientation cues. Visual-only refinement; business logic remains in the existing ticket components. */
 .ticket-page-shell,
 .ticket-page-state {
-  --ticket-ink: #081a50;
-  --ticket-deep: #050b24;
+  --ticket-ink: #002f3b;
+  --ticket-deep: #001f26;
   --ticket-paper: #f7f8f4;
   --ticket-warm: #eef0e8;
   --ticket-sea: #e5f1f1;
@@ -912,7 +912,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-order-card {
   background: var(--ticket-paper);
   border: 1px solid var(--ticket-line);
-  box-shadow: 0 12px 38px rgb(8 26 80 / .07);
+  box-shadow: 0 12px 38px rgb(0 47 59 / .07);
   overflow: hidden;
   position: relative;
 }
@@ -957,7 +957,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-order-total strong { color: var(--ticket-ink); font-size: 1rem; margin-top: .35rem; }
 .dark .ticket-order-total strong { color: #f4f5ed; }
 .issued-pass-grid { border-top: 1px dashed var(--ticket-line); display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); padding: 1.4rem; }
-.issued-pass-card { background: var(--ticket-sea); border: 1px solid rgb(8 26 80 / .08); padding: 1rem; }
+.issued-pass-card { background: var(--ticket-sea); border: 1px solid rgb(0 47 59 / .08); padding: 1rem; }
 .issued-pass-head { align-items: center; color: var(--ticket-ink); display: flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .72rem; font-weight: 700; justify-content: space-between; }
 .issued-pass-head > span:first-child { align-items: center; display: inline-flex; gap: .4rem; }
 .issued-pass-type { color: var(--ticket-ink); font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: .6rem 0 0; }
@@ -1039,7 +1039,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-loading-mark { animation: ticket-pulse 1.2s ease-in-out infinite; }
 @keyframes ticket-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(255 198 61 / .25); } 50% { box-shadow: 0 0 0 .75rem rgb(255 198 61 / 0); } }
 
-.ticket-purchase-shell { background: var(--ticket-paper); border: 1px solid var(--ticket-line); box-shadow: 0 16px 38px rgb(8 26 80 / .08); margin-top: 1.5rem; overflow: hidden; position: relative; }
+.ticket-purchase-shell { background: var(--ticket-paper); border: 1px solid var(--ticket-line); box-shadow: 0 16px 38px rgb(0 47 59 / .08); margin-top: 1.5rem; overflow: hidden; position: relative; }
 .ticket-purchase-shell::before, .ticket-purchase-shell::after { background: white; border: 1px solid var(--ticket-line); border-radius: 50%; content: ""; height: 1.5rem; position: absolute; top: 12rem; width: 1.5rem; z-index: 2; }
 .ticket-purchase-shell::before { left: -.8rem; }
 .ticket-purchase-shell::after { right: -.8rem; }
@@ -1075,9 +1075,9 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-form-error { color: #b42318; }
 .ticket-form-success { color: #28735a; }
 .ticket-form-success a { font-weight: 700; text-decoration: underline; }
-.ticket-submit-button { align-items: center; appearance: none; background: #081a50; border: 1px solid #ffc63d; border-radius: .9rem; box-shadow: 0 8px 22px rgb(8 26 80 / .16); color: #fff; display: inline-flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .78rem; font-weight: 800; gap: .45rem; justify-content: center; margin-top: 1.2rem; min-height: 3.55rem; padding: 0 1.1rem; text-align: center; transition: background 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease; }
-.ticket-submit-button:hover:not(:disabled) { background: #122b72; box-shadow: 0 11px 26px rgb(8 26 80 / .22); transform: translateY(-1px); }
-.ticket-submit-button:disabled { background: #081a50; color: #fff; cursor: not-allowed; opacity: .95; }
+.ticket-submit-button { align-items: center; appearance: none; background: #002f3b; border: 1px solid #ffc63d; border-radius: .9rem; box-shadow: 0 8px 22px rgb(0 47 59 / .16); color: #fff; display: inline-flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .78rem; font-weight: 800; gap: .45rem; justify-content: center; margin-top: 1.2rem; min-height: 3.55rem; padding: 0 1.1rem; text-align: center; transition: background 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease; }
+.ticket-submit-button:hover:not(:disabled) { background: #122b72; box-shadow: 0 11px 26px rgb(0 47 59 / .22); transform: translateY(-1px); }
+.ticket-submit-button:disabled { background: #002f3b; color: #fff; cursor: not-allowed; opacity: .95; }
 .ticket-login-prompt { align-items: center; border-top: 1px dashed var(--ticket-line); display: flex; gap: 1rem; justify-content: space-between; padding: 1.35rem 1.4rem; }
 .ticket-login-prompt p { color: var(--ticket-slate); font-size: .8rem; margin: 0; }
 .ticket-action-link { color: var(--ticket-ink); font-size: .74rem; white-space: nowrap; }
@@ -1107,7 +1107,7 @@ html[data-splash-seen='1'] .splash-screen {
   .ticket-purchase-shell { overflow: visible; }
   .ticket-purchase-form { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
   .ticket-submit-button {
-    box-shadow: 0 6px 16px rgb(8 26 80 / .16);
+    box-shadow: 0 6px 16px rgb(0 47 59 / .16);
     justify-content: center;
     margin-top: 1.15rem;
     width: 100%;

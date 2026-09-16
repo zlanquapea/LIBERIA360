@@ -32,12 +32,12 @@ export default function GlobalNotFound() {
         <div className="relative flex h-24 w-24 items-center justify-center">
           <span
             aria-hidden
-            className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-lagoon-100 to-lagoon-200 opacity-90 blur-md"
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-brand-100 to-brand-200 opacity-90 blur-md"
           />
           <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-card ring-1 ring-black/5">
             <Image src="/logo.png" alt="" width={64} height={64} className="h-14 w-14 object-contain" />
           </span>
-          <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-lagoon-700 shadow-md ring-4 ring-white">
+          <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-brand-700 shadow-md ring-4 ring-white">
             <MagnifyingGlassIcon aria-hidden className="h-5 w-5" />
           </span>
         </div>

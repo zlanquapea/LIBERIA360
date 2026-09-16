@@ -119,13 +119,13 @@ function drawCard(
   const h = CARD_HEIGHT;
   const pad = 88;
 
-  // Background — the same navy gradient + soft glow-blob language as the
+  // Background — the same teal gradient + soft glow-blob language as the
   // home page hero, so a card someone downloads still reads as this app's
   // own brand rather than a generic template.
   const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, '#16307a');
-  bg.addColorStop(0.55, '#0e2361');
-  bg.addColorStop(1, '#050b24');
+  bg.addColorStop(0, '#005063');
+  bg.addColorStop(0.55, '#003f4f');
+  bg.addColorStop(1, '#001f26');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 

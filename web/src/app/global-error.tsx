@@ -28,7 +28,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <div className="relative flex h-24 w-24 items-center justify-center">
           <span
             aria-hidden
-            className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-lagoon-100 to-lagoon-200 opacity-90 blur-md dark:from-gold-900/40 dark:via-lagoon-900/30 dark:to-lagoon-900/60"
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-brand-100 to-brand-200 opacity-90 blur-md dark:from-gold-900/40 dark:via-brand-900/30 dark:to-brand-900/60"
           />
           <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-card ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
             <Image src="/logo.png" alt="" width={64} height={64} className="h-14 w-14 object-contain" />

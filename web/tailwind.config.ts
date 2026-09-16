@@ -10,36 +10,54 @@ const config: Config = {
     extend: {
       colors: {
         // Palette sampled directly from public/logo.png (the LIBERIA360
-        // mark). Navy is the dominant color (the wordmark, capitol
-        // silhouette, and arc) so it's the primary/interactive color —
-        // links, nav, buttons. `accent` (green) comes from the palm tree /
-        // waterfall / "O" and is used for imagery placeholders and the
-        // occasional CTA where a warmer, more "nature" tone reads better
-        // than navy. `gold` and `flag` are the sun and Liberian-flag-red
-        // details in the mark — used sparingly as accents, not for
-        // functional states (red already means "error" in UI convention).
+        // mark — refreshed Sep 2026 to a sunset pin over a coastline).
+        // Teal, from the palm-tree/headland silhouette, is now the
+        // dominant color (hue ~192° across a histogram of the artwork's
+        // opaque pixels, not eyeballed) so it's the primary/interactive
+        // color — links, nav, buttons — same principle the previous navy-
+        // based version of this palette used, just resampled for the new
+        // mark. `accent` (green) is a separate, deliberately logo-
+        // independent "nature" tone (see its own comment below); `gold`
+        // and `flag` are the sun and Liberian-flag-red details in the
+        // mark, used sparingly as accents, not for functional states (red
+        // already means "error" in UI convention) — `gold` in particular
+        // already sat almost exactly on this new logo's own sun/arc color
+        // too (gold-500 #fbb308 vs. a sampled #fec00d — hue 42° vs. 45°,
+        // lightness 51% vs. 52%), so it didn't need to change.
+        // Built as an 11-stop HSL ramp at that one hue rather than picked
+        // per-shade by eye — but NOT a naive lightness curve: `brand` is
+        // used everywhere, not just as a nav background, including as
+        // *text* at 500/600/700 (button/link/focus-ring colors app-wide)
+        // and inline SVG icons, so every stop was pushed materially darker
+        // than a "same lightness steps as the old navy scale" swap would
+        // give. Cyan-family hues read far lighter than navy at the same
+        // HSL lightness (the G and B channels both carry real luminance
+        // weight, unlike navy's blue-dominant, low-luminance mix), so a
+        // straight port of the old curve left brand-500 at only 2.4:1
+        // against white — failing even the 3:1 non-text floor for the
+        // focus rings and borders that shade is used for everywhere, let
+        // alone the 4.5:1 text floor for the handful of places it's used
+        // as text (e.g. EventTicketScanner's "Scanning Complete" label).
+        // Re-tuned so 500 itself clears text contrast, not just non-text:
+        // 500 on white 4.95:1 (also 4.6:1 on brand-50, the tinted-card case
+        // above actually uses), 600 on white 6.7:1, 700 on white 9.0:1,
+        // 300 on slate-900 10.4:1, 400 on the dark surface-canvas 8.3:1 —
+        // covering every real text/icon/focus-ring pairing already in the
+        // codebase, not just the nav's own prior contrast checks (still
+        // true here too: white on 900 14.3:1, blended white/65%-on-900
+        // 6.8:1, gold-400 on 900 9.1:1).
         brand: {
-          50: '#f1f3fa',
-          100: '#dfe4f3',
-          200: '#c0c9e8',
-          300: '#93a1d6',
-          400: '#6478c2',
-          500: '#3355ad',
-          600: '#223f95',
-          700: '#16307a',
-          800: '#0e2361',
-          900: '#081a50',
-          // Darker-than-900 navy for dark-mode surface tints (translucent
-          // panel/badge backgrounds) — the exact value the homepage hero's
-          // gradient already reaches for at its darkest stop (`to-[#050b24]`
-          // in page.tsx). Added because `brand-950` was already in use
-          // across a dozen components (VerificationTrustInfo, PlaceKeyFacts,
-          // ShareMenu, CreatorPostCard, account/page, ...) as if it existed;
-          // Tailwind silently drops classes for undefined shades, so every
-          // one of those `bg-brand-950`/`text-brand-950`/`ring-brand-950`
-          // usages was a no-op — the exact kind of bug behind the "gray box
-          // with unreadable text" report on the verification info panel.
-          950: '#050b24',
+          50: '#eff8fa',
+          100: '#d9f1f7',
+          200: '#a3e4f5',
+          300: '#51d5f6',
+          400: '#06b8e5',
+          500: '#007a99',
+          600: '#00647d',
+          700: '#005063',
+          800: '#003f4f',
+          900: '#002f3b',
+          950: '#001f26',
         },
         accent: {
           50: '#f1faed',
@@ -85,49 +103,15 @@ const config: Config = {
           900: '#513602',
           950: '#2b1c02',
         },
-        // Sampled from the redesigned logo (Sep 2026 refresh — sunset pin
-        // over a coastline): the dark teal of the palm-tree/headland
-        // silhouette, hue ~192° across the sampled pixels (a histogram over
-        // the artwork's opaque pixels, not eyeballed). Dedicated to the
-        // site's navigation chrome specifically (Header, BottomNav,
-        // MobileMenu's own nav-item icons) — a clean, single-hue "coastal
-        // lagoon" identity for the one thing every page shares, rather than
-        // recoloring `brand` (the interactive/link blue used everywhere
-        // else) for a change that was only ever about the nav bar. `gold`
-        // above already sits almost exactly on this same logo's sun/arc
-        // color (gold-500 #fbb308 vs. a sampled #fec00d — hue 42° vs. 45°,
-        // lightness 51% vs. 52%) and needed no change — it's kept as the
-        // nav's one accent color (active-tab indicator, focus rings),
-        // unchanged.
-        // Built as an 11-stop HSL ramp at that one hue rather than picked
-        // per-shade by eye, then contrast-checked against how each is
-        // actually used: white text on lagoon-900 (the nav bar itself)
-        // 10.9:1, white/65%-on-900 (BottomNav's inactive tab labels) 5.5:1,
-        // gold-400 on lagoon-900 (the active-tab indicator) 6.9:1,
-        // lagoon-700 on white and lagoon-300 on slate-900 (MobileMenu's
-        // light/dark nav-icon color) 5.8:1 / 11.6:1 — all clear WCAG AA's
-        // 4.5:1 text floor (most clear AAA's 7:1 too), and comparable to or
-        // better than the navy bar's own prior contrast (16.5:1 white-on-
-        // brand-900) it replaces.
-        lagoon: {
-          50: '#f3fafc',
-          100: '#e2f4f9',
-          200: '#baebf7',
-          300: '#77def8',
-          400: '#2ed1fa',
-          500: '#00b4e0',
-          600: '#008bad',
-          700: '#006e8a',
-          800: '#00586e',
-          900: '#004354',
-          950: '#002933',
-        },
         // Full LIBERIA360 logo palette for the responsive product UI. Keep
         // semantic states on the existing `flag` scale; these named tokens
-        // are for brand expression, category accents, and editorial framing.
+        // are for brand expression, category accents, and editorial
+        // framing. Currently unused by any component (grep before reaching
+        // for these) — `navy`/`royal` kept in sync with `brand-900`/`500`
+        // regardless, so they're correct the day something does.
         liberia: {
-          navy: '#081a50',
-          royal: '#3355ad',
+          navy: '#002f3b',
+          royal: '#007a99',
           sky: '#2896c8',
           red: '#e21f22',
           green: '#3aa01e',
@@ -175,9 +159,9 @@ const config: Config = {
       boxShadow: {
         // A softer, more "premium travel app" card shadow than Tailwind's
         // default `shadow-md` — wider spread, lower opacity, tinted toward
-        // the brand navy instead of pure black.
-        card: '0 2px 8px -2px rgba(8, 26, 80, 0.08), 0 8px 24px -6px rgba(8, 26, 80, 0.10)',
-        'card-hover': '0 4px 14px -2px rgba(8, 26, 80, 0.12), 0 16px 32px -8px rgba(8, 26, 80, 0.16)',
+        // the brand color instead of pure black.
+        card: '0 2px 8px -2px rgba(0, 47, 59, 0.08), 0 8px 24px -6px rgba(0, 47, 59, 0.10)',
+        'card-hover': '0 4px 14px -2px rgba(0, 47, 59, 0.12), 0 16px 32px -8px rgba(0, 47, 59, 0.16)',
       },
       keyframes: {
         // Small, CSS-only motion vocabulary — deliberately not pulling in

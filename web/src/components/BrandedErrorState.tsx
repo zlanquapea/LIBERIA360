@@ -17,10 +17,9 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 //
 // Reuses BrandLoader's own visual grammar — the real logo mark, static,
 // sitting in a soft halo — rather than a generic illustration: the halo
-// here uses the nav's current lagoon/gold identity (not BrandLoader's own
-// still-navy rings, which are a separate, not-yet-revisited surface) and
-// swaps the "loading" motion for a small badge icon that says what kind of
-// status this actually is, since nothing here is in progress.
+// here uses the app's current brand/gold identity and swaps the "loading"
+// motion for a small badge icon that says what kind of status this
+// actually is, since nothing here is in progress.
 //
 // 'use client' + useTranslations, not getTranslations (i18n, Sep 2026):
 // same reasoning as loading.tsx's own doc comment — not-found.tsx is a
@@ -32,7 +31,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // contract for that file.
 export function BrandedErrorState({
   icon: Icon,
-  iconTone = 'lagoon',
+  iconTone = 'brand',
   title,
   description,
   onRetry,
@@ -40,11 +39,11 @@ export function BrandedErrorState({
   homeAction,
 }: {
   icon: IconComponent;
-  // 'lagoon' for "couldn't find that" (a wrong turn, not a failure) vs.
+  // 'brand' for "couldn't find that" (a wrong turn, not a failure) vs.
   // 'gold' for an actual caught error — kept warm rather than reaching for
   // `flag` (red), which this app reserves for destructive actions and
   // real danger states, not "please retry."
-  iconTone?: 'lagoon' | 'gold';
+  iconTone?: 'brand' | 'gold';
   title: string;
   description: string;
   // Only error.tsx passes this (its `reset()`) — a not-found page has
@@ -66,7 +65,7 @@ export function BrandedErrorState({
       <div className="relative flex h-24 w-24 items-center justify-center">
         <span
           aria-hidden
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-lagoon-100 to-lagoon-200 opacity-90 blur-md dark:from-gold-900/40 dark:via-lagoon-900/30 dark:to-lagoon-900/60"
+          className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-brand-100 to-brand-200 opacity-90 blur-md dark:from-gold-900/40 dark:via-brand-900/30 dark:to-brand-900/60"
         />
         <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-card ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
           <Image src="/logo.png" alt="" width={64} height={64} className="h-14 w-14 object-contain" />
@@ -75,7 +74,7 @@ export function BrandedErrorState({
           className={`absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md ring-4 ring-white dark:bg-slate-800 dark:ring-slate-950 ${
             iconTone === 'gold'
               ? 'text-gold-700 dark:text-gold-300'
-              : 'text-lagoon-700 dark:text-lagoon-300'
+              : 'text-brand-700 dark:text-brand-300'
           }`}
         >
           <Icon aria-hidden className="h-5 w-5" />

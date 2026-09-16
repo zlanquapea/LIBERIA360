@@ -39,11 +39,16 @@ import type {
 import { visibleAdminNav } from "@/lib/admin-nav";
 import { KpiCard, Panel } from "@/components/admin-ui";
 
-// Fixed status colors, validated for categorical/CVD separation against this
-// app's own brand palette (see dataviz skill) — not arbitrary. pending/
-// confirmed/declined reuse the semantic meaning readers already expect;
-// cancelled uses the app's existing brand-400 blue rather than a generic
-// gray, which failed the palette's chroma-floor check on its own.
+// Fixed status colors, validated for categorical/CVD separation (see
+// dataviz skill) — not arbitrary. pending/confirmed/declined reuse the
+// semantic meaning readers already expect; cancelled was originally
+// picked to reuse the app's own brand-400 blue rather than a generic
+// gray (which failed the palette's chroma-floor check on its own) — kept
+// as this standalone value, not `brand-400`, since the brand refresh
+// (Sep 2026) moved that token to a teal that sits too close to
+// "confirmed"'s green on the wheel for this specific four-way CVD
+// separation; re-validate before ever pointing this back at a brand-*
+// token again.
 const BOOKING_STATUS_META: { key: BookingStatus; color: string }[] = [
   { key: "confirmed", color: "#059669" },
   { key: "pending", color: "#d97706" },
@@ -574,7 +579,7 @@ function QuickActions() {
             <Link
               key={group.id}
               href={href}
-              className="group flex min-h-36 flex-col justify-between rounded-[1.45rem] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(8,26,80,0.08)] transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_14px_30px_rgba(8,26,80,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:min-h-40 sm:p-5"
+              className="group flex min-h-36 flex-col justify-between rounded-[1.45rem] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(0,47,59,0.08)] transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_14px_30px_rgba(0,47,59,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:min-h-40 sm:p-5"
             >
               <span className="flex items-start justify-between gap-2">
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-800 group-hover:bg-brand-100 dark:bg-brand-950/60 dark:text-brand-300 dark:group-hover:bg-brand-900/60">
