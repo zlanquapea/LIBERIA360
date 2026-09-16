@@ -1,6 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect } from 'react';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import './globals.css';
 import { reportError } from '@/lib/error-reporting';
 
@@ -10,7 +12,11 @@ import { reportError } from '@/lib/error-reporting';
 // file, it replaces the entire root layout when triggered, so it has to
 // render its own <html>/<body> and re-import the global stylesheet —
 // nothing from layout.tsx (header, bottom nav, globals.css) is there to
-// fall back on.
+// fall back on. That includes the NextIntlClientProvider both root layouts
+// establish, so — unlike error.tsx/not-found.tsx — this can't use
+// useTranslations or import BrandedErrorState (which needs that provider);
+// it hand-rolls the same "logo mark in a soft halo" visual instead of
+// falling back to plain text, English-only, same as this file already was.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     reportError(error, { digest: error.digest, scope: 'root-layout' });
@@ -18,16 +24,28 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Something went wrong</h1>
-        <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
-          Sorry about that — LIBERIA360 hit an unexpected error. Try again, or reload the page.
-        </p>
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
-        >
+      <body className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
+        <div className="relative flex h-24 w-24 items-center justify-center">
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-gold-200 via-lagoon-100 to-lagoon-200 opacity-90 blur-md dark:from-gold-900/40 dark:via-lagoon-900/30 dark:to-lagoon-900/60"
+          />
+          <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-card ring-1 ring-black/5 dark:bg-slate-900 dark:ring-white/10">
+            <Image src="/logo.png" alt="" width={64} height={64} className="h-14 w-14 object-contain" />
+          </span>
+          <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gold-700 shadow-md ring-4 ring-white dark:bg-slate-800 dark:text-gold-300 dark:ring-slate-950">
+            <ExclamationTriangleIcon aria-hidden className="h-5 w-5" />
+          </span>
+        </div>
+        <div className="flex max-w-sm flex-col gap-2">
+          <h1 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-slate-950 dark:text-white">
+            Something went wrong
+          </h1>
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Sorry about that — LIBERIA360 hit an unexpected error. Try again, or reload the page.
+          </p>
+        </div>
+        <button type="button" onClick={reset} className="button-primary">
           Try again
         </button>
       </body>

@@ -42,6 +42,23 @@ const nextConfig = {
     // instead of rejecting it cleanly. Sized with headroom over that 50MB
     // ceiling for multipart boundary/header overhead.
     proxyClientMaxBodySize: '60mb',
+    // A nested not-found.tsx (src/app/[locale]/not-found.tsx,
+    // src/app/(no-locale)/not-found.tsx) only catches an explicit
+    // notFound() call thrown by a page/layout under it — a dead place/
+    // business/event slug, say. It does NOT catch "this URL matches no
+    // route at all" (a typo, a stale external link, an invalid locale
+    // segment triggering [locale]/layout.tsx's own notFound() call): per
+    // Next.js's own docs, only a *root* not-found.tsx (or
+    // global-not-found.tsx) handles that — confirmed by testing, not just
+    // read: a bare app/not-found.tsx did nothing for those URLs here,
+    // Next's own unbranded default kept rendering instead. This app has no
+    // single root to put one in, though — two parallel root layouts
+    // (src/app/[locale]/layout.tsx and src/app/(no-locale)/layout.tsx —
+    // see NO_LOCALE_ROUTES in proxy.ts), each with its own <html>/<body> —
+    // exactly the "multiple root layouts" case
+    // node_modules/next/dist/docs/.../file-conventions/not-found.md
+    // documents this flag for.
+    globalNotFound: true,
   },
   async rewrites() {
     // API_ORIGIN is the new server-only name, but existing Railway services

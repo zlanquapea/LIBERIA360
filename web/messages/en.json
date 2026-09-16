@@ -58,7 +58,9 @@
     "somethingWentWrong": "Something went wrong",
     "errorDescription": "Sorry about that — this page hit an unexpected error. You can try again, or head back home.",
     "tryAgain": "Try again",
-    "goHome": "Go home"
+    "goHome": "Go home",
+    "pageNotFoundTitle": "Page not found",
+    "pageNotFoundDescription": "Looks like this page wandered off the map. Let's get you back on the trail."
   },
   "home": {
     "eyebrow": "Everything Liberia. One place.",

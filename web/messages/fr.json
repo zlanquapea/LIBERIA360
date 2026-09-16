@@ -58,7 +58,9 @@
     "somethingWentWrong": "Une erreur s'est produite",
     "errorDescription": "Désolé — cette page a rencontré une erreur inattendue. Vous pouvez réessayer ou retourner à l'accueil.",
     "tryAgain": "Réessayer",
-    "goHome": "Retour à l'accueil"
+    "goHome": "Retour à l'accueil",
+    "pageNotFoundTitle": "Page introuvable",
+    "pageNotFoundDescription": "On dirait que cette page s'est égarée hors des sentiers battus. Revenons sur le bon chemin."
   },
   "home": {
     "eyebrow": "Tout le Liberia. En un seul endroit.",
