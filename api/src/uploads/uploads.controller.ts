@@ -20,6 +20,7 @@ import {
   MAX_VIDEO_FILE_SIZE_BYTES,
   videoExtensionForMime,
 } from "./video-validation";
+import { extractVideoThumbnail } from "./video-thumbnail";
 import {
   STORAGE_PROVIDER,
   StorageProvider,
@@ -166,12 +167,27 @@ export class UploadsController {
   )
   async uploadVideo(@UploadedFile() file: Express.Multer.File) {
     assertSupportedVideo(file);
-    const filename = `${randomUUID()}.${videoExtensionForMime(file.mimetype)}`;
+    const id = randomUUID();
+    const filename = `${id}.${videoExtensionForMime(file.mimetype)}`;
     const { url } = await this.storage.save({
       buffer: file.buffer,
       filename,
       contentType: file.mimetype,
     });
-    return { url };
+    let thumbnailUrl: string | null = null;
+    try {
+      const thumbnail = await extractVideoThumbnail(file.buffer);
+      const result = await this.storage.save({
+        buffer: thumbnail,
+        filename: `${id}-poster.jpg`,
+        contentType: "image/jpeg",
+      });
+      thumbnailUrl = result.url;
+    } catch (error) {
+      this.logger.warn(
+        `Could not generate video poster for ${filename}: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+    return { url, thumbnailUrl };
   }
 }

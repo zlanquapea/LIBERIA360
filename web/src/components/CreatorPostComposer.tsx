@@ -101,6 +101,7 @@ export function CreatorPostComposer({
       mediaType === "video" && videoSource === "upload" ? 0 : null,
     );
     try {
+      let thumbnailUrl: string | null = null;
       const mediaUrl =
         mediaType === "text"
           ? ""
@@ -108,11 +109,17 @@ export function CreatorPostComposer({
             ? imageMediaUrl!
             : videoSource === "link"
               ? videoUrl.trim()
-              : await uploadVideo(token, videoFile!, setUploadProgress);
+              : await uploadVideo(token, videoFile!, setUploadProgress).then(
+                  (result) => {
+                    thumbnailUrl = result.thumbnailUrl;
+                    return result.url;
+                  },
+                );
 
       const input = {
         mediaType,
         mediaUrl,
+        thumbnailUrl: mediaType === "video" ? thumbnailUrl : null,
         caption: trimmedCaption || undefined,
       };
       if (initialPost) {

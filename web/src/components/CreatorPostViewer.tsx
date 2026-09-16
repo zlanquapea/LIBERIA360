@@ -297,7 +297,7 @@ function DirectVideoViewer({
         ref={videoRef}
         src={post.mediaUrl}
         preload={preload}
-        poster={creatorVideoPosterUrl(post.mediaUrl) ?? undefined}
+        poster={post.thumbnailUrl ?? creatorVideoPosterUrl(post.mediaUrl) ?? undefined}
         muted
         loop={false}
         playsInline
@@ -707,7 +707,7 @@ export function CreatorPostViewerVideoPreview({
   post: CreatorPost;
   onOpen: () => void;
 }) {
-  const poster = creatorVideoPosterUrl(post.mediaUrl);
+  const poster = post.thumbnailUrl ?? creatorVideoPosterUrl(post.mediaUrl);
   return (
     <button
       type="button"

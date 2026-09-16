@@ -13,6 +13,11 @@ export class CreateCreatorPostDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
+  thumbnailUrl?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(2000)
   caption?: string;
 }

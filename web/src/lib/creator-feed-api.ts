@@ -14,6 +14,7 @@ export interface CreatorFeedQuery {
 export interface CreatorPostInput {
   mediaType: CreatorPostMediaType;
   mediaUrl: string;
+  thumbnailUrl?: string | null;
   caption?: string;
 }
 

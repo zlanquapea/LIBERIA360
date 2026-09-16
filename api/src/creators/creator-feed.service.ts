@@ -186,6 +186,8 @@ export class CreatorFeedService {
         creatorId: creator.id,
         mediaType: dto.mediaType,
         mediaUrl: dto.mediaType === "text" ? "" : mediaUrl,
+        thumbnailUrl:
+          dto.mediaType === "video" ? dto.thumbnailUrl?.trim() || null : null,
         caption,
         status: CreatorPostStatus.PUBLISHED,
       }),
@@ -214,6 +216,10 @@ export class CreatorFeedService {
       throw new ForbiddenException("A post needs an image or video link");
     post.mediaType = nextMediaType;
     post.mediaUrl = nextMediaType === "text" ? "" : nextMediaUrl;
+    if (dto.thumbnailUrl !== undefined || nextMediaType !== "video") {
+      post.thumbnailUrl =
+        nextMediaType === "video" ? dto.thumbnailUrl?.trim() || null : null;
+    }
     post.caption = nextCaption;
     await this.postRepo.save(post);
     const saved = await this.postRepo.findOneOrFail({
@@ -405,6 +411,7 @@ export class CreatorFeedService {
       creatorId: post.creatorId,
       mediaType: post.mediaType,
       mediaUrl: post.mediaUrl,
+      thumbnailUrl: post.thumbnailUrl,
       caption: post.caption,
       status: post.status,
       likeCount: post.likeCount,

@@ -412,6 +412,7 @@ export interface CreatorPost {
   creatorId: string;
   mediaType: CreatorPostMediaType;
   mediaUrl: string;
+  thumbnailUrl?: string | null;
   caption: string | null;
   status: CreatorPostStatus;
   likeCount: number;

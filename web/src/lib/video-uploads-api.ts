@@ -30,7 +30,7 @@ export function uploadVideo(
   token: string,
   file: File,
   onProgress?: (percent: number) => void,
-): Promise<string> {
+): Promise<{ url: string; thumbnailUrl: string | null }> {
   validateVideoFile(file);
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
@@ -74,7 +74,11 @@ export function uploadVideo(
         );
         return;
       }
-      resolve(url);
+      const thumbnailUrl = (data as { thumbnailUrl?: unknown } | null)?.thumbnailUrl;
+      resolve({
+        url,
+        thumbnailUrl: typeof thumbnailUrl === "string" ? thumbnailUrl : null,
+      });
     });
     const body = new FormData();
     body.append("file", file);

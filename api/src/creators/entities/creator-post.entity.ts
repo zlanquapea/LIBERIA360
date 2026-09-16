@@ -30,6 +30,14 @@ export class CreatorPost {
   @Column({ name: "media_url", type: "varchar", length: 500 })
   mediaUrl: string;
 
+  @Column({
+    name: "thumbnail_url",
+    type: "varchar",
+    length: 500,
+    nullable: true,
+  })
+  thumbnailUrl: string | null;
+
   @Column({ type: "text", nullable: true })
   caption: string | null;
 

@@ -161,7 +161,10 @@ function StoryComposer({ token, onClose, onPublished }: { token: string; onClose
     if (mediaType === "video" && !videoFile) return setError("Choose a video before publishing.");
     setSubmitting(true); setError(null);
     try {
-      const mediaUrl = mediaType === "image" ? imageUrl! : await uploadVideo(token, videoFile!);
+      const mediaUrl =
+        mediaType === "image"
+          ? imageUrl!
+          : (await uploadVideo(token, videoFile!)).url;
       const input: CreatorStoryInput = { mediaType, mediaUrl, caption: caption.trim() || undefined };
       const story = await createCreatorStory(token, input);
       onPublished(story);
