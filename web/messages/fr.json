@@ -146,7 +146,19 @@
     "sortRating": "Mieux notés",
     "sortDistance": "Plus proche de Monrovia",
     "sortName": "Nom (A–Z)",
-    "openNow": "Ouvert maintenant"
+    "openNow": "Ouvert maintenant",
+    "quickSearchPlaceholder": "Rechercher des lieux, commerces, événements, créateurs…",
+    "recentSearches": "Recherches récentes",
+    "clearRecentSearches": "Effacer",
+    "noSuggestions": "Aucun résultat pour « {query} ».",
+    "seeAllResultsFor": "Voir tous les résultats pour « {query} »",
+    "sectionPlaces": "Lieux",
+    "sectionBusinesses": "Commerces",
+    "sectionEvents": "Événements",
+    "sectionCreators": "Créateurs",
+    "startTyping": "Commencez à taper pour rechercher des lieux, commerces, événements et créateurs.",
+    "close": "Fermer",
+    "searching": "Recherche en cours…"
   },
   "placeDetail": {
     "cityCounty": "{city}, comté de {county}",

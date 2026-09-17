@@ -31,6 +31,7 @@ import type {
   PlacesQuery,
   PlatformStats,
   PublicTripSummary,
+  SearchSuggestResponse,
   SponsoredPlacement,
 } from "./types";
 import { serverApiOrigin } from "./server-api-origin";
@@ -97,6 +98,7 @@ async function apiFetch<T>(
   params?: Record<string, string | number | boolean | undefined>,
   buildFallback?: T,
   extraHeaders?: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<T> {
   // API_URL is a bare relative path ("/api/v1") in the browser — the
   // one-argument `new URL(...)` form requires an absolute string and
@@ -134,6 +136,7 @@ async function apiFetch<T>(
       // Cache entirely — no window to wait out, on any topology.
       cache: "no-store",
       headers: extraHeaders,
+      signal,
     });
   } catch (err) {
     if (IS_BUILD_PHASE && buildFallback !== undefined) {
@@ -183,6 +186,31 @@ export function getPlaces(query: PlacesQuery = {}): Promise<PaginatedPlaces> {
 
 export function getPlaceBySlug(slug: string): Promise<Place> {
   return apiFetch<Place>(`/places/${slug}`);
+}
+
+const EMPTY_SEARCH_SUGGESTIONS: SearchSuggestResponse = {
+  query: "",
+  places: [],
+  businesses: [],
+  events: [],
+  creators: [],
+};
+
+// GlobalSearch's live dropdown — a `signal` lets the caller cancel a
+// still-in-flight request the moment a newer keystroke supersedes it, so a
+// slow response for "rob" can't land after a faster one for "robert" and
+// clobber it back to the stale results.
+export function getSearchSuggestions(
+  q: string,
+  signal?: AbortSignal,
+): Promise<SearchSuggestResponse> {
+  return apiFetch<SearchSuggestResponse>(
+    "/search/suggest",
+    { q },
+    EMPTY_SEARCH_SUGGESTIONS,
+    undefined,
+    signal,
+  );
 }
 
 export function getCounties(): Promise<County[]> {

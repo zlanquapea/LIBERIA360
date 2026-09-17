@@ -146,7 +146,19 @@
     "sortRating": "评分最高",
     "sortDistance": "距蒙罗维亚最近",
     "sortName": "名称（A–Z）",
-    "openNow": "现在营业"
+    "openNow": "现在营业",
+    "quickSearchPlaceholder": "搜索地点、商家、活动、创作者……",
+    "recentSearches": "最近搜索",
+    "clearRecentSearches": "清除",
+    "noSuggestions": "没有找到与“{query}”匹配的结果。",
+    "seeAllResultsFor": "查看“{query}”的所有结果",
+    "sectionPlaces": "地点",
+    "sectionBusinesses": "商家",
+    "sectionEvents": "活动",
+    "sectionCreators": "创作者",
+    "startTyping": "开始输入以搜索地点、商家、活动和创作者。",
+    "close": "关闭",
+    "searching": "搜索中……"
   },
   "placeDetail": {
     "cityCounty": "{city}，{county}县",

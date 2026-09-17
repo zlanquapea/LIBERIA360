@@ -146,7 +146,19 @@
     "sortRating": "Highest rated",
     "sortDistance": "Closest to Monrovia",
     "sortName": "Name (A–Z)",
-    "openNow": "Open now"
+    "openNow": "Open now",
+    "quickSearchPlaceholder": "Search places, businesses, events, creators…",
+    "recentSearches": "Recent searches",
+    "clearRecentSearches": "Clear",
+    "noSuggestions": "No matches for “{query}”.",
+    "seeAllResultsFor": "See all results for “{query}”",
+    "sectionPlaces": "Places",
+    "sectionBusinesses": "Businesses",
+    "sectionEvents": "Events",
+    "sectionCreators": "Creators",
+    "startTyping": "Start typing to search places, businesses, events, and creators.",
+    "close": "Close",
+    "searching": "Searching…"
   },
   "placeDetail": {
     "cityCounty": "{city}, {county} County",

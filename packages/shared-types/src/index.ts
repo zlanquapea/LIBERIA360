@@ -1938,3 +1938,72 @@ export interface CreatorStoryComment {
   createdAt: string;
   user: { id: string; name: string } | null;
 }
+
+// GET /search/suggest — the live, as-you-type dropdown (GlobalSearch.tsx),
+// distinct from GET /places?q= (the full Search Results page): that one
+// ranks by Postgres full-text search over a complete word, which can't
+// match a query still mid-word ("rob" typed toward "Robertsport"); this
+// one is a fast ILIKE prefix/contains match across every browsable content
+// type, capped small per type since it only ever needs to fill a dropdown,
+// not paginate. Each suggestion carries just enough to render one row and
+// link straight to that item's own page — the format*() helpers already
+// used by PlaceCard/BusinessCard/EventCard/CreatorCard build the same
+// subtitle text from the raw type/category + location fields here.
+export interface PlaceSearchSuggestion {
+  kind: "place";
+  id: string;
+  slug: string;
+  name: string;
+  image: string | null;
+  type: PlaceType;
+  city: string;
+  county: { name: string };
+}
+
+export interface BusinessSearchSuggestion {
+  kind: "business";
+  id: string;
+  slug: string;
+  name: string;
+  image: string | null;
+  type: BusinessType;
+  city: string;
+  county: { name: string };
+}
+
+export interface EventSearchSuggestion {
+  kind: "event";
+  id: string;
+  name: string;
+  image: string | null;
+  category: EventCategory;
+  startDate: string;
+  endDate: string | null;
+  locationText: string | null;
+  place: { name: string } | null;
+  county: { name: string };
+}
+
+export interface CreatorSearchSuggestion {
+  kind: "creator";
+  id: string;
+  username: string;
+  name: string;
+  image: string | null;
+  category: CreatorCategory;
+  county: { name: string } | null;
+}
+
+export type SearchSuggestion =
+  | PlaceSearchSuggestion
+  | BusinessSearchSuggestion
+  | EventSearchSuggestion
+  | CreatorSearchSuggestion;
+
+export interface SearchSuggestResponse {
+  query: string;
+  places: PlaceSearchSuggestion[];
+  businesses: BusinessSearchSuggestion[];
+  events: EventSearchSuggestion[];
+  creators: CreatorSearchSuggestion[];
+}

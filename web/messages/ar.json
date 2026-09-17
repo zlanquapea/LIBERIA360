@@ -146,7 +146,19 @@
     "sortRating": "الأعلى تقييمًا",
     "sortDistance": "الأقرب إلى مونروفيا",
     "sortName": "الاسم (أ–ي)",
-    "openNow": "مفتوح الآن"
+    "openNow": "مفتوح الآن",
+    "quickSearchPlaceholder": "ابحث عن الأماكن والأعمال والفعاليات وصنّاع المحتوى…",
+    "recentSearches": "عمليات البحث الأخيرة",
+    "clearRecentSearches": "مسح",
+    "noSuggestions": "لا توجد نتائج مطابقة لـ \"{query}\".",
+    "seeAllResultsFor": "عرض كل النتائج لـ \"{query}\"",
+    "sectionPlaces": "الأماكن",
+    "sectionBusinesses": "الأعمال",
+    "sectionEvents": "الفعاليات",
+    "sectionCreators": "صنّاع المحتوى",
+    "startTyping": "ابدأ الكتابة للبحث عن الأماكن والأعمال والفعاليات وصنّاع المحتوى.",
+    "close": "إغلاق",
+    "searching": "جارٍ البحث…"
   },
   "placeDetail": {
     "cityCounty": "{city}، مقاطعة {county}",
