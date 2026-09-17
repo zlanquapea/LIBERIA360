@@ -197,6 +197,15 @@ export default async function PlaceProfilePage({
 
       <PlaceKeyFacts place={place} business={business} />
 
+      {/* Right after the action row (directions/call/book/website), not
+          buried below "About this place" — a visitor who's already
+          decided this is the right pharmacy/restaurant is here to order,
+          and shouldn't have to scroll past a description to find out
+          that's even possible. */}
+      {business && <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} />}
+
+      {pharmacy && <PharmacyPreviewSection pharmacy={pharmacy} />}
+
       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-5">
         <PlaceFreshnessPrompt placeId={place.id} />
       </div>
@@ -215,10 +224,6 @@ export default async function PlaceProfilePage({
           {place.description}
         </p>
       </section>
-
-      {business && <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} />}
-
-      {pharmacy && <PharmacyPreviewSection pharmacy={pharmacy} />}
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>
