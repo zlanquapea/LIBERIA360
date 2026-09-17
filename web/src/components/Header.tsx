@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { SITE_NAVIGATION } from "@/lib/site-nav";
 import { AccountLink } from "./AccountLink";
+import { GlobalSearch } from "./GlobalSearch";
 import { MobileMenu } from "./MobileMenu";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
@@ -71,13 +71,7 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link
-            href="/search"
-            className="flex min-h-10 items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/90 transition-all hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
-          >
-            <MagnifyingGlassIcon aria-hidden className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("search")}</span>
-          </Link>
+          <GlobalSearch />
           <ThemeToggle />
           <NotificationBell />
           <AccountLink />
