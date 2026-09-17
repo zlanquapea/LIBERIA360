@@ -1,4 +1,6 @@
 import { getPublicTrip } from '@/lib/itinerary-api';
+import { absoluteImageUrl } from '@/lib/images';
+import { DEFAULT_OG_IMAGE, absoluteUrl } from '@/lib/site';
 import { TripDetailClient } from '@/components/TripDetailClient';
 
 // Server wrapper so a shared trip link gets a real preview card (title +
@@ -15,9 +17,27 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!trip || 'visibility' in trip) {
     return { title: 'Trip — LIBERIA360' };
   }
+  const title = `${trip.title} — LIBERIA360`;
+  const description = trip.description ?? undefined;
+  const url = absoluteUrl(`/trips/${trip.id}`);
+  const coverPath = trip.coverImage ?? trip.destination?.images[0] ?? null;
+  const image = (coverPath ? absoluteImageUrl(coverPath) : null) ?? DEFAULT_OG_IMAGE;
   return {
-    title: `${trip.title} — LIBERIA360`,
-    description: trip.description ?? undefined,
+    title,
+    description,
+    openGraph: {
+      type: 'website',
+      title,
+      description,
+      url,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
   };
 }
 
