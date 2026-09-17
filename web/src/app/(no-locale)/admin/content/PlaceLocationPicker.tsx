@@ -5,6 +5,14 @@ import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-lea
 import L, { type LeafletMouseEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPinIcon } from '@heroicons/react/24/outline';
+import {
+  geolocationErrorMessage,
+  LOCATING_MESSAGE_INTERVAL_MS,
+  LOCATING_MESSAGES,
+  LOCATING_PATIENCE_MESSAGE,
+  LOCATION_MAX_AGE_MS,
+  LOCATION_TIMEOUT_MS,
+} from '@/lib/geolocation';
 import { inputClass } from './content-shared';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
@@ -93,7 +101,12 @@ export function PlaceLocationPicker({
   const [searching, setSearching] = useState(false);
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
+  const [locatingMessageIndex, setLocatingMessageIndex] = useState(0);
   const [locateError, setLocateError] = useState<string | null>(null);
+  // getCurrentPosition has no built-in cancel — this flag lets a stale
+  // success/error callback (from a lookup the user gave up on) know to
+  // no-op instead of overwriting state after Cancel was clicked.
+  const cancelledLocatingRef = useRef(false);
   const [latInput, setLatInput] = useState(latitude !== null ? String(latitude) : '');
   const [lngInput, setLngInput] = useState(longitude !== null ? String(longitude) : '');
   const [coordError, setCoordError] = useState<string | null>(null);
@@ -111,6 +124,22 @@ export function PlaceLocationPicker({
     };
   }, []);
 
+  // Same "still working" narration as NearMeClient's own fix — a location
+  // fix genuinely can take minutes indoors or with a weak signal, and a
+  // button just reading "Locating…" for that long looks frozen.
+  useEffect(() => {
+    if (!locating) {
+      setLocatingMessageIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLocatingMessageIndex((i) => Math.min(i + 1, LOCATING_MESSAGES.length));
+    }, LOCATING_MESSAGE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [locating]);
+  const locatingMessage =
+    locatingMessageIndex < LOCATING_MESSAGES.length ? LOCATING_MESSAGES[locatingMessageIndex] : LOCATING_PATIENCE_MESSAGE;
+
   // Keep the manual-entry boxes in sync with whatever last set the
   // position — a map click, a drag, a search result, or "use my current
   // location" — so they never show a stale value the caller didn't
@@ -125,10 +154,12 @@ export function PlaceLocationPicker({
       setLocateError("This browser doesn't support location — enter coordinates manually or use the map instead.");
       return;
     }
+    cancelledLocatingRef.current = false;
     setLocating(true);
     setLocateError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (cancelledLocatingRef.current) return;
         const { latitude: lat, longitude: lng } = pos.coords;
         onChange(lat, lng);
         setFlyTarget([lat, lng]);
@@ -138,15 +169,25 @@ export function PlaceLocationPicker({
         justLocatedTimeout.current = setTimeout(() => setJustLocated(false), 2000);
       },
       (err) => {
+        if (cancelledLocatingRef.current) return;
         setLocating(false);
-        setLocateError(
-          err.code === err.PERMISSION_DENIED
-            ? 'Location access was denied — enter coordinates manually or use the map instead.'
-            : "Couldn't get your location — enter coordinates manually or use the map instead.",
-        );
+        setLocateError(`${geolocationErrorMessage(err)} Or enter coordinates manually, or use the map instead.`);
       },
-      { enableHighAccuracy: true, timeout: 10_000 },
+      // High accuracy: worth the extra time here, unlike Near Me's radius
+      // search — this is placing an exact pin. The long timeout (was
+      // 10s — the reported "fails after 5-10 seconds") is what actually
+      // needed fixing: a real fix can take minutes with a weak signal,
+      // and 10s was giving up before the browser was done trying.
+      { enableHighAccuracy: true, timeout: LOCATION_TIMEOUT_MS, maximumAge: LOCATION_MAX_AGE_MS },
     );
+  }
+
+  // Gives up waiting without pretending the lookup itself can be
+  // interrupted — the in-flight callback above just gets ignored if it
+  // ever resolves. Same pattern as NearMeClient's own Cancel.
+  function cancelLocating() {
+    cancelledLocatingRef.current = true;
+    setLocating(false);
   }
 
   function commitManualCoords() {
@@ -266,7 +307,21 @@ export function PlaceLocationPicker({
           <MapPinIcon aria-hidden className="h-4 w-4" />
           {locating ? 'Locating…' : 'Use my current location'}
         </button>
+        {locating && (
+          <button
+            type="button"
+            onClick={cancelLocating}
+            className="text-sm font-medium text-slate-500 hover:underline dark:text-slate-400"
+          >
+            Cancel
+          </button>
+        )}
       </div>
+      {locating && (
+        <p className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
+          {locatingMessage}
+        </p>
+      )}
       {locateError && <p className="text-xs text-flag-700 dark:text-flag-300">{locateError}</p>}
       {justLocated && (
         <p className="text-xs font-medium text-emerald-700 transition-opacity dark:text-emerald-400">

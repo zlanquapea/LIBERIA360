@@ -112,7 +112,8 @@
     "locating": "定位中…",
     "updateLocation": "更新我的位置",
     "useMyLocation": "使用我的位置",
-    "locationError": "无法获取你的位置。"
+    "locationError": "无法获取你的位置。",
+    "locationTakingLonger": "仍在查找中——在室内或信号较弱时可能需要一些时间。"
   },
   "search": {
     "searchPlaceholder": "试试“邦县的餐厅”或“今晚可以做的事”……",

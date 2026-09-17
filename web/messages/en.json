@@ -112,7 +112,8 @@
     "locating": "Locating…",
     "updateLocation": "Update my location",
     "useMyLocation": "Use my location",
-    "locationError": "Couldn't get your location."
+    "locationError": "Couldn't get your location.",
+    "locationTakingLonger": "Still looking — this can take a while indoors or with a weak signal."
   },
   "search": {
     "searchPlaceholder": "Try 'restaurant in Bong' or 'things to do tonight'...",
