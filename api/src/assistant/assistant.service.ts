@@ -71,16 +71,20 @@ export class AssistantService {
   ) {}
 
   async ask(input: AskAssistantDto): Promise<AssistantResponse> {
+    const normalized = this.normalize(input.message);
+    const social = this.detectSocialReply(normalized);
+    if (social) return social;
+
     const match = this.findBestKnowledge(input.message);
     const assistant = this.configService.get("assistant", { infer: true });
 
     if (!match) {
-      const response = this.buildFallback(input.message, null);
+      const response = this.buildFallback(null);
       await this.recordUnanswered(input, response);
       return response;
     }
     if (match.score >= 20 || !assistant.apiKey) {
-      return this.buildFallback(input.message, match.entry);
+      return this.buildFallback(match.entry);
     }
 
     try {
@@ -97,7 +101,7 @@ export class AssistantService {
           error instanceof Error ? error.message : "Unknown error"
         }`,
       );
-      return this.buildFallback(input.message, match.entry);
+      return this.buildFallback(match.entry);
     }
   }
 
@@ -259,19 +263,15 @@ ${matchedEntry.answer}`;
     }
   }
 
+  // Greetings/thanks/goodbyes/acknowledgments are handled earlier in ask()
+  // by detectSocialReply, before this is ever reached — this only ever
+  // sees a real (if possibly unmatched) product question.
   private buildFallback(
-    message: string,
     match: AssistantKnowledgeEntry | null,
   ): AssistantResponse {
-    const normalized = this.normalize(message);
-    const greeting =
-      /^(hello|hi|hey|good morning|good afternoon|good evening)\b/.test(
-        normalized,
-      );
-    const answer = greeting
-      ? `Hello! I’m the LIBERIA360 Assistant. ${ASSISTANT_KNOWLEDGE[0].answer}`
-      : (match?.answer ??
-        "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, advertising, bookings, creators, events, tickets, customer support, trips, reviews, or your account.");
+    const answer =
+      match?.answer ??
+      "I’m not sure about that yet. I can explain LIBERIA360 features and guide you to the right page. Try asking about search, businesses, advertising, bookings, creators, events, tickets, customer support, trips, reviews, or your account.";
     const fallbackEntry =
       match ??
       ASSISTANT_KNOWLEDGE.find((entry) => entry.id === "assistant-help");
@@ -279,6 +279,77 @@ ${matchedEntry.answer}`;
       answer,
       actions: this.resolveActions(fallbackEntry?.actionIds ?? ["home"]),
       followUps: (fallbackEntry?.followUps ?? []).slice(0, 3),
+      source: "knowledge",
+    };
+  }
+
+  // Conversational replies — "thanks", "ok", "bye" — aren't product
+  // questions, so neither findBestKnowledge nor the AI model should ever
+  // see them: no knowledge entry legitimately matches "thanks" above the
+  // score-4 floor, so it used to fall all the way through to "I'm not
+  // sure about that yet" and get logged as an unanswered question,
+  // exactly the pattern reported ("just thanks from a user, it tells
+  // different things about how he doesn't know"). Checked before
+  // findBestKnowledge runs, and short-circuits ask() entirely — no AI
+  // call, no unanswered-feedback record, since this genuinely was
+  // answered. Anchored to the start of the message and capped at 6 words
+  // so a real question that happens to start with "ok so..." or
+  // "thanks, but how do I..." still falls through to real matching.
+  private detectSocialReply(normalized: string): AssistantResponse | null {
+    if (!normalized) return null;
+    const wordCount = normalized.split(" ").filter(Boolean).length;
+    if (wordCount > 6) return null;
+
+    if (
+      /^(thanks|thank you|thx|ty|cheers|appreciate it|much appreciated|many thanks)\b/.test(
+        normalized,
+      )
+    ) {
+      return this.socialResponse(
+        "You’re welcome! Let me know if there’s anything else about LIBERIA360 I can help with.",
+      );
+    }
+    if (
+      /^(bye|goodbye|good bye|see you|see ya|later|take care|gotta go)\b/.test(
+        normalized,
+      )
+    ) {
+      return this.socialResponse(
+        "Take care! Come back anytime you have a question about LIBERIA360.",
+      );
+    }
+    if (
+      /^(hello|hi|hey|yo|howdy|good morning|good afternoon|good evening)\b/.test(
+        normalized,
+      )
+    ) {
+      return this.socialResponse(
+        `Hello! I’m the LIBERIA360 Assistant. ${ASSISTANT_KNOWLEDGE[0].answer}`,
+        ["search", "creators", "events"],
+        ["How do I add my business?", "How does advertising work?"],
+      );
+    }
+    if (
+      /^(ok|okay|kk|cool|nice|great|perfect|got it|gotcha|sounds good|alright|awesome|noted|understood|makes sense|no problem|np)\b/.test(
+        normalized,
+      )
+    ) {
+      return this.socialResponse(
+        "Glad that helps! Let me know if you have another question about LIBERIA360.",
+      );
+    }
+    return null;
+  }
+
+  private socialResponse(
+    answer: string,
+    actionIds: string[] = ["home"],
+    followUps: string[] = [],
+  ): AssistantResponse {
+    return {
+      answer,
+      actions: this.resolveActions(actionIds),
+      followUps,
       source: "knowledge",
     };
   }

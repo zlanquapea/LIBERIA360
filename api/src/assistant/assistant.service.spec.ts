@@ -417,4 +417,79 @@ describe("AssistantService", () => {
     expect(response.answer).toContain("not sure");
     expect(response.answer).not.toContain("15 counties");
   });
+
+  describe("conversational replies", () => {
+    function mockFeedbackRepo() {
+      return {
+        create: jest.fn((value) => value),
+        save: jest.fn().mockResolvedValue(undefined),
+      } as unknown as import("typeorm").Repository<
+        import("./entities/assistant-feedback.entity").AssistantFeedback
+      >;
+    }
+
+    it.each(["Thanks!", "thank you", "thx so much", "cheers"])(
+      "thanks a user instead of saying it doesn't know (%s)",
+      async (message) => {
+        const feedbackRepo = mockFeedbackRepo();
+        const service = new AssistantService(config(), feedbackRepo);
+
+        const response = await service.ask({ message });
+
+        expect(response.answer).toContain("welcome");
+        expect(response.answer).not.toContain("not sure");
+        expect(response.source).toBe("knowledge");
+        expect(feedbackRepo.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it("says goodbye instead of saying it doesn't know", async () => {
+      const service = new AssistantService(config());
+      const response = await service.ask({ message: "bye" });
+      expect(response.answer).toContain("Take care");
+      expect(response.answer).not.toContain("not sure");
+    });
+
+    it("acknowledges a short reply like 'ok' or 'got it' without claiming ignorance", async () => {
+      const feedbackRepo = mockFeedbackRepo();
+      const service = new AssistantService(config(), feedbackRepo);
+
+      const okResponse = await service.ask({ message: "ok great" });
+      const gotItResponse = await service.ask({ message: "got it" });
+
+      expect(okResponse.answer).not.toContain("not sure");
+      expect(gotItResponse.answer).not.toContain("not sure");
+      expect(feedbackRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("still greets normally and does not log the greeting as unanswered", async () => {
+      const feedbackRepo = mockFeedbackRepo();
+      const service = new AssistantService(config(), feedbackRepo);
+
+      const response = await service.ask({ message: "Hello" });
+
+      expect(response.answer).toContain("LIBERIA360 Assistant");
+      expect(feedbackRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("does not treat a real question starting with an acknowledgment word as small talk", async () => {
+      const service = new AssistantService(config());
+
+      const response = await service.ask({
+        message: "ok so how do I advertise my business on here",
+      });
+
+      expect(response.answer).toContain("My Ads");
+      expect(response.answer).not.toContain("Glad that helps");
+    });
+
+    it("still records a genuinely unanswered question as unanswered", async () => {
+      const feedbackRepo = mockFeedbackRepo();
+      const service = new AssistantService(config(), feedbackRepo);
+
+      await service.ask({ message: "What is the weather on Mars?" });
+
+      expect(feedbackRepo.save).toHaveBeenCalled();
+    });
+  });
 });
