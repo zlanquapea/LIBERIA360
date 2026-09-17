@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ import { distanceKm, type Coordinates } from '@/lib/geo';
 import { isOpenAt } from '@/lib/opening-hours';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { CategoryIcon, iconSvgMarkup } from '@/lib/icons';
+import { LOCATION_MAX_AGE_MS, LOCATION_TIMEOUT_MS } from '@/lib/geolocation';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
 import { DropdownOption, MobileFilterSheet, PRICE_BUCKETS, priceBucketLabelKey } from './MobileFilterSheet';
@@ -64,43 +65,105 @@ function pinIcon(color: string, icon: string | null, categorySlug: string, selec
 // navigator.geolocation, so permission prompts/accuracy circle/etc. all
 // come for free. `onLocated` hands the found coordinates up to the parent —
 // drives both the "you are here" marker and the within-5km filter.
+// A location fix can genuinely take minutes indoors or with a weak
+// signal — `map.locate()`'s own default `timeout` is a plain 10s (this
+// is the literal "fails after 5-10 seconds" report), which was firing
+// "couldn't find you" while the browser was still honestly working on
+// it. See lib/geolocation.ts for the shared long-timeout fix applied
+// everywhere else "use my current location" appears.
+const TAKING_LONG_DELAY_MS = 8000;
+
 function LocateControl({ located, onLocated }: { located: boolean; onLocated: (coords: Coordinates) => void }) {
   const t = useTranslations('explore');
+  const tCommon = useTranslations('common');
   const map = useMap();
   const [locating, setLocating] = useState(false);
+  const [takingLong, setTakingLong] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Leaflet's locate() has no real cancel for a one-shot fix (only for
+  // `watch: true`) — this flag lets a stale locationfound/locationerror
+  // (from a lookup the user gave up on) know to no-op instead of
+  // overwriting state, same pattern as NearMeClient's own Cancel.
+  const cancelledRef = useRef(false);
+  const takingLongTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
+    };
+  }, []);
 
   useMapEvents({
     locationfound: (e) => {
+      if (cancelledRef.current) return;
       setLocating(false);
+      setTakingLong(false);
+      if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
       onLocated({ lat: e.latlng.lat, lng: e.latlng.lng });
     },
     locationerror: () => {
+      if (cancelledRef.current) return;
       setLocating(false);
+      setTakingLong(false);
+      if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
       setError(t('locationError'));
     },
   });
 
+  function cancelLocating() {
+    cancelledRef.current = true;
+    setLocating(false);
+    setTakingLong(false);
+    if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
+    map.stopLocate();
+  }
+
   return (
     <div className="pointer-events-none absolute bottom-3 start-3 z-[1000] flex flex-col items-start gap-1.5">
+      {locating && takingLong && (
+        <span className="pointer-events-auto max-w-[12rem] rounded-lg bg-white/95 px-2 py-1 text-xs text-slate-600 shadow dark:bg-slate-800/95 dark:text-slate-300" aria-live="polite">
+          {t('locationTakingLonger')}
+        </span>
+      )}
       {error && (
         <span className="pointer-events-auto max-w-[10rem] rounded-lg bg-white/95 px-2 py-1 text-xs text-flag-700 shadow dark:bg-slate-800/95 dark:text-flag-300">
           {error}
         </span>
       )}
-      <button
-        type="button"
-        onClick={() => {
-          setLocating(true);
-          setError(null);
-          map.locate({ setView: true, maxZoom: 14 });
-        }}
-        disabled={locating}
-        className="pointer-events-auto flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-md transition-colors hover:text-brand-700 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-brand-300"
-      >
-        <LocateIcon aria-hidden className="h-5 w-5" />
-        {locating ? t('locating') : located ? t('updateLocation') : t('useMyLocation')}
-      </button>
+      <div className="pointer-events-none flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            cancelledRef.current = false;
+            setLocating(true);
+            setTakingLong(false);
+            setError(null);
+            if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
+            takingLongTimeout.current = setTimeout(() => setTakingLong(true), TAKING_LONG_DELAY_MS);
+            map.locate({
+              setView: true,
+              maxZoom: 14,
+              enableHighAccuracy: false,
+              timeout: LOCATION_TIMEOUT_MS,
+              maximumAge: LOCATION_MAX_AGE_MS,
+            });
+          }}
+          disabled={locating}
+          className="pointer-events-auto flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-md transition-colors hover:text-brand-700 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-brand-300"
+        >
+          <LocateIcon aria-hidden className="h-5 w-5" />
+          {locating ? t('locating') : located ? t('updateLocation') : t('useMyLocation')}
+        </button>
+        {locating && (
+          <button
+            type="button"
+            onClick={cancelLocating}
+            className="pointer-events-auto rounded-full bg-white/95 px-3 py-2 text-sm font-medium text-slate-500 shadow-md hover:text-slate-700 dark:bg-slate-800/95 dark:text-slate-400 dark:hover:text-slate-200"
+          >
+            {tCommon('cancel')}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

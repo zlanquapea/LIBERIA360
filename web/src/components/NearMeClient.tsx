@@ -7,55 +7,24 @@ import { ApiError, getPlaces } from '@/lib/api';
 import { PlaceCard } from '@/components/PlaceCard';
 import { BrandLoader } from '@/components/BrandLoader';
 import { CategoryIcon } from '@/lib/icons';
+import {
+  geolocationErrorMessage,
+  LOCATING_MESSAGE_INTERVAL_MS,
+  LOCATING_MESSAGES,
+  LOCATING_PATIENCE_MESSAGE,
+  LOCATION_MAX_AGE_MS,
+  LOCATION_TIMEOUT_MS,
+} from '@/lib/geolocation';
 import type { Category, Place } from '@/lib/types';
 
 const MAX_RADIUS_KM = 200; // QueryPlacesDto's radiusKm ceiling — "anywhere in Liberia"
 const RADIUS_PRESETS = [5, 10, 25, 50, MAX_RADIUS_KM] as const;
-
-// A real GPS/network fix can genuinely take anywhere from a couple of
-// seconds to several minutes — weak signal, indoors, an older device —
-// and the previous 10s timeout was firing "took too long" while the
-// browser was still honestly working on it (product feedback: this was
-// routinely happening around 30s, well before anything was actually
-// wrong). Ten minutes matches what a patient user would try themselves
-// before giving up, paired below with LOCATING_MESSAGES so the wait
-// reads as "still working" rather than "frozen".
-const LOCATION_TIMEOUT_MS = 10 * 60 * 1000;
 
 function radiusLabel(km: number): string {
   return km === MAX_RADIUS_KM ? 'Anywhere in Liberia' : `${km} km`;
 }
 
 type Coords = { lat: number; lng: number };
-
-function geolocationErrorMessage(err: GeolocationPositionError): string {
-  switch (err.code) {
-    case err.PERMISSION_DENIED:
-      return 'Location access was denied. Enable it in your browser settings to use Near Me.';
-    case err.POSITION_UNAVAILABLE:
-      return "Couldn't determine your location. Please try again.";
-    case err.TIMEOUT:
-      return "We tried for several minutes but couldn't find your location. Please try again, or check that location access is turned on for your device.";
-    default:
-      return 'Something went wrong getting your location.';
-  }
-}
-
-// A "finding you" spinner that just sits there for up to ten minutes
-// reads as broken, not patient — so it narrates a plausible slice of what
-// a location fix actually involves, cycling every few seconds, and
-// settles on a steady reassurance once it's genuinely taking a while
-// rather than looping the same "almost there" promise forever.
-const LOCATING_MESSAGES = [
-  'Finding you…',
-  "Waking up your device's GPS…",
-  'Checking nearby cell towers and Wi-Fi networks…',
-  'Triangulating your signal…',
-  'Almost there…',
-] as const;
-const LOCATING_MESSAGE_INTERVAL_MS = 4000;
-const LOCATING_PATIENCE_MESSAGE =
-  "Still searching — this can take a while with a weak signal. We'll keep trying for a few more minutes.";
 
 // Product feedback (Aug 25, 2026): "when the user selects the distance,
 // they should be able to filter for the kinds of place — a user will be
@@ -119,7 +88,7 @@ export function NearMeClient({ categories }: { categories: Category[] }) {
         setLocationError(geolocationErrorMessage(err));
         setLocating(false);
       },
-      { enableHighAccuracy: false, timeout: LOCATION_TIMEOUT_MS, maximumAge: 60_000 },
+      { enableHighAccuracy: false, timeout: LOCATION_TIMEOUT_MS, maximumAge: LOCATION_MAX_AGE_MS },
     );
   }, []);
 

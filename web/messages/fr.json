@@ -112,7 +112,8 @@
     "locating": "Localisation…",
     "updateLocation": "Mettre à jour ma position",
     "useMyLocation": "Utiliser ma position",
-    "locationError": "Impossible d'obtenir votre position."
+    "locationError": "Impossible d'obtenir votre position.",
+    "locationTakingLonger": "Recherche toujours en cours — cela peut prendre du temps en intérieur ou avec un signal faible."
   },
   "search": {
     "searchPlaceholder": "Essayez « restaurant à Bong » ou « choses à faire ce soir »...",
