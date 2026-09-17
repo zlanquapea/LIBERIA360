@@ -23,6 +23,11 @@ export function EventCard({ event, cardRef }: { event: Event; cardRef?: (el: HTM
   const cover = event.images[0] ? resolveImageUrl(event.images[0]) : null;
   const locationLabel = event.place?.name ?? event.locationText ?? event.county.name;
   const live = isEventHappeningNow(event.startDate, event.endDate);
+  // Rendered inside a carousel/shelf, never on the event's own page — the
+  // ShareMenu's window.location.href fallback would share whatever list
+  // page this card happens to sit on instead of this specific event.
+  const shareUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/events/${event.id}` : `/events/${event.id}`;
 
   return (
     <div
@@ -79,7 +84,7 @@ export function EventCard({ event, cardRef }: { event: Event; cardRef?: (el: HTM
             initialGoingCount={event.goingCount}
             variant="feed"
           />
-          <ShareMenu placeName={event.name} contentType="event" variant="feed" />
+          <ShareMenu placeName={event.name} shareUrl={shareUrl} contentType="event" variant="feed" />
         </div>
       </div>
     </div>

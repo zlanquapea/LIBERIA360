@@ -13,7 +13,8 @@ import {
 import { ApiError, getBusinessBySlug, getBusinessContent, getMenuItems, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
 import { formatBusinessContentType, formatBusinessType, formatCost, formatRating } from '@/lib/format';
-import { resolveImageUrl } from '@/lib/images';
+import { absoluteImageUrl, resolveImageUrl } from '@/lib/images';
+import { DEFAULT_OG_IMAGE, absoluteUrl } from '@/lib/site';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { VerificationBadge } from '@/components/VerificationBadge';
 import { VerificationTrustInfo } from '@/components/VerificationTrustInfo';
@@ -42,9 +43,26 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       ? `${business.description.slice(0, 157)}…`
       : business.description
     : undefined;
+  const title = `${business.name} — LIBERIA360`;
+  const url = absoluteUrl(`/businesses/${business.slug}`);
+  const coverPath = business.images[0] ?? business.linkedPlace.images[0];
+  const image = (coverPath ? absoluteImageUrl(coverPath) : null) ?? DEFAULT_OG_IMAGE;
   return {
-    title: `${business.name} — LIBERIA360`,
+    title,
     description,
+    openGraph: {
+      type: 'website',
+      title,
+      description,
+      url,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
   };
 }
 

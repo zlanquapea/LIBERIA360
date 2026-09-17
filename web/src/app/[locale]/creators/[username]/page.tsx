@@ -21,7 +21,8 @@ import {
   formatPriceFrom,
   formatRating,
 } from "@/lib/format";
-import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
+import { absoluteImageUrl, resolveImageUrl, resolveThumbUrl } from "@/lib/images";
+import { DEFAULT_OG_IMAGE, absoluteUrl } from "@/lib/site";
 import { whatsappLink } from "@/lib/contact";
 import { CreatorPortfolioGallery } from "@/components/CreatorPortfolioGallery";
 import { CreatorFeed } from "@/components/CreatorFeed";
@@ -71,9 +72,26 @@ export async function generateMetadata({
       ? `${creator.bio.slice(0, 157)}…`
       : creator.bio
     : undefined;
+  const title = `${creator.name} (@${creator.username}) — LIBERIA360`;
+  const url = absoluteUrl(`/creators/${creator.username}`);
+  const coverPath = creator.coverImage ?? creator.profileImage;
+  const image = (coverPath ? absoluteImageUrl(coverPath) : null) ?? DEFAULT_OG_IMAGE;
   return {
-    title: `${creator.name} (@${creator.username}) — LIBERIA360`,
+    title,
     description,
+    openGraph: {
+      type: "profile",
+      title,
+      description,
+      url,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
   };
 }
 

@@ -43,6 +43,10 @@ export function CreatorCard({ creator, index }: { creator: Creator; index?: numb
   // shows a person's current role — only rendered when there's real
   // content, unlike the old card's "Explore their work…" filler text.
   const headline = creator.bio?.trim() || creator.specialties.slice(0, 3).join(" · ") || null;
+  // This card renders in the creator directory listing, not the creator's
+  // own page — without an explicit shareUrl, ShareMenu's window.location.
+  // href fallback would share the directory page instead of this creator.
+  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}${profileHref}` : profileHref;
 
   return (
     <article
@@ -135,7 +139,7 @@ export function CreatorCard({ creator, index }: { creator: Creator; index?: numb
               <ChatBubbleOvalLeftIcon aria-hidden className="h-5 w-5" />
             </ContactLink>
           )}
-          <ShareMenu placeName={creator.name} contentType="creator" />
+          <ShareMenu placeName={creator.name} shareUrl={shareUrl} contentType="creator" />
         </div>
       </div>
     </article>

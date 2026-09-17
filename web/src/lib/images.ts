@@ -1,3 +1,5 @@
+import { absoluteUrl } from "./site";
+
 // POST /uploads/image (api/src/uploads/uploads.controller.ts) returns a
 // path relative to the *API* origin — e.g. "/uploads/<uuid>.jpg" — served
 // by the Nest app itself, not under /api/v1 and not on the web app's own
@@ -16,6 +18,24 @@ export function resolveImageUrl(path: string): string {
     return path;
   }
   return `${API_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+/**
+ * Open Graph/Twitter Card images must be a fetchable http(s) URL — a link
+ * pasted into Facebook/WhatsApp/X has no page origin of its own to resolve
+ * a relative one against (unlike a normal <img src>), and those crawlers
+ * reject a `data:` URI outright rather than rendering it. Reuses
+ * resolveImageUrl's own same-origin-vs-external distinction, then anchors
+ * the same-origin case to this app's canonical SITE_URL (see lib/site.ts's
+ * own doc comment on why that constant exists, and structured-data.ts's
+ * absoluteUrl() for the equivalent JSON-LD case). Returns null for a
+ * `data:` URI (some seed/placeholder photos use these) since there's no
+ * URL to hand a crawler — callers should fall back to the site default.
+ */
+export function absoluteImageUrl(path: string): string | null {
+  const resolved = resolveImageUrl(path);
+  if (resolved.startsWith("data:")) return null;
+  return /^https?:\/\//i.test(resolved) ? resolved : absoluteUrl(resolved);
 }
 
 // Matches the filename this app's own upload pipeline writes — a random

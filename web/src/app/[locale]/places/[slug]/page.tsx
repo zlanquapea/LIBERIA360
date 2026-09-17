@@ -21,7 +21,8 @@ import {
   formatRating,
   formatVisitLength,
 } from "@/lib/format";
-import { galleryImages } from "@/lib/images";
+import { absoluteImageUrl, galleryImages } from "@/lib/images";
+import { DEFAULT_OG_IMAGE, absoluteUrl } from "@/lib/site";
 import { VerificationBadge } from "@/components/VerificationBadge";
 import { PlaceCardCompact } from "@/components/PlaceCardCompact";
 import { PlaceGallery } from "@/components/PlaceGallery";
@@ -75,9 +76,25 @@ export async function generateMetadata({
     place.description.length > 160
       ? `${place.description.slice(0, 157)}…`
       : place.description;
+  const title = `${place.name} — LIBERIA360`;
+  const url = absoluteUrl(`/places/${place.slug}`);
+  const image = (place.images[0] ? absoluteImageUrl(place.images[0]) : null) ?? DEFAULT_OG_IMAGE;
   return {
-    title: `${place.name} — LIBERIA360`,
+    title,
     description: description || undefined,
+    openGraph: {
+      type: "website",
+      title,
+      description: description || undefined,
+      url,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: description || undefined,
+      images: [image],
+    },
   };
 }
 

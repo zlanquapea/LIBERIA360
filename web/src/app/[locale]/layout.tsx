@@ -14,6 +14,7 @@ import { Liberia360Assistant } from "@/components/Liberia360Assistant";
 import { SplashScreen } from "@/components/SplashScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { routing, RTL_LOCALES } from "@/i18n/routing";
+import { SITE_URL } from "@/lib/site";
 
 // i18n (Sep 2026, I18N_PLAN.md): this is one of TWO root layouts (see
 // src/app/(no-locale)/layout.tsx's doc comment for why there are two at
@@ -33,11 +34,37 @@ import { routing, RTL_LOCALES } from "@/i18n/routing";
 // own doc comment) — and they still use plain next/link, not
 // @/i18n/navigation's locale-aware Link, for the same reason.
 
+// metadataBase anchors every relative openGraph/twitter image URL emitted
+// by a page's own generateMetadata() (see places/[slug]/page.tsx and
+// siblings) to an absolute one — required for a link preview card, since
+// Facebook/WhatsApp/X fetch og:image with no page origin of their own to
+// resolve a relative path against. Without this, Next.js falls back to
+// resolving those images against the request URL, which is wrong the
+// moment a locale-prefixed path or query string is involved.
+const siteDescription =
+  "Discover Liberia's destinations, food, stays, and experiences — map-first, WhatsApp-first, built county by county.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "LIBERIA360 — Everything Liberia. One Place.",
-  description:
-    "Discover Liberia's destinations, food, stays, and experiences — map-first, WhatsApp-first, built county by county.",
+  description: siteDescription,
   manifest: "/manifest.webmanifest",
+  // Per-page generateMetadata() calls below override title/description/
+  // images with that specific place/event/trip/creator's own — this is
+  // only the fallback for pages (Home, Explore, ...) that don't.
+  openGraph: {
+    type: "website",
+    siteName: "LIBERIA360",
+    title: "LIBERIA360 — Everything Liberia. One Place.",
+    description: siteDescription,
+    images: [{ url: "/logo.png", width: 1254, height: 1254 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LIBERIA360 — Everything Liberia. One Place.",
+    description: siteDescription,
+    images: ["/logo.png"],
+  },
 };
 
 export const viewport: Viewport = {

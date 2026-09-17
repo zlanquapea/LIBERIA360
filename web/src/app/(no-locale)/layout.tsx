@@ -12,6 +12,7 @@ import { Liberia360Assistant } from "@/components/Liberia360Assistant";
 import { SplashScreen } from "@/components/SplashScreen";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import enMessages from "../../../messages/en.json";
+import { SITE_URL } from "@/lib/site";
 
 // i18n (Sep 2026, I18N_PLAN.md): this is one of TWO root layouts, using
 // Next.js's "multiple root layouts via route groups" pattern — the other
@@ -49,14 +50,33 @@ import enMessages from "../../../messages/en.json";
 // since this tree is permanently English with no per-request locale or
 // timezone to react to.
 
+// See the [locale] root layout's own doc comment on metadataBase — same
+// reasoning applies here (blog/help/admin/legal pages all live in this
+// tree), duplicated by necessity same as everything else in this file.
+const siteDescription =
+  "Discover Liberia's destinations, food, stays, and experiences — map-first, WhatsApp-first, built county by county.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "LIBERIA360 — Everything Liberia. One Place.",
-  description:
-    "Discover Liberia's destinations, food, stays, and experiences — map-first, WhatsApp-first, built county by county.",
+  description: siteDescription,
   manifest: "/manifest.webmanifest",
   // Favicon/app icon comes from the app/icon.png file convention, and the
   // iOS home-screen icon from app/apple-icon.png — Next.js auto-generates
   // the <link rel="icon">/<link rel="apple-touch-icon"> tags from them.
+  openGraph: {
+    type: "website",
+    siteName: "LIBERIA360",
+    title: "LIBERIA360 — Everything Liberia. One Place.",
+    description: siteDescription,
+    images: [{ url: "/logo.png", width: 1254, height: 1254 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LIBERIA360 — Everything Liberia. One Place.",
+    description: siteDescription,
+    images: ["/logo.png"],
+  },
 };
 
 export const viewport: Viewport = {

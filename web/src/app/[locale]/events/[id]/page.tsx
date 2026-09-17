@@ -8,7 +8,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { ApiError, getEvent, getEventAttendees } from "@/lib/api";
 import { formatEventCategory, formatEventDateRange } from "@/lib/format";
-import { resolveImageUrl } from "@/lib/images";
+import { absoluteImageUrl, resolveImageUrl } from "@/lib/images";
+import { DEFAULT_OG_IMAGE, absoluteUrl } from "@/lib/site";
 import { gradientForCategory } from "@/lib/category-colors";
 import { directionsLink } from "@/lib/contact";
 import { JsonLd } from "@/components/JsonLd";
@@ -32,9 +33,26 @@ export async function generateMetadata({
   if (!event) {
     return { title: "Event — LIBERIA360" };
   }
+  const title = `${event.name} — LIBERIA360 Events`;
+  const description = event.description || undefined;
+  const url = absoluteUrl(`/events/${event.id}`);
+  const image = (event.images[0] ? absoluteImageUrl(event.images[0]) : null) ?? DEFAULT_OG_IMAGE;
   return {
-    title: `${event.name} — LIBERIA360 Events`,
-    description: event.description || undefined,
+    title,
+    description,
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
   };
 }
 

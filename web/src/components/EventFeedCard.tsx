@@ -22,6 +22,11 @@ export function EventFeedCard({ event, index }: { event: Event; index?: number }
   const cover = event.images[0] ? resolveImageUrl(event.images[0]) : null;
   const locationLabel = event.place?.name ?? event.locationText ?? event.county.name;
   const hasStats = event.interestedCount > 0 || event.goingCount > 0;
+  // This card renders on the Events *listing* feed, not the event's own
+  // page — without an explicit shareUrl, ShareMenu's window.location.href
+  // fallback would share the listing page instead of this event.
+  const shareUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/events/${event.id}` : `/events/${event.id}`;
 
   return (
     <article
@@ -76,7 +81,7 @@ export function EventFeedCard({ event, index }: { event: Event; index?: number }
             initialGoingCount={event.goingCount}
             variant="feed"
           />
-          <ShareMenu placeName={event.name} contentType="event" variant="feed" />
+          <ShareMenu placeName={event.name} shareUrl={shareUrl} contentType="event" variant="feed" />
         </div>
       </div>
     </article>
