@@ -282,43 +282,57 @@ export default function PharmacyProductsPage() {
                 onCancel={() => setEditingId(null)}
               />
             ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                {p.imageUrl ? (
-                  <SafeImage
-                    src={resolveImageUrl(p.imageUrl)}
-                    thumbSrc={resolveThumbUrl(p.imageUrl)}
-                    alt=""
-                    className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                    fallback={<ProductImagePlaceholder className="h-16 w-16 shrink-0" />}
-                  />
-                ) : (
-                  <ProductImagePlaceholder className="h-16 w-16 shrink-0" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900 dark:text-slate-50">
-                    {p.name}
-                    {p.category && (
-                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
-                        {p.category.name}
-                      </span>
-                    )}
-                    {!p.isVisible && (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs dark:bg-slate-700">
-                        Hidden
-                      </span>
-                    )}
-                    {p.prescriptionRequired && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                        Prescription
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    L${Number(p.price).toFixed(2)} ·{' '}
-                    {p.inventory?.quantity ? `${p.inventory.quantity} in stock` : 'Out of stock'}
-                  </p>
+              // Two independent flex groups stacked vertically on mobile
+              // (image+details on top, actions in their own full-width row
+              // below), side by side from `sm:` up — not one flex-wrap row
+              // with everything crammed in. That single-row version put the
+              // Edit/Remove buttons (fixed width, never shrinking) in
+              // competition with the name/price column for the same line on
+              // a narrow phone: the `min-w-0 flex-1` text column got
+              // squeezed down to a handful of pixels, wrapped its price/
+              // stock line word-by-word into a tall stack, and `items-center`
+              // then centered the short button pair across that
+              // artificially tall row — reading as the buttons floating on
+              // top of the price/category text instead of sitting beside it.
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div className="flex min-w-0 flex-1 gap-3">
+                  {p.imageUrl ? (
+                    <SafeImage
+                      src={resolveImageUrl(p.imageUrl)}
+                      thumbSrc={resolveThumbUrl(p.imageUrl)}
+                      alt=""
+                      className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                      fallback={<ProductImagePlaceholder className="h-16 w-16 shrink-0" />}
+                    />
+                  ) : (
+                    <ProductImagePlaceholder className="h-16 w-16 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900 dark:text-slate-50">
+                      {p.name}
+                      {p.category && (
+                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">
+                          {p.category.name}
+                        </span>
+                      )}
+                      {!p.isVisible && (
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs dark:bg-slate-700">
+                          Hidden
+                        </span>
+                      )}
+                      {p.prescriptionRequired && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                          Prescription
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                      L${Number(p.price).toFixed(2)} ·{' '}
+                      {p.inventory?.quantity ? `${p.inventory.quantity} in stock` : 'Out of stock'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex shrink-0 justify-end gap-2 sm:ml-2">
                   <button className="btn-secondary min-h-9" onClick={() => setEditingId(p.id)}>
                     Edit
                   </button>
