@@ -415,7 +415,10 @@ describe("AssistantService", () => {
     expect(response.answer).toContain("Booking inbox");
     expect(response.actions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "creatorDashboard", href: "/creators/me#dashboard" }),
+        expect.objectContaining({
+          id: "creatorDashboard",
+          href: "/creators/me#dashboard",
+        }),
       ]),
     );
   });
@@ -441,7 +444,10 @@ describe("AssistantService", () => {
     expect(response.actions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "pharmacies", href: "/pharmacies" }),
-        expect.objectContaining({ id: "pharmacyOrders", href: "/account/pharmacy-orders" }),
+        expect.objectContaining({
+          id: "pharmacyOrders",
+          href: "/account/pharmacy-orders",
+        }),
       ]),
     );
   });
