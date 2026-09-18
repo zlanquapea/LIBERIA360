@@ -31,6 +31,11 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
     label: "Manage my places",
     href: "/account/my-places",
   },
+  businessAnalytics: {
+    id: "businessAnalytics",
+    label: "View business analytics",
+    href: "/account/analytics",
+  },
   ads: { id: "ads", label: "Manage my ads", href: "/account/my-ads" },
   bookings: {
     id: "bookings",
@@ -50,8 +55,13 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
   creators: { id: "creators", label: "Explore creators", href: "/creators" },
   creatorProfile: {
     id: "creatorProfile",
-    label: "Open creator profile",
+    label: "Open creator studio",
     href: "/creators/me",
+  },
+  creatorDashboard: {
+    id: "creatorDashboard",
+    label: "Open creator dashboard",
+    href: "/creators/me#dashboard",
   },
   createPost: {
     id: "createPost",
@@ -91,6 +101,26 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
     href: "/notifications",
   },
   saved: { id: "saved", label: "View saved places", href: "/saved" },
+  pharmacies: {
+    id: "pharmacies",
+    label: "Browse pharmacies",
+    href: "/pharmacies",
+  },
+  pharmacyOrders: {
+    id: "pharmacyOrders",
+    label: "View pharmacy orders",
+    href: "/account/pharmacy-orders",
+  },
+  pharmacyDashboard: {
+    id: "pharmacyDashboard",
+    label: "Manage pharmacy",
+    href: "/account/pharmacy-dashboard",
+  },
+  myOrders: {
+    id: "myOrders",
+    label: "View my orders",
+    href: "/account/my-orders",
+  },
   signup: { id: "signup", label: "Create an account", href: "/signup" },
   login: { id: "login", label: "Log in", href: "/login" },
 };
@@ -998,6 +1028,96 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
       "Create an account or log in to save places, manage listings and ads, view bookings, receive notifications, and use creator features. Saved places are available from the Saved area, and alerts appear under Notifications.",
     actionIds: ["account", "saved", "notifications"],
     followUps: ["How do I create an account?", "How do I add my business?"],
+  },
+  {
+    id: "creator-studio-dashboard",
+    title: "Creator Studio dashboard and analytics",
+    keywords: [
+      "creator dashboard",
+      "creator studio",
+      "creator analytics",
+      "creator insights",
+      "creator performance",
+      "profile views creator",
+      "creator contact clicks",
+      "creator followers",
+      "creator booking requests",
+      "creator content performance",
+    ],
+    answer:
+      "Creator Studio is available from your creator profile at Creators → your creator dashboard. It brings together profile views, contact clicks, followers, booking requests, published-post performance, and profile completion. The Content pulse shows your post count, likes, conversations, and shares, while Booking inbox shows pending and confirmed requests. You can also manage your profile, portfolio, services and experiences, availability, reviews, and analytics. Metrics are estimates from recorded activity and require you to be signed in.",
+    actionIds: ["creatorDashboard", "creatorProfile", "bookings"],
+    followUps: [
+      "How do I become a creator?",
+      "How do I create a creator post?",
+      "How do creator bookings work?",
+    ],
+  },
+  {
+    id: "creator-reels-feed",
+    title: "Creator Reels video feed",
+    keywords: [
+      "reels",
+      "creator reels",
+      "vertical video feed",
+      "swipe videos",
+      "creator video viewer",
+      "autoplay creator video",
+      "double tap creator video",
+      "hold like creator video",
+      "video comments sheet",
+    ],
+    answer:
+      "Creator video posts open in a mobile-first Reels-style viewer. Swipe up or down to move between full-screen videos with snap-to-screen navigation. Only the active video plays, nearby videos are prepared for smoother transitions, and a video can advance to the next Reel when it ends. You can double-tap a video to like it, press and hold the like control for floating hearts, and open the in-view comments sheet without stopping the video. In comments, signed-in users can like comments and reply to them.",
+    actionIds: ["creators", "creatorProfile", "login"],
+    followUps: [
+      "How do I like or reply to a comment?",
+      "How do I create a creator post?",
+    ],
+  },
+  {
+    id: "business-analytics-dashboard",
+    title: "Business analytics and owner dashboard",
+    keywords: [
+      "business analytics dashboard",
+      "business insights",
+      "business views",
+      "business contact clicks",
+      "business performance",
+      "owner analytics",
+      "listing analytics",
+    ],
+    answer:
+      "Business owners can use the account area to manage an approved business and view available analytics such as profile views and contact clicks. Depending on the business and permissions, the owner dashboard can also include profile and content management, bookings, menu items, incoming food orders, and related performance information. Open the business tools from Account; the exact metrics and tools shown depend on the signed-in account and enabled features.",
+    actionIds: ["account", "myPlaces", "businessAnalytics"],
+    followUps: [
+      "Can customers order from my menu?",
+      "How do I add my business?",
+    ],
+  },
+  {
+    id: "pharmacy-marketplace",
+    title: "Pharmacy marketplace, prescriptions, and orders",
+    keywords: [
+      "pharmacy marketplace",
+      "find a pharmacy",
+      "buy medicine",
+      "order medicine",
+      "pharmacy products",
+      "prescription upload",
+      "pharmacy delivery",
+      "pharmacy pickup",
+      "pharmacy order",
+      "pharmacy cart",
+    ],
+    answer:
+      "Use Pharmacies to browse approved pharmacies and their visible products. When a pharmacy supports it, you can add products to a cart, choose pickup or delivery, provide the requested details, and submit an order. Products marked prescription required may need a prescription upload; supported files include JPEG, PNG, WebP, or PDF up to 10MB. Track customer orders from Account → Pharmacy Orders. A pharmacist may request clarification on a prescription, after which you can resubmit the file on the order. Pharmacy staff can manage their profile, products, inventory, orders, and assigned staff from the Pharmacy Dashboard. Availability, delivery fees, stock, and order status are shown by the pharmacy and can change.",
+    actionIds: ["pharmacies", "pharmacyOrders", "pharmacyDashboard"],
+    followUps: [
+      "How do I upload a prescription?",
+      "Where can I see my pharmacy orders?",
+      "How do I manage a pharmacy?",
+    ],
   },
   {
     id: "support-safety",

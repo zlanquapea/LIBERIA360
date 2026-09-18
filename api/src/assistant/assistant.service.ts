@@ -382,8 +382,24 @@ ${matchedEntry.answer}`;
         "help-faq-blog-support",
       ],
       [
+        /business.*(analytics|insight|performance|views|contact clicks)|owner.*analytics|listing.*analytics/,
+        "business-analytics-dashboard",
+      ],
+      [
         /business.*(owner|tools)|manage.*business.*(profile|content|booking|menu|order|analytics)|owner.*account/,
         "business-owner-tools",
+      ],
+      [
+        /creator.*(dashboard|studio|analytics|insight|performance)|profile.*views.*creator|creator.*(contact clicks|followers|booking requests)|content.*pulse/,
+        "creator-studio-dashboard",
+      ],
+      [
+        /reels?|vertical.*video|swipe.*(video|reel)|creator.*video.*(feed|viewer)|double.*tap.*(like|video)|hold.*(like|heart)|floating hearts|comments.*sheet/,
+        "creator-reels-feed",
+      ],
+      [
+        /pharmacy.*(marketplace|product|order|cart|delivery|pickup)|order.*(medicine|pharmacy)|upload.*prescription|prescription.*(upload|file)|buy.*medicine|manage.*pharmacy/,
+        "pharmacy-marketplace",
       ],
       [
         /ticket.*(statistic|analytics|metric|performance)|event.*(insight|metric)|see.*ticket.*stat/,

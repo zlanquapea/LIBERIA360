@@ -46,6 +46,9 @@ const QUICK_PROMPTS = [
   "How does advertising work?",
   "How do bookings work?",
   "How do I become a creator?",
+  "What can I see in Creator Studio?",
+  "How does the creator Reels feed work?",
+  "How do I order from a pharmacy?",
 ];
 
 interface ChatMessage {
@@ -79,7 +82,7 @@ const welcomeMessage = (): ChatMessage => ({
   id: "welcome",
   role: "assistant",
   content:
-    "Hello! I’m the LIBERIA360 Assistant. Ask me how to find places, add a business, advertise, book, plan a trip, or use creator features.",
+    "Hello! I’m the LIBERIA360 Assistant. Ask me how to find places, use Creator Studio and Reels, order from pharmacies, add a business, advertise, book, or plan a trip.",
 });
 
 function safeStoredMessages(value: string | null): ChatMessage[] {

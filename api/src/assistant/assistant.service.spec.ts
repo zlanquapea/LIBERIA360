@@ -406,6 +406,55 @@ describe("AssistantService", () => {
     );
   });
 
+  it("explains the Creator Studio dashboard metrics", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "What can I see in Creator Studio?",
+    });
+    expect(response.answer).toContain("profile views");
+    expect(response.answer).toContain("Booking inbox");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "creatorDashboard", href: "/creators/me#dashboard" }),
+      ]),
+    );
+  });
+
+  it("explains the creator Reels feed interactions", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "How does the creator Reels feed work?",
+    });
+    expect(response.answer).toContain("snap-to-screen");
+    expect(response.answer).toContain("double-tap");
+    expect(response.answer).toContain("comments sheet");
+  });
+
+  it("explains pharmacy orders and prescription requirements", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "How do I order from a pharmacy?",
+    });
+    expect(response.answer).toContain("approved pharmacies");
+    expect(response.answer).toContain("prescription");
+    expect(response.answer).toContain("10MB");
+    expect(response.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "pharmacies", href: "/pharmacies" }),
+        expect.objectContaining({ id: "pharmacyOrders", href: "/account/pharmacy-orders" }),
+      ]),
+    );
+  });
+
+  it("explains business analytics without promising unavailable metrics", async () => {
+    const service = new AssistantService(config());
+    const response = await service.ask({
+      message: "Where can I see my business analytics?",
+    });
+    expect(response.answer).toContain("profile views");
+    expect(response.answer).toContain("depend on the signed-in account");
+  });
+
   it("does not pretend to know unrelated questions", async () => {
     const service = new AssistantService(config());
 
