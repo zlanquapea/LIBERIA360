@@ -417,7 +417,7 @@ describe("AssistantService", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "creatorDashboard",
-          href: "/creators/me#dashboard",
+          href: "/creators/me",
         }),
       ]),
     );

@@ -61,7 +61,7 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
   creatorDashboard: {
     id: "creatorDashboard",
     label: "Open creator dashboard",
-    href: "/creators/me#dashboard",
+    href: "/creators/me",
   },
   createPost: {
     id: "createPost",
