@@ -9,6 +9,7 @@ import { UsersModule } from "../users/users.module";
 import { BusinessesModule } from "../businesses/businesses.module";
 import { CreatorsModule } from "../creators/creators.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { EventNotificationsModule } from "../event-notifications/event-notifications.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
     BusinessesModule,
     CreatorsModule,
     NotificationsModule,
+    EventNotificationsModule,
   ],
   controllers: [EventsController],
   providers: [EventsService],

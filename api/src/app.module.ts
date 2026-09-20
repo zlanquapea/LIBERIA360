@@ -73,6 +73,8 @@ import { BlogModule } from "./blog/blog.module";
 import { SavedPlacesModule } from "./saved-places/saved-places.module";
 import { PharmaciesModule } from "./pharmacies/pharmacies.module";
 import { SearchModule } from "./search/search.module";
+import { EventNotificationDelivery } from "./event-notifications/entities/event-notification-delivery.entity";
+import { EventNotificationsModule } from "./event-notifications/event-notifications.module";
 
 @Module({
   imports: [
@@ -136,6 +138,7 @@ import { SearchModule } from "./search/search.module";
             EventTicketOrder,
             SupportTicket,
             SupportMessage,
+            EventNotificationDelivery,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -181,6 +184,7 @@ import { SearchModule } from "./search/search.module";
     SavedPlacesModule,
     PharmaciesModule,
     SearchModule,
+    EventNotificationsModule,
   ],
   providers: [
     {

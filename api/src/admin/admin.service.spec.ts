@@ -808,7 +808,7 @@ describe("AdminService.setEventReviewStatus", () => {
   };
   let adminAuditService: { log: jest.Mock };
   let notificationsService: { create: jest.Mock; createMany: jest.Mock };
-  let eventsService: { notifyNearby: jest.Mock };
+  let eventsService: { notifyNearby: jest.Mock; notifyOrganizer: jest.Mock };
 
   beforeEach(async () => {
     eventRepo = {
@@ -828,7 +828,10 @@ describe("AdminService.setEventReviewStatus", () => {
       create: jest.fn().mockResolvedValue(undefined),
       createMany: jest.fn().mockResolvedValue(undefined),
     };
-    eventsService = { notifyNearby: jest.fn().mockResolvedValue(undefined) };
+    eventsService = {
+      notifyNearby: jest.fn().mockResolvedValue(undefined),
+      notifyOrganizer: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

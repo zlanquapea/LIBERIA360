@@ -36,6 +36,7 @@ import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { AssistantFeedback } from "../assistant/entities/assistant-feedback.entity";
 import { MenuItem } from "../menu-items/entities/menu-item.entity";
 import { PHARMACY_ENTITIES } from "../pharmacies/pharmacies.module";
+import { EventNotificationDelivery } from "../event-notifications/entities/event-notification-delivery.entity";
 
 config();
 
@@ -90,6 +91,7 @@ export const AppDataSource = new DataSource({
     AssistantFeedback,
     MenuItem,
     ...PHARMACY_ENTITIES,
+    EventNotificationDelivery,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

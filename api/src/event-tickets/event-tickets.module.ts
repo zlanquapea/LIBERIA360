@@ -5,6 +5,7 @@ import { User } from "../users/entities/user.entity";
 import { UsersModule } from "../users/users.module";
 import { MailModule } from "../mail/mail.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { EventNotificationsModule } from "../event-notifications/event-notifications.module";
 import { EventTicketsController } from "./event-tickets.controller";
 import { TicketTransfersController } from "./ticket-transfers.controller";
 import { EventTicketsService } from "./event-tickets.service";
@@ -24,6 +25,7 @@ import { TicketTransfer } from "./entities/ticket-transfer.entity";
     UsersModule,
     MailModule,
     NotificationsModule,
+    EventNotificationsModule,
   ],
   controllers: [EventTicketsController, TicketTransfersController],
   providers: [EventTicketsService],

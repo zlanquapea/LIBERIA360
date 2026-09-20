@@ -50,7 +50,9 @@ export type NotificationType =
   | "trip.join_request_declined"
   | "ticket.transfer_received"
   | "ticket.transfer_accepted"
-  | "ticket.transfer_declined";
+  | "ticket.transfer_declined"
+  | "event.lifecycle"
+  | "event.reminder";
 
 /**
  * The in-app notification center's one table — every notification, for

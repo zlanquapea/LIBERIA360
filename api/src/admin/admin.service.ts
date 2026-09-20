@@ -590,6 +590,16 @@ export class AdminService {
       const full = await this.eventRepo.findOneOrFail({ where: { id } });
       await this.eventsService.notifyNearby(full);
     }
+    void this.eventsService.notifyOrganizer(
+      saved,
+      `event_review_${status}`,
+      `Your event was ${status}`,
+      reason
+        ? `"${saved.name}" was ${status}: ${reason}`
+        : `"${saved.name}" was ${status}.`,
+      "",
+      false,
+    );
     await this.notificationsService.create(saved.createdByUserId, {
       type: "event.review_decided",
       title: `Your event was ${status}`,

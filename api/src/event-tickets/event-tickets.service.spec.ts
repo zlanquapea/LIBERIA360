@@ -203,9 +203,14 @@ function setup() {
   const mailService = {
     sendTicketTransfer: jest.fn().mockResolvedValue(true),
     sendTicketTransferAccepted: jest.fn().mockResolvedValue(undefined),
+    sendEventNotification: jest.fn().mockResolvedValue(true),
   };
   const notificationsService = {
     create: jest.fn().mockResolvedValue(undefined),
+  };
+  const eventNotificationsService = {
+    notifyOrganizer: jest.fn().mockResolvedValue(undefined),
+    notifyUser: jest.fn().mockResolvedValue(undefined),
   };
   const configService = {
     get: jest.fn().mockReturnValue("http://localhost:3000"),
@@ -220,6 +225,7 @@ function setup() {
     usersService as any,
     mailService as any,
     notificationsService as any,
+    eventNotificationsService as any,
     configService as any,
   );
   return {

@@ -25,6 +25,7 @@ import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
+import { EventNotificationsService } from "../event-notifications/event-notifications.service";
 import { CreateEventTicketOrderDto } from "./dto/create-event-ticket-order.dto";
 import { CreateTicketTransferDto } from "./dto/create-ticket-transfer.dto";
 import { RedeemEventTicketDto } from "./dto/redeem-event-ticket.dto";
@@ -252,6 +253,7 @@ export class EventTicketsService {
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
     private readonly notificationsService: NotificationsService,
+    private readonly eventNotificationsService: EventNotificationsService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
@@ -615,7 +617,24 @@ export class EventTicketsService {
       ticketCode: null,
       reviewNote: null,
     });
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+    void this.eventNotificationsService.notifyOrganizer(
+      event,
+      "ticket_order_submitted",
+      "New ticket order awaiting review",
+      `${user.name} submitted a ticket order for "${event.name}".`,
+      saved.id,
+    );
+    void this.eventNotificationsService.notifyUser(
+      event,
+      user.id,
+      "ticket_order_submitted",
+      "Ticket order submitted",
+      `Your ticket order for "${event.name}" is awaiting organizer confirmation.`,
+      "/account/my-tickets",
+      saved.id,
+    );
+    return saved;
   }
 
   // GET /ticket-orders/mine — three distinct things this account can see:
@@ -905,15 +924,31 @@ export class EventTicketsService {
     };
 
     const manager = this.orderRepo.manager;
+    let saved: EventTicketOrder;
     if (manager?.transaction) {
-      return manager.transaction(async (transactionManager) =>
+      saved = await manager.transaction(async (transactionManager) =>
         saveApproved(
           transactionManager.getRepository(EventTicketOrder),
           transactionManager.getRepository(EventTicketInstance),
         ),
       );
+    } else {
+      saved = await saveApproved(this.orderRepo, this.instanceRepo);
     }
-    return saveApproved(this.orderRepo, this.instanceRepo);
+    void this.eventNotificationsService.notifyUser(
+      saved.event,
+      saved.buyerUserId,
+      `ticket_order_${dto.status}`,
+      dto.status === EventTicketOrderStatus.APPROVED
+        ? "Your event tickets are confirmed"
+        : "Your event ticket order was not approved",
+      dto.status === EventTicketOrderStatus.APPROVED
+        ? `Your ticket order for "${saved.event.name}" is confirmed. Your QR passes are ready in My Tickets.`
+        : `Your ticket order for "${saved.event.name}" was not approved.${saved.reviewNote ? ` Reason: ${saved.reviewNote}` : ""}`,
+      "/account/my-tickets",
+      saved.id,
+    );
+    return saved;
   }
 
   // Scanning always returns 200 with an `outcome` — never throws for a bad

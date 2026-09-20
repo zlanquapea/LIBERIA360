@@ -19,6 +19,7 @@ import { BusinessesService } from "../businesses/businesses.service";
 import { CreatorsService } from "../creators/creators.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { User } from "../users/entities/user.entity";
+import { EventNotificationsService } from "../event-notifications/event-notifications.service";
 
 // Where an admin goes to act on a pending event — same moderation queue
 // page as pending places/businesses/advertisements, not a route of its
@@ -42,6 +43,7 @@ export class EventsService {
     private readonly businessesService: BusinessesService,
     private readonly creatorsService: CreatorsService,
     private readonly notificationsService: NotificationsService,
+    private readonly eventNotificationsService: EventNotificationsService,
   ) {}
 
   private normalizeTicketTypes(
@@ -173,8 +175,20 @@ export class EventsService {
       // here, so nearby residents aren't told about an event that might
       // still get rejected.
       void this.notifyNearby(full);
+      void this.eventNotificationsService.notifyOrganizer(
+        full,
+        "event_created_live",
+        "Your event is live",
+        `"${full.name}" is now live on LIBERIA360.`,
+      );
     } else {
       await this.notifyAdminsOfPendingEvent(full);
+      void this.eventNotificationsService.notifyOrganizer(
+        full,
+        "event_submitted",
+        "Event submitted for review",
+        `"${full.name}" was submitted and is awaiting review.`,
+      );
     }
 
     return full;
@@ -230,6 +244,26 @@ export class EventsService {
         body: event.name,
         url: `/events/${event.id}`,
       },
+    );
+  }
+
+  /** Organizer-facing lifecycle delivery is kept behind EventsService so
+   * moderation code does not need to know the notification module's wiring. */
+  notifyOrganizer(
+    event: Event,
+    kind: string,
+    title: string,
+    body: string,
+    referenceId = "",
+    sendInApp = true,
+  ): Promise<void> {
+    return this.eventNotificationsService.notifyOrganizer(
+      event,
+      kind,
+      title,
+      body,
+      referenceId,
+      sendInApp,
     );
   }
 
@@ -457,6 +491,21 @@ export class EventsService {
     }
     event[this.countField(status)] += 1;
     await this.eventRepo.save(event);
+    const full = await this.eventRepo.findOneOrFail({ where: { id: eventId } });
+    void this.eventNotificationsService.notifyUser(
+      full,
+      userId,
+      `rsvp_${status}`,
+      status === EventRsvpStatus.GOING ? "You're going to this event" : "You're interested in this event",
+      `Your RSVP for "${full.name}" is now ${status}.`,
+    );
+    void this.eventNotificationsService.notifyOrganizer(
+      full,
+      `participant_${status}`,
+      "Event RSVP updated",
+      `A participant marked "${full.name}" as ${status}.`,
+      userId,
+    );
 
     return {
       status,
@@ -488,6 +537,21 @@ export class EventsService {
     );
     await this.rsvpRepo.remove(existing);
     await this.eventRepo.save(event);
+    const full = await this.eventRepo.findOneOrFail({ where: { id: eventId } });
+    void this.eventNotificationsService.notifyUser(
+      full,
+      userId,
+      "rsvp_removed",
+      "Event RSVP removed",
+      `Your RSVP for "${full.name}" was removed.`,
+    );
+    void this.eventNotificationsService.notifyOrganizer(
+      full,
+      "participant_rsvp_removed",
+      "Event RSVP removed",
+      `A participant removed their RSVP from "${full.name}".`,
+      userId,
+    );
     return {
       interestedCount: event.interestedCount,
       goingCount: event.goingCount,

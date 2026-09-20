@@ -15,6 +15,7 @@ import { UsersService } from "../users/users.service";
 import { BusinessesService } from "../businesses/businesses.service";
 import { CreatorsService } from "../creators/creators.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { EventNotificationsService } from "../event-notifications/event-notifications.service";
 
 const BASE_DTO: CreateEventDto = {
   name: "Test Event",
@@ -57,6 +58,10 @@ describe("EventsService", () => {
   let creatorsService: { findMine: jest.Mock };
   let usersService: { findIdsByHomeCounty: jest.Mock; findAdminIds: jest.Mock };
   let notificationsService: { create: jest.Mock; createMany: jest.Mock };
+  let eventNotificationsService: {
+    notifyOrganizer: jest.Mock;
+    notifyUser: jest.Mock;
+  };
   let pushService: { sendToUsers: jest.Mock };
 
   beforeEach(async () => {
@@ -119,6 +124,10 @@ describe("EventsService", () => {
       create: jest.fn(),
       createMany: jest.fn(),
     };
+    eventNotificationsService = {
+      notifyOrganizer: jest.fn(),
+      notifyUser: jest.fn(),
+    };
     pushService = { sendToUsers: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -131,6 +140,10 @@ describe("EventsService", () => {
         { provide: BusinessesService, useValue: businessesService },
         { provide: CreatorsService, useValue: creatorsService },
         { provide: NotificationsService, useValue: notificationsService },
+        {
+          provide: EventNotificationsService,
+          useValue: eventNotificationsService,
+        },
       ],
     }).compile();
 
