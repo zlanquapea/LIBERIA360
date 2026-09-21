@@ -17,6 +17,7 @@ import {
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { PushService } from "../push/push.service";
 import { EventNotificationDelivery } from "./entities/event-notification-delivery.entity";
 import { AppConfig } from "../config/configuration";
 
@@ -45,6 +46,7 @@ export class EventNotificationsService
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
@@ -195,9 +197,15 @@ export class EventNotificationsService
         referenceId: input.referenceId,
         inAppSent: false,
         emailSent: false,
+        pushSent: false,
         sentAt: null,
       });
-    if ((!input.sendInApp || delivery.inAppSent) && delivery.emailSent) return;
+    if (
+      (!input.sendInApp || delivery.inAppSent) &&
+      delivery.emailSent &&
+      delivery.pushSent
+    )
+      return;
 
     if (input.sendInApp && !delivery.inAppSent) {
       await this.notificationsService.create(input.recipient.id, {
@@ -207,6 +215,13 @@ export class EventNotificationsService
         link: input.link,
       });
       delivery.inAppSent = true;
+    }
+    if (!delivery.pushSent) {
+      delivery.pushSent = await this.pushService.sendToUsers([input.recipient.id], {
+        title: input.title,
+        body: input.body,
+        url: input.link,
+      });
     }
     if (!delivery.emailSent && input.recipient.email) {
       delivery.emailSent = await this.mailService.sendEventNotification({
@@ -218,7 +233,11 @@ export class EventNotificationsService
         ctaUrl: `${this.configService.get("webAppUrl", { infer: true })}${input.link}`,
       });
     }
-    if ((input.sendInApp && delivery.inAppSent) || delivery.emailSent)
+    if (
+      (input.sendInApp && delivery.inAppSent) ||
+      delivery.emailSent ||
+      delivery.pushSent
+    )
       delivery.sentAt = new Date();
     await this.deliveryRepo.save(delivery);
   }
