@@ -47,6 +47,7 @@ export class NotificationsService {
    * same contract as AdminAuditService.log. */
   async create(userId: string, input: CreateNotificationInput): Promise<void> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to exclude it from notificationInput below
       const { skipPush: _skipPush, ...notificationInput } = input;
       await this.notificationRepo.save(
         this.notificationRepo.create({
@@ -80,6 +81,7 @@ export class NotificationsService {
   ): Promise<void> {
     if (userIds.length === 0) return;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to exclude it from notificationInput below
       const { skipPush: _skipPush, ...notificationInput } = input;
       await this.notificationRepo.save(
         userIds.map((userId) =>

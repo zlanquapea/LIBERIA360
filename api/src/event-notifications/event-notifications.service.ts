@@ -218,11 +218,14 @@ export class EventNotificationsService
       delivery.inAppSent = true;
     }
     if (!delivery.pushSent) {
-      delivery.pushSent = await this.pushService.sendToUsers([input.recipient.id], {
-        title: input.title,
-        body: input.body,
-        url: input.link,
-      });
+      delivery.pushSent = await this.pushService.sendToUsers(
+        [input.recipient.id],
+        {
+          title: input.title,
+          body: input.body,
+          url: input.link,
+        },
+      );
     }
     if (!delivery.emailSent && input.recipient.email) {
       delivery.emailSent = await this.mailService.sendEventNotification({
