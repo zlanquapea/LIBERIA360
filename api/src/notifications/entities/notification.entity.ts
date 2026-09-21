@@ -48,6 +48,7 @@ export type NotificationType =
   | "trip.join_requested"
   | "trip.join_request_approved"
   | "trip.join_request_declined"
+  | "trip.reminder"
   | "ticket.transfer_received"
   | "ticket.transfer_accepted"
   | "ticket.transfer_declined"

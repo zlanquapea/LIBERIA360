@@ -362,6 +362,32 @@ export class MailService {
     });
   }
 
+  /** Trip departure reminder email (Sep 2026, "3/1 day, 6/1 hour before the
+   * trip" product ask). Returns the real delivery outcome, same reason as
+   * sendEventNotification, so the trip-notification delivery row can retry
+   * safely when SMTP is down. */
+  async sendTripNotification(opts: {
+    to: string;
+    subject: string;
+    heading: string;
+    body: string;
+    ctaLabel: string;
+    ctaUrl: string;
+  }): Promise<boolean> {
+    const safeBody = escapeHtml(opts.body).replace(/\n/g, "<br />");
+    return this.attempt({
+      to: opts.to,
+      subject: opts.subject,
+      text: `${opts.body}\n\n${opts.ctaUrl}`,
+      html: this.render({
+        heading: escapeHtml(opts.heading),
+        intro: safeBody,
+        ctaLabel: escapeHtml(opts.ctaLabel),
+        ctaUrl: opts.ctaUrl,
+      }),
+    });
+  }
+
   /** POST /admin/system/test-email — deliberately does NOT swallow the
    * error, unlike every send above: the whole point is letting a super
    * admin tell "SMTP isn't configured" apart from "SMTP is configured but
