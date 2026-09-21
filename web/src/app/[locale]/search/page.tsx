@@ -74,6 +74,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         method="GET"
         className="flex overflow-hidden rounded-full border border-slate-300 dark:border-slate-700 transition-shadow focus-within:ring-2 focus-within:ring-brand-400"
       >
+        {/* This plain GET form only ever submits its own fields — a native
+            submit replaces the whole query string, so a `type` scoping the
+            page (from AddTripStop's "Browse all stays" link) would
+            otherwise vanish the moment someone searches from here. */}
+        {type && <input type="hidden" name="type" value={type} />}
         <input
           type="search"
           name="q"
