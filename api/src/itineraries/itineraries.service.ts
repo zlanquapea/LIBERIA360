@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -248,6 +249,8 @@ function resolveDurationDays(dto: {
 
 @Injectable()
 export class ItinerariesService {
+  private readonly logger = new Logger(ItinerariesService.name);
+
   constructor(
     @InjectRepository(Itinerary)
     private readonly itineraryRepo: Repository<Itinerary>,
@@ -1132,12 +1135,21 @@ export class ItinerariesService {
     // So everyone on the trip sees a new car/place/event land, not just
     // whoever added it and happens to still be looking at the stop list —
     // same "the chat carries a record of what changed" reasoning as
-    // rename/join/cancel above.
-    const adder = await this.usersService.findById(userId);
-    await this.tripChatService.postSystemMessage(
-      itineraryId,
-      `${adder?.name ?? "Someone"} added ${this.stopItemTitle(kind, item)} to Day ${dto.day}.`,
-    );
+    // rename/join/cancel above. Best-effort: the stop is already saved by
+    // this point, so a failure here (e.g. the user lookup or the chat
+    // insert) must not surface as the add itself having failed — a retry
+    // would then just hit "already on the trip."
+    try {
+      const adder = await this.usersService.findById(userId);
+      await this.tripChatService.postSystemMessage(
+        itineraryId,
+        `${adder?.name ?? "Someone"} added ${this.stopItemTitle(kind, item)} to Day ${dto.day}.`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to post trip-chat message for stop added to itinerary ${itineraryId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
     return this.findOne(userId, saved.id);
   }
 

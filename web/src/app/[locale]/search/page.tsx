@@ -7,7 +7,7 @@ import { PlaceCard } from '@/components/PlaceCard';
 import { SearchFilters } from '@/components/SearchFilters';
 import { QuickFilterChips } from '@/components/QuickFilterChips';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
-import type { Category, PlaceSort, PlacesQuery } from '@/lib/types';
+import type { Category, PlaceSort, PlacesQuery, PlaceType } from '@/lib/types';
 
 export const metadata = { title: 'Search — LIBERIA360' };
 
@@ -24,6 +24,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const q = first(params.q);
   const category = first(params.category);
   const county = first(params.county);
+  const type = first(params.type) as PlaceType | undefined;
   const sort = (first(params.sort) as PlaceSort | undefined) ?? 'featured';
   const page = Number(first(params.page) ?? '1') || 1;
   const openNow = first(params.openNow) === 'true';
@@ -36,6 +37,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     q,
     category,
     county,
+    type,
     sort,
     page,
     limit: 12,
@@ -56,6 +58,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (q) p.set('q', q);
     if (category) p.set('category', category);
     if (county) p.set('county', county);
+    if (type) p.set('type', type);
     if (sort) p.set('sort', sort);
     if (openNow) p.set('openNow', 'true');
     if (priceMinRaw !== undefined) p.set('priceMin', priceMinRaw);
@@ -99,7 +102,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <ZeroResultsRecovery
           q={q}
           categories={categories}
-          hasFilters={Boolean(category || county || openNow || priceMinRaw !== undefined || priceMaxRaw !== undefined)}
+          hasFilters={Boolean(category || county || type || openNow || priceMinRaw !== undefined || priceMaxRaw !== undefined)}
           t={t}
         />
       ) : (

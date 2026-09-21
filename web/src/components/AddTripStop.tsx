@@ -59,6 +59,11 @@ function resultHref(tab: Tab, item: TabResult): string {
 function browseAllHref(tab: Tab): string {
   if (tab === 'event') return '/events';
   if (tab === 'carListing') return '/car-rentals';
+  // Explore's own filters are client-side state with no URL-driven initial
+  // value (see ExploreMapClient), so it can't be handed a "hotels only"
+  // starting point — /search's `type` query param can (see SearchPage),
+  // and stays there scoped to the catalog this tab actually searches.
+  if (tab === 'stay') return '/search?type=hotel';
   return '/explore';
 }
 

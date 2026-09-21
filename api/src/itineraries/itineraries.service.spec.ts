@@ -876,6 +876,26 @@ describe("ItinerariesService (collaboration)", () => {
       );
     });
 
+    it("still succeeds when posting the trip-chat message fails, since the stop is already saved", async () => {
+      usersService.findById.mockResolvedValue({ id: OWNER_ID, name: "Nadia" });
+      tripChatService.postSystemMessage.mockRejectedValueOnce(
+        new Error("chat insert failed"),
+      );
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, {
+          carListingId: "car-2",
+          day: 1,
+        }),
+      ).resolves.toBeDefined();
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stops: expect.arrayContaining([
+            expect.objectContaining({ carListingId: "car-2", day: 1 }),
+          ]),
+        }),
+      );
+    });
+
     it("404s adding an event that doesn't exist", async () => {
       eventRepo.findOne.mockResolvedValue(null);
       await expect(
