@@ -219,6 +219,23 @@ describe("AddTripStop", () => {
     expect(screen.queryByText("Sunset Beach")).not.toBeInTheDocument();
   });
 
+  it("doesn't leave the new tab stuck on \"Searching…\" when the old tab's request never resolves", async () => {
+    mockGetPlaces.mockReturnValue(new Promise(() => {})); // never resolves
+    mockGetEvents.mockResolvedValue({ data: [] });
+
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByRole("button", { name: "Searching…" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Events" }));
+
+    expect(screen.queryByRole("button", { name: "Searching…" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Search" })).not.toBeDisabled();
+  });
+
   it("switches to the Stay tab and searches hotels via getPlaces with type: hotel", async () => {
     mockGetPlaces.mockResolvedValue({ data: [{ id: "hotel-1", name: "Sunset Inn" }] });
     renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);

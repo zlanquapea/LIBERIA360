@@ -87,6 +87,10 @@ export function AddTripStop({
     setTab(next);
     setResults([]);
     setError(null);
+    // The stale request's own `finally` is now gated behind the token
+    // check above, so it won't clear this — otherwise the new tab stays
+    // stuck showing "Searching…" until another search happens to fire.
+    setSearching(false);
   }
 
   async function search() {
