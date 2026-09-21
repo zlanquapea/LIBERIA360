@@ -20,6 +20,8 @@ import {
   TripJoinRequestStatus,
 } from "./entities/trip-join-request.entity";
 import { Place } from "../places/entities/place.entity";
+import { Event } from "../events/entities/event.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
 import {
   BudgetBand,
   ItineraryKind,
@@ -52,6 +54,16 @@ import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 // durationDays field; now that a trip is framed by real dates (see
 // resolveDurationDays), it's the bound on the date range itself instead.
 const MAX_TRIP_DURATION_DAYS = 14;
+
+// The three kinds of catalog item a stop can point at (see ItineraryStop's
+// own doc comment) — a stop always sets exactly one of these keys.
+type StopKind = "placeId" | "eventId" | "carListingId";
+const STOP_KINDS: StopKind[] = ["placeId", "eventId", "carListingId"];
+const STOP_KIND_LABEL: Record<StopKind, string> = {
+  placeId: "place",
+  eventId: "event",
+  carListingId: "car listing",
+};
 
 export type InvitationDisplayStatus =
   "pending" | "viewed" | "accepted" | "declined" | "expired";
@@ -98,12 +110,27 @@ export interface InvitationPreview {
   requiresAccount: boolean;
 }
 
-export interface ItineraryStopWithPlace extends Omit<ItineraryStop, "placeId"> {
-  place: Place;
+// Exactly one of place/event/carListing is populated, mirroring
+// ItineraryStop's own exactly-one-id shape — see that interface's doc
+// comment. Renamed from ItineraryStopWithPlace now that a stop isn't
+// always a place.
+export interface ItineraryStopDetail extends Omit<
+  ItineraryStop,
+  "placeId" | "eventId" | "carListingId"
+> {
+  place?: Place;
+  event?: Event;
+  carListing?: CarListing;
+}
+
+interface StopReferences {
+  places: Place[];
+  events: Event[];
+  carListings: CarListing[];
 }
 
 export interface ItineraryResponse extends Omit<Itinerary, "stops"> {
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
   collaborators: PublicUser[];
   // The creator, always the trip's "Trip Admin" — resolved here so the
   // frontend can label them without a second lookup (Section 7 of the
@@ -142,7 +169,7 @@ export interface PublicTripSummary {
 }
 
 export interface PublicTripDetail extends PublicTripSummary {
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
 }
 
 /** What GET /itineraries/public/:id returns for a PRIVATE trip instead of
@@ -184,7 +211,7 @@ export interface TripPreviewResponse {
   interests: string[];
   startDate: string;
   endDate: string;
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
 }
 
 // Shared by generateTrip/previewTrip: a trip is framed by a real start and
@@ -221,6 +248,10 @@ export class ItinerariesService {
     private readonly itineraryRepo: Repository<Itinerary>,
     @InjectRepository(Place)
     private readonly placeRepo: Repository<Place>,
+    @InjectRepository(Event)
+    private readonly eventRepo: Repository<Event>,
+    @InjectRepository(CarListing)
+    private readonly carListingRepo: Repository<CarListing>,
     @InjectRepository(ItineraryCollaborator)
     private readonly collaboratorRepo: Repository<ItineraryCollaborator>,
     @InjectRepository(TripInvitation)
@@ -277,7 +308,11 @@ export class ItinerariesService {
     );
     itinerary.destination = destination;
 
-    return this.toResponse(itinerary, [], []);
+    return this.toResponse(
+      itinerary,
+      { places: [], events: [], carListings: [] },
+      [],
+    );
   }
 
   /** Same as generateTrip minus the save — lets a visitor with no account
@@ -324,14 +359,8 @@ export class ItinerariesService {
       throw new NotFoundException(`Itinerary "${id}" not found`);
     }
     const collaborators = await this.assertCanView(userId, itinerary);
-    const placeIds = itinerary.stops.map((s) => s.placeId);
-    const places = placeIds.length
-      ? await this.placeRepo.find({
-          where: placeIds.map((id) => ({ id })),
-          relations: ["category", "county"],
-        })
-      : [];
-    return this.toResponse(itinerary, places, collaborators);
+    const resolvedStops = await this.resolveStopReferences(itinerary.stops);
+    return this.toResponse(itinerary, resolvedStops, collaborators);
   }
 
   /** Rename a trip — owner or any collaborator, same tier as editing a
@@ -920,7 +949,9 @@ export class ItinerariesService {
    * and a list of stop placeIds), used for both the invitation email and
    * preview. */
   private async destinationSummary(itinerary: Itinerary): Promise<string> {
-    const placeIds = itinerary.stops.map((s) => s.placeId);
+    const placeIds = itinerary.stops
+      .map((s) => s.placeId)
+      .filter((id): id is string => !!id);
     if (placeIds.length === 0) return "Liberia";
     const places = await this.placeRepo.find({
       where: placeIds.map((id) => ({ id })),
@@ -997,105 +1028,212 @@ export class ItinerariesService {
     return itinerary;
   }
 
-  /** Add a stop — owner or any collaborator. */
+  /** Add a stop — owner or any collaborator. Exactly one of
+   * placeId/eventId/carListingId must be set on the DTO (all three are
+   * optional there — see AddStopDto's own comment for why that's
+   * validated here rather than with a decorator). */
   async addStop(
     userId: string,
     itineraryId: string,
     dto: AddStopDto,
   ): Promise<ItineraryResponse> {
     const itinerary = await this.getEditable(userId, itineraryId);
-    const place = await this.placeRepo.findOne({ where: { id: dto.placeId } });
-    if (!place) {
-      throw new NotFoundException(`Place "${dto.placeId}" not found`);
-    }
-    if (itinerary.stops.some((s) => s.placeId === dto.placeId)) {
-      throw new ConflictException("This place is already on the trip");
-    }
-    // durationDays is derived from the trip's own start/end date (see
-    // resolveDurationDays above) and must stay that way — a stop's day
-    // can't silently stretch it past what the traveler actually chose, or
-    // the "X days" summary and the date-range badge would show two
-    // different trip lengths. AddStopDto already caps `day` at 30 for
-    // shape validation; this is the real, trip-specific ceiling.
-    if (dto.day > itinerary.durationDays) {
-      throw new BadRequestException(
-        itinerary.durationDays === 1
-          ? "This trip is only 1 day — add the place to day 1."
-          : `This trip is only ${itinerary.durationDays} days — pick a day between 1 and ${itinerary.durationDays}.`,
+    const { kind, id: itemId } = this.resolveStopKind(dto);
+
+    if (itinerary.stops.some((s) => s[kind] === itemId)) {
+      throw new ConflictException(
+        `This ${STOP_KIND_LABEL[kind]} is already on the trip`,
       );
     }
+    if (!(await this.stopItemExists(kind, itemId))) {
+      throw new NotFoundException(
+        `${STOP_KIND_LABEL[kind]} "${itemId}" not found`,
+      );
+    }
+    this.assertDayInRange(itinerary, dto.day);
     const stopsForDay = itinerary.stops.filter((s) => s.day === dto.day);
     const order = stopsForDay.length
       ? Math.max(...stopsForDay.map((s) => s.order)) + 1
       : 0;
-    itinerary.stops = [
-      ...itinerary.stops,
-      { day: dto.day, order, placeId: dto.placeId, notes: dto.notes ?? null },
-    ];
+    const base = { day: dto.day, order, notes: dto.notes ?? null };
+    const newStop: ItineraryStop =
+      kind === "placeId"
+        ? { ...base, placeId: itemId }
+        : kind === "eventId"
+          ? { ...base, eventId: itemId }
+          : { ...base, carListingId: itemId };
+    itinerary.stops = [...itinerary.stops, newStop];
     const saved = await this.itineraryRepo.save(itinerary);
     return this.findOne(userId, saved.id);
   }
 
-  /** Remove a stop — owner or any collaborator. */
+  /** Remove a stop — owner or any collaborator. `itemId` matches whichever
+   * of the stop's placeId/eventId/carListingId is set. */
   async removeStop(
     userId: string,
     itineraryId: string,
-    placeId: string,
+    itemId: string,
   ): Promise<ItineraryResponse> {
     const itinerary = await this.getEditable(userId, itineraryId);
-    itinerary.stops = itinerary.stops.filter((s) => s.placeId !== placeId);
+    itinerary.stops = itinerary.stops.filter(
+      (s) => !this.stopMatches(s, itemId),
+    );
     await this.itineraryRepo.save(itinerary);
     return this.findOne(userId, itineraryId);
   }
 
-  /** Edit a stop's notes — the shared "who's bringing what / meet here at
-   * 9am" annotation collaborators leave for each other. */
+  /** Edit a stop's notes, move it to a different day, or both — notes are
+   * the shared "who's bringing what / meet here at 9am" annotation
+   * collaborators leave for each other; moving day is the only way to
+   * reorganize an itinerary besides removing and re-adding a stop. */
   async updateStop(
     userId: string,
     itineraryId: string,
-    placeId: string,
+    itemId: string,
     dto: UpdateStopDto,
   ): Promise<ItineraryResponse> {
     const itinerary = await this.getEditable(userId, itineraryId);
-    const stop = itinerary.stops.find((s) => s.placeId === placeId);
+    const stop = itinerary.stops.find((s) => this.stopMatches(s, itemId));
     if (!stop) {
-      throw new NotFoundException(`Stop for place "${placeId}" not found`);
+      throw new NotFoundException(`Stop "${itemId}" not found`);
     }
-    stop.notes = dto.notes ?? null;
+    if (dto.notes !== undefined) {
+      stop.notes = dto.notes ?? null;
+    }
+    if (dto.day !== undefined && dto.day !== stop.day) {
+      this.assertDayInRange(itinerary, dto.day);
+      const stopsForDay = itinerary.stops.filter(
+        (s) => s.day === dto.day && s !== stop,
+      );
+      stop.order = stopsForDay.length
+        ? Math.max(...stopsForDay.map((s) => s.order)) + 1
+        : 0;
+      stop.day = dto.day;
+    }
     itinerary.stops = [...itinerary.stops];
     await this.itineraryRepo.save(itinerary);
     return this.findOne(userId, itineraryId);
   }
 
+  private resolveStopKind(dto: AddStopDto): { kind: StopKind; id: string } {
+    const provided = STOP_KINDS.filter((key) => dto[key] !== undefined);
+    if (provided.length !== 1) {
+      throw new BadRequestException(
+        "Provide exactly one of placeId, eventId, or carListingId.",
+      );
+    }
+    const kind = provided[0];
+    return { kind, id: dto[kind] as string };
+  }
+
+  private stopMatches(stop: ItineraryStop, itemId: string): boolean {
+    return STOP_KINDS.some((kind) => stop[kind] === itemId);
+  }
+
+  private async stopItemExists(kind: StopKind, id: string): Promise<boolean> {
+    if (kind === "placeId") {
+      return !!(await this.placeRepo.findOne({ where: { id } }));
+    }
+    if (kind === "eventId") {
+      return !!(await this.eventRepo.findOne({ where: { id } }));
+    }
+    return !!(await this.carListingRepo.findOne({ where: { id } }));
+  }
+
+  // durationDays is derived from the trip's own start/end date (see
+  // resolveDurationDays above) and must stay that way — a stop's day can't
+  // silently stretch it past what the traveler actually chose, or the "X
+  // days" summary and the date-range badge would show two different trip
+  // lengths. AddStopDto/UpdateStopDto already cap `day` at 30 for shape
+  // validation; this is the real, trip-specific ceiling, checked whenever
+  // a stop is added or moved.
+  private assertDayInRange(itinerary: Itinerary, day: number): void {
+    if (day > itinerary.durationDays) {
+      throw new BadRequestException(
+        itinerary.durationDays === 1
+          ? "This trip is only 1 day — pick day 1."
+          : `This trip is only ${itinerary.durationDays} days — pick a day between 1 and ${itinerary.durationDays}.`,
+      );
+    }
+  }
+
   private async toResponse(
     itinerary: Itinerary,
-    resolvedPlaces: Place[],
+    resolvedStops: StopReferences,
     collaborators: PublicUser[],
   ): Promise<ItineraryResponse> {
     const owner = await this.usersService.findById(itinerary.userId);
     return {
       ...itinerary,
       coverImage: this.resolveCoverImage(itinerary),
-      stops: this.mapStops(itinerary, resolvedPlaces),
+      stops: this.mapStops(itinerary, resolvedStops),
       collaborators,
       admin: owner ? toPublicUser(owner) : null,
       status: this.computeTripStatus(itinerary),
     };
   }
 
+  /** Batch-resolves every place/event/car-listing a trip's stops reference,
+   * one query per kind rather than per stop — mirrors the existing
+   * placeIds→placeRepo.find() pattern this replaces, just fanned out
+   * across the three kinds a stop can now point at (see ItineraryStop's
+   * own doc comment). Each kind's relations match what its own detail
+   * page/card needs to render (place: category+county, same as before;
+   * event/carListing: none listed since both carry the relations they
+   * need — place, county, business, business.linkedPlace — as `eager`
+   * columns on their own entities, so a plain `.find()` already includes
+   * them). */
+  private async resolveStopReferences(
+    stops: ItineraryStop[],
+  ): Promise<StopReferences> {
+    const placeIds = stops
+      .map((s) => s.placeId)
+      .filter((id): id is string => !!id);
+    const eventIds = stops
+      .map((s) => s.eventId)
+      .filter((id): id is string => !!id);
+    const carListingIds = stops
+      .map((s) => s.carListingId)
+      .filter((id): id is string => !!id);
+
+    const [places, events, carListings] = await Promise.all([
+      placeIds.length
+        ? this.placeRepo.find({
+            where: placeIds.map((id) => ({ id })),
+            relations: ["category", "county"],
+          })
+        : Promise.resolve([]),
+      eventIds.length
+        ? this.eventRepo.find({ where: eventIds.map((id) => ({ id })) })
+        : Promise.resolve([]),
+      carListingIds.length
+        ? this.carListingRepo.find({
+            where: carListingIds.map((id) => ({ id })),
+          })
+        : Promise.resolve([]),
+    ]);
+    return { places, events, carListings };
+  }
+
   private mapStops(
     itinerary: Itinerary,
-    resolvedPlaces: Place[],
-  ): ItineraryStopWithPlace[] {
-    const placeById = new Map(resolvedPlaces.map((p) => [p.id, p]));
+    resolved: StopReferences,
+  ): ItineraryStopDetail[] {
+    const placeById = new Map(resolved.places.map((p) => [p.id, p]));
+    const eventById = new Map(resolved.events.map((e) => [e.id, e]));
+    const carListingById = new Map(resolved.carListings.map((c) => [c.id, c]));
     return itinerary.stops
       .map((s) => ({
         day: s.day,
         order: s.order,
         notes: s.notes,
-        place: placeById.get(s.placeId),
+        place: s.placeId ? placeById.get(s.placeId) : undefined,
+        event: s.eventId ? eventById.get(s.eventId) : undefined,
+        carListing: s.carListingId
+          ? carListingById.get(s.carListingId)
+          : undefined,
       }))
-      .filter((s): s is ItineraryStopWithPlace => !!s.place);
+      .filter((s) => !!(s.place || s.event || s.carListing));
   }
 
   // Explicit cover image always wins; otherwise borrow the destination
@@ -1214,15 +1352,9 @@ export class ItinerariesService {
     if (itinerary.visibility !== TripVisibility.PUBLIC) {
       return { id: itinerary.id, visibility: TripVisibility.PRIVATE };
     }
-    const placeIds = itinerary.stops.map((s) => s.placeId);
-    const places = placeIds.length
-      ? await this.placeRepo.find({
-          where: placeIds.map((id) => ({ id })),
-          relations: ["category", "county"],
-        })
-      : [];
+    const resolvedStops = await this.resolveStopReferences(itinerary.stops);
     const summary = await this.toPublicSummary(itinerary);
-    return { ...summary, stops: this.mapStops(itinerary, places) };
+    return { ...summary, stops: this.mapStops(itinerary, resolvedStops) };
   }
 
   // ---------------------------------------------------------------------

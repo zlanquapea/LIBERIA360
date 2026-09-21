@@ -5,6 +5,8 @@ import type { Place } from "@/lib/types";
 
 const mockUseAuth = jest.fn();
 const mockGetPlaces = jest.fn();
+const mockGetEvents = jest.fn();
+const mockGetCarListings = jest.fn();
 const mockAddItineraryStop = jest.fn();
 
 jest.mock("../hooks/useAuth", () => ({
@@ -12,6 +14,8 @@ jest.mock("../hooks/useAuth", () => ({
 }));
 jest.mock("../lib/api", () => ({
   getPlaces: (...args: unknown[]) => mockGetPlaces(...args),
+  getEvents: (...args: unknown[]) => mockGetEvents(...args),
+  getCarListings: (...args: unknown[]) => mockGetCarListings(...args),
 }));
 jest.mock("../lib/itinerary-api", () => ({
   addItineraryStop: (...args: unknown[]) => mockAddItineraryStop(...args),
@@ -68,25 +72,26 @@ describe("AddTripStop", () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue({ token: "tok" });
     mockGetPlaces.mockResolvedValue({ data: [PLACE] });
+    mockGetEvents.mockResolvedValue({ data: [] });
+    mockGetCarListings.mockResolvedValue({ data: [] });
     mockAddItineraryStop.mockResolvedValue({});
   });
 
   // Regression: a day beyond the trip's own duration used to be typeable
   // (the day input's max was hardcoded to at least 30 regardless of how
-  // short the trip actually was), and the backend would silently stretch
-  // the trip's durationDays to match instead of rejecting it — leaving the
-  // "X days" summary and the date-range badge disagreeing about how long
-  // the trip was. The day picker is now bounded to the trip's real length.
-  it("caps the day input at the trip's own duration, not a fixed 30", () => {
+  // short the trip actually was). Day selection is now a row of chips
+  // bounded to exactly the trip's real length — there's no way to pick
+  // an out-of-range day at all.
+  it("shows day chips bounded to the trip's own duration, not a fixed 30", () => {
     renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
-    expect(screen.getByLabelText("Day")).toHaveAttribute("max", "3");
+    expect(screen.getByRole("button", { name: "Day 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Day 3" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Day 4" })).not.toBeInTheDocument();
   });
 
-  it("clamps a typed day back down to the trip's duration", () => {
-    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
-    const dayInput = screen.getByLabelText("Day");
-    fireEvent.change(dayInput, { target: { value: "10" } });
-    expect(dayInput).toHaveValue(3);
+  it("hides the day-chip row for a single-day trip", () => {
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={1} onAdded={jest.fn()} />);
+    expect(screen.queryByRole("button", { name: "Day 1" })).not.toBeInTheDocument();
   });
 
   it("adds a found place to the currently selected day", async () => {
@@ -102,6 +107,71 @@ describe("AddTripStop", () => {
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
         placeId: "place-1",
+        day: 1,
+      }),
+    );
+  });
+
+  it("adds a place to a day picked via chip", async () => {
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Day 3" }));
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Sunset Beach").closest("button")!);
+
+    await waitFor(() =>
+      expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
+        placeId: "place-1",
+        day: 3,
+      }),
+    );
+  });
+
+  it("switches to the Events tab and searches events instead of places", async () => {
+    mockGetEvents.mockResolvedValue({
+      data: [{ id: "event-1", name: "Beach Cleanup" }],
+    });
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Events" }));
+    fireEvent.change(screen.getByPlaceholderText("Search events…"), {
+      target: { value: "cleanup" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(screen.getByText("Beach Cleanup")).toBeInTheDocument());
+    expect(mockGetEvents).toHaveBeenCalledWith({ search: "cleanup", limit: 5 });
+    fireEvent.click(screen.getByText("Beach Cleanup").closest("button")!);
+
+    await waitFor(() =>
+      expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
+        eventId: "event-1",
+        day: 1,
+      }),
+    );
+  });
+
+  it("switches to the Car Rentals tab and searches car listings instead of places", async () => {
+    mockGetCarListings.mockResolvedValue({
+      data: [{ id: "listing-1", title: "Toyota RAV4", category: "suv", pricePerDay: 60 }],
+    });
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Car Rentals" }));
+    fireEvent.change(screen.getByPlaceholderText("Search car rentals…"), {
+      target: { value: "rav4" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(screen.getByText("Toyota RAV4")).toBeInTheDocument());
+    expect(mockGetCarListings).toHaveBeenCalledWith({ search: "rav4", limit: 5 });
+    fireEvent.click(screen.getByText("Toyota RAV4").closest("button")!);
+
+    await waitFor(() =>
+      expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
+        carListingId: "listing-1",
         day: 1,
       }),
     );

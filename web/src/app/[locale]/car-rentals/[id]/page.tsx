@@ -26,6 +26,7 @@ import { whatsappLink } from "@/lib/contact";
 import { SafeImage } from "@/components/SafeImage";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { BookingRequestSection } from "@/components/BookingRequestSection";
+import { AddToTripButton } from "@/components/AddToTripButton";
 import { CarRecommendations } from "@/components/CarRecommendations";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -235,12 +236,17 @@ export default async function CarListingDetailPage({
           </p>
         )}
 
-        <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+        <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center">
           <BookingRequestSection
             carListing={listing}
             prominent
             mode="link"
             href={`/car-rentals/${listing.id}/book${query}`}
+          />
+          <AddToTripButton
+            contentType="carListing"
+            itemId={listing.id}
+            itemName={listing.title}
           />
         </div>
       </header>

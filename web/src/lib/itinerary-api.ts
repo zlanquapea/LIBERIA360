@@ -164,11 +164,14 @@ export async function deleteItinerary(token: string, itineraryId: string): Promi
   });
 }
 
-export interface AddStopInput {
-  placeId: string;
-  day: number;
-  notes?: string;
-}
+// Exactly one of placeId/eventId/carListingId — a stop can point at a
+// place, an event, or a car rental listing (see the API's own
+// ItineraryStop doc comment for why).
+export type AddStopInput = { day: number; notes?: string } & (
+  | { placeId: string; eventId?: never; carListingId?: never }
+  | { eventId: string; placeId?: never; carListingId?: never }
+  | { carListingId: string; placeId?: never; eventId?: never }
+);
 
 export function addItineraryStop(token: string, itineraryId: string, input: AddStopInput): Promise<ItineraryDetail> {
   return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops`, {
@@ -178,21 +181,28 @@ export function addItineraryStop(token: string, itineraryId: string, input: AddS
   });
 }
 
+export interface UpdateStopInput {
+  notes?: string;
+  day?: number;
+}
+
+// `itemId` matches whichever of the stop's placeId/eventId/carListingId
+// identifies it.
 export function updateItineraryStop(
   token: string,
   itineraryId: string,
-  placeId: string,
-  notes: string,
+  itemId: string,
+  input: UpdateStopInput,
 ): Promise<ItineraryDetail> {
-  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops/${placeId}`, {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops/${itemId}`, {
     method: 'PATCH',
     headers: authHeader(token),
-    body: JSON.stringify({ notes }),
+    body: JSON.stringify(input),
   });
 }
 
-export function removeItineraryStop(token: string, itineraryId: string, placeId: string): Promise<ItineraryDetail> {
-  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops/${placeId}`, {
+export function removeItineraryStop(token: string, itineraryId: string, itemId: string): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/stops/${itemId}`, {
     method: 'DELETE',
     headers: authHeader(token),
   });

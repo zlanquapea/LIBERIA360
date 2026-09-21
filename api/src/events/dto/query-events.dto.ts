@@ -21,6 +21,10 @@ export class QueryEventsDto {
   county?: string; // county slug, consistent with GET /places?county=
 
   @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
   @IsDateString()
   dateFrom?: string;
 

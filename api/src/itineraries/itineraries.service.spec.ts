@@ -15,6 +15,8 @@ import {
 } from "./entities/trip-invitation.entity";
 import { TripJoinRequest } from "./entities/trip-join-request.entity";
 import { Place } from "../places/entities/place.entity";
+import { Event } from "../events/entities/event.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { UsersService } from "../users/users.service";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -116,6 +118,8 @@ describe("ItinerariesService (collaboration)", () => {
     findOne: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
+  let eventRepo: { find: jest.Mock; findOne: jest.Mock };
+  let carListingRepo: { find: jest.Mock; findOne: jest.Mock };
   let candidatesQueryBuilder: {
     leftJoinAndSelect: jest.Mock;
     where: jest.Mock;
@@ -188,6 +192,18 @@ describe("ItinerariesService (collaboration)", () => {
       findOne: jest.fn().mockResolvedValue({ id: "place-2", slug: "p2" }),
       createQueryBuilder: jest.fn(() => candidatesQueryBuilder),
     };
+    eventRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "event-2", name: "Beach Cleanup" }),
+    };
+    carListingRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "car-2", title: "Toyota RAV4" }),
+    };
     invitationRepo = {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue(null),
@@ -220,6 +236,8 @@ describe("ItinerariesService (collaboration)", () => {
         ItinerariesService,
         { provide: getRepositoryToken(Itinerary), useValue: itineraryRepo },
         { provide: getRepositoryToken(Place), useValue: placeRepo },
+        { provide: getRepositoryToken(Event), useValue: eventRepo },
+        { provide: getRepositoryToken(CarListing), useValue: carListingRepo },
         {
           provide: getRepositoryToken(ItineraryCollaborator),
           useValue: collaboratorRepo,
@@ -773,6 +791,100 @@ describe("ItinerariesService (collaboration)", () => {
           ]),
         }),
       );
+    });
+
+    // Widened (Sep 2026, "make trip planning the platform's focus" product
+    // review) from place-only stops to also carry an event or a car rental
+    // listing — see StopKind/resolveStopKind's own comments.
+    it("adds an event stop", async () => {
+      await service.addStop(OWNER_ID, ITINERARY_ID, {
+        eventId: "event-2",
+        day: 1,
+      });
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stops: expect.arrayContaining([
+            expect.objectContaining({ eventId: "event-2", day: 1 }),
+          ]),
+        }),
+      );
+    });
+
+    it("adds a car listing stop", async () => {
+      await service.addStop(OWNER_ID, ITINERARY_ID, {
+        carListingId: "car-2",
+        day: 1,
+      });
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stops: expect.arrayContaining([
+            expect.objectContaining({ carListingId: "car-2", day: 1 }),
+          ]),
+        }),
+      );
+    });
+
+    it("404s adding an event that doesn't exist", async () => {
+      eventRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, { eventId: "ghost", day: 1 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("404s adding a car listing that doesn't exist", async () => {
+      carListingRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, {
+          carListingId: "ghost",
+          day: 1,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects a stop with none of placeId/eventId/carListingId set", async () => {
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, { day: 1 } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects a stop with more than one of placeId/eventId/carListingId set", async () => {
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, {
+          placeId: "place-2",
+          eventId: "event-2",
+          day: 1,
+        } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("removes an event or car-listing stop the same way as a place", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({
+          stops: [{ day: 1, order: 0, eventId: "event-1", notes: null }],
+        }),
+      );
+      await service.removeStop(OWNER_ID, ITINERARY_ID, "event-1");
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ stops: [] }),
+      );
+    });
+
+    it("moves a stop to a different day", async () => {
+      await service.updateStop(OWNER_ID, ITINERARY_ID, "place-1", { day: 2 });
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stops: expect.arrayContaining([
+            expect.objectContaining({ placeId: "place-1", day: 2, order: 0 }),
+          ]),
+        }),
+      );
+    });
+
+    it("rejects moving a stop beyond the trip's own duration", async () => {
+      await expect(
+        service.updateStop(OWNER_ID, ITINERARY_ID, "place-1", { day: 5 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(itineraryRepo.save).not.toHaveBeenCalled();
     });
   });
 

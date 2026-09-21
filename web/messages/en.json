@@ -256,6 +256,17 @@
     "adding": "Adding…",
     "addToDay": "+ Day {day}",
     "couldNotAddPlace": "Could not add this place.",
+    "tab": {
+      "place": "Places",
+      "event": "Events",
+      "carListing": "Car Rentals"
+    },
+    "searchPlaceholder": {
+      "place": "Search places…",
+      "event": "Search events…",
+      "carListing": "Search car rentals…"
+    },
+    "dayChip": "Day {day}",
 
     "communityTripsSubtitlePrefix": "Public trips other travelers are planning — ask to join one, or",
     "buildYourOwn": "build your own",

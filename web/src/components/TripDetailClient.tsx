@@ -14,6 +14,7 @@ import {
   removeItineraryStop,
   renameItinerary,
   requestToJoinTrip,
+  updateItineraryStop,
 } from '@/lib/itinerary-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand, formatTripDateRange, formatTripStatus, formatTripVisibility } from '@/lib/format';
@@ -528,11 +529,21 @@ function MemberTripView({
 
       <ItineraryStops
         stops={itinerary.stops}
+        durationDays={itinerary.durationDays}
         onRemove={
           canEdit
-            ? async (placeId) => {
+            ? async (itemId) => {
                 if (!token) return;
-                await removeItineraryStop(token, itinerary.id, placeId);
+                await removeItineraryStop(token, itinerary.id, itemId);
+                reload();
+              }
+            : undefined
+        }
+        onMove={
+          canEdit
+            ? async (itemId, day) => {
+                if (!token) return;
+                await updateItineraryStop(token, itinerary.id, itemId, { day });
                 reload();
               }
             : undefined

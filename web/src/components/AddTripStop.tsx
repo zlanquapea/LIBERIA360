@@ -2,15 +2,48 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CalendarDaysIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { getPlaces } from '@/lib/api';
+import { getPlaces, getEvents, getCarListings } from '@/lib/api';
 import { addItineraryStop } from '@/lib/itinerary-api';
+import { formatCarCategory, formatCost, formatEventDateRange } from '@/lib/format';
 import { HttpError } from '@/lib/http';
-import type { Place } from '@/lib/types';
+import type { Place, Event, CarListing } from '@/lib/types';
+
+type Tab = 'place' | 'event' | 'carListing';
+
+type TabResult = Place | Event | CarListing;
+
+const TABS: { key: Tab; icon: typeof MapPinIcon }[] = [
+  { key: 'place', icon: MapPinIcon },
+  { key: 'event', icon: CalendarDaysIcon },
+  { key: 'carListing', icon: TruckIcon },
+];
+
+function resultTitle(tab: Tab, item: TabResult): string {
+  if (tab === 'carListing') return (item as CarListing).title;
+  return (item as Place | Event).name;
+}
+
+function resultSubtitle(tab: Tab, item: TabResult): string | null {
+  if (tab === 'event') {
+    const event = item as Event;
+    return formatEventDateRange(event.startDate, event.endDate);
+  }
+  if (tab === 'carListing') {
+    const listing = item as CarListing;
+    return `${formatCarCategory(listing.category)} · ${formatCost(listing.pricePerDay)}/day`;
+  }
+  return null;
+}
 
 // Owner or any collaborator can add a stop — searches the catalog by name
-// rather than requiring a place id, since that's how someone actually
-// finds a place while planning ("let's add that waterfall Marcus found").
+// rather than requiring an id, since that's how someone actually finds a
+// place/event/car while planning ("let's add that waterfall Marcus found").
+//
+// Widened (Sep 2026, "make trip planning the platform's focus" product
+// review) from a single place search box into a tabbed picker across the
+// three things a trip's day can now hold — see ItineraryStopDetail.
 export function AddTripStop({
   itineraryId,
   durationDays,
@@ -22,12 +55,19 @@ export function AddTripStop({
 }) {
   const t = useTranslations('trips');
   const { token } = useAuth();
+  const [tab, setTab] = useState<Tab>('place');
   const [query, setQuery] = useState('');
   const [day, setDay] = useState(1);
-  const [results, setResults] = useState<Place[]>([]);
+  const [results, setResults] = useState<TabResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function switchTab(next: Tab) {
+    setTab(next);
+    setResults([]);
+    setError(null);
+  }
 
   async function search() {
     const q = query.trim();
@@ -35,8 +75,16 @@ export function AddTripStop({
     setSearching(true);
     setError(null);
     try {
-      const res = await getPlaces({ q, limit: 5 });
-      setResults(res.data);
+      if (tab === 'place') {
+        const res = await getPlaces({ q, limit: 5 });
+        setResults(res.data);
+      } else if (tab === 'event') {
+        const res = await getEvents({ search: q, limit: 5 });
+        setResults(res.data);
+      } else {
+        const res = await getCarListings({ search: q, limit: 5 });
+        setResults(res.data);
+      }
     } catch {
       setError(t('searchFailed'));
     } finally {
@@ -44,13 +92,19 @@ export function AddTripStop({
     }
   }
 
-  async function add(placeId: string) {
+  async function add(item: TabResult) {
     if (!token) return;
-    setAddingId(placeId);
+    setAddingId(item.id);
     setError(null);
     try {
-      await addItineraryStop(token, itineraryId, { placeId, day });
-      setResults((prev) => prev.filter((p) => p.id !== placeId));
+      const input =
+        tab === 'place'
+          ? { placeId: item.id, day }
+          : tab === 'event'
+            ? { eventId: item.id, day }
+            : { carListingId: item.id, day };
+      await addItineraryStop(token, itineraryId, input);
+      setResults((prev) => prev.filter((r) => r.id !== item.id));
       onAdded();
     } catch (err) {
       setError(err instanceof HttpError ? err.message : t('couldNotAddPlace'));
@@ -62,6 +116,25 @@ export function AddTripStop({
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('addAPlace')}</p>
+
+      <div className="flex gap-1.5">
+        {TABS.map(({ key, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => switchTab(key)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              tab === key
+                ? 'border-brand-600 bg-brand-600 text-white'
+                : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400'
+            }`}
+          >
+            <Icon aria-hidden className="h-3.5 w-3.5" />
+            {t(`tab.${key}`)}
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -73,17 +146,8 @@ export function AddTripStop({
               search();
             }
           }}
-          placeholder={t('searchPlacesPlaceholder')}
+          placeholder={t(`searchPlaceholder.${tab}`)}
           className="min-w-0 flex-1 rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-        />
-        <input
-          type="number"
-          min={1}
-          max={durationDays}
-          value={day}
-          onChange={(e) => setDay(Math.min(durationDays, Math.max(1, Number(e.target.value) || 1)))}
-          aria-label={t('day')}
-          className="w-16 shrink-0 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
@@ -95,25 +159,54 @@ export function AddTripStop({
         </button>
       </div>
 
+      {durationDays > 1 && (
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {Array.from({ length: durationDays }, (_, i) => i + 1).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDay(d)}
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                day === d
+                  ? 'border-brand-600 bg-brand-600 text-white'
+                  : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400'
+              }`}
+            >
+              {t('dayChip', { day: d })}
+            </button>
+          ))}
+        </div>
+      )}
+
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
 
       {results.length > 0 && (
         <ul className="flex flex-col gap-1.5">
-          {results.map((place) => (
-            <li key={place.id}>
-              <button
-                type="button"
-                disabled={addingId === place.id}
-                onClick={() => add(place.id)}
-                className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
-              >
-                <span className="truncate">{place.name}</span>
-                <span className="shrink-0 text-xs font-medium text-brand-700 dark:text-brand-300">
-                  {addingId === place.id ? t('adding') : t('addToDay', { day })}
-                </span>
-              </button>
-            </li>
-          ))}
+          {results.map((item) => {
+            const subtitle = resultSubtitle(tab, item);
+            return (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  disabled={addingId === item.id}
+                  onClick={() => add(item)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="truncate">{resultTitle(tab, item)}</span>
+                    {subtitle && (
+                      <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                        {subtitle}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-xs font-medium text-brand-700 dark:text-brand-300">
+                    {addingId === item.id ? t('adding') : t('addToDay', { day })}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

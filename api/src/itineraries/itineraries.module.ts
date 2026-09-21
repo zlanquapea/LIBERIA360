@@ -5,6 +5,8 @@ import { ItineraryCollaborator } from "./entities/itinerary-collaborator.entity"
 import { TripInvitation } from "./entities/trip-invitation.entity";
 import { TripJoinRequest } from "./entities/trip-join-request.entity";
 import { Place } from "../places/entities/place.entity";
+import { Event } from "../events/entities/event.entity";
+import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { UsersModule } from "../users/users.module";
 import { MailModule } from "../mail/mail.module";
 import { NotificationsModule } from "../notifications/notifications.module";
@@ -22,6 +24,8 @@ import { TripPreviewController } from "./trip-preview.controller";
       TripInvitation,
       TripJoinRequest,
       Place,
+      Event,
+      CarListing,
     ]),
     UsersModule,
     MailModule,

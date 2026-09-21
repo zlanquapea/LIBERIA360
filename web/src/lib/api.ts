@@ -407,6 +407,7 @@ export function getCreatorFeedForCreator(
 export interface EventsQuery {
   category?: EventCategory;
   county?: string;
+  search?: string;
   dateFrom?: string;
   dateTo?: string;
   // Public browsing never sets this — the API hides past events by
