@@ -37,6 +37,18 @@ function inMs(ms: number): Date {
   return new Date(Date.now() + ms);
 }
 
+// processDueReminders computes its own `now` a few milliseconds after a
+// test builds its fixture's startDate — placing a target exactly on the
+// window's lower edge (targetAt >= now) is a real race, not a rounding
+// nicety: it passed reliably on a fast local machine but flaked under
+// CI's scheduling jitter. Every "this reminder is due" fixture below
+// gives the target a comfortable 30s cushion inside the window instead
+// of landing exactly on `now`.
+const DUE_BUFFER_MS = 30_000;
+function dueIn(offsetMs: number): Date {
+  return inMs(offsetMs + DUE_BUFFER_MS);
+}
+
 describe("TripNotificationsService", () => {
   let service: TripNotificationsService;
   let deliveryRepo: {
@@ -100,7 +112,7 @@ describe("TripNotificationsService", () => {
     "fires %s exactly at its window before departure",
     async (kind, offsetMs) => {
       itineraryRepo.find.mockResolvedValue([
-        makeTrip({ startDate: inMs(offsetMs) }),
+        makeTrip({ startDate: dueIn(offsetMs) }),
       ]);
       await service.processDueReminders();
       expect(notificationsService.create).toHaveBeenCalledWith(
@@ -127,7 +139,7 @@ describe("TripNotificationsService", () => {
 
   it("notifies both the organizer and every collaborator", async () => {
     itineraryRepo.find.mockResolvedValue([
-      makeTrip({ startDate: inMs(3_600_000) }),
+      makeTrip({ startDate: dueIn(3_600_000) }),
     ]);
     collaboratorRepo.find.mockResolvedValue([
       { userId: PARTICIPANT.id, user: PARTICIPANT },
@@ -151,7 +163,7 @@ describe("TripNotificationsService", () => {
 
   it("never duplicates a recipient who is both organizer and their own collaborator row", async () => {
     itineraryRepo.find.mockResolvedValue([
-      makeTrip({ startDate: inMs(3_600_000) }),
+      makeTrip({ startDate: dueIn(3_600_000) }),
     ]);
     collaboratorRepo.find.mockResolvedValue([
       { userId: ORGANIZER.id, user: ORGANIZER },
@@ -183,7 +195,7 @@ describe("TripNotificationsService", () => {
 
   it("does not re-notify a recipient once a delivery row already recorded both channels sent", async () => {
     itineraryRepo.find.mockResolvedValue([
-      makeTrip({ startDate: inMs(3_600_000) }),
+      makeTrip({ startDate: dueIn(3_600_000) }),
     ]);
     deliveryRepo.findOne.mockResolvedValue({
       itineraryId: "trip-1",
@@ -202,7 +214,7 @@ describe("TripNotificationsService", () => {
   it("includes the trip's destination name in the reminder copy when set", async () => {
     itineraryRepo.find.mockResolvedValue([
       makeTrip({
-        startDate: inMs(3_600_000),
+        startDate: dueIn(3_600_000),
         destination: { name: "Robertsport" } as never,
       }),
     ]);
