@@ -1,11 +1,19 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ConfigService } from "@nestjs/config";
 import { Between, Repository } from "typeorm";
 import { Event } from "../events/entities/event.entity";
 import { EventRsvp } from "../events/entities/event-rsvp.entity";
 import { EventRsvpStatus } from "../events/entities/event.enums";
-import { EventTicketOrder, EventTicketOrderStatus } from "../event-tickets/entities/event-ticket-order.entity";
+import {
+  EventTicketOrder,
+  EventTicketOrderStatus,
+} from "../event-tickets/entities/event-ticket-order.entity";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -18,7 +26,9 @@ interface Recipient {
 }
 
 @Injectable()
-export class EventNotificationsService implements OnModuleInit, OnModuleDestroy {
+export class EventNotificationsService
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(EventNotificationsService.name);
   private timer: NodeJS.Timeout | null = null;
   private running = false;
@@ -61,7 +71,8 @@ export class EventNotificationsService implements OnModuleInit, OnModuleDestroy 
     sendInApp = true,
   ): Promise<void> {
     const unique = new Map<string, Recipient>();
-    for (const recipient of recipients) unique.set(recipient.user.id, recipient);
+    for (const recipient of recipients)
+      unique.set(recipient.user.id, recipient);
     for (const recipient of unique.values()) {
       await this.deliverOnce({
         event,
@@ -84,7 +95,9 @@ export class EventNotificationsService implements OnModuleInit, OnModuleDestroy 
     referenceId = "",
     sendInApp = true,
   ): Promise<void> {
-    const organizer = await this.userRepo.findOne({ where: { id: event.createdByUserId } });
+    const organizer = await this.userRepo.findOne({
+      where: { id: event.createdByUserId },
+    });
     if (!organizer) return;
     await this.notifyEventLifecycle(
       event,
@@ -149,7 +162,9 @@ export class EventNotificationsService implements OnModuleInit, OnModuleDestroy 
       title,
       body,
       `/account/my-tickets`,
-      orders.filter((order) => order.buyer).map((order) => ({ user: order.buyer, referenceId: order.id })),
+      orders
+        .filter((order) => order.buyer)
+        .map((order) => ({ user: order.buyer, referenceId: order.id })),
     );
   }
 
@@ -171,15 +186,17 @@ export class EventNotificationsService implements OnModuleInit, OnModuleDestroy 
         referenceId: input.referenceId,
       },
     });
-    delivery = delivery ?? this.deliveryRepo.create({
-      eventId: input.event.id,
-      recipientUserId: input.recipient.id,
-      kind: input.kind,
-      referenceId: input.referenceId,
-      inAppSent: false,
-      emailSent: false,
-      sentAt: null,
-    });
+    delivery =
+      delivery ??
+      this.deliveryRepo.create({
+        eventId: input.event.id,
+        recipientUserId: input.recipient.id,
+        kind: input.kind,
+        referenceId: input.referenceId,
+        inAppSent: false,
+        emailSent: false,
+        sentAt: null,
+      });
     if ((!input.sendInApp || delivery.inAppSent) && delivery.emailSent) return;
 
     if (input.sendInApp && !delivery.inAppSent) {
@@ -226,30 +243,50 @@ export class EventNotificationsService implements OnModuleInit, OnModuleDestroy 
         take: 100,
       });
       for (const event of events) {
-        for (const reminder of this.remindersFor(event.startDate, now, windowEnd)) {
+        for (const reminder of this.remindersFor(
+          event.startDate,
+          now,
+          windowEnd,
+        )) {
           const label = reminder.label;
           const title = `${event.name} starts in ${label}`;
           const body = `Your event in ${event.locationText ?? event.county?.name ?? "Liberia"} starts in ${label}.`;
           await this.notifyOrganizer(event, reminder.kind, title, body);
           await this.notifyRsvpParticipants(event, reminder.kind, title, body);
-          await this.notifyTicketParticipants(event, reminder.kind, title, body);
+          await this.notifyTicketParticipants(
+            event,
+            reminder.kind,
+            title,
+            body,
+          );
         }
       }
     } catch (error) {
-      this.logger.error(`Event reminder job failed: ${(error as Error).message}`);
+      this.logger.error(
+        `Event reminder job failed: ${(error as Error).message}`,
+      );
     } finally {
       this.running = false;
     }
   }
 
-  private remindersFor(start: Date, now: Date, windowEnd: Date): Array<{ kind: string; label: string }> {
+  private remindersFor(
+    start: Date,
+    now: Date,
+    windowEnd: Date,
+  ): Array<{ kind: string; label: string }> {
     const targets = [
       { kind: "reminder_2d", label: "2 days" },
       { kind: "reminder_1d", label: "1 day" },
       { kind: "reminder_30m", label: "30 minutes" },
     ];
     return targets.filter((target) => {
-      const offset = target.kind === "reminder_2d" ? 172_800_000 : target.kind === "reminder_1d" ? 86_400_000 : 1_800_000;
+      const offset =
+        target.kind === "reminder_2d"
+          ? 172_800_000
+          : target.kind === "reminder_1d"
+            ? 86_400_000
+            : 1_800_000;
       const targetAt = new Date(start.getTime() - offset);
       return targetAt >= now && targetAt < windowEnd;
     });
