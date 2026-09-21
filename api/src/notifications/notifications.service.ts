@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Notification, NotificationType } from "./entities/notification.entity";
+import { PushService } from "../push/push.service";
 
 export interface PaginatedNotifications {
   data: Notification[];
@@ -22,6 +23,8 @@ export interface CreateNotificationInput {
   title: string;
   body: string;
   link?: string;
+  /** Event notifications use their own delivery ledger and push retry path. */
+  skipPush?: boolean;
 }
 
 /** The in-app notification center — see Notification's own doc comment for
@@ -35,6 +38,7 @@ export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
+    private readonly pushService: PushService,
   ) {}
 
   /** Notifies a single user — the common case (a booking's guest or
@@ -43,13 +47,23 @@ export class NotificationsService {
    * same contract as AdminAuditService.log. */
   async create(userId: string, input: CreateNotificationInput): Promise<void> {
     try {
+      const { skipPush: _skipPush, ...notificationInput } = input;
       await this.notificationRepo.save(
         this.notificationRepo.create({
           userId,
-          ...input,
-          link: input.link ?? null,
+          ...notificationInput,
+          link: notificationInput.link ?? null,
         }),
       );
+      if (!input.skipPush) {
+        void this.pushService
+          .sendToUsers([userId], {
+            title: input.title,
+            body: input.body,
+            url: input.link,
+          })
+          .catch(() => undefined);
+      }
     } catch {
       // Swallowed on purpose — see this method's doc comment.
     }
@@ -66,15 +80,25 @@ export class NotificationsService {
   ): Promise<void> {
     if (userIds.length === 0) return;
     try {
+      const { skipPush: _skipPush, ...notificationInput } = input;
       await this.notificationRepo.save(
         userIds.map((userId) =>
           this.notificationRepo.create({
             userId,
-            ...input,
-            link: input.link ?? null,
+            ...notificationInput,
+            link: notificationInput.link ?? null,
           }),
         ),
       );
+      if (!input.skipPush) {
+        void this.pushService
+          .sendToUsers(userIds, {
+            title: input.title,
+            body: input.body,
+            url: input.link,
+          })
+          .catch(() => undefined);
+      }
     } catch {
       // Swallowed on purpose — see create's doc comment.
     }

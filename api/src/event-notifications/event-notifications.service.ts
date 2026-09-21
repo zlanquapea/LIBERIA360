@@ -213,6 +213,7 @@ export class EventNotificationsService
         title: input.title,
         body: input.body,
         link: input.link,
+        skipPush: true,
       });
       delivery.inAppSent = true;
     }
