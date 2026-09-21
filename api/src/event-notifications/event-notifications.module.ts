@@ -6,6 +6,7 @@ import { EventTicketOrder } from "../event-tickets/entities/event-ticket-order.e
 import { User } from "../users/entities/user.entity";
 import { MailModule } from "../mail/mail.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { PushModule } from "../push/push.module";
 import { EventNotificationDelivery } from "./entities/event-notification-delivery.entity";
 import { EventNotificationsService } from "./event-notifications.service";
 
@@ -20,6 +21,7 @@ import { EventNotificationsService } from "./event-notifications.service";
     ]),
     MailModule,
     NotificationsModule,
+    PushModule,
   ],
   providers: [EventNotificationsService],
   exports: [EventNotificationsService],

@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { NotificationsService } from "./notifications.service";
 import { Notification } from "./entities/notification.entity";
+import { PushService } from "../push/push.service";
 
 describe("NotificationsService", () => {
   let service: NotificationsService;
@@ -14,6 +15,7 @@ describe("NotificationsService", () => {
     findOne: jest.Mock;
     update: jest.Mock;
   };
+  let pushService: { sendToUsers: jest.Mock };
 
   beforeEach(async () => {
     repo = {
@@ -24,11 +26,13 @@ describe("NotificationsService", () => {
       findOne: jest.fn(),
       update: jest.fn(),
     };
+    pushService = { sendToUsers: jest.fn().mockResolvedValue(false) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationsService,
         { provide: getRepositoryToken(Notification), useValue: repo },
+        { provide: PushService, useValue: pushService },
       ],
     }).compile();
 
@@ -49,6 +53,14 @@ describe("NotificationsService", () => {
           type: "booking.requested",
           title: "New booking request",
           link: "/account/bookings",
+        }),
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(pushService.sendToUsers).toHaveBeenCalledWith(
+        ["user-1"],
+        expect.objectContaining({
+          title: "New booking request",
+          url: "/account/bookings",
         }),
       );
     });

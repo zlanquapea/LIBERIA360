@@ -72,9 +72,9 @@ export class PushService {
   async sendToUsers(
     userIds: string[],
     payload: { title: string; body: string; url?: string },
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!this.configured || userIds.length === 0) {
-      return;
+      return false;
     }
 
     const subscriptions = await this.subscriptionRepo
@@ -82,6 +82,7 @@ export class PushService {
       .where("sub.userId IN (:...userIds)", { userIds })
       .getMany();
 
+    let delivered = 0;
     await Promise.all(
       subscriptions.map(async (sub) => {
         try {
@@ -92,6 +93,7 @@ export class PushService {
             },
             JSON.stringify(payload),
           );
+          delivered += 1;
         } catch (error) {
           const statusCode = (error as { statusCode?: number }).statusCode;
           if (statusCode === 404 || statusCode === 410) {
@@ -104,5 +106,6 @@ export class PushService {
         }
       }),
     );
+    return delivered > 0;
   }
 }

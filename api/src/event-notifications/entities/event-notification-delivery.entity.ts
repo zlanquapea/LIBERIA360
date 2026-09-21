@@ -35,6 +35,9 @@ export class EventNotificationDelivery {
   @Column({ name: "email_sent", type: "boolean", default: false })
   emailSent: boolean;
 
+  @Column({ name: "push_sent", type: "boolean", default: false })
+  pushSent: boolean;
+
   @Column({ name: "sent_at", type: "timestamptz", nullable: true })
   sentAt: Date | null;
 
