@@ -476,7 +476,7 @@ export function TripChatPanel({ itineraryId }: { itineraryId: string }) {
           }}
           placeholder={t('messagePlaceholder')}
           maxLength={4000}
-          className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="min-w-0 flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         <button
           type="button"
