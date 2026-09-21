@@ -272,6 +272,12 @@
       "event": "搜索活动…",
       "carListing": "搜索租车…"
     },
+    "browseAll": {
+      "place": "浏览完整地图",
+      "stay": "浏览所有住宿",
+      "event": "浏览所有活动",
+      "carListing": "浏览全部车型"
+    },
     "dayChip": "第 {day} 天",
     "viewDetails": "查看详情",
     "tripMapLoading": "地图加载中…",

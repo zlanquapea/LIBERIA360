@@ -1109,7 +1109,8 @@ export class ItinerariesService {
         `This ${STOP_KIND_LABEL[kind]} is already on the trip`,
       );
     }
-    if (!(await this.stopItemExists(kind, itemId))) {
+    const item = await this.findStopItem(kind, itemId);
+    if (!item) {
       throw new NotFoundException(
         `${STOP_KIND_LABEL[kind]} "${itemId}" not found`,
       );
@@ -1128,6 +1129,15 @@ export class ItinerariesService {
           : { ...base, carListingId: itemId };
     itinerary.stops = [...itinerary.stops, newStop];
     const saved = await this.itineraryRepo.save(itinerary);
+    // So everyone on the trip sees a new car/place/event land, not just
+    // whoever added it and happens to still be looking at the stop list —
+    // same "the chat carries a record of what changed" reasoning as
+    // rename/join/cancel above.
+    const adder = await this.usersService.findById(userId);
+    await this.tripChatService.postSystemMessage(
+      itineraryId,
+      `${adder?.name ?? "Someone"} added ${this.stopItemTitle(kind, item)} to Day ${dto.day}.`,
+    );
     return this.findOne(userId, saved.id);
   }
 
@@ -1194,14 +1204,26 @@ export class ItinerariesService {
     return STOP_KINDS.some((kind) => stop[kind] === itemId);
   }
 
-  private async stopItemExists(kind: StopKind, id: string): Promise<boolean> {
+  private async findStopItem(
+    kind: StopKind,
+    id: string,
+  ): Promise<Place | Event | CarListing | null> {
     if (kind === "placeId") {
-      return !!(await this.placeRepo.findOne({ where: { id } }));
+      return this.placeRepo.findOne({ where: { id } });
     }
     if (kind === "eventId") {
-      return !!(await this.eventRepo.findOne({ where: { id } }));
+      return this.eventRepo.findOne({ where: { id } });
     }
-    return !!(await this.carListingRepo.findOne({ where: { id } }));
+    return this.carListingRepo.findOne({ where: { id } });
+  }
+
+  private stopItemTitle(
+    kind: StopKind,
+    item: Place | Event | CarListing,
+  ): string {
+    return kind === "carListingId"
+      ? (item as CarListing).title
+      : (item as Place | Event).name;
   }
 
   // durationDays is derived from the trip's own start/end date (see

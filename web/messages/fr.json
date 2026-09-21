@@ -272,6 +272,12 @@
       "event": "Rechercher des événements…",
       "carListing": "Rechercher des locations de voiture…"
     },
+    "browseAll": {
+      "place": "Parcourir toute la carte",
+      "stay": "Voir tous les hébergements",
+      "event": "Voir tous les événements",
+      "carListing": "Voir toute la flotte"
+    },
     "dayChip": "Jour {day}",
     "viewDetails": "Voir les détails",
     "tripMapLoading": "Chargement de la carte…",

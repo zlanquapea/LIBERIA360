@@ -9,10 +9,16 @@ import { setEventRsvp } from '@/lib/event-api';
 import { HttpError } from '@/lib/http';
 import type { Itinerary } from '@/lib/types';
 
-type AddToTripButtonProps =
+type AddToTripButtonProps = (
   | { contentType: 'event'; itemId: string; itemName: string }
   | { contentType: 'carListing'; itemId: string; itemName: string }
-  | { contentType: 'place'; itemId: string; itemName: string };
+  | { contentType: 'place'; itemId: string; itemName: string }
+) & {
+  // Icon-only trigger (no "Add to trip" label) for anywhere the full pill
+  // would overwhelm the surface it sits on — a card in a browse grid,
+  // rather than a detail page's own header. Same dropdown either way.
+  compact?: boolean;
+};
 
 // Lets someone planning a trip add an event, a rental car, or a place
 // (including a hotel — AddTripStop's "Stay" tab is this exact same catalog,
@@ -22,8 +28,13 @@ type AddToTripButtonProps =
 // focus" product review). Mirrors ShareMenu's own click-to-open dropdown
 // shape rather than a modal — a short, low-stakes picklist doesn't need a
 // full overlay.
+const TRIGGER_CLASS_FULL =
+  'inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30';
+const TRIGGER_CLASS_COMPACT =
+  'flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm hover:bg-white dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-900';
+
 export function AddToTripButton(props: AddToTripButtonProps) {
-  const { contentType, itemId, itemName } = props;
+  const { contentType, itemId, itemName, compact = false } = props;
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -99,10 +110,12 @@ export function AddToTripButton(props: AddToTripButtonProps) {
     return (
       <Link
         href="/login"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30"
+        aria-label={compact ? 'Add to trip' : undefined}
+        title={compact ? 'Add to trip' : undefined}
+        className={compact ? TRIGGER_CLASS_COMPACT : TRIGGER_CLASS_FULL}
       >
         <BriefcaseIcon aria-hidden className="h-4 w-4" />
-        Add to trip
+        {!compact && 'Add to trip'}
       </Link>
     );
   }
@@ -113,18 +126,20 @@ export function AddToTripButton(props: AddToTripButtonProps) {
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label={compact ? 'Add to trip' : undefined}
+        title={compact ? 'Add to trip' : undefined}
         onClick={toggleOpen}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30"
+        className={compact ? TRIGGER_CLASS_COMPACT : TRIGGER_CLASS_FULL}
       >
         <BriefcaseIcon aria-hidden className="h-4 w-4" />
-        Add to trip
+        {!compact && 'Add to trip'}
       </button>
 
       {open && (
         <div
           role="menu"
           aria-label="Add to trip"
-          className="absolute right-0 top-[3.25rem] z-[100] w-72 rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          className={`absolute right-0 z-[100] w-72 rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white ${compact ? 'top-11' : 'top-[3.25rem]'}`}
         >
           {addedTo ? (
             <div className="flex flex-col items-center gap-2 py-3 text-center">
