@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ArrowTopRightOnSquareIcon, CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
@@ -74,8 +74,16 @@ export function AddTripStop({
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped on every tab switch so a search still in flight from the
+  // previous tab can tell, once it resolves, that it's no longer current —
+  // otherwise its results land under the new tab with the wrong shape
+  // (e.g. a place rendered as if it were an event), and since each result
+  // now links to a detail page keyed off the *current* tab, that stale
+  // result would link to a route that 404s.
+  const searchTokenRef = useRef(0);
 
   function switchTab(next: Tab) {
+    searchTokenRef.current += 1;
     setTab(next);
     setResults([]);
     setError(null);
@@ -84,26 +92,23 @@ export function AddTripStop({
   async function search() {
     const q = query.trim();
     if (!q) return;
+    const searchToken = searchTokenRef.current;
     setSearching(true);
     setError(null);
     try {
-      if (tab === 'place') {
-        const res = await getPlaces({ q, limit: 5 });
-        setResults(res.data);
-      } else if (tab === 'stay') {
-        const res = await getPlaces({ q, type: 'hotel', limit: 5 });
-        setResults(res.data);
-      } else if (tab === 'event') {
-        const res = await getEvents({ search: q, limit: 5 });
-        setResults(res.data);
-      } else {
-        const res = await getCarListings({ search: q, limit: 5 });
-        setResults(res.data);
-      }
+      const res =
+        tab === 'place'
+          ? await getPlaces({ q, limit: 5 })
+          : tab === 'stay'
+            ? await getPlaces({ q, type: 'hotel', limit: 5 })
+            : tab === 'event'
+              ? await getEvents({ search: q, limit: 5 })
+              : await getCarListings({ search: q, limit: 5 });
+      if (searchTokenRef.current === searchToken) setResults(res.data);
     } catch {
-      setError(t('searchFailed'));
+      if (searchTokenRef.current === searchToken) setError(t('searchFailed'));
     } finally {
-      setSearching(false);
+      if (searchTokenRef.current === searchToken) setSearching(false);
     }
   }
 

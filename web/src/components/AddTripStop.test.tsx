@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithMessages } from "@/test/render-with-messages";
 import { AddTripStop } from "./AddTripStop";
 import type { Place } from "@/lib/types";
@@ -190,6 +190,33 @@ describe("AddTripStop", () => {
     expect(link).toHaveAttribute("href", "/places/sunset-beach");
     expect(link).toHaveAttribute("target", "_blank");
     expect(mockAddItineraryStop).not.toHaveBeenCalled();
+  });
+
+  it("discards a search that resolves after the tab was switched away from it", async () => {
+    let resolvePlaceSearch: (value: { data: Place[] }) => void = () => {};
+    mockGetPlaces.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePlaceSearch = resolve;
+      }),
+    );
+    mockGetEvents.mockResolvedValue({ data: [] });
+
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    // Switch away before the place search above resolves.
+    fireEvent.click(screen.getByRole("button", { name: "Events" }));
+
+    // Now let the stale place search resolve — its results must not
+    // surface under the Events tab (they'd link to the wrong detail page).
+    await act(async () => {
+      resolvePlaceSearch({ data: [PLACE] });
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Sunset Beach")).not.toBeInTheDocument();
   });
 
   it("switches to the Stay tab and searches hotels via getPlaces with type: hotel", async () => {
