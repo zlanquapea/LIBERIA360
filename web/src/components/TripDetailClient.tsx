@@ -4,17 +4,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { PencilIcon, TrashIcon, MapPinIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { DocumentDuplicateIcon, PencilIcon, TrashIcon, MapPinIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import {
   cancelTrip,
   deleteItinerary,
+  duplicateItinerary,
   getItinerary,
   getPublicTrip,
   removeItineraryStop,
   renameItinerary,
   requestToJoinTrip,
   updateItineraryStop,
+  updatePartySize,
 } from '@/lib/itinerary-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { formatBudgetBand, formatTripDateRange, formatTripStatus, formatTripVisibility } from '@/lib/format';
@@ -27,6 +29,9 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
 import { ShareMenu } from '@/components/ShareMenu';
 import { TripShareCard, tripHasShareableContent } from '@/components/TripShareCard';
+import { TripMapLoader } from '@/components/TripMapLoader';
+import { TripCostSummary } from '@/components/TripCostSummary';
+import { tripHasMapPins } from '@/lib/trip-map';
 import type { ItineraryDetail, Place, PublicTripDetail, TripStatus, TripVisibility } from '@/lib/types';
 
 // Kept in sync with the same threshold on the trips list page — a trip
@@ -219,6 +224,9 @@ export function TripDetailClient({ id }: { id: string }) {
   // guaranteed set here (the loadError/not-found case returned above).
   const trip = publicTrip as PublicTripDetail;
   const isAdmin = user?.id === trip.admin?.id;
+  // Only meaningful when the owner set a cap — see Itinerary.
+  // maxParticipants's doc comment on the API side.
+  const isFull = trip.maxParticipants != null && trip.participantCount >= trip.maxParticipants;
 
   async function handleRequestToJoin() {
     if (!token) return;
@@ -252,6 +260,10 @@ export function TripDetailClient({ id }: { id: string }) {
 
         {trip.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{trip.description}</p>}
 
+        <div className="mt-3">
+          <TripCostSummary stops={trip.stops} />
+        </div>
+
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <div className="h-10 w-10">
             <ShareMenu placeName={trip.title} contentType="trip" />
@@ -263,7 +275,9 @@ export function TripDetailClient({ id }: { id: string }) {
           )}
           {!isAdmin && trip.status !== 'cancelled' && (
             <>
-              {!user ? (
+              {isFull ? (
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('tripFull')}</p>
+              ) : !user ? (
                 <Link
                   href={`/login?next=/trips/${trip.id}`}
                   className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
@@ -378,6 +392,25 @@ function MemberTripView({
   const isOwner = itinerary.userId === user?.id;
   const isCollaborator = itinerary.collaborators.some((c) => c.id === user?.id);
   const canEdit = isOwner || isCollaborator;
+  const [duplicating, setDuplicating] = useState(false);
+
+  // Owner or any collaborator, same tier as renameTrip — the copy always
+  // belongs to whoever clicks this, not the original owner (see the API's
+  // duplicateItinerary doc comment).
+  async function handleDuplicate() {
+    if (!token) return;
+    setDuplicating(true);
+    setActionError(null);
+    try {
+      const copy = await duplicateItinerary(token, itinerary.id);
+      router.push(`/trips/${copy.id}`);
+    } catch (err) {
+      setActionError(
+        getFriendlyErrorMessage(err, { context: { action: 'duplicate-itinerary', itineraryId: itinerary.id } }),
+      );
+      setDuplicating(false);
+    }
+  }
 
   async function handleRename(newTitle: string) {
     if (!token) return;
@@ -452,6 +485,17 @@ function MemberTripView({
             ← {t('myTrips')}
           </Link>
           <div className="flex items-center gap-2">
+            {canEdit && (
+              <button
+                type="button"
+                disabled={duplicating}
+                onClick={handleDuplicate}
+                className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
+              >
+                <DocumentDuplicateIcon aria-hidden className="h-3.5 w-3.5" />
+                {duplicating ? t('duplicating') : t('duplicateTrip')}
+              </button>
+            )}
             {isOwner && itinerary.status !== 'cancelled' && itinerary.status !== 'completed' && (
               <button
                 type="button"
@@ -491,9 +535,23 @@ function MemberTripView({
           {t('days', { count: itinerary.durationDays })} · {formatBudgetBand(itinerary.budgetBand)}
           {itinerary.interests.length > 0 && ` · ${itinerary.interests.join(', ')}`}
           {!isOwner && isCollaborator && ` · ${t('sharedWithYou')}`}
+          {' · '}
+          <TripPartySize
+            partySize={itinerary.partySize}
+            editable={canEdit}
+            onSave={async (partySize) => {
+              if (!token) return;
+              await updatePartySize(token, itinerary.id, partySize);
+              reload();
+            }}
+          />
         </p>
 
         {itinerary.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{itinerary.description}</p>}
+
+        <div className="mt-3">
+          <TripCostSummary stops={itinerary.stops} />
+        </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <div className="h-10 w-10">
@@ -526,6 +584,12 @@ function MemberTripView({
           getItinerary is member-gated (404s a non-member before this ever
           renders) — so the chat panel needs no extra `canEdit` check here. */}
       <TripChatPanel itineraryId={itinerary.id} />
+
+      {tripHasMapPins(itinerary.stops) && (
+        <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-80">
+          <TripMapLoader stops={itinerary.stops} />
+        </div>
+      )}
 
       <ItineraryStops
         stops={itinerary.stops}
@@ -662,6 +726,73 @@ function TripTitle({
         aria-hidden
         className="h-4 w-4 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-slate-600"
       />
+    </button>
+  );
+}
+
+// Traveler headcount (Sep 2026 UX pass) — click-to-edit, same interaction
+// shape as TripTitle above (owner or any collaborator; purely informational,
+// see Itinerary.partySize's own doc comment on the API side). A trip with
+// no party size set yet shows a plain "Add traveler count" prompt instead
+// of a number.
+function TripPartySize({
+  partySize,
+  editable,
+  onSave,
+}: {
+  partySize: number | null;
+  editable: boolean;
+  onSave: (partySize: number) => void;
+}) {
+  const t = useTranslations('trips');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(partySize ? String(partySize) : '');
+
+  useEffect(() => {
+    setDraft(partySize ? String(partySize) : '');
+  }, [partySize]);
+
+  function commit() {
+    setEditing(false);
+    const value = Number(draft);
+    if (draft && Number.isInteger(value) && value >= 1 && value <= 50 && value !== partySize) {
+      onSave(value);
+    }
+  }
+
+  if (!editable && partySize == null) return null;
+
+  if (!editable) {
+    return <span>{t('travelerCount', { count: partySize! })}</span>;
+  }
+
+  if (editing) {
+    return (
+      <input
+        type="number"
+        min={1}
+        max={50}
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+          } else if (e.key === 'Escape') {
+            setDraft(partySize ? String(partySize) : '');
+            setEditing(false);
+          }
+        }}
+        className="w-16 rounded-lg border border-brand-500 bg-transparent px-1.5 py-0.5 text-sm outline-none ring-1 ring-brand-500"
+      />
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => setEditing(true)} className="hover:underline">
+      {partySize == null ? t('addTravelerCount') : t('travelerCount', { count: partySize })}
     </button>
   );
 }

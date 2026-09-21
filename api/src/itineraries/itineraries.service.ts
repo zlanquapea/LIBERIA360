@@ -165,6 +165,11 @@ export interface PublicTripSummary {
   // doc comment.
   admin: PublicProfile | null;
   participantCount: number;
+  // Set only when the owner capped it at creation (see
+  // Itinerary.maxParticipants's doc comment) — null means unlimited. Lets
+  // a stranger's "Request to Join" button show "3/6 spots filled" and
+  // disable itself once requestToJoin would 409 anyway.
+  maxParticipants: number | null;
   createdAt: Date;
 }
 
@@ -279,13 +284,20 @@ export class ItinerariesService {
     userId: string,
     dto: CreateTripDto,
   ): Promise<ItineraryResponse> {
-    const destination = await this.placeRepo.findOne({
-      where: { id: dto.destinationPlaceId },
-    });
-    if (!destination) {
-      throw new NotFoundException(
-        `Place "${dto.destinationPlaceId}" not found`,
-      );
+    // Destination is optional (Sep 2026 UX pass — see CreateTripDto's doc
+    // comment): a trip is buildable with no catalog destination at all,
+    // so this only looks one up, and 404s, when the traveler actually
+    // picked one.
+    let destination: Place | null = null;
+    if (dto.destinationPlaceId) {
+      destination = await this.placeRepo.findOne({
+        where: { id: dto.destinationPlaceId },
+      });
+      if (!destination) {
+        throw new NotFoundException(
+          `Place "${dto.destinationPlaceId}" not found`,
+        );
+      }
     }
     const durationDays = resolveDurationDays(dto);
 
@@ -297,12 +309,14 @@ export class ItinerariesService {
         durationDays,
         budgetBand: dto.budgetBand,
         interests: dto.interests,
-        destinationPlaceId: dto.destinationPlaceId,
+        destinationPlaceId: dto.destinationPlaceId ?? null,
         visibility: dto.visibility,
         description: dto.description ?? null,
         coverImage: dto.coverImage ?? null,
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
+        partySize: dto.partySize ?? null,
+        maxParticipants: dto.maxParticipants ?? null,
         stops: [],
       }),
     );
@@ -386,6 +400,56 @@ export class ItinerariesService {
       );
     }
     return this.findOne(userId, itineraryId);
+  }
+
+  /** Update the traveler headcount — owner or any collaborator, same tier
+   * as renameTrip (shared planning metadata, not ownership-only). Purely
+   * informational (see Itinerary.partySize's doc comment); no capacity
+   * logic here, unlike maxParticipants. */
+  async updatePartySize(
+    userId: string,
+    itineraryId: string,
+    partySize: number,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    itinerary.partySize = partySize;
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
+  }
+
+  /** "Duplicate this trip" (Sep 2026 UX pass) — a repeat traveler replans
+   * from a copy instead of from scratch. Owner or any collaborator can
+   * duplicate (same view-tier reasoning as renameTrip: this reads the
+   * source trip, it doesn't mutate it). The duplicate always belongs to
+   * whoever clicked Duplicate, not the original owner, and always starts
+   * PRIVATE with no collaborators and no join-capacity cap — the same
+   * "never silently make something public/shared" default this service
+   * uses everywhere else (see e.g. cancelTrip's one-way-door reasoning). */
+  async duplicateItinerary(
+    userId: string,
+    itineraryId: string,
+  ): Promise<ItineraryResponse> {
+    const source = await this.getEditable(userId, itineraryId);
+    const copy = await this.itineraryRepo.save(
+      this.itineraryRepo.create({
+        userId,
+        title: `Copy of ${source.title}`,
+        kind: source.kind,
+        durationDays: source.durationDays,
+        budgetBand: source.budgetBand,
+        interests: [...source.interests],
+        stops: source.stops.map((stop) => ({ ...stop })),
+        destinationPlaceId: source.destinationPlaceId,
+        visibility: TripVisibility.PRIVATE,
+        description: source.description,
+        coverImage: source.coverImage,
+        startDate: source.startDate,
+        endDate: source.endDate,
+        partySize: source.partySize,
+        maxParticipants: null,
+      }),
+    );
+    return this.findOne(userId, copy.id);
   }
 
   /** Owner-only, permanent. Collaborator rows and any open/resolved
@@ -1157,6 +1221,23 @@ export class ItinerariesService {
     }
   }
 
+  // Only meaningful when the owner set a cap (see Itinerary.
+  // maxParticipants's doc comment) — unset means unlimited. Checked from
+  // both requestToJoin (a stranger asking in) and approveJoinRequest (the
+  // owner letting them in), so two pending requests racing for the last
+  // spot can't both succeed.
+  private async assertNotAtCapacity(itinerary: Itinerary): Promise<void> {
+    if (itinerary.maxParticipants == null) return;
+    const collaboratorCount = await this.collaboratorRepo.count({
+      where: { itineraryId: itinerary.id },
+    });
+    // +1 for the owner, same counting convention as toPublicSummary's
+    // participantCount.
+    if (collaboratorCount + 1 >= itinerary.maxParticipants) {
+      throw new ConflictException("This trip is full");
+    }
+  }
+
   private async toResponse(
     itinerary: Itinerary,
     resolvedStops: StopReferences,
@@ -1283,6 +1364,7 @@ export class ItinerariesService {
       // everyone *else*, but "8 people are joining this trip" (Section 8)
       // should count the admin too.
       participantCount: participantCount + 1,
+      maxParticipants: itinerary.maxParticipants,
       createdAt: itinerary.createdAt,
     };
   }
@@ -1391,6 +1473,7 @@ export class ItinerariesService {
     if (existingCollaborator) {
       throw new ConflictException("You're already part of this trip");
     }
+    await this.assertNotAtCapacity(itinerary);
 
     let request = await this.joinRequestRepo.findOne({
       where: { itineraryId, userId },
@@ -1457,6 +1540,7 @@ export class ItinerariesService {
       itineraryId,
       requestId,
     );
+    await this.assertNotAtCapacity(itinerary);
 
     request.status = TripJoinRequestStatus.APPROVED;
     request.respondedAt = new Date();

@@ -3,11 +3,14 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
 } from "class-validator";
 import { BudgetBand, TripVisibility } from "../entities/itinerary.enums";
 
@@ -24,10 +27,12 @@ import { BudgetBand, TripVisibility } from "../entities/itinerary.enums";
  * UpdateEventDto).
  *
  * Product spec (Aug 2026): "Every trip must have a name before it can be
- * created," "the destination field should use locations already in the
- * system," "the user should clearly choose Public or Private" — so
- * title/destinationPlaceId/visibility are required here, unlike on
- * GenerateTripDto.
+ * created," "the user should clearly choose Public or Private" — so
+ * title/visibility are required here, unlike on GenerateTripDto.
+ * destinationPlaceId used to be required too ("the destination field
+ * should use locations already in the system") but that turned into
+ * paperwork ahead of the actual planning (Sep 2026 UX pass) — it's now
+ * optional here as well, same as on GenerateTripDto.
  */
 export class CreateTripDto {
   @IsDateString()
@@ -49,8 +54,9 @@ export class CreateTripDto {
   @MaxLength(200)
   title: string;
 
+  @IsOptional()
   @IsUUID()
-  destinationPlaceId: string;
+  destinationPlaceId?: string;
 
   @IsEnum(TripVisibility)
   visibility: TripVisibility;
@@ -64,4 +70,19 @@ export class CreateTripDto {
   @IsString()
   @MaxLength(500)
   coverImage?: string;
+
+  // Simple traveler headcount — see Itinerary.partySize's doc comment.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  partySize?: number;
+
+  // Only meaningful when visibility is PUBLIC — see
+  // Itinerary.maxParticipants's doc comment.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  maxParticipants?: number;
 }

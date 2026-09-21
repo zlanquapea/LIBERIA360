@@ -14,11 +14,12 @@ import type { Place } from './types';
 // draft can never resurrect itself on a later, unrelated visit.
 const STORAGE_KEY = 'liberia360:pending-trip-draft';
 
-// The full destination Place rides along too (Aug 2026 social-trip spec) —
-// CreateTripInput only carries destinationPlaceId, but DestinationAutocomplete
-// needs the whole Place object back to re-render the selected destination
-// once the form resumes after login.
-export type PendingTripDraft = CreateTripInput & { destination: Place };
+// The full destination Place rides along too, when one was picked (Aug
+// 2026 social-trip spec) — CreateTripInput only carries destinationPlaceId,
+// but DestinationAutocomplete needs the whole Place object back to
+// re-render the selected destination once the form resumes after login.
+// Nullable since destination itself is optional (Sep 2026 UX pass).
+export type PendingTripDraft = CreateTripInput & { destination: Place | null };
 
 export function savePendingTripDraft(input: PendingTripDraft): void {
   try {
@@ -36,9 +37,7 @@ export function takePendingTripDraft(): PendingTripDraft | null {
     if (!raw) return null;
     window.sessionStorage.removeItem(STORAGE_KEY);
     const parsed = JSON.parse(raw) as PendingTripDraft;
-    return parsed && typeof parsed.startDate === 'string' && parsed.destination
-      ? parsed
-      : null;
+    return parsed && typeof parsed.startDate === 'string' ? parsed : null;
   } catch {
     return null;
   }

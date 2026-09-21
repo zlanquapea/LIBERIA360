@@ -37,6 +37,8 @@ function makeTrip(overrides: Partial<Itinerary> = {}): Itinerary {
     coverImage: null,
     startDate: null,
     endDate: null,
+    partySize: null,
+    maxParticipants: null,
     cancelledAt: null,
     createdAt: new Date().toISOString(),
     ...overrides,
