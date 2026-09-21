@@ -31,6 +31,7 @@ import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
 import { MenuPreviewSection } from "@/components/MenuPreviewSection";
 import { PharmacyPreviewSection } from "@/components/PharmacyPreviewSection";
 import { ShareMenu } from "@/components/ShareMenu";
+import { AddToTripButton } from "@/components/AddToTripButton";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { BusinessClaimSection } from "@/components/BusinessClaimSection";
 import { PlaceViewTracker } from "@/components/PlaceViewTracker";
@@ -172,6 +173,7 @@ export default async function PlaceProfilePage({
             </h1>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <AddToTripButton contentType="place" itemId={place.id} itemName={place.name} />
             <ShareMenu placeName={place.name} />
           </div>
         </div>

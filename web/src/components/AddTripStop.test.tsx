@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithMessages } from "@/test/render-with-messages";
 import { AddTripStop } from "./AddTripStop";
 import type { Place } from "@/lib/types";
@@ -70,6 +70,7 @@ const PLACE: Place = {
 
 describe("AddTripStop", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     mockUseAuth.mockReturnValue({ token: "tok" });
     mockGetPlaces.mockResolvedValue({ data: [PLACE] });
     mockGetEvents.mockResolvedValue({ data: [] });
@@ -102,7 +103,7 @@ describe("AddTripStop", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Sunset Beach").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -121,7 +122,7 @@ describe("AddTripStop", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Sunset Beach").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 3" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -144,7 +145,7 @@ describe("AddTripStop", () => {
 
     await waitFor(() => expect(screen.getByText("Beach Cleanup")).toBeInTheDocument());
     expect(mockGetEvents).toHaveBeenCalledWith({ search: "cleanup", limit: 5 });
-    fireEvent.click(screen.getByText("Beach Cleanup").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -167,7 +168,7 @@ describe("AddTripStop", () => {
 
     await waitFor(() => expect(screen.getByText("Toyota RAV4")).toBeInTheDocument());
     expect(mockGetCarListings).toHaveBeenCalledWith({ search: "rav4", limit: 5 });
-    fireEvent.click(screen.getByText("Toyota RAV4").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -175,6 +176,64 @@ describe("AddTripStop", () => {
         day: 1,
       }),
     );
+  });
+
+  it("links each result to its own detail page, opened in a new tab, without adding it", async () => {
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
+    const link = screen.getByRole("link", { name: /Sunset Beach/i });
+    expect(link).toHaveAttribute("href", "/places/sunset-beach");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(mockAddItineraryStop).not.toHaveBeenCalled();
+  });
+
+  it("discards a search that resolves after the tab was switched away from it", async () => {
+    let resolvePlaceSearch: (value: { data: Place[] }) => void = () => {};
+    mockGetPlaces.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePlaceSearch = resolve;
+      }),
+    );
+    mockGetEvents.mockResolvedValue({ data: [] });
+
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    // Switch away before the place search above resolves.
+    fireEvent.click(screen.getByRole("button", { name: "Events" }));
+
+    // Now let the stale place search resolve — its results must not
+    // surface under the Events tab (they'd link to the wrong detail page).
+    await act(async () => {
+      resolvePlaceSearch({ data: [PLACE] });
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Sunset Beach")).not.toBeInTheDocument();
+  });
+
+  it("doesn't leave the new tab stuck on \"Searching…\" when the old tab's request never resolves", async () => {
+    mockGetPlaces.mockReturnValue(new Promise(() => {})); // never resolves
+    mockGetEvents.mockResolvedValue({ data: [] });
+
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByRole("button", { name: "Searching…" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Events" }));
+
+    expect(screen.queryByRole("button", { name: "Searching…" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Search" })).not.toBeDisabled();
   });
 
   it("switches to the Stay tab and searches hotels via getPlaces with type: hotel", async () => {
@@ -188,7 +247,7 @@ describe("AddTripStop", () => {
 
     await waitFor(() => expect(screen.getByText("Sunset Inn")).toBeInTheDocument());
     expect(mockGetPlaces).toHaveBeenCalledWith({ q: "sunset", type: "hotel", limit: 5 });
-    fireEvent.click(screen.getByText("Sunset Inn").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {

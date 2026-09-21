@@ -11,15 +11,17 @@ import type { Itinerary } from '@/lib/types';
 
 type AddToTripButtonProps =
   | { contentType: 'event'; itemId: string; itemName: string }
-  | { contentType: 'carListing'; itemId: string; itemName: string };
+  | { contentType: 'carListing'; itemId: string; itemName: string }
+  | { contentType: 'place'; itemId: string; itemName: string };
 
-// Lets someone planning a trip add an event or a rental car to it straight
-// from that event's/car's own page — the same "add this to my trip"
-// impulse AddTripStop already serves for places, just entered from the
-// other direction (Sep 2026, "make trip planning the platform's focus"
-// product review). Mirrors ShareMenu's own click-to-open dropdown shape
-// rather than a modal — a short, low-stakes picklist doesn't need a full
-// overlay.
+// Lets someone planning a trip add an event, a rental car, or a place
+// (including a hotel — AddTripStop's "Stay" tab is this exact same catalog,
+// just entered from the other direction) straight from that item's own
+// page — the same "add this to my trip" impulse AddTripStop already serves
+// inline on the trip page (Sep 2026, "make trip planning the platform's
+// focus" product review). Mirrors ShareMenu's own click-to-open dropdown
+// shape rather than a modal — a short, low-stakes picklist doesn't need a
+// full overlay.
 export function AddToTripButton(props: AddToTripButtonProps) {
   const { contentType, itemId, itemName } = props;
   const { token } = useAuth();
@@ -70,7 +72,9 @@ export function AddToTripButton(props: AddToTripButtonProps) {
       const input =
         contentType === 'event'
           ? { eventId: itemId, day }
-          : { carListingId: itemId, day };
+          : contentType === 'carListing'
+            ? { carListingId: itemId, day }
+            : { placeId: itemId, day };
       await addItineraryStop(token, selectedTrip.id, input);
       if (contentType === 'event') {
         // Best-effort — a planned event should also show up in the
@@ -84,7 +88,7 @@ export function AddToTripButton(props: AddToTripButtonProps) {
       setError(
         err instanceof HttpError
           ? err.message
-          : `Could not add this ${contentType === 'event' ? 'event' : 'car'} to the trip.`,
+          : `Could not add this ${contentType === 'event' ? 'event' : contentType === 'carListing' ? 'car' : 'place'} to the trip.`,
       );
     } finally {
       setAdding(false);

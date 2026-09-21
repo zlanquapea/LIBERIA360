@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { getPlaces, getEvents, getCarListings } from '@/lib/api';
 import { addItineraryStop } from '@/lib/itinerary-api';
@@ -38,6 +39,16 @@ function resultSubtitle(tab: Tab, item: TabResult): string | null {
   return null;
 }
 
+// Where "view this before deciding" goes — the same catalog detail page
+// AddToTripButton offers "add to trip" from on the other side of this same
+// flow, opened in a new tab so browsing photos/reviews/pricing doesn't lose
+// this picker's search results, tab, and day selection.
+function resultHref(tab: Tab, item: TabResult): string {
+  if (tab === 'event') return `/events/${item.id}`;
+  if (tab === 'carListing') return `/car-rentals/${item.id}`;
+  return `/places/${(item as Place).slug}`;
+}
+
 // Owner or any collaborator can add a stop — searches the catalog by name
 // rather than requiring an id, since that's how someone actually finds a
 // place/event/car while planning ("let's add that waterfall Marcus found").
@@ -63,36 +74,45 @@ export function AddTripStop({
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped on every tab switch so a search still in flight from the
+  // previous tab can tell, once it resolves, that it's no longer current —
+  // otherwise its results land under the new tab with the wrong shape
+  // (e.g. a place rendered as if it were an event), and since each result
+  // now links to a detail page keyed off the *current* tab, that stale
+  // result would link to a route that 404s.
+  const searchTokenRef = useRef(0);
 
   function switchTab(next: Tab) {
+    searchTokenRef.current += 1;
     setTab(next);
     setResults([]);
     setError(null);
+    // The stale request's own `finally` is now gated behind the token
+    // check above, so it won't clear this — otherwise the new tab stays
+    // stuck showing "Searching…" until another search happens to fire.
+    setSearching(false);
   }
 
   async function search() {
     const q = query.trim();
     if (!q) return;
+    const searchToken = searchTokenRef.current;
     setSearching(true);
     setError(null);
     try {
-      if (tab === 'place') {
-        const res = await getPlaces({ q, limit: 5 });
-        setResults(res.data);
-      } else if (tab === 'stay') {
-        const res = await getPlaces({ q, type: 'hotel', limit: 5 });
-        setResults(res.data);
-      } else if (tab === 'event') {
-        const res = await getEvents({ search: q, limit: 5 });
-        setResults(res.data);
-      } else {
-        const res = await getCarListings({ search: q, limit: 5 });
-        setResults(res.data);
-      }
+      const res =
+        tab === 'place'
+          ? await getPlaces({ q, limit: 5 })
+          : tab === 'stay'
+            ? await getPlaces({ q, type: 'hotel', limit: 5 })
+            : tab === 'event'
+              ? await getEvents({ search: q, limit: 5 })
+              : await getCarListings({ search: q, limit: 5 });
+      if (searchTokenRef.current === searchToken) setResults(res.data);
     } catch {
-      setError(t('searchFailed'));
+      if (searchTokenRef.current === searchToken) setError(t('searchFailed'));
     } finally {
-      setSearching(false);
+      if (searchTokenRef.current === searchToken) setSearching(false);
     }
   }
 
@@ -189,24 +209,37 @@ export function AddTripStop({
           {results.map((item) => {
             const subtitle = resultSubtitle(tab, item);
             return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  disabled={addingId === item.id}
-                  onClick={() => add(item)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
+              <li
+                key={item.id}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 pl-3 pr-1.5 py-1.5 hover:border-brand-500"
+              >
+                <Link
+                  href={resultHref(tab, item)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={t('viewDetails')}
+                  className="group flex min-w-0 flex-1 items-center gap-1 text-sm"
                 >
                   <span className="min-w-0 truncate">
-                    <span className="truncate">{resultTitle(tab, item)}</span>
+                    <span className="truncate group-hover:underline">{resultTitle(tab, item)}</span>
                     {subtitle && (
                       <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                         {subtitle}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs font-medium text-brand-700 dark:text-brand-300">
-                    {addingId === item.id ? t('adding') : t('addToDay', { day })}
-                  </span>
+                  <ArrowTopRightOnSquareIcon
+                    aria-hidden
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100"
+                  />
+                </Link>
+                <button
+                  type="button"
+                  disabled={addingId === item.id}
+                  onClick={() => add(item)}
+                  className="shrink-0 rounded-full border border-brand-600 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-60 dark:border-brand-400 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  {addingId === item.id ? t('adding') : t('addToDay', { day })}
                 </button>
               </li>
             );
