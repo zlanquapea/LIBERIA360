@@ -75,6 +75,8 @@ import { PharmaciesModule } from "./pharmacies/pharmacies.module";
 import { SearchModule } from "./search/search.module";
 import { EventNotificationDelivery } from "./event-notifications/entities/event-notification-delivery.entity";
 import { EventNotificationsModule } from "./event-notifications/event-notifications.module";
+import { TripNotificationDelivery } from "./trip-notifications/entities/trip-notification-delivery.entity";
+import { TripNotificationsModule } from "./trip-notifications/trip-notifications.module";
 
 @Module({
   imports: [
@@ -139,6 +141,7 @@ import { EventNotificationsModule } from "./event-notifications/event-notificati
             SupportTicket,
             SupportMessage,
             EventNotificationDelivery,
+            TripNotificationDelivery,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -185,6 +188,7 @@ import { EventNotificationsModule } from "./event-notifications/event-notificati
     PharmaciesModule,
     SearchModule,
     EventNotificationsModule,
+    TripNotificationsModule,
   ],
   providers: [
     {
