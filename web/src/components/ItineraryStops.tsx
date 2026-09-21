@@ -119,6 +119,14 @@ export function ItineraryStops({
                           </p>
                         </div>
                       </Link>
+                      {onRemove && stop.carListing && (
+                        <Link
+                          href={`/car-rentals/${stop.carListing.id}/book`}
+                          className="shrink-0 rounded-full bg-brand-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-800"
+                        >
+                          Book
+                        </Link>
+                      )}
                       {onMove && durationDays && durationDays > 1 && (
                         <select
                           value={stop.day}

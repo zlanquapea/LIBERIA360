@@ -3,10 +3,13 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
 } from "class-validator";
 import { BudgetBand, TripVisibility } from "../entities/itinerary.enums";
 
@@ -60,4 +63,19 @@ export class GenerateTripDto {
   @IsString()
   @MaxLength(500)
   coverImage?: string;
+
+  // Simple traveler headcount — see Itinerary.partySize's doc comment.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  partySize?: number;
+
+  // Only meaningful when visibility is PUBLIC — see
+  // Itinerary.maxParticipants's doc comment.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  maxParticipants?: number;
 }

@@ -932,6 +932,98 @@ describe("ItinerariesService (collaboration)", () => {
         expect.objectContaining({ id: "place-dest" }),
       );
     });
+
+    // Sep 2026 UX pass: destinationPlaceId is now optional — a trip is
+    // buildable with no catalog destination at all, and this must never
+    // 404 just because none was picked.
+    it("creates a trip with no destination when none is provided", async () => {
+      const result = await service.generateTrip(OWNER_ID, {
+        ...CREATE_DTO,
+        destinationPlaceId: undefined,
+      } as never);
+      expect(placeRepo.findOne).not.toHaveBeenCalled();
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ destinationPlaceId: null }),
+      );
+      expect(result.destination).toBeNull();
+    });
+
+    it("persists partySize and maxParticipants when provided", async () => {
+      await service.generateTrip(OWNER_ID, {
+        ...CREATE_DTO,
+        partySize: 4,
+        maxParticipants: 10,
+      } as never);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ partySize: 4, maxParticipants: 10 }),
+      );
+    });
+  });
+
+  describe("updatePartySize", () => {
+    it("lets the owner set the party size", async () => {
+      await service.updatePartySize(OWNER_ID, ITINERARY_ID, 5);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ partySize: 5 }),
+      );
+    });
+
+    it("lets a collaborator set the party size too", async () => {
+      collaboratorRepo.find.mockResolvedValue([
+        {
+          userId: COLLABORATOR_ID,
+          user: { id: COLLABORATOR_ID, name: "Collab" },
+        },
+      ]);
+      await service.updatePartySize(COLLABORATOR_ID, ITINERARY_ID, 3);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ partySize: 3 }),
+      );
+    });
+
+    it("404s a stranger with no view access", async () => {
+      await expect(
+        service.updatePartySize(STRANGER_ID, ITINERARY_ID, 2),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("duplicateItinerary", () => {
+    it("copies the trip's planning details onto a fresh row owned by the duplicator", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({
+          title: "Original Trip",
+          visibility: TripVisibility.PUBLIC,
+          maxParticipants: 10,
+          partySize: 4,
+        }),
+      );
+      collaboratorRepo.find.mockResolvedValue([
+        {
+          userId: COLLABORATOR_ID,
+          user: { id: COLLABORATOR_ID, name: "Collab" },
+        },
+      ]);
+      await service.duplicateItinerary(COLLABORATOR_ID, ITINERARY_ID);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: COLLABORATOR_ID,
+          title: "Copy of Original Trip",
+          visibility: TripVisibility.PRIVATE,
+          maxParticipants: null,
+          partySize: 4,
+          stops: [
+            expect.objectContaining({ placeId: "place-1", day: 1, order: 0 }),
+          ],
+        }),
+      );
+    });
+
+    it("404s a stranger with no view access", async () => {
+      await expect(
+        service.duplicateItinerary(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 
   describe("public trip discovery", () => {
@@ -1084,6 +1176,65 @@ describe("ItinerariesService (collaboration)", () => {
       await expect(
         service.approveJoinRequest(OWNER_ID, ITINERARY_ID, "req-1"),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    // Sep 2026 UX pass: an owner can optionally cap how many people join a
+    // public trip — see Itinerary.maxParticipants's doc comment.
+    describe("join-capacity cap", () => {
+      it("rejects a request once the trip is at capacity", async () => {
+        itineraryRepo.findOne.mockResolvedValue(
+          makeItinerary({
+            visibility: TripVisibility.PUBLIC,
+            maxParticipants: 2,
+          }),
+        );
+        // +1 for the owner already counts as 1 of the 2 spots, so a
+        // single existing collaborator (2 total) fills it.
+        collaboratorRepo.count.mockResolvedValue(1);
+        await expect(
+          service.requestToJoin(STRANGER_ID, ITINERARY_ID),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      it("allows a request right up to the last spot", async () => {
+        itineraryRepo.findOne.mockResolvedValue(
+          makeItinerary({
+            visibility: TripVisibility.PUBLIC,
+            maxParticipants: 2,
+          }),
+        );
+        collaboratorRepo.count.mockResolvedValue(0);
+        const result = await service.requestToJoin(STRANGER_ID, ITINERARY_ID);
+        expect(result.status).toBe(TripJoinRequestStatus.PENDING);
+      });
+
+      it("never gates a request when no cap is set", async () => {
+        itineraryRepo.findOne.mockResolvedValue(
+          makeItinerary({ visibility: TripVisibility.PUBLIC }),
+        );
+        collaboratorRepo.count.mockResolvedValue(500);
+        const result = await service.requestToJoin(STRANGER_ID, ITINERARY_ID);
+        expect(result.status).toBe(TripJoinRequestStatus.PENDING);
+      });
+
+      it("rejects approving a request once the trip is at capacity", async () => {
+        itineraryRepo.findOne.mockResolvedValue(
+          makeItinerary({
+            visibility: TripVisibility.PUBLIC,
+            maxParticipants: 1,
+          }),
+        );
+        joinRequestRepo.findOne.mockResolvedValue({
+          id: "req-1",
+          itineraryId: ITINERARY_ID,
+          userId: STRANGER_ID,
+          status: TripJoinRequestStatus.PENDING,
+        });
+        await expect(
+          service.approveJoinRequest(OWNER_ID, ITINERARY_ID, "req-1"),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(collaboratorRepo.save).not.toHaveBeenCalled();
+      });
     });
   });
 

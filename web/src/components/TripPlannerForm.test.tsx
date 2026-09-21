@@ -205,20 +205,15 @@ describe('TripPlannerForm', () => {
     expect(window.sessionStorage.getItem('liberia360:pending-trip-draft')).toBeNull();
   });
 
-  it('requires a trip name, destination, and a valid date range before it can be created', async () => {
+  it('requires a trip name and a valid date range before it can be created', async () => {
     renderWithMessages(<TripPlannerForm />);
 
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/give your trip a name/i);
 
+    // Destination is optional (Sep 2026 UX pass) — leaving it blank goes
+    // straight to the date-range check, not a "choose a destination" error.
     await userEvent.type(screen.getByLabelText(/trip name/i), 'My Trip');
-    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/choose a destination/i);
-
-    (getPlaces as jest.Mock).mockResolvedValue({ data: [DESTINATION], meta: { total: 1, page: 1, limit: 8, totalPages: 1 } });
-    await userEvent.type(screen.getByPlaceholderText(/robertsport/i), 'Robert');
-    await screen.findByText('Robertsport');
-    await userEvent.click(screen.getByText('Robertsport'));
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/choose a start and end date/i);
 
@@ -226,6 +221,22 @@ describe('TripPlannerForm', () => {
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-01' } });
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/end date can.t be before the start date/i);
+  });
+
+  it('creates a trip with no destination at all', async () => {
+    setStoredAuth({ token: 'tok', user: USER });
+    mockFetchOnce(201, { id: 'itin-3', title: 'No Destination Yet' });
+
+    renderWithMessages(<TripPlannerForm />);
+    await userEvent.type(screen.getByLabelText(/trip name/i), 'No Destination Yet');
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-01' } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-03' } });
+
+    await userEvent.click(screen.getByRole('button', { name: /^start planning$/i }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/trips/itin-3'));
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(JSON.parse(init.body)).not.toHaveProperty('destinationPlaceId');
   });
 
   it('signed-in visitors with no pending draft still create and save a trip directly, with no stops to pick', async () => {

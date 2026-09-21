@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CalendarDaysIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { getPlaces, getEvents, getCarListings } from '@/lib/api';
 import { addItineraryStop } from '@/lib/itinerary-api';
@@ -10,12 +10,13 @@ import { formatCarCategory, formatCost, formatEventDateRange } from '@/lib/forma
 import { HttpError } from '@/lib/http';
 import type { Place, Event, CarListing } from '@/lib/types';
 
-type Tab = 'place' | 'event' | 'carListing';
+type Tab = 'place' | 'stay' | 'event' | 'carListing';
 
 type TabResult = Place | Event | CarListing;
 
 const TABS: { key: Tab; icon: typeof MapPinIcon }[] = [
   { key: 'place', icon: MapPinIcon },
+  { key: 'stay', icon: HomeIcon },
   { key: 'event', icon: CalendarDaysIcon },
   { key: 'carListing', icon: TruckIcon },
 ];
@@ -78,6 +79,9 @@ export function AddTripStop({
       if (tab === 'place') {
         const res = await getPlaces({ q, limit: 5 });
         setResults(res.data);
+      } else if (tab === 'stay') {
+        const res = await getPlaces({ q, type: 'hotel', limit: 5 });
+        setResults(res.data);
       } else if (tab === 'event') {
         const res = await getEvents({ search: q, limit: 5 });
         setResults(res.data);
@@ -98,7 +102,7 @@ export function AddTripStop({
     setError(null);
     try {
       const input =
-        tab === 'place'
+        tab === 'place' || tab === 'stay'
           ? { placeId: item.id, day }
           : tab === 'event'
             ? { eventId: item.id, day }

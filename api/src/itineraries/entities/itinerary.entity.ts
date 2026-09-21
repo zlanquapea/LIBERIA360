@@ -70,9 +70,11 @@ export class Itinerary {
   // destination, picked from the catalog via autocomplete rather than
   // free text — "cleaner location data" and a tappable link straight to
   // that destination's own page (see PlaceSubmissionForm's location
-  // picker for the equivalent self-service pattern elsewhere). Nullable
-  // only because it predates every trip generated before this shipped;
-  // CreateTripDto requires it for anything created from here on.
+  // picker for the equivalent self-service pattern elsewhere). Optional
+  // (Sep 2026, streamlined trip creation): CreateTripDto required this
+  // for a while, but that turned out to be paperwork ahead of the actual
+  // planning — a traveler can start adding stops with no destination set
+  // and pick one later from the catalog if they want the tappable link.
   @ManyToOne(() => Place, { eager: true, nullable: true })
   @JoinColumn({ name: "destination_place_id" })
   destination: Place | null;
@@ -101,6 +103,19 @@ export class Itinerary {
 
   @Column({ name: "end_date", type: "timestamptz", nullable: true })
   endDate: Date | null;
+
+  // Simple traveler headcount (Sep 2026 product ask) — mirrors
+  // Booking.partySize's exact shape. Purely informational (sizing a car
+  // rental, a restaurant reservation), never enforced against anything.
+  @Column({ name: "party_size", type: "smallint", nullable: true })
+  partySize: number | null;
+
+  // Only meaningful when visibility is PUBLIC — an owner capping how many
+  // strangers can join via a join request (see ItinerariesService.
+  // requestToJoin/approveJoinRequest). Set once at creation, same
+  // creation-only precedent as visibility itself (see CreateTripDto).
+  @Column({ name: "max_participants", type: "smallint", nullable: true })
+  maxParticipants: number | null;
 
   // Set once, never cleared — cancelling a trip is a one-way door (same
   // as CarListing/Event's own review-lifecycle terminal states), and its

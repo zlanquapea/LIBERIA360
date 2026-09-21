@@ -25,21 +25,28 @@ export interface GenerateTripInput {
   title?: string;
   // Social travel experience (Aug 2026 spec) — all optional here since
   // POST /itineraries/preview (the only caller that leaves them out)
-  // needs none of them; CreateTripInput below requires the three that
-  // matter for an actually-saved trip.
+  // needs none of them; CreateTripInput below requires the two that
+  // still matter for an actually-saved trip.
+  //
+  // destinationPlaceId used to be required on CreateTripInput too, but a
+  // Sep 2026 UX pass dropped that — a trip is buildable with no catalog
+  // destination at all (see api's CreateTripDto doc comment).
   destinationPlaceId?: string;
   visibility?: TripVisibility;
   description?: string;
   coverImage?: string;
+  // Simple traveler headcount — purely informational.
+  partySize?: number;
+  // Only meaningful when visibility is 'public' — caps how many join
+  // requests get approved (unset means unlimited).
+  maxParticipants?: number;
 }
 
-// POST /itineraries — every trip must have a name, a real catalog
-// destination, and a deliberate public/private choice before it can be
-// created (Sections 1-3 of the Aug 2026 spec), unlike the preview-only
-// GenerateTripInput above.
+// POST /itineraries — every trip must have a name and a deliberate
+// public/private choice before it can be created (Sections 1-3 of the Aug
+// 2026 spec), unlike the preview-only GenerateTripInput above.
 export interface CreateTripInput extends GenerateTripInput {
   title: string;
-  destinationPlaceId: string;
   visibility: TripVisibility;
 }
 
@@ -153,6 +160,26 @@ export function renameItinerary(token: string, itineraryId: string, title: strin
     method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify({ title }),
+  });
+}
+
+// Owner or any collaborator can update the traveler headcount — same tier
+// as renameItinerary.
+export function updatePartySize(token: string, itineraryId: string, partySize: number): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/party-size`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ partySize }),
+  });
+}
+
+// Owner or any collaborator can duplicate the trip — the copy always
+// belongs to whoever clicked Duplicate, starts private, and has no
+// collaborators of its own (see the API's duplicateItinerary doc comment).
+export function duplicateItinerary(token: string, itineraryId: string): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/duplicate`, {
+    method: 'POST',
+    headers: authHeader(token),
   });
 }
 

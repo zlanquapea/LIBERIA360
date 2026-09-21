@@ -877,6 +877,13 @@ export interface Itinerary {
   coverImage: string | null;
   startDate: string | null;
   endDate: string | null;
+  // Sep 2026 UX pass: partySize is a plain traveler headcount, purely
+  // informational; maxParticipants only matters when visibility is
+  // 'public' — an owner-set cap on how many join requests get approved
+  // (null means unlimited). Both nullable additions — every trip made
+  // before this shipped just has them unset.
+  partySize: number | null;
+  maxParticipants: number | null;
   cancelledAt: string | null;
   createdAt: string;
 }
@@ -942,6 +949,10 @@ export interface PublicTripSummary {
   // join only ever needs the organizer's name.
   admin: PublicProfile | null;
   participantCount: number;
+  // Set only when the owner capped it at creation — null means unlimited.
+  // Lets a stranger's "Request to Join" button show remaining spots and
+  // disable itself once the trip is full.
+  maxParticipants: number | null;
   createdAt: string;
 }
 

@@ -17,6 +17,7 @@ import { QueryPublicTripsDto } from "./dto/query-public-trips.dto";
 import { CreateInvitationsDto } from "./dto/create-invitations.dto";
 import { SearchInvitableUsersDto } from "./dto/search-invitable-users.dto";
 import { RenameItineraryDto } from "./dto/rename-itinerary.dto";
+import { UpdatePartySizeDto } from "./dto/update-party-size.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -36,9 +37,10 @@ export class ItinerariesController {
   constructor(private readonly itinerariesService: ItinerariesService) {}
 
   /** "Plan a Trip" (Tech Spec §4.3) — now also the "create a social trip"
-   * endpoint (Aug 2026 spec): name, destination, and visibility are all
-   * required on CreateTripDto, unlike the preview-only GenerateTripDto
-   * below. */
+   * endpoint (Aug 2026 spec): name and visibility are required on
+   * CreateTripDto; destination is optional (Sep 2026 UX pass — a trip can
+   * be started before picking a catalog destination), unlike the
+   * preview-only GenerateTripDto below where it was already optional. */
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -95,6 +97,28 @@ export class ItinerariesController {
     @Body() dto: RenameItineraryDto,
   ) {
     return this.itinerariesService.renameTrip(user.id, id, dto.title);
+  }
+
+  /** Owner or any collaborator can update the traveler headcount. */
+  @Patch(":id/party-size")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updatePartySize(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: UpdatePartySizeDto,
+  ) {
+    return this.itinerariesService.updatePartySize(user.id, id, dto.partySize);
+  }
+
+  /** Owner or any collaborator can duplicate the trip — the copy always
+   * belongs to whoever clicked Duplicate, starts private, and has no
+   * collaborators of its own. */
+  @Post(":id/duplicate")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  duplicateItinerary(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.duplicateItinerary(user.id, id);
   }
 
   /** Owner-only, permanent — deletes the trip and everyone's access to it. */

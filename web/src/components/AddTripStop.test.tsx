@@ -176,4 +176,25 @@ describe("AddTripStop", () => {
       }),
     );
   });
+
+  it("switches to the Stay tab and searches hotels via getPlaces with type: hotel", async () => {
+    mockGetPlaces.mockResolvedValue({ data: [{ id: "hotel-1", name: "Sunset Inn" }] });
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+    fireEvent.change(screen.getByPlaceholderText("Search hotels…"), {
+      target: { value: "sunset" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(screen.getByText("Sunset Inn")).toBeInTheDocument());
+    expect(mockGetPlaces).toHaveBeenCalledWith({ q: "sunset", type: "hotel", limit: 5 });
+    fireEvent.click(screen.getByText("Sunset Inn").closest("button")!);
+
+    await waitFor(() =>
+      expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
+        placeId: "hotel-1",
+        day: 1,
+      }),
+    );
+  });
 });
