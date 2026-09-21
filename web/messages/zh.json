@@ -256,6 +256,17 @@
     "adding": "添加中…",
     "addToDay": "+ 第 {day} 天",
     "couldNotAddPlace": "无法添加此地点。",
+    "tab": {
+      "place": "地点",
+      "event": "活动",
+      "carListing": "租车"
+    },
+    "searchPlaceholder": {
+      "place": "搜索地点…",
+      "event": "搜索活动…",
+      "carListing": "搜索租车…"
+    },
+    "dayChip": "第 {day} 天",
 
     "communityTripsSubtitlePrefix": "其他旅行者正在规划的公开行程——申请加入，或",
     "buildYourOwn": "创建您自己的行程",

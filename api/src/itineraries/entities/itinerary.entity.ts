@@ -12,11 +12,21 @@ import { User } from "../../users/entities/user.entity";
 import { Place } from "../../places/entities/place.entity";
 import { BudgetBand, ItineraryKind, TripVisibility } from "./itinerary.enums";
 
+// Exactly one of placeId/eventId/carListingId is set — a stop points at one
+// catalog item, never more than one (same "nullable-FK XOR" convention as
+// Booking's business/creator/carListing targeting, see that entity's own
+// doc comment). Widened from placeId-only (Sep 2026, "make trip planning
+// the platform's focus" product review): a trip should be able to include
+// an event or a rental car alongside places, not just places. No migration
+// needed for this — `stops` is jsonb, and every existing row already only
+// ever set placeId, which stays valid with the other two simply absent.
 export interface ItineraryStop {
   day: number; // 1-indexed
   order: number; // position within the day
-  placeId: string;
   notes: string | null;
+  placeId?: string;
+  eventId?: string;
+  carListingId?: string;
 }
 
 /**

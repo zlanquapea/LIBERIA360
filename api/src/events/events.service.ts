@@ -284,6 +284,9 @@ export class EventsService {
         approved: EventReviewStatus.APPROVED,
       });
 
+    if (query.search) {
+      qb.andWhere("event.name ILIKE :search", { search: `%${query.search}%` });
+    }
     if (query.category) {
       qb.andWhere("event.category = :category", { category: query.category });
     }
@@ -496,7 +499,9 @@ export class EventsService {
       full,
       userId,
       `rsvp_${status}`,
-      status === EventRsvpStatus.GOING ? "You're going to this event" : "You're interested in this event",
+      status === EventRsvpStatus.GOING
+        ? "You're going to this event"
+        : "You're interested in this event",
       `Your RSVP for "${full.name}" is now ${status}.`,
     );
     void this.eventNotificationsService.notifyOrganizer(

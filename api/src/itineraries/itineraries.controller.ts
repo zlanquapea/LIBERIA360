@@ -243,28 +243,30 @@ export class ItinerariesController {
     return this.itinerariesService.addStop(user.id, id, dto);
   }
 
-  /** Owner or any collaborator can edit a stop's notes. */
-  @Patch(":id/stops/:placeId")
+  /** Owner or any collaborator can edit a stop's notes or move its day.
+   * `itemId` is whichever of placeId/eventId/carListingId identifies the
+   * stop (see ItineraryStop's own doc comment). */
+  @Patch(":id/stops/:itemId")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   updateStop(
     @CurrentUser() user: User,
     @Param("id") id: string,
-    @Param("placeId") placeId: string,
+    @Param("itemId") itemId: string,
     @Body() dto: UpdateStopDto,
   ) {
-    return this.itinerariesService.updateStop(user.id, id, placeId, dto);
+    return this.itinerariesService.updateStop(user.id, id, itemId, dto);
   }
 
   /** Owner or any collaborator can remove a stop. */
-  @Delete(":id/stops/:placeId")
+  @Delete(":id/stops/:itemId")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   removeStop(
     @CurrentUser() user: User,
     @Param("id") id: string,
-    @Param("placeId") placeId: string,
+    @Param("itemId") itemId: string,
   ) {
-    return this.itinerariesService.removeStop(user.id, id, placeId);
+    return this.itinerariesService.removeStop(user.id, id, itemId);
   }
 }

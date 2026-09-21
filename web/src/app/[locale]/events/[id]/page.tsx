@@ -21,6 +21,7 @@ import { EventRsvpButtons } from "@/components/EventRsvpButtons";
 import { SafeImage } from "@/components/SafeImage";
 import { EventViewTracker } from "@/components/EventViewTracker";
 import { ShareMenu } from "@/components/ShareMenu";
+import { AddToTripButton } from "@/components/AddToTripButton";
 import { EventTicketPurchase } from "@/components/EventTicketPurchase";
 
 export async function generateMetadata({
@@ -96,7 +97,10 @@ export default async function EventDetailPage({
           <ArrowLeftIcon aria-hidden className="h-4 w-4" />
           All events
         </Link>
-        <ShareMenu placeName={event.name} contentType="event" />
+        <div className="flex items-center gap-2">
+          <AddToTripButton contentType="event" itemId={event.id} itemName={event.name} />
+          <ShareMenu placeName={event.name} contentType="event" />
+        </div>
       </div>
       <JsonLd data={eventJsonLd(event)} />
       <EventViewTracker event={event} />

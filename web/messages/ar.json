@@ -256,6 +256,17 @@
     "adding": "جارٍ الإضافة…",
     "addToDay": "+ اليوم {day}",
     "couldNotAddPlace": "تعذّرت إضافة هذا المكان.",
+    "tab": {
+      "place": "الأماكن",
+      "event": "الفعاليات",
+      "carListing": "تأجير السيارات"
+    },
+    "searchPlaceholder": {
+      "place": "البحث عن أماكن…",
+      "event": "البحث عن فعاليات…",
+      "carListing": "البحث عن سيارات للإيجار…"
+    },
+    "dayChip": "اليوم {day}",
 
     "communityTripsSubtitlePrefix": "رحلات عامة يخطط لها مسافرون آخرون — اطلب الانضمام إلى إحداها، أو",
     "buildYourOwn": "أنشئ رحلتك الخاصة",

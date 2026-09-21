@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowDownTrayIcon, PhotoIcon, ShareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { colorForCategory } from '@/lib/category-colors';
 import { formatTripDateRange } from '@/lib/format';
-import type { ItineraryStopWithPlace, Place } from '@/lib/types';
+import type { ItineraryStopDetail, Place } from '@/lib/types';
 
 // "Make it amazing" pass, item 3/5: the app already lets a trip owner
 // share a plain link (ShareMenu, on every trip page) — this adds the
@@ -43,14 +43,17 @@ const CARD_HEIGHT = 1920;
 const MAX_STOPS_SHOWN = 5;
 
 // A trip has something worth a card the moment it has a destination or a
-// stop — used by both call sites in TripDetailClient to decide whether to
-// render the share button at all (older trips predating the destination
-// field, and the itinerary-preview response, can have neither).
+// place-stop — used by both call sites in TripDetailClient to decide
+// whether to render the share button at all (older trips predating the
+// destination field, and the itinerary-preview response, can have
+// neither). Event/car-listing stops don't count: this card draws "the
+// places you're visiting," not a full itinerary — see drawCard's own
+// extraStops filter below.
 export function tripHasShareableContent(trip: {
   destination: Place | null;
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
 }): boolean {
-  return Boolean(trip.destination) || trip.stops.length > 0;
+  return Boolean(trip.destination) || trip.stops.some((stop) => stop.place);
 }
 
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -110,7 +113,7 @@ function drawCard(
     startDate: string | null;
     endDate: string | null;
     destination: Place | null;
-    stops: ItineraryStopWithPlace[];
+    stops: ItineraryStopDetail[];
   },
 ) {
   const ctx = canvas.getContext('2d');
@@ -216,12 +219,17 @@ function drawCard(
     cursorY = chipY + chipH;
   }
 
-  // "Also visiting" — stops the traveler added beyond the destination
-  // itself (never the destination a second time, in case it was also
-  // added as a stop for its own day).
+  // "Also visiting" — place-stops the traveler added beyond the
+  // destination itself (never the destination a second time, in case it
+  // was also added as a stop for its own day). Event/car-listing stops
+  // don't belong on this "places you're visiting" card — see
+  // tripHasShareableContent's own doc comment.
+  const placeStops = trip.stops.filter(
+    (stop): stop is ItineraryStopDetail & { place: Place } => !!stop.place,
+  );
   const extraStops = destination
-    ? trip.stops.filter((stop) => stop.place.id !== destination.id)
-    : trip.stops;
+    ? placeStops.filter((stop) => stop.place.id !== destination.id)
+    : placeStops;
 
   if (extraStops.length > 0) {
     const counties = new Set<string>();
@@ -287,7 +295,7 @@ export function TripShareCard({
     startDate: string | null;
     endDate: string | null;
     destination: Place | null;
-    stops: ItineraryStopWithPlace[];
+    stops: ItineraryStopDetail[];
   };
 }) {
   const t = useTranslations('trips');

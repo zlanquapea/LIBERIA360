@@ -843,14 +843,20 @@ export type ItineraryKind = "trip" | "weekend";
 export type TripVisibility = "private" | "public";
 export type TripStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
-// GET /itineraries (list) returns stops as stored — placeId only, not
+// GET /itineraries (list) returns stops as stored — an id only, not
 // resolved. GET /itineraries/:id and the two generate endpoints return
-// stops with the full Place resolved (ItineraryStopWithPlace below).
+// stops with the full item resolved (ItineraryStopDetail below). Exactly
+// one of placeId/eventId/carListingId is set — a stop can point at a
+// place, an event, or a car rental listing (Sep 2026, "make trip planning
+// the platform's focus" product review: a trip should be able to include
+// more than just places).
 export interface ItineraryStop {
   day: number;
   order: number;
-  placeId: string;
   notes: string | null;
+  placeId?: string;
+  eventId?: string;
+  carListingId?: string;
 }
 
 export interface Itinerary {
@@ -875,11 +881,15 @@ export interface Itinerary {
   createdAt: string;
 }
 
-export interface ItineraryStopWithPlace {
+// Exactly one of place/event/carListing is populated, mirroring
+// ItineraryStop's own exactly-one-id shape above.
+export interface ItineraryStopDetail {
   day: number;
   order: number;
   notes: string | null;
-  place: Place;
+  place?: Place;
+  event?: Event;
+  carListing?: CarListing;
 }
 
 // POST /itineraries/preview — the one itinerary endpoint that needs no
@@ -898,14 +908,14 @@ export interface TripPreviewResponse {
   interests: string[];
   startDate: string;
   endDate: string;
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
 }
 
 // Collaborative trip planning (Wanderlog/TripIt-style): the owner invites
 // other users by email, and from then on anyone in `collaborators` can
 // view and edit the trip's stops right alongside the owner.
 export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
   collaborators: AuthUser[];
   // The creator — always labeled "Trip Admin" in the UI.
   admin: AuthUser | null;
@@ -936,7 +946,7 @@ export interface PublicTripSummary {
 }
 
 export interface PublicTripDetail extends PublicTripSummary {
-  stops: ItineraryStopWithPlace[];
+  stops: ItineraryStopDetail[];
 }
 
 // What GET /itineraries/public/:id returns for a real but PRIVATE trip —

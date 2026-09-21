@@ -256,6 +256,17 @@
     "adding": "Ajout…",
     "addToDay": "+ Jour {day}",
     "couldNotAddPlace": "Impossible d'ajouter ce lieu.",
+    "tab": {
+      "place": "Lieux",
+      "event": "Événements",
+      "carListing": "Locations de voiture"
+    },
+    "searchPlaceholder": {
+      "place": "Rechercher des lieux…",
+      "event": "Rechercher des événements…",
+      "carListing": "Rechercher des locations de voiture…"
+    },
+    "dayChip": "Jour {day}",
 
     "communityTripsSubtitlePrefix": "Voyages publics que d'autres voyageurs planifient — demandez à en rejoindre un, ou",
     "buildYourOwn": "créez le vôtre",
