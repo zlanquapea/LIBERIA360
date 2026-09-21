@@ -118,4 +118,22 @@ describe("AddToTripButton", () => {
     );
     expect(mockSetEventRsvp).not.toHaveBeenCalled();
   });
+
+  it("adds a place (e.g. a hotel from its own page) to the picked trip without an RSVP call", async () => {
+    mockUseAuth.mockReturnValue({ token: "tok" });
+    render(<AddToTripButton contentType="place" itemId="hotel-1" itemName="Sunset Inn" />);
+    fireEvent.click(screen.getByRole("button", { name: /add to trip/i }));
+    await waitFor(() => expect(screen.getByText("Weekend in Robertsport")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Weekend in Robertsport"));
+
+    fireEvent.click(screen.getByRole("button", { name: /add sunset inn to day 1/i }));
+
+    await waitFor(() =>
+      expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
+        placeId: "hotel-1",
+        day: 1,
+      }),
+    );
+    expect(mockSetEventRsvp).not.toHaveBeenCalled();
+  });
 });

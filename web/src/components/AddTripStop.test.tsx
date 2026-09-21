@@ -70,6 +70,7 @@ const PLACE: Place = {
 
 describe("AddTripStop", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     mockUseAuth.mockReturnValue({ token: "tok" });
     mockGetPlaces.mockResolvedValue({ data: [PLACE] });
     mockGetEvents.mockResolvedValue({ data: [] });
@@ -102,7 +103,7 @@ describe("AddTripStop", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Sunset Beach").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -121,7 +122,7 @@ describe("AddTripStop", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Sunset Beach").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 3" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -144,7 +145,7 @@ describe("AddTripStop", () => {
 
     await waitFor(() => expect(screen.getByText("Beach Cleanup")).toBeInTheDocument());
     expect(mockGetEvents).toHaveBeenCalledWith({ search: "cleanup", limit: 5 });
-    fireEvent.click(screen.getByText("Beach Cleanup").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -167,7 +168,7 @@ describe("AddTripStop", () => {
 
     await waitFor(() => expect(screen.getByText("Toyota RAV4")).toBeInTheDocument());
     expect(mockGetCarListings).toHaveBeenCalledWith({ search: "rav4", limit: 5 });
-    fireEvent.click(screen.getByText("Toyota RAV4").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {
@@ -175,6 +176,20 @@ describe("AddTripStop", () => {
         day: 1,
       }),
     );
+  });
+
+  it("links each result to its own detail page, opened in a new tab, without adding it", async () => {
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText("Search places…"), {
+      target: { value: "beach" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(screen.getByText("Sunset Beach")).toBeInTheDocument());
+    const link = screen.getByRole("link", { name: /Sunset Beach/i });
+    expect(link).toHaveAttribute("href", "/places/sunset-beach");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(mockAddItineraryStop).not.toHaveBeenCalled();
   });
 
   it("switches to the Stay tab and searches hotels via getPlaces with type: hotel", async () => {
@@ -188,7 +203,7 @@ describe("AddTripStop", () => {
 
     await waitFor(() => expect(screen.getByText("Sunset Inn")).toBeInTheDocument());
     expect(mockGetPlaces).toHaveBeenCalledWith({ q: "sunset", type: "hotel", limit: 5 });
-    fireEvent.click(screen.getByText("Sunset Inn").closest("button")!);
+    fireEvent.click(screen.getByRole("button", { name: "+ Day 1" }));
 
     await waitFor(() =>
       expect(mockAddItineraryStop).toHaveBeenCalledWith("tok", "trip-1", {

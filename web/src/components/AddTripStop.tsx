@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon, CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { getPlaces, getEvents, getCarListings } from '@/lib/api';
 import { addItineraryStop } from '@/lib/itinerary-api';
@@ -36,6 +37,16 @@ function resultSubtitle(tab: Tab, item: TabResult): string | null {
     return `${formatCarCategory(listing.category)} · ${formatCost(listing.pricePerDay)}/day`;
   }
   return null;
+}
+
+// Where "view this before deciding" goes — the same catalog detail page
+// AddToTripButton offers "add to trip" from on the other side of this same
+// flow, opened in a new tab so browsing photos/reviews/pricing doesn't lose
+// this picker's search results, tab, and day selection.
+function resultHref(tab: Tab, item: TabResult): string {
+  if (tab === 'event') return `/events/${item.id}`;
+  if (tab === 'carListing') return `/car-rentals/${item.id}`;
+  return `/places/${(item as Place).slug}`;
 }
 
 // Owner or any collaborator can add a stop — searches the catalog by name
@@ -189,24 +200,37 @@ export function AddTripStop({
           {results.map((item) => {
             const subtitle = resultSubtitle(tab, item);
             return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  disabled={addingId === item.id}
-                  onClick={() => add(item)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-left text-sm hover:border-brand-500 disabled:opacity-60"
+              <li
+                key={item.id}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-800 pl-3 pr-1.5 py-1.5 hover:border-brand-500"
+              >
+                <Link
+                  href={resultHref(tab, item)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={t('viewDetails')}
+                  className="group flex min-w-0 flex-1 items-center gap-1 text-sm"
                 >
                   <span className="min-w-0 truncate">
-                    <span className="truncate">{resultTitle(tab, item)}</span>
+                    <span className="truncate group-hover:underline">{resultTitle(tab, item)}</span>
                     {subtitle && (
                       <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                         {subtitle}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs font-medium text-brand-700 dark:text-brand-300">
-                    {addingId === item.id ? t('adding') : t('addToDay', { day })}
-                  </span>
+                  <ArrowTopRightOnSquareIcon
+                    aria-hidden
+                    className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100"
+                  />
+                </Link>
+                <button
+                  type="button"
+                  disabled={addingId === item.id}
+                  onClick={() => add(item)}
+                  className="shrink-0 rounded-full border border-brand-600 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-60 dark:border-brand-400 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  {addingId === item.id ? t('adding') : t('addToDay', { day })}
                 </button>
               </li>
             );
