@@ -3,7 +3,6 @@ import {
   MagnifyingGlassIcon,
   BeakerIcon,
   BriefcaseIcon,
-  MapIcon,
   TruckIcon,
   VideoCameraIcon,
   ViewfinderCircleIcon,
@@ -185,6 +184,17 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // drift read as "breathing," not professional) and HeroBackground's own
 // Ken-Burns motion is a deliberately slower, cinematic cadence, not a
 // repeat of that mistake.
+//
+// Hero pill swap (Sep 2026): product feedback — the second co-primary
+// pill next to Near Me should be Plan a Trip, not Explore Map. Explore
+// Map isn't removed from the app (still reachable from the header/mobile
+// nav — see site-nav.ts), just no longer one of the two hero-level
+// discovery actions; Plan a Trip takes its exact slot/styling (same pill,
+// now linking to /trips/new with BriefcaseIcon) so Near Me keeps its
+// established layout neighbor without a hero restructure. The lower
+// "quick actions" Plan a Trip card (home.planATrip, further down this
+// page) is untouched — this just gives it a second, higher-visibility
+// entry point.
 import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPlatformStats, getPublicTrips } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
@@ -352,11 +362,11 @@ export default async function Home() {
               {t('nav.nearMe')}
             </Link>
             <Link
-              href="/explore"
+              href="/trips/new"
               className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold backdrop-blur-sm transition-colors hover:border-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <MapIcon aria-hidden className="h-5 w-5" />
-              {t('home.exploreMap')}
+              <BriefcaseIcon aria-hidden className="h-5 w-5" />
+              {t('home.planATrip')}
             </Link>
           </div>
 

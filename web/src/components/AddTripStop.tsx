@@ -121,13 +121,13 @@ export function AddTripStop({
     <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('addAPlace')}</p>
 
-      <div className="flex gap-1.5">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(({ key, icon: Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => switchTab(key)}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
               tab === key
                 ? 'border-brand-600 bg-brand-600 text-white'
                 : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400'
