@@ -1,16 +1,18 @@
-// Keep this route under the frontend deployment watch path.
 import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   ArrowRightIcon,
+  CalendarDaysIcon,
   CheckBadgeIcon,
+  ChevronRightIcon,
   MapPinIcon,
+  PlusIcon,
   ShieldCheckIcon,
   StarIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/solid";
 import { getCreatorFeed, getGuides } from "@/lib/api";
 import { CreatorFeed } from "@/components/CreatorFeed";
-import { CreatorDirectoryHeader } from "@/components/CreatorDirectoryHeader";
 
 export const metadata = { title: "Creators — LIBERIA360" };
 
@@ -33,79 +35,113 @@ function guideTypeLabel(value: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function QuickAction({
+  href,
+  label,
+  icon,
+  emphasized = false,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  emphasized?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex min-w-0 min-h-[92px] flex-1 items-center gap-2 rounded-2xl px-2.5 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2 ${emphasized ? "bg-[#FAECC5]" : "bg-[#E4F1F7]"}`}
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 text-center text-[11px] font-extrabold leading-tight text-[#1A2E35] sm:text-xs">
+        {label}
+      </span>
+      <ChevronRightIcon
+        aria-hidden
+        className="h-4 w-4 shrink-0 text-[#0F3B3E]"
+      />
+    </Link>
+  );
+}
+
 function GuideCard({
   guide,
 }: {
   guide: Awaited<ReturnType<typeof getGuides>>[number];
 }) {
   const name = guideName(guide.slug);
-  const specialties = guide.languages.slice(0, 3);
+  const languages = guide.languages.slice(0, 2);
+
   return (
-    <article className="group flex min-w-[292px] snap-start flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 sm:min-w-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-4 border-cyan-100 bg-brand-50 dark:border-cyan-950 dark:bg-brand-950">
-            {guide.profileImageUrl ? (
-              <img
-                src={guide.profileImageUrl}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="flex h-full items-center justify-center text-xl font-extrabold text-brand-800 dark:text-brand-200">
-                {name.charAt(0)}
+    <Link
+      href={`/guides/${guide.slug}`}
+      className="group block rounded-2xl border border-white bg-white p-4 shadow-[0_8px_24px_rgba(26,46,53,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(26,46,53,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2"
+    >
+      <div className="flex items-start gap-3">
+        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-[#E4F1F7] bg-[#E4F1F7]">
+          {guide.profileImageUrl ? (
+            <img
+              src={guide.profileImageUrl}
+              alt={`${name} portrait`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full items-center justify-center text-2xl font-extrabold text-[#0F3B3E]">
+              {name.charAt(0)}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate text-lg font-extrabold leading-tight text-[#1A2E35]">
+                {name}
+              </h3>
+              <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-[#FAECC5] px-2 py-1 text-[10px] font-extrabold text-[#8A6D1F]">
+                <ShieldCheckIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
+                  Verified {guideTypeLabel(guide.guideType)}
+                </span>
               </span>
-            )}
+            </div>
+            <ChevronRightIcon
+              aria-hidden
+              className="mt-1 h-5 w-5 shrink-0 text-[#0F3B3E]"
+            />
           </div>
-          <div className="min-w-0">
-            <h3 className="truncate font-display text-lg font-extrabold text-slate-950 dark:text-white">
-              {name}
-            </h3>
-            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-              <ShieldCheckIcon className="h-3.5 w-3.5" /> Verified{" "}
-              {guideTypeLabel(guide.guideType)}
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#6B7A85]">
+            <span className="inline-flex items-center gap-1">
+              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-[#0F3B3E]" />
+              {guide.city}
+            </span>
+            <span aria-hidden className="text-slate-300">
+              |
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <StarIcon aria-hidden className="h-3.5 w-3.5 text-[#F5C242]" />
+              <span className="font-semibold text-[#1A2E35]">
+                {guide.rating.toFixed(1)} ({guide.reviewCount})
+              </span>
             </span>
           </div>
+          {languages.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {languages.map((language) => (
+                <span
+                  key={language}
+                  className="rounded-full bg-[#E4F1F7] px-2.5 py-1 text-[11px] font-bold text-[#1A2E35]"
+                >
+                  {language}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-        <span
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-400 dark:bg-slate-800"
-          aria-label="Verified guide"
-        >
-          <CheckBadgeIcon className="h-5 w-5 text-cyan-600" />
-        </span>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
-        <span className="truncate">
-          <MapPinIcon className="mr-1 inline h-4 w-4 text-brand-700" />
-          {guide.city}
-        </span>
-        <span className="shrink-0 font-bold text-slate-900 dark:text-white">
-          <StarIcon className="mr-1 inline h-4 w-4 text-amber-400" />
-          {guide.rating.toFixed(1)}{" "}
-          <span className="font-normal text-slate-500">
-            ({guide.reviewCount})
-          </span>
-        </span>
-      </div>
-      {specialties.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {specialties.map((specialty) => (
-            <span
-              key={specialty}
-              className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-brand-800 dark:bg-cyan-950/40 dark:text-cyan-200"
-            >
-              {specialty}
-            </span>
-          ))}
-        </div>
-      )}
-      <Link
-        href={`/guides/${guide.slug}`}
-        className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-bold text-white transition hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-      >
-        View profile <ArrowRightIcon className="h-4 w-4" />
-      </Link>
-    </article>
+    </Link>
   );
 }
 
@@ -115,101 +151,145 @@ export default async function CreatorsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const view = first(params.view);
-  const isFollowing = view === "following";
+  const isFollowing = first(params.view) === "following";
   const cookieHeader = (await cookies()).toString();
-
   const [feed, guides] = await Promise.all([
     getCreatorFeed({ page: 1, limit: 20 }, cookieHeader),
     getGuides(),
   ]);
+
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-4 pb-28 sm:gap-7 sm:px-6 sm:py-7 lg:px-10">
-      <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-950 via-brand-800 to-cyan-700 px-5 py-7 text-white shadow-lg sm:px-8 sm:py-9">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-200">
-              A local creator community
+    <main className="min-h-screen bg-[#F7F8FA] px-4 pb-28 pt-4 text-[#1A2E35] sm:px-6 sm:pt-6">
+      <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4">
+        <section aria-label="Creator quick actions" className="flex gap-2">
+          <QuickAction
+            href="/creators"
+            label="Find local creators"
+            icon={<UserGroupIcon aria-hidden className="h-5 w-5" />}
+          />
+          <QuickAction
+            href="/creators/me/create"
+            label="Create a post"
+            emphasized
+            icon={<PlusIcon aria-hidden className="h-5 w-5" />}
+          />
+          <QuickAction
+            href="/account/bookings"
+            label="Bookings"
+            icon={<CalendarDaysIcon aria-hidden className="h-5 w-5" />}
+          />
+        </section>
+
+        <section
+          aria-labelledby="creators-hero-heading"
+          className="relative min-h-[312px] overflow-hidden rounded-[24px] bg-[#0F3B3E] shadow-[0_12px_30px_rgba(15,59,62,0.18)]"
+          style={{
+            backgroundImage: "url('/onboarding/discover.jpg')",
+            backgroundPosition: "62% center",
+            backgroundSize: "cover",
+          }}
+        >
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,59,62,0.98)_0%,rgba(15,59,62,0.82)_38%,rgba(15,59,62,0.2)_100%)]"
+          />
+          <div className="relative flex min-h-[312px] flex-col justify-center px-6 py-8">
+            <p className="max-w-[230px] text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#A8E2E0]">
+              A LOCAL CREATOR COMMUNITY
             </p>
-            <p className="mt-3 max-w-xl text-base leading-7 text-cyan-50 sm:text-lg">
+            <h1
+              id="creators-hero-heading"
+              className="mt-3 max-w-[285px] text-[27px] font-extrabold leading-[1.12] tracking-tight text-white"
+            >
               Discover people, stories and experiences from across Liberia.
+            </h1>
+            <span
+              aria-hidden
+              className="mt-5 h-1.5 w-[60px] rounded-full bg-[#F5C242]"
+            />
+            <p className="mt-4 text-5xl font-black tracking-tight text-white">
+              Creators
             </p>
           </div>
-          <CreatorDirectoryHeader variant="hero" />
-        </div>
-      </section>
+        </section>
 
-      <nav
-        aria-label="Creator sections"
-        className="grid grid-cols-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-      >
-        <Link
-          href="/creators"
-          aria-current={!isFollowing ? "page" : undefined}
-          className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-sm font-bold ${!isFollowing ? "bg-brand-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"}`}
+        <nav
+          aria-label="Creator sections"
+          className="grid grid-cols-2 rounded-full bg-white p-1.5 shadow-[0_5px_18px_rgba(26,46,53,0.08)]"
         >
-          Discover
-        </Link>
-        <Link
-          href="/creators?view=following"
-          aria-current={isFollowing ? "page" : undefined}
-          className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-sm font-bold ${isFollowing ? "bg-brand-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"}`}
-        >
-          Following
-        </Link>
-      </nav>
-
-      <section
-        aria-labelledby="creator-feed-section-heading"
-        className="rounded-[1.75rem] bg-slate-50/80 p-4 dark:bg-slate-900/50 sm:p-6"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-              LOCAL EXPERTISE
-            </p>
-            <h2
-              id="creator-feed-section-heading"
-              className="mt-1 font-display text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
-            >
-              Trip Guides &amp; Hosts
-            </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 sm:text-base">
-              Experience Liberia with trusted locals.
-            </p>
-          </div>
           <Link
-            href="/guides"
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-bold text-brand-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-brand-300 dark:hover:bg-slate-800"
+            href="/creators"
+            aria-current={!isFollowing ? "page" : undefined}
+            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition ${!isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
           >
-            See all <ArrowRightIcon className="h-4 w-4" />
+            Discover
           </Link>
-        </div>
-        {isFollowing ? (
-          <CreatorFeed initialPosts={[]} mode="following" showHeader={false} />
-        ) : guides.length > 0 ? (
-          <div className="-mx-1 mt-5 flex snap-x gap-3 overflow-x-auto px-1 pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
-            {guides.slice(0, 6).map((guide) => (
-              <GuideCard key={guide.id} guide={guide} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-5 rounded-2xl border border-dashed border-brand-200 bg-white p-5 text-sm text-slate-600 dark:border-brand-800 dark:bg-slate-900 dark:text-slate-300">
-            No approved guides yet.{" "}
-            <Link
-              href="/guides/apply"
-              className="font-bold text-brand-700 underline dark:text-brand-300"
-            >
-              Become a guide
-            </Link>
-            .
-          </div>
-        )}
-      </section>
+          <Link
+            href="/creators?view=following"
+            aria-current={isFollowing ? "page" : undefined}
+            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition ${isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
+          >
+            Following
+          </Link>
+        </nav>
 
-      {!isFollowing && (
-        <CreatorFeed initialPosts={feed.data} showHeader={false} />
-      )}
+        <section
+          aria-labelledby="creator-feed-section-heading"
+          className="pt-2"
+        >
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#0F7775]">
+                LOCAL EXPERTISE
+              </p>
+              <h2
+                id="creator-feed-section-heading"
+                className="mt-1 text-[25px] font-extrabold leading-tight tracking-tight text-[#1A2E35]"
+              >
+                Trip Guides &amp; Hosts
+              </h2>
+              <p className="mt-1 text-sm text-[#6B7A85]">
+                Experience Liberia with trusted locals.
+              </p>
+            </div>
+            <Link
+              href="/guides"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-extrabold text-[#0F3B3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2"
+            >
+              See all <ArrowRightIcon aria-hidden className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {isFollowing ? (
+            <CreatorFeed
+              initialPosts={[]}
+              mode="following"
+              showHeader={false}
+            />
+          ) : guides.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {guides.slice(0, 6).map((guide) => (
+                <GuideCard key={guide.id} guide={guide} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-dashed border-[#B9DDE0] bg-white p-5 text-sm text-[#6B7A85]">
+              No approved guides yet.{" "}
+              <Link
+                href="/guides/apply"
+                className="font-bold text-[#0F3B3E] underline"
+              >
+                Become a guide
+              </Link>
+              .
+            </div>
+          )}
+        </section>
+
+        {!isFollowing && (
+          <CreatorFeed initialPosts={feed.data} showHeader={false} />
+        )}
+      </div>
     </main>
   );
 }
