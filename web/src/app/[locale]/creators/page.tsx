@@ -3,13 +3,11 @@ import { cookies } from "next/headers";
 import {
   ArrowRightIcon,
   CalendarDaysIcon,
-  ChatBubbleLeftRightIcon,
   CheckBadgeIcon,
   ChevronRightIcon,
   MapPinIcon,
   PlusIcon,
   ShieldCheckIcon,
-  SparklesIcon,
   StarIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/solid";
@@ -56,14 +54,14 @@ function QuickAction({
       <span
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
       >
-        {icon}
+        <span className="[&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>
       </span>
       <span className="min-w-0 flex-1 text-center text-[15px] font-extrabold leading-[1.2] text-[#1A2E35]">
         {label}
       </span>
       <ChevronRightIcon
         aria-hidden
-        className="h-4 w-4 shrink-0 text-[#0F3B3E]"
+        className="h-3.5 w-3.5 shrink-0 text-[#0F3B3E]"
       />
     </Link>
   );
@@ -162,7 +160,7 @@ export default async function CreatorsPage({
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#F7F8FA] px-4 pb-28 pt-0 text-[#1A2E35] sm:px-6 sm:pt-6">
-      <div className="mx-auto flex w-full max-w-[420px] flex-col">
+      <div className="mx-auto flex w-full max-w-[390px] flex-col">
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
             href="/creators"
@@ -196,19 +194,12 @@ export default async function CreatorsPage({
             className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,59,62,0.98)_0%,rgba(15,59,62,0.82)_38%,rgba(15,59,62,0.2)_100%)]"
           />
           <div className="relative flex h-full flex-col justify-center px-5 pb-6 pt-5">
-            <div className="absolute right-6 top-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#F5C242] bg-[#0F3B3E]/70 text-[#F5C242] shadow-lg">
-              <ChatBubbleLeftRightIcon aria-hidden className="h-8 w-8" />
-              <SparklesIcon
-                aria-hidden
-                className="absolute right-1 top-1 h-4 w-4"
-              />
-            </div>
-            <p className="max-w-[75%] text-xs font-extrabold uppercase tracking-[1.5px] text-[#A8E2E0]">
+            <p className="text-[11px] font-extrabold uppercase tracking-[1.5px] text-[#A8E2E0]">
               A LOCAL CREATOR COMMUNITY
             </p>
             <h1
               id="creators-hero-heading"
-              className="mt-3 max-w-[75%] text-2xl font-extrabold leading-[1.25] tracking-tight text-white"
+              className="mt-3 max-w-[220px] text-[22px] font-extrabold leading-[1.25] tracking-tight text-white"
             >
               Discover people, stories and experiences from across Liberia.
             </h1>
@@ -216,7 +207,7 @@ export default async function CreatorsPage({
               aria-hidden
               className="my-3 h-1 w-10 rounded-full bg-[#F5C242]"
             />
-            <p className="text-[40px] font-black leading-none tracking-tight text-white">
+            <p className="text-[38px] font-black leading-none tracking-tight text-white">
               Creators
             </p>
           </div>
@@ -248,12 +239,12 @@ export default async function CreatorsPage({
         >
           <div>
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[1.5px] text-[#0F7775]">
+              <p className="text-[11px] font-extrabold uppercase tracking-[1.5px] text-[#0F7775]">
                 LOCAL EXPERTISE
               </p>
               <h2
                 id="creator-feed-section-heading"
-                className="mt-1 text-[28px] font-extrabold leading-tight tracking-tight text-[#1A2E35]"
+                className="mt-1 text-[26px] font-extrabold leading-tight tracking-tight text-[#1A2E35]"
               >
                 Trip Guides &amp; Hosts
               </h2>
