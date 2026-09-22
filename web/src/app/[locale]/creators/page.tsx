@@ -163,7 +163,7 @@ export default async function CreatorsPage({
       <div className="mx-auto flex w-full max-w-[390px] flex-col">
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
-            href="/creators"
+            href="/creators#creator-feed"
             label="Find local creators"
             icon={<UserGroupIcon aria-hidden className="h-5 w-5" />}
           />

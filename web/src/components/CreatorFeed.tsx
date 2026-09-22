@@ -305,6 +305,7 @@ export function CreatorFeed({
 
   return (
     <section
+      id="creator-feed"
       aria-labelledby={showHeader ? "creator-feed-heading" : undefined}
       aria-label={showHeader ? undefined : "Creator feed"}
       aria-busy={refreshing}
