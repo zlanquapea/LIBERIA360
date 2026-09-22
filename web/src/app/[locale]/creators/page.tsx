@@ -45,10 +45,18 @@ function QuickAction({
   icon: React.ReactNode;
   emphasized?: boolean;
 }) {
+  // Stacked icon-top, not the row's old horizontal icon+label+chevron
+  // layout: at this container's 390px cap, three tiles in a row leave each
+  // one well under 40px for its own label once the icon, chevron, gaps and
+  // padding are accounted for — nowhere near enough for "Find local
+  // creators," which is exactly the cramped/wrapping look this redesign
+  // set out to remove. Stacking vertically (and dropping the chevron,
+  // which read as a list-row affordance this tile isn't) gives the label
+  // the tile's full width instead of a sliver of it.
   return (
     <Link
       href={href}
-      className={`flex min-h-[80px] min-w-0 flex-1 items-center gap-1.5 rounded-2xl px-3 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
+      className={`flex min-h-[92px] min-w-0 flex-1 flex-col items-center justify-center gap-2 rounded-2xl px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
         emphasized ? "bg-gold-100 dark:bg-gold-950/30" : "bg-brand-50 dark:bg-brand-950/40"
       }`}
     >
@@ -57,13 +65,9 @@ function QuickAction({
       >
         <span className="[&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>
       </span>
-      <span className="min-w-0 flex-1 text-center text-[15px] font-extrabold leading-[1.2] text-slate-900 dark:text-slate-50">
+      <span className="text-xs font-extrabold leading-tight text-slate-900 dark:text-slate-50">
         {label}
       </span>
-      <ChevronRightIcon
-        aria-hidden
-        className="h-3.5 w-3.5 shrink-0 text-brand-800 dark:text-brand-300"
-      />
     </Link>
   );
 }
