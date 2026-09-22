@@ -1,5 +1,44 @@
 import { apiRequest, authHeader } from "./http";
 
+export interface PendingGuideApplication {
+  id: string;
+  userId: string;
+  guideType: string;
+  bio: string;
+  city: string;
+  county: { name?: string } | null;
+  languages: string[];
+  ltaLicenseNumber: string | null;
+  whatsappNumber: string | null;
+  slug: string;
+  profileImageUrl: string | null;
+  verificationDocumentKey: string | null;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export function getPendingGuideApplications(token: string) {
+  return apiRequest<PendingGuideApplication[]>("/admin/guides/pending", {
+    headers: authHeader(token),
+  });
+}
+
+export function setGuideVerification(
+  token: string,
+  guideId: string,
+  status: "verified" | "rejected",
+  reason?: string,
+) {
+  return apiRequest<PendingGuideApplication>(
+    `/admin/guides/${guideId}/verification`,
+    {
+      method: "PATCH",
+      headers: authHeader(token),
+      body: JSON.stringify({ status, reason }),
+    },
+  );
+}
+
 export interface GuideBookingInput {
   requestedDate: string;
   groupSize: number;

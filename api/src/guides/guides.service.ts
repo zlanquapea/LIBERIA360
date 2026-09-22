@@ -191,6 +191,18 @@ export class GuidesService {
     return saved;
   }
 
+  async verificationDocument(guideId: string) {
+    const guide = await this.guideRepo.findOne({ where: { id: guideId } });
+    if (!guide) throw new NotFoundException("Guide application not found");
+    if (!guide.verificationDocumentKey) {
+      throw new NotFoundException("No verification document uploaded");
+    }
+    const { buffer } = await this.storage.readPrivate(
+      guide.verificationDocumentKey,
+    );
+    return { buffer };
+  }
+
   async createExperience(userId: string, dto: CreateExperienceDto) {
     const guide = await this.guideRepo.findOne({ where: { userId } });
     if (!guide)

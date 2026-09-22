@@ -7,10 +7,13 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -150,5 +153,21 @@ export class GuidesController {
     @Body() dto: SetGuideVerificationDto,
   ) {
     return this.guidesService.setVerification(user.id, id, dto);
+  }
+
+  @Get("admin/guides/:id/verification-document")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  async verificationDocument(
+    @Param("id") id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer } = await this.guidesService.verificationDocument(id);
+    res.set({
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": "inline; filename=guide-verification-document",
+      "Cache-Control": "private, no-store",
+    });
+    return new StreamableFile(buffer);
   }
 }
