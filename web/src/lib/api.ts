@@ -548,4 +548,53 @@ export function getBlogPost(slug: string): Promise<BlogPost> {
   return apiFetch<BlogPost>(`/blog/${slug}`);
 }
 
+export interface GuideSummary {
+  id: string;
+  slug: string;
+  guideType: string;
+  bio: string;
+  city: string;
+  county: { name?: string } | null;
+  languages: string[];
+  verificationStatus: string;
+  whatsappNumber: string | null;
+  profileImageUrl: string | null;
+  rating: number;
+  reviewCount: number;
+}
+
+export interface ExperienceSummary {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  county: string;
+  durationMinutes: number;
+  groupType: string;
+  maxGroupSize: number;
+  priceUsd: number;
+  priceLrd: number | null;
+  meetingPointText: string;
+  includes: string[];
+  cancellationPolicy: string;
+  coverImageUrl: string | null;
+  guide: GuideSummary;
+}
+
+export function getGuides(query: { search?: string; county?: string; language?: string } = {}): Promise<GuideSummary[]> {
+  return apiFetch<GuideSummary[]>("/guides", query, []);
+}
+
+export function getGuide(slug: string): Promise<GuideSummary> {
+  return apiFetch<GuideSummary>(`/guides/${slug}`);
+}
+
+export function getExperiences(query: { search?: string; category?: string; county?: string } = {}): Promise<ExperienceSummary[]> {
+  return apiFetch<ExperienceSummary[]>("/experiences", query, []);
+}
+
+export function getExperience(id: string): Promise<ExperienceSummary> {
+  return apiFetch<ExperienceSummary>(`/experiences/${id}`);
+}
+
 export { ApiError };

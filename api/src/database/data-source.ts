@@ -37,6 +37,10 @@ import { AssistantFeedback } from "../assistant/entities/assistant-feedback.enti
 import { MenuItem } from "../menu-items/entities/menu-item.entity";
 import { PHARMACY_ENTITIES } from "../pharmacies/pharmacies.module";
 import { EventNotificationDelivery } from "../event-notifications/entities/event-notification-delivery.entity";
+import { GuideProfile } from "../guides/entities/guide-profile.entity";
+import { Experience } from "../guides/entities/experience.entity";
+import { GuideBooking } from "../guides/entities/guide-booking.entity";
+import { GuideReview } from "../guides/entities/guide-review.entity";
 
 config();
 
@@ -92,6 +96,10 @@ export const AppDataSource = new DataSource({
     MenuItem,
     ...PHARMACY_ENTITIES,
     EventNotificationDelivery,
+    GuideProfile,
+    Experience,
+    GuideBooking,
+    GuideReview,
   ],
   migrations: ["src/database/migrations/*.ts"],
   synchronize: false,

@@ -77,6 +77,11 @@ import { EventNotificationDelivery } from "./event-notifications/entities/event-
 import { EventNotificationsModule } from "./event-notifications/event-notifications.module";
 import { TripNotificationDelivery } from "./trip-notifications/entities/trip-notification-delivery.entity";
 import { TripNotificationsModule } from "./trip-notifications/trip-notifications.module";
+import { GuideProfile } from "./guides/entities/guide-profile.entity";
+import { Experience } from "./guides/entities/experience.entity";
+import { GuideBooking } from "./guides/entities/guide-booking.entity";
+import { GuideReview } from "./guides/entities/guide-review.entity";
+import { GuidesModule } from "./guides/guides.module";
 
 @Module({
   imports: [
@@ -142,6 +147,10 @@ import { TripNotificationsModule } from "./trip-notifications/trip-notifications
             SupportMessage,
             EventNotificationDelivery,
             TripNotificationDelivery,
+            GuideProfile,
+            Experience,
+            GuideBooking,
+            GuideReview,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -189,6 +198,7 @@ import { TripNotificationsModule } from "./trip-notifications/trip-notifications
     SearchModule,
     EventNotificationsModule,
     TripNotificationsModule,
+    GuidesModule,
   ],
   providers: [
     {

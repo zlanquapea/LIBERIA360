@@ -12,6 +12,7 @@ import {
 import { getMyBusinesses } from '@/lib/business-api';
 import { getMyCreatorProfile } from '@/lib/creator-api';
 import { getMyCarListings } from '@/lib/car-rentals-api';
+import { getMyGuideBookings, type GuideBookingSummary } from '@/lib/guides-api';
 import { BookingDetailModal, BookingRow, type SelectedBooking } from '@/components/booking-ui';
 import { BrandLoader } from '@/components/BrandLoader';
 import type { Booking, Business, CarListing, Creator } from '@/lib/types';
@@ -38,6 +39,7 @@ export default function BookingsPage() {
   const [incoming, setIncoming] = useState<Record<string, Booking[]>>({});
   const [incomingCreator, setIncomingCreator] = useState<Booking[]>([]);
   const [incomingCarListings, setIncomingCarListings] = useState<Booking[]>([]);
+  const [guideBookings, setGuideBookings] = useState<GuideBookingSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<SelectedBooking | null>(null);
 
@@ -77,12 +79,14 @@ export default function BookingsPage() {
       getMyBusinesses(token),
       getMyCreatorProfile(token),
       getMyCarListings(token),
-    ]).then(async ([bookings, myBusinesses, myCreator, myCarListings]) => {
+      getMyGuideBookings(token),
+    ]).then(async ([bookings, myBusinesses, myCreator, myCarListings, myGuideBookings]) => {
       if (cancelled) return;
       setMyBookings(bookings);
       setBusinesses(myBusinesses);
       setCreator(myCreator);
       setCarListings(myCarListings);
+      setGuideBookings(myGuideBookings);
       const entries = await Promise.all(
         myBusinesses.map(async (b) => [b.id, await getBusinessBookings(token, b.id)] as const),
       );
@@ -149,6 +153,22 @@ export default function BookingsPage() {
                   })
                 }
               />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Guide experience requests</h2>
+        {guideBookings.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No guide experience requests yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {guideBookings.map((booking) => (
+              <li key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-start justify-between gap-3"><div><Link href={`/experiences/${booking.experience.id}`} className="font-semibold hover:text-brand-700 dark:hover:text-brand-300">{booking.experience.title}</Link><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Guide: {booking.experience.guide.slug} · {booking.requestedDate} · {booking.groupSize} guest(s)</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize dark:bg-slate-800">{booking.status}</span></div>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Price snapshot: ${Number(booking.priceUsdSnapshot).toFixed(2)} · Payment: {booking.paymentStatus}</p>
+              </li>
             ))}
           </ul>
         )}

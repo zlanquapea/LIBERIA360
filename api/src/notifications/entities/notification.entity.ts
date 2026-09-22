@@ -52,6 +52,7 @@ export type NotificationType =
   | "ticket.transfer_received"
   | "ticket.transfer_accepted"
   | "ticket.transfer_declined"
+  | "guide.verification_decided"
   | "event.lifecycle"
   | "event.reminder";
 

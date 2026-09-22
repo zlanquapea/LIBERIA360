@@ -5,7 +5,7 @@
 // Dev-only fallback so a fresh checkout works without extra setup, same
 // pattern as api's JWT_SECRET/TWO_FACTOR_ENCRYPTION_KEY placeholders — set
 // a real NEXT_PUBLIC_SITE_URL once this has a real domain.
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://liberia360.example').replace(/\/$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://liberia360.net').replace(/\/$/, '');
 
 export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
