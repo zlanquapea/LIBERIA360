@@ -157,30 +157,30 @@ export default async function CreatorsPage({
             </section>
           ) : (
             <>
-              {guides.length > 0 && (
-                <section
-                  className="rounded-3xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/20 sm:p-5"
-                  aria-labelledby="guides-heading"
-                >
-                  <div className="flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-                        Explore with a local
-                      </p>
-                      <h2
-                        id="guides-heading"
-                        className="mt-1 font-display text-xl font-bold"
-                      >
-                        Trip Guides &amp; Hosts
-                      </h2>
-                    </div>
-                    <Link
-                      href="/guides"
-                      className="min-h-11 rounded-full px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-950/40"
+              <section
+                className="rounded-3xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/20 sm:p-5"
+                aria-labelledby="guides-heading"
+              >
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+                      Explore with a local
+                    </p>
+                    <h2
+                      id="guides-heading"
+                      className="mt-1 font-display text-xl font-bold"
                     >
-                      See all
-                    </Link>
+                      Trip Guides &amp; Hosts
+                    </h2>
                   </div>
+                  <Link
+                    href="/guides"
+                    className="min-h-11 rounded-full px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-950/40"
+                  >
+                    See all
+                  </Link>
+                </div>
+                {guides.length > 0 ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     {guides.slice(0, 3).map((guide) => (
                       <Link
@@ -199,8 +199,19 @@ export default async function CreatorsPage({
                       </Link>
                     ))}
                   </div>
-                </section>
-              )}
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-brand-200 bg-white/70 p-4 text-sm text-slate-600 dark:border-brand-800 dark:bg-slate-900/60 dark:text-slate-300">
+                    No approved guides yet. Be among the first local experts to
+                    join LIBERIA360.{" "}
+                    <Link
+                      href="/guides/apply"
+                      className="font-bold text-brand-700 underline dark:text-brand-300"
+                    >
+                      Become a guide
+                    </Link>
+                  </div>
+                )}
+              </section>
               <div className="flex justify-end">
                 <Link
                   href="/creators?view=directory"
