@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { getExperience } from "@/lib/api";
-import { PageHeader } from "@/components/PageHeader";
 import { GuideBookingForm } from "@/components/GuideBookingForm";
+import {
+  MapPinIcon,
+  ClockIcon,
+  UserGroupIcon,
+  BookmarkIcon,
+  CalendarDaysIcon,
+  CheckBadgeIcon,
+} from "@heroicons/react/24/solid";
 
 export async function generateMetadata({
   params,
@@ -20,14 +27,6 @@ export async function generateMetadata({
         ? [experience.coverImageUrl]
         : ["/logo.png"],
     },
-    twitter: {
-      card: "summary_large_image",
-      title: experience.title,
-      description: experience.description,
-      images: experience.coverImageUrl
-        ? [experience.coverImageUrl]
-        : ["/logo.png"],
-    },
   };
 }
 
@@ -39,92 +38,118 @@ export default async function ExperiencePage({
   const { id } = await params;
   const experience = await getExperience(id);
   return (
-    <main className="page-shell max-w-4xl pb-32">
-      <PageHeader
-        eyebrow="Book a local experience"
-        title={experience.title}
-        description={`${experience.category} · ${experience.county}`}
-        action={
-          <Link
-            href={`/guides/${experience.guide.slug}`}
-            className="button-secondary"
-          >
-            View guide
-          </Link>
-        }
-      />
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <main className="mx-auto max-w-5xl px-4 py-5 pb-12 sm:px-6 lg:px-10">
+      <div className="mb-5 flex items-center justify-between">
+        <Link
+          href={`/guides/${experience.guide.slug}`}
+          className="text-sm font-bold text-brand-700"
+        >
+          ← View guide
+        </Link>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700">
+          LIBERIA360 creators
+        </p>
+      </div>
+      <section className="overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-slate-900">
         {experience.coverImageUrl ? (
           <img
             src={experience.coverImageUrl}
             alt=""
-            className="h-56 w-full object-cover sm:h-72"
+            className="h-56 w-full object-cover sm:h-80"
           />
         ) : (
-          <div className="h-32 bg-gradient-to-br from-brand-800 to-accent-500 sm:h-44" />
+          <div className="h-56 bg-gradient-to-br from-brand-900 via-brand-700 to-cyan-400 sm:h-80" />
         )}
-        <div className="p-5 sm:p-7">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-              ✓ Verified host
-            </span>
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              Hosted by {experience.guide.slug}
-            </span>
-          </div>
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-            <div>
-              <span className="block text-slate-500 dark:text-slate-400">
-                From
-              </span>
-              <strong className="text-lg">
-                ${experience.priceUsd.toFixed(2)}
-              </strong>
-              {experience.priceLrd != null && (
-                <span className="ml-2 text-slate-500">
-                  / LRD {experience.priceLrd.toLocaleString()}
+        <div className="p-5 sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
+            {experience.category}
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">
+            {experience.title}
+          </h1>
+          <div className="mt-5 flex flex-wrap items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-emerald-500 bg-brand-100">
+              {experience.guide.profileImageUrl ? (
+                <img
+                  src={experience.guide.profileImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="font-bold text-brand-800">
+                  {experience.guide.slug.charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
             <div>
-              <span className="block text-slate-500 dark:text-slate-400">
-                Duration
+              <p className="text-sm text-slate-500">Hosted by</p>
+              <Link
+                href={`/guides/${experience.guide.slug}`}
+                className="font-display text-lg font-extrabold"
+              >
+                {experience.guide.slug.replaceAll("-", " ")}
+              </Link>
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-300 px-2 py-1 text-xs font-bold">
+                <CheckBadgeIcon className="h-3.5 w-3.5" /> Verified Guide
               </span>
-              <strong>{experience.durationMinutes} minutes</strong>
             </div>
-            <div>
-              <span className="block text-slate-500 dark:text-slate-400">
-                Group
-              </span>
-              <strong>
-                {experience.groupType.replaceAll("_", " ")} · max{" "}
-                {experience.maxGroupSize}
-              </strong>
-            </div>
-          </div>
-          <p className="mt-6 whitespace-pre-line text-sm leading-7 text-slate-600 dark:text-slate-300">
-            {experience.description}
-          </p>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div>
-              <h2 className="font-display text-lg font-bold">Meeting point</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                {experience.meetingPointText}
+            <div className="ml-auto text-right">
+              <p className="text-2xl font-extrabold text-brand-700">
+                ${experience.priceUsd.toFixed(0)}
               </p>
-            </div>
-            <div>
-              <h2 className="font-display text-lg font-bold">
-                What&apos;s included
-              </h2>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-                {experience.includes.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+              <p className="text-xs text-slate-500">per booking</p>
             </div>
           </div>
-          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
-            <h2 className="font-display text-lg font-bold">
+          <div className="mt-6 grid gap-3 border-y border-slate-200 py-4 text-sm dark:border-slate-800 sm:grid-cols-3">
+            <span>
+              <ClockIcon className="mr-2 inline h-5 w-5 text-brand-700" />
+              {Math.round(experience.durationMinutes / 60)} hours
+            </span>
+            <span>
+              <UserGroupIcon className="mr-2 inline h-5 w-5 text-brand-700" />
+              {experience.groupType.replaceAll("_", " ")}
+            </span>
+            <span>
+              <MapPinIcon className="mr-2 inline h-5 w-5 text-brand-700" />
+              {experience.meetingPointText}
+            </span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <a
+              href="#book"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 font-bold text-white"
+            >
+              <CalendarDaysIcon className="h-5 w-5" /> Request to Book
+            </a>
+            <button
+              type="button"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-brand-700 px-5 font-bold text-brand-700"
+            >
+              <BookmarkIcon className="h-5 w-5" /> Save to Trip
+            </button>
+          </div>
+        </div>
+      </section>
+      <section className="mt-8">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
+          What you will experience
+        </p>
+        <p className="mt-3 max-w-3xl whitespace-pre-line text-base leading-8 text-slate-600 dark:text-slate-300">
+          {experience.description}
+        </p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div>
+            <h2 className="font-display text-xl font-extrabold">
+              What&apos;s included
+            </h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
+              {experience.includes.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-extrabold">
               Cancellation policy
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -133,7 +158,7 @@ export default async function ExperiencePage({
           </div>
         </div>
       </section>
-      <div className="mt-6">
+      <div id="book" className="mt-8">
         <GuideBookingForm
           experienceId={experience.id}
           maxGroupSize={experience.maxGroupSize}

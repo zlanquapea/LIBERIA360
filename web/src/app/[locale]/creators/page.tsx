@@ -6,6 +6,12 @@ import { CreatorFeed } from "@/components/CreatorFeed";
 import { CreatorFilters } from "@/components/CreatorFilters";
 import { CreatorDirectoryHeader } from "@/components/CreatorDirectoryHeader";
 import type { CreatorCategory } from "@/lib/types";
+import {
+  ChevronRightIcon,
+  MapPinIcon,
+  ShieldCheckIcon,
+  StarIcon,
+} from "@heroicons/react/24/solid";
 
 export const metadata = { title: "Creators — LIBERIA360" };
 
@@ -158,49 +164,76 @@ export default async function CreatorsPage({
           ) : (
             <>
               <section
-                className="rounded-3xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/20 sm:p-5"
+                className="rounded-none border-0 bg-transparent p-0 dark:bg-transparent"
                 aria-labelledby="guides-heading"
               >
-                <div className="flex items-end justify-between gap-3">
+                <div className="flex items-end justify-between gap-3 px-1">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-                      Explore with a local
-                    </p>
                     <h2
                       id="guides-heading"
-                      className="mt-1 font-display text-xl font-bold"
+                      className="font-display text-2xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-3xl"
                     >
                       Trip Guides &amp; Hosts
                     </h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 sm:text-base">
+                      Explore Liberia with trusted local guides
+                    </p>
                   </div>
                   <Link
                     href="/guides"
-                    className="min-h-11 rounded-full px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-950/40"
+                    className="min-h-11 shrink-0 rounded-full px-2 py-2 text-sm font-bold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/40"
                   >
-                    See all
+                    See all <span aria-hidden>→</span>
                   </Link>
                 </div>
                 {guides.length > 0 ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
                     {guides.slice(0, 3).map((guide) => (
                       <Link
                         key={guide.id}
                         href={`/guides/${guide.slug}`}
-                        className="rounded-2xl border border-white/70 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900"
+                        className="group min-w-[78%] snap-start rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900 sm:min-w-0"
                       >
-                        <p className="truncate font-semibold">{guide.slug}</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          ✓ Verified · {guide.city}
-                        </p>
-                        <p className="mt-2 text-xs font-semibold text-accent-700 dark:text-accent-300">
-                          ★ {guide.rating.toFixed(1)} · {guide.reviewCount}{" "}
-                          reviews
-                        </p>
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-4 border-cyan-200 bg-brand-100 dark:bg-brand-950">
+                            {guide.profileImageUrl ? (
+                              <img
+                                src={guide.profileImageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="flex h-full items-center justify-center text-xl font-bold text-brand-800">
+                                {guide.slug.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-display text-base font-bold text-slate-900 dark:text-slate-50">
+                              {guide.slug.replaceAll("-", " ")}
+                            </p>
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-cyan-600 px-2 py-1 text-[10px] font-bold text-white">
+                              <ShieldCheckIcon className="h-3 w-3" /> Verified
+                              Guide
+                            </span>
+                          </div>
+                          <ChevronRightIcon className="h-5 w-5 shrink-0 text-cyan-600" />
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+                          <span className="truncate">
+                            <MapPinIcon className="mr-1 inline h-4 w-4 text-brand-700" />
+                            {guide.city}
+                          </span>
+                          <span className="shrink-0 font-semibold text-accent-700">
+                            <StarIcon className="mr-0.5 inline h-4 w-4" />
+                            {guide.rating.toFixed(1)}
+                          </span>
+                        </div>
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-brand-200 bg-white/70 p-4 text-sm text-slate-600 dark:border-brand-800 dark:bg-slate-900/60 dark:text-slate-300">
+                  <div className="mt-4 rounded-2xl border border-dashed border-brand-200 bg-brand-50/50 p-4 text-sm text-slate-600 dark:border-brand-800 dark:bg-brand-950/20 dark:text-slate-300">
                     No approved guides yet. Be among the first local experts to
                     join LIBERIA360.{" "}
                     <Link
