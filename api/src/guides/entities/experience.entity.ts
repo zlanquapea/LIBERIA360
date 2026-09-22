@@ -10,7 +10,11 @@ import {
 import { Place } from "../../places/entities/place.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
 import { GuideProfile } from "./guide-profile.entity";
-import { ExperienceCategory, ExperienceGroupType, ExperienceStatus } from "./guide.enums";
+import {
+  ExperienceCategory,
+  ExperienceGroupType,
+  ExperienceStatus,
+} from "./guide.enums";
 
 @Entity("experiences")
 export class Experience {
@@ -52,19 +56,44 @@ export class Experience {
   @Column({ name: "max_group_size", type: "smallint" })
   maxGroupSize: number;
 
-  @Column({ name: "price_usd", type: "numeric", precision: 10, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: "price_usd",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   priceUsd: number;
 
-  @Column({ name: "price_lrd", type: "numeric", precision: 12, scale: 2, nullable: true, transformer: decimalTransformer })
+  @Column({
+    name: "price_lrd",
+    type: "numeric",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
   priceLrd: number | null;
 
   @Column({ name: "meeting_point_text", type: "varchar", length: 300 })
   meetingPointText: string;
 
-  @Column({ name: "meeting_lat", type: "numeric", precision: 10, scale: 7, nullable: true })
+  @Column({
+    name: "meeting_lat",
+    type: "numeric",
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   meetingLat: number | null;
 
-  @Column({ name: "meeting_lng", type: "numeric", precision: 10, scale: 7, nullable: true })
+  @Column({
+    name: "meeting_lng",
+    type: "numeric",
+    precision: 10,
+    scale: 7,
+    nullable: true,
+  })
   meetingLng: number | null;
 
   @Column({ type: "text", array: true, default: () => "'{}'" })
@@ -73,10 +102,19 @@ export class Experience {
   @Column({ name: "cancellation_policy", type: "text" })
   cancellationPolicy: string;
 
-  @Column({ name: "cover_image_url", type: "varchar", length: 1000, nullable: true })
+  @Column({
+    name: "cover_image_url",
+    type: "varchar",
+    length: 1000,
+    nullable: true,
+  })
   coverImageUrl: string | null;
 
-  @Column({ type: "enum", enum: ExperienceStatus, default: ExperienceStatus.DRAFT })
+  @Column({
+    type: "enum",
+    enum: ExperienceStatus,
+    default: ExperienceStatus.DRAFT,
+  })
   status: ExperienceStatus;
 
   @CreateDateColumn({ name: "created_at" })

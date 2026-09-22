@@ -4,13 +4,27 @@ export class AddTripGuidesHosts1791000000000 implements MigrationInterface {
   name = "AddTripGuidesHosts1791000000000";
 
   async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`CREATE TYPE "guide_type_enum" AS ENUM ('tour_guide','cultural_host','nature_guide','adventure_guide','food_host')`);
-    await queryRunner.query(`CREATE TYPE "guide_verification_status_enum" AS ENUM ('pending','verified','rejected')`);
-    await queryRunner.query(`CREATE TYPE "experience_category_enum" AS ENUM ('city','culture','nature','food')`);
-    await queryRunner.query(`CREATE TYPE "experience_group_type_enum" AS ENUM ('private','small_group','group')`);
-    await queryRunner.query(`CREATE TYPE "experience_status_enum" AS ENUM ('draft','published')`);
-    await queryRunner.query(`CREATE TYPE "guide_booking_status_enum" AS ENUM ('requested','confirmed','declined','cancelled','completed')`);
-    await queryRunner.query(`CREATE TYPE "guide_payment_status_enum" AS ENUM ('unpaid','pending','paid','refunded')`);
+    await queryRunner.query(
+      `CREATE TYPE "guide_type_enum" AS ENUM ('tour_guide','cultural_host','nature_guide','adventure_guide','food_host')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "guide_verification_status_enum" AS ENUM ('pending','verified','rejected')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "experience_category_enum" AS ENUM ('city','culture','nature','food')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "experience_group_type_enum" AS ENUM ('private','small_group','group')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "experience_status_enum" AS ENUM ('draft','published')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "guide_booking_status_enum" AS ENUM ('requested','confirmed','declined','cancelled','completed')`,
+    );
+    await queryRunner.query(
+      `CREATE TYPE "guide_payment_status_enum" AS ENUM ('unpaid','pending','paid','refunded')`,
+    );
 
     await queryRunner.query(`CREATE TABLE "guide_profiles" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -36,7 +50,9 @@ export class AddTripGuidesHosts1791000000000 implements MigrationInterface {
       CONSTRAINT "FK_guide_profiles_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_guide_profiles_county" FOREIGN KEY ("county_id") REFERENCES "counties"("id") ON DELETE SET NULL
     )`);
-    await queryRunner.query(`CREATE INDEX "IDX_guide_profiles_status" ON "guide_profiles" ("verification_status")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_guide_profiles_status" ON "guide_profiles" ("verification_status")`,
+    );
 
     await queryRunner.query(`CREATE TABLE "experiences" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -64,7 +80,9 @@ export class AddTripGuidesHosts1791000000000 implements MigrationInterface {
       CONSTRAINT "FK_experiences_guide" FOREIGN KEY ("guide_id") REFERENCES "guide_profiles"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_experiences_place" FOREIGN KEY ("place_id") REFERENCES "places"("id") ON DELETE SET NULL
     )`);
-    await queryRunner.query(`CREATE INDEX "IDX_experiences_status_category" ON "experiences" ("status", "category")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_experiences_status_category" ON "experiences" ("status", "category")`,
+    );
 
     await queryRunner.query(`CREATE TABLE "guide_bookings" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -85,8 +103,12 @@ export class AddTripGuidesHosts1791000000000 implements MigrationInterface {
       CONSTRAINT "FK_guide_bookings_experience" FOREIGN KEY ("experience_id") REFERENCES "experiences"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_guide_bookings_traveler" FOREIGN KEY ("traveler_id") REFERENCES "users"("id") ON DELETE CASCADE
     )`);
-    await queryRunner.query(`CREATE INDEX "IDX_guide_bookings_traveler" ON "guide_bookings" ("traveler_id", "created_at")`);
-    await queryRunner.query(`CREATE INDEX "IDX_guide_bookings_experience" ON "guide_bookings" ("experience_id", "status")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_guide_bookings_traveler" ON "guide_bookings" ("traveler_id", "created_at")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_guide_bookings_experience" ON "guide_bookings" ("experience_id", "status")`,
+    );
 
     await queryRunner.query(`CREATE TABLE "guide_reviews" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -103,7 +125,9 @@ export class AddTripGuidesHosts1791000000000 implements MigrationInterface {
       CONSTRAINT "FK_guide_reviews_traveler" FOREIGN KEY ("traveler_id") REFERENCES "users"("id") ON DELETE CASCADE,
       CONSTRAINT "FK_guide_reviews_guide" FOREIGN KEY ("guide_id") REFERENCES "guide_profiles"("id") ON DELETE CASCADE
     )`);
-    await queryRunner.query(`CREATE INDEX "IDX_guide_reviews_guide" ON "guide_reviews" ("guide_id", "created_at")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_guide_reviews_guide" ON "guide_reviews" ("guide_id", "created_at")`,
+    );
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {

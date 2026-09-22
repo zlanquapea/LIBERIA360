@@ -1,21 +1,25 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 import {
   getBusinessBookings,
   getCarListingOwnerBookings,
   getCreatorBookings,
   getMyBookings,
-} from '@/lib/booking-api';
-import { getMyBusinesses } from '@/lib/business-api';
-import { getMyCreatorProfile } from '@/lib/creator-api';
-import { getMyCarListings } from '@/lib/car-rentals-api';
-import { getMyGuideBookings, type GuideBookingSummary } from '@/lib/guides-api';
-import { BookingDetailModal, BookingRow, type SelectedBooking } from '@/components/booking-ui';
-import { BrandLoader } from '@/components/BrandLoader';
-import type { Booking, Business, CarListing, Creator } from '@/lib/types';
+} from "@/lib/booking-api";
+import { getMyBusinesses } from "@/lib/business-api";
+import { getMyCreatorProfile } from "@/lib/creator-api";
+import { getMyCarListings } from "@/lib/car-rentals-api";
+import { getMyGuideBookings, type GuideBookingSummary } from "@/lib/guides-api";
+import {
+  BookingDetailModal,
+  BookingRow,
+  type SelectedBooking,
+} from "@/components/booking-ui";
+import { BrandLoader } from "@/components/BrandLoader";
+import type { Booking, Business, CarListing, Creator } from "@/lib/types";
 
 // "My Bookings" (Tech Spec §3.3) — client-only, same reasoning as
 // /trips: JWT auth lives in localStorage, so a server component can't
@@ -80,25 +84,41 @@ export default function BookingsPage() {
       getMyCreatorProfile(token),
       getMyCarListings(token),
       getMyGuideBookings(token),
-    ]).then(async ([bookings, myBusinesses, myCreator, myCarListings, myGuideBookings]) => {
-      if (cancelled) return;
-      setMyBookings(bookings);
-      setBusinesses(myBusinesses);
-      setCreator(myCreator);
-      setCarListings(myCarListings);
-      setGuideBookings(myGuideBookings);
-      const entries = await Promise.all(
-        myBusinesses.map(async (b) => [b.id, await getBusinessBookings(token, b.id)] as const),
-      );
-      const creatorBookings = myCreator ? await getCreatorBookings(token, myCreator.id) : [];
-      const carListingBookings = myCarListings.length > 0 ? await getCarListingOwnerBookings(token) : [];
-      if (!cancelled) {
-        setIncoming(Object.fromEntries(entries));
-        setIncomingCreator(creatorBookings);
-        setIncomingCarListings(carListingBookings);
-        setLoading(false);
-      }
-    });
+    ]).then(
+      async ([
+        bookings,
+        myBusinesses,
+        myCreator,
+        myCarListings,
+        myGuideBookings,
+      ]) => {
+        if (cancelled) return;
+        setMyBookings(bookings);
+        setBusinesses(myBusinesses);
+        setCreator(myCreator);
+        setCarListings(myCarListings);
+        setGuideBookings(myGuideBookings);
+        const entries = await Promise.all(
+          myBusinesses.map(
+            async (b) =>
+              [b.id, await getBusinessBookings(token, b.id)] as const,
+          ),
+        );
+        const creatorBookings = myCreator
+          ? await getCreatorBookings(token, myCreator.id)
+          : [];
+        const carListingBookings =
+          myCarListings.length > 0
+            ? await getCarListingOwnerBookings(token)
+            : [];
+        if (!cancelled) {
+          setIncoming(Object.fromEntries(entries));
+          setIncomingCreator(creatorBookings);
+          setIncomingCarListings(carListingBookings);
+          setLoading(false);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -108,7 +128,9 @@ export default function BookingsPage() {
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
         <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+          Loading…
+        </p>
       </main>
     );
   }
@@ -116,8 +138,12 @@ export default function BookingsPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My Bookings</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to see your booking requests.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          My Bookings
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Log in to see your booking requests.
+        </p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -131,10 +157,13 @@ export default function BookingsPage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-6">
       <section className="flex flex-col gap-3">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My booking requests</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          My booking requests
+        </h1>
         {myBookings.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-            No booking requests yet. Request to book on any claimed listing&apos;s page.
+            No booking requests yet. Request to book on any claimed
+            listing&apos;s page.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -145,7 +174,9 @@ export default function BookingsPage() {
                 onOpen={() =>
                   setSelected({
                     booking,
-                    canCancel: booking.status === 'pending' || booking.status === 'confirmed',
+                    canCancel:
+                      booking.status === "pending" ||
+                      booking.status === "confirmed",
                     onCancelled: () => {
                       reloadMine();
                       setSelected(null);
@@ -159,15 +190,41 @@ export default function BookingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Guide experience requests</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          Guide experience requests
+        </h2>
         {guideBookings.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No guide experience requests yet.</p>
+          <p className="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            No guide experience requests yet.
+          </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {guideBookings.map((booking) => (
-              <li key={booking.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-start justify-between gap-3"><div><Link href={`/experiences/${booking.experience.id}`} className="font-semibold hover:text-brand-700 dark:hover:text-brand-300">{booking.experience.title}</Link><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Guide: {booking.experience.guide.slug} · {booking.requestedDate} · {booking.groupSize} guest(s)</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize dark:bg-slate-800">{booking.status}</span></div>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Price snapshot: ${Number(booking.priceUsdSnapshot).toFixed(2)} · Payment: {booking.paymentStatus}</p>
+              <li
+                key={booking.id}
+                className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Link
+                      href={`/experiences/${booking.experience.id}`}
+                      className="font-semibold hover:text-brand-700 dark:hover:text-brand-300"
+                    >
+                      {booking.experience.title}
+                    </Link>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      Guide: {booking.experience.guide.slug} ·{" "}
+                      {booking.requestedDate} · {booking.groupSize} guest(s)
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize dark:bg-slate-800">
+                    {booking.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  Price snapshot: ${Number(booking.priceUsdSnapshot).toFixed(2)}{" "}
+                  · Payment: {booking.paymentStatus}
+                </p>
               </li>
             ))}
           </ul>
@@ -176,12 +233,18 @@ export default function BookingsPage() {
 
       {businesses.length > 0 && (
         <section className="flex flex-col gap-6">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my listings</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+            Requests for my listings
+          </h2>
           {businesses.map((business) => (
             <div key={business.id} className="flex flex-col gap-2">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-100">{business.name}</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+                {business.name}
+              </h3>
               {(incoming[business.id] ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  No requests yet.
+                </p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {(incoming[business.id] ?? []).map((booking) => (
@@ -193,7 +256,7 @@ export default function BookingsPage() {
                         setSelected({
                           booking,
                           showGuest: true,
-                          canRespond: booking.status === 'pending',
+                          canRespond: booking.status === "pending",
                           onResponded: () => {
                             reloadIncoming(business.id);
                             setSelected(null);
@@ -211,9 +274,13 @@ export default function BookingsPage() {
 
       {creator && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my creator profile</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+            Requests for my creator profile
+          </h2>
           {incomingCreator.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No requests yet.
+            </p>
           ) : (
             <ul className="flex flex-col gap-2">
               {incomingCreator.map((booking) => (
@@ -225,7 +292,7 @@ export default function BookingsPage() {
                     setSelected({
                       booking,
                       showGuest: true,
-                      canRespond: booking.status === 'pending',
+                      canRespond: booking.status === "pending",
                       onResponded: () => {
                         reloadIncomingCreator();
                         setSelected(null);
@@ -241,9 +308,13 @@ export default function BookingsPage() {
 
       {carListings.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Requests for my car listings</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+            Requests for my car listings
+          </h2>
           {incomingCarListings.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No requests yet.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No requests yet.
+            </p>
           ) : (
             <ul className="flex flex-col gap-2">
               {incomingCarListings.map((booking) => (
@@ -255,7 +326,7 @@ export default function BookingsPage() {
                     setSelected({
                       booking,
                       showGuest: true,
-                      canRespond: booking.status === 'pending',
+                      canRespond: booking.status === "pending",
                       onResponded: () => {
                         reloadIncomingCarListings();
                         setSelected(null);
@@ -270,7 +341,11 @@ export default function BookingsPage() {
       )}
 
       {selected && token && (
-        <BookingDetailModal selected={selected} token={token} onClose={() => setSelected(null)} />
+        <BookingDetailModal
+          selected={selected}
+          token={token}
+          onClose={() => setSelected(null)}
+        />
       )}
     </main>
   );

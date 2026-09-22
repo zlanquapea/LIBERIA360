@@ -12,7 +12,13 @@ import { GuidesService } from "./guides.service";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GuideProfile, Experience, GuideBooking, GuideReview, County]),
+    TypeOrmModule.forFeature([
+      GuideProfile,
+      Experience,
+      GuideBooking,
+      GuideReview,
+      County,
+    ]),
     NotificationsModule,
     StorageModule,
   ],

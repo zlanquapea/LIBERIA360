@@ -169,7 +169,10 @@ export class CreateGuideBookingDto {
 
 export class RespondGuideBookingDto {
   @IsEnum(GuideBookingStatus)
-  status: GuideBookingStatus.CONFIRMED | GuideBookingStatus.DECLINED | GuideBookingStatus.COMPLETED;
+  status:
+    | GuideBookingStatus.CONFIRMED
+    | GuideBookingStatus.DECLINED
+    | GuideBookingStatus.COMPLETED;
 
   @IsOptional()
   @IsString()

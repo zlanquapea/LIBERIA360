@@ -6,7 +6,11 @@ export interface GuideBookingInput {
   note?: string;
 }
 
-export function requestGuideBooking(token: string, experienceId: string, input: GuideBookingInput) {
+export function requestGuideBooking(
+  token: string,
+  experienceId: string,
+  input: GuideBookingInput,
+) {
   return apiRequest(`/experiences/${experienceId}/book`, {
     method: "POST",
     headers: authHeader(token),
@@ -44,14 +48,16 @@ export interface GuideBookingSummary {
 }
 
 export function getMyGuideBookings(token: string) {
-  return apiRequest<GuideBookingSummary[]>('/guide-bookings/mine', { headers: authHeader(token) });
+  return apiRequest<GuideBookingSummary[]>("/guide-bookings/mine", {
+    headers: authHeader(token),
+  });
 }
 
 export function uploadGuideVerificationDocument(token: string, file: File) {
   const body = new FormData();
-  body.append('document', file);
-  return apiRequest('/guides/me/verification-document', {
-    method: 'POST',
+  body.append("document", file);
+  return apiRequest("/guides/me/verification-document", {
+    method: "POST",
     headers: authHeader(token),
     body,
   });

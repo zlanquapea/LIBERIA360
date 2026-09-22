@@ -43,7 +43,12 @@ export class GuideProfile {
   @Column({ type: "text", array: true, default: () => "'{}'" })
   languages: string[];
 
-  @Column({ name: "verification_status", type: "enum", enum: GuideVerificationStatus, default: GuideVerificationStatus.PENDING })
+  @Column({
+    name: "verification_status",
+    type: "enum",
+    enum: GuideVerificationStatus,
+    default: GuideVerificationStatus.PENDING,
+  })
   verificationStatus: GuideVerificationStatus;
 
   @Column({ name: "verified_at", type: "timestamptz", nullable: true })
@@ -52,19 +57,39 @@ export class GuideProfile {
   @Column({ name: "verified_by", type: "uuid", nullable: true })
   verifiedBy: string | null;
 
-  @Column({ name: "lta_license_number", type: "varchar", length: 100, nullable: true })
+  @Column({
+    name: "lta_license_number",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
   ltaLicenseNumber: string | null;
 
-  @Column({ name: "verification_document_key", type: "varchar", length: 500, nullable: true })
+  @Column({
+    name: "verification_document_key",
+    type: "varchar",
+    length: 500,
+    nullable: true,
+  })
   verificationDocumentKey: string | null;
 
-  @Column({ name: "whatsapp_number", type: "varchar", length: 40, nullable: true })
+  @Column({
+    name: "whatsapp_number",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
   whatsappNumber: string | null;
 
   @Column({ type: "varchar", length: 180, unique: true })
   slug: string;
 
-  @Column({ name: "profile_image_url", type: "varchar", length: 1000, nullable: true })
+  @Column({
+    name: "profile_image_url",
+    type: "varchar",
+    length: 1000,
+    nullable: true,
+  })
   profileImageUrl: string | null;
 
   @CreateDateColumn({ name: "created_at" })

@@ -498,8 +498,14 @@ export function getCarListingById(id: string): Promise<CarListing> {
 // system (see api/src/support): "Still need help?" on an article just
 // links to the existing /account/support flow, it never touches these
 // endpoints.
-export function getHelpCenterCategories(): Promise<KnowledgeCategoryWithCount[]> {
-  return apiFetch<KnowledgeCategoryWithCount[]>("/help-center/categories", undefined, []);
+export function getHelpCenterCategories(): Promise<
+  KnowledgeCategoryWithCount[]
+> {
+  return apiFetch<KnowledgeCategoryWithCount[]>(
+    "/help-center/categories",
+    undefined,
+    [],
+  );
 }
 
 export interface HelpCenterArticlesQuery {
@@ -522,7 +528,9 @@ export function getHelpCenterArticles(
 // The article detail page — a single published article plus a handful of
 // related ones from the same category. No buildFallback: a missing/draft
 // slug is a 404, same as getPlaceBySlug.
-export function getHelpCenterArticle(slug: string): Promise<KnowledgeArticleWithRelated> {
+export function getHelpCenterArticle(
+  slug: string,
+): Promise<KnowledgeArticleWithRelated> {
   return apiFetch<KnowledgeArticleWithRelated>(`/help-center/articles/${slug}`);
 }
 
@@ -536,7 +544,9 @@ export interface BlogPostsQuery {
   limit?: number;
 }
 
-export function getBlogPosts(query: BlogPostsQuery = {}): Promise<PaginatedBlogPosts> {
+export function getBlogPosts(
+  query: BlogPostsQuery = {},
+): Promise<PaginatedBlogPosts> {
   return apiFetch<PaginatedBlogPosts>(
     "/blog",
     query as Record<string, string | number | undefined>,
@@ -581,7 +591,9 @@ export interface ExperienceSummary {
   guide: GuideSummary;
 }
 
-export function getGuides(query: { search?: string; county?: string; language?: string } = {}): Promise<GuideSummary[]> {
+export function getGuides(
+  query: { search?: string; county?: string; language?: string } = {},
+): Promise<GuideSummary[]> {
   return apiFetch<GuideSummary[]>("/guides", query, []);
 }
 
@@ -589,7 +601,9 @@ export function getGuide(slug: string): Promise<GuideSummary> {
   return apiFetch<GuideSummary>(`/guides/${slug}`);
 }
 
-export function getExperiences(query: { search?: string; category?: string; county?: string } = {}): Promise<ExperienceSummary[]> {
+export function getExperiences(
+  query: { search?: string; category?: string; county?: string } = {},
+): Promise<ExperienceSummary[]> {
   return apiFetch<ExperienceSummary[]>("/experiences", query, []);
 }
 

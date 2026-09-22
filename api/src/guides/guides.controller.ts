@@ -1,4 +1,16 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -32,7 +44,9 @@ export class GuidesController {
   }
 
   @Get("experiences")
-  listExperiences(@Query() query: { search?: string; category?: string; county?: string }) {
+  listExperiences(
+    @Query() query: { search?: string; category?: string; county?: string },
+  ) {
     return this.guidesService.listExperiences(query);
   }
 
@@ -51,23 +65,36 @@ export class GuidesController {
   @Post("guides/me/verification-document")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FileInterceptor("document", { limits: { fileSize: 5 * 1024 * 1024 } }))
-  uploadVerificationDocument(@CurrentUser() user: User, @UploadedFile() file?: { buffer: Buffer; mimetype: string }) {
-    if (!file) throw new BadRequestException("A verification document is required");
+  @UseInterceptors(
+    FileInterceptor("document", { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  uploadVerificationDocument(
+    @CurrentUser() user: User,
+    @UploadedFile() file?: { buffer: Buffer; mimetype: string },
+  ) {
+    if (!file)
+      throw new BadRequestException("A verification document is required");
     return this.guidesService.uploadVerificationDocument(user.id, file);
   }
 
   @Post("experiences")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  createExperience(@CurrentUser() user: User, @Body() dto: CreateExperienceDto) {
+  createExperience(
+    @CurrentUser() user: User,
+    @Body() dto: CreateExperienceDto,
+  ) {
     return this.guidesService.createExperience(user.id, dto);
   }
 
   @Post("experiences/:id/book")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  createBooking(@CurrentUser() user: User, @Param("id") id: string, @Body() dto: CreateGuideBookingDto) {
+  createBooking(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreateGuideBookingDto,
+  ) {
     return this.guidesService.createBooking(user.id, id, dto);
   }
 
@@ -88,14 +115,22 @@ export class GuidesController {
   @Patch("guide-bookings/:id/respond")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  respond(@CurrentUser() user: User, @Param("id") id: string, @Body() dto: RespondGuideBookingDto) {
+  respond(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: RespondGuideBookingDto,
+  ) {
     return this.guidesService.respond(user.id, id, dto);
   }
 
   @Post("guide-bookings/:id/review")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  review(@CurrentUser() user: User, @Param("id") id: string, @Body() dto: CreateGuideReviewDto) {
+  review(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreateGuideReviewDto,
+  ) {
     return this.guidesService.review(user.id, id, dto);
   }
 
@@ -109,7 +144,11 @@ export class GuidesController {
   @Patch("admin/guides/:id/verification")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, AdminGuard)
-  setVerification(@CurrentUser() user: User, @Param("id") id: string, @Body() dto: SetGuideVerificationDto) {
+  setVerification(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: SetGuideVerificationDto,
+  ) {
     return this.guidesService.setVerification(user.id, id, dto);
   }
 }
