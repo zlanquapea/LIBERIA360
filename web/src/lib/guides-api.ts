@@ -175,6 +175,13 @@ export interface GuideMessage {
   sender: { id: string; name: string } | null;
 }
 
+export interface GuideConversationSummary {
+  guide: { id: string; slug: string; profileImageUrl: string | null };
+  visitor: { id: string; name: string } | null;
+  lastMessage: GuideMessage;
+  unread: boolean;
+}
+
 export type GuideChatEvent =
   | { type: "guide.chat.ready"; guideId: string; userId: string }
   | { type: "guide.message.created"; message: GuideMessage }
@@ -203,6 +210,12 @@ export function openGuideChat(
 
 export function getGuideMessages(token: string, guideId: string) {
   return apiRequest<GuideMessage[]>(`/guides/${guideId}/messages`, {
+    headers: authHeader(token),
+  });
+}
+
+export function getMyGuideConversations(token: string) {
+  return apiRequest<GuideConversationSummary[]>("/guides/messages", {
     headers: authHeader(token),
   });
 }

@@ -129,7 +129,7 @@ export function GuideProfileHero({
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <Link
-          href={`/guides/${guide.slug}/messages`}
+          href={isOwner ? "/messages" : `/guides/${guide.slug}/messages`}
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 font-bold text-white transition hover:bg-brand-800"
         >
           <ChatBubbleLeftRightIcon className="h-5 w-5" />

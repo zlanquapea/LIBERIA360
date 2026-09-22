@@ -21,7 +21,13 @@ import {
   type GuideMessage,
 } from "@/lib/guides-api";
 
-export function GuideMessenger({ guide }: { guide: GuideSummary }) {
+export function GuideMessenger({
+  guide,
+  initialVisitorId,
+}: {
+  guide: GuideSummary;
+  initialVisitorId?: string;
+}) {
   const { token, ready, user } = useAuth();
   const [messages, setMessages] = useState<GuideMessage[]>([]);
   const [activeVisitorId, setActiveVisitorId] = useState<string>();
@@ -48,7 +54,7 @@ export function GuideMessenger({ guide }: { guide: GuideSummary }) {
           getMyGuideProfile(token).catch(() => null),
         ]);
         setMessages(items);
-        setActiveVisitorId(items[0]?.visitorId);
+        setActiveVisitorId(initialVisitorId ?? items[0]?.visitorId);
         setIsOwner(mine?.id === guide.id);
       } catch {
         setError("Your conversations could not be loaded.");
@@ -94,7 +100,7 @@ export function GuideMessenger({ guide }: { guide: GuideSummary }) {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [guide.id, ready, token]);
+  }, [guide.id, initialVisitorId, ready, token]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

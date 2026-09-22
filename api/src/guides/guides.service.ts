@@ -276,6 +276,34 @@ export class GuidesService {
     return messages.map((message) => this.publicMessage(message));
   }
 
+  async getMyGuideConversations(userId: string) {
+    const messages = await this.messageRepo
+      .createQueryBuilder("message")
+      .leftJoinAndSelect("message.guide", "guide")
+      .leftJoinAndSelect("guide.user", "guideUser")
+      .where("message.visitor_id = :userId", { userId })
+      .orWhere("guide.user_id = :userId", { userId })
+      .orderBy("message.created_at", "DESC")
+      .getMany();
+    const conversations = new Map<string, GuideMessage>();
+    for (const message of messages) {
+      const key = `${message.guideId}:${message.visitorId}`;
+      if (!conversations.has(key)) conversations.set(key, message);
+    }
+    return [...conversations.values()].map((message) => ({
+      guide: {
+        id: message.guide.id,
+        slug: message.guide.slug,
+        profileImageUrl: message.guide.profileImageUrl,
+      },
+      visitor: message.visitor
+        ? { id: message.visitor.id, name: message.visitor.name }
+        : null,
+      lastMessage: this.publicMessage(message),
+      unread: message.senderId !== userId && !message.readAt,
+    }));
+  }
+
   async getGuideOwnerId(guideId: string) {
     const guide = await this.guideRepo.findOne({ where: { id: guideId } });
     if (!guide) throw new NotFoundException("Guide profile not found");
@@ -316,7 +344,7 @@ export class GuidesService {
         type: "guide.message",
         title: "New guide message",
         body: dto.body.trim().slice(0, 120),
-        link: `/guides/${guide.slug}`,
+        link: `/messages?guideId=${encodeURIComponent(guideId)}&visitorId=${encodeURIComponent(visitorId)}`,
       },
     );
     return this.publicMessage(message);

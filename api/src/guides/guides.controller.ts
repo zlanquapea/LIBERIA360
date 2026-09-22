@@ -83,6 +83,13 @@ export class GuidesController {
     return this.guidesService.getGuideReviews(id);
   }
 
+  @Get("guides/messages")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getMyGuideConversations(@CurrentUser() user: User) {
+    return this.guidesService.getMyGuideConversations(user.id);
+  }
+
   @Post("guides/:id/reviews")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
