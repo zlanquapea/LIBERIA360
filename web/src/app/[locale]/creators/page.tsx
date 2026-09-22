@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import {
   ArrowRightIcon,
   CalendarDaysIcon,
-  CheckBadgeIcon,
   ChevronRightIcon,
   MapPinIcon,
   PlusIcon,
@@ -35,6 +34,14 @@ function guideTypeLabel(value: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+// Redesigned (Sep 2026 — "the three buttons look childish/unprofessional")
+// from a row of squeezed horizontal pills (icon bubble + wrapping label +
+// chevron, all fighting for ~110px of width) into the same icon-top tile
+// the rest of the app already uses for a row of quick actions (see
+// account/page.tsx's QUICK_ACTION_GROUPS tiles) — one visual language for
+// "here are some shortcuts" across the app, not a one-off. Also brings
+// dark-mode support the old version never had at all (raw hex, no `dark:`
+// variants anywhere on this page) — see the page's own doc comment below.
 function QuickAction({
   href,
   label,
@@ -49,20 +56,24 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className={`flex min-w-0 min-h-[92px] flex-1 items-center gap-2 rounded-2xl px-2.5 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2 ${emphasized ? "bg-[#FAECC5]" : "bg-[#E4F1F7]"}`}
+      className={`group flex min-h-[104px] flex-col justify-between gap-3 rounded-2xl border p-3.5 shadow-sm transition-colors hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
+        emphasized
+          ? "border-gold-200 bg-gold-50 hover:bg-gold-100 dark:border-gold-800 dark:bg-gold-950/20 dark:hover:bg-gold-950/30"
+          : "border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-800 dark:hover:bg-brand-950/30"
+      }`}
     >
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
+        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+          emphasized
+            ? "bg-gold-400 text-brand-950"
+            : "bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300"
+        }`}
       >
         {icon}
       </span>
-      <span className="min-w-0 flex-1 text-center text-[11px] font-extrabold leading-tight text-[#1A2E35] sm:text-xs">
+      <span className="text-sm font-bold leading-tight text-slate-900 dark:text-slate-50">
         {label}
       </span>
-      <ChevronRightIcon
-        aria-hidden
-        className="h-4 w-4 shrink-0 text-[#0F3B3E]"
-      />
     </Link>
   );
 }
@@ -78,10 +89,10 @@ function GuideCard({
   return (
     <Link
       href={`/guides/${guide.slug}`}
-      className="group block rounded-2xl border border-white bg-white p-4 shadow-[0_8px_24px_rgba(26,46,53,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(26,46,53,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2"
+      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-900"
     >
       <div className="flex items-start gap-3">
-        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-[#E4F1F7] bg-[#E4F1F7]">
+        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-50 bg-brand-50 dark:border-brand-950/40 dark:bg-brand-950/40">
           {guide.profileImageUrl ? (
             <img
               src={guide.profileImageUrl}
@@ -89,7 +100,7 @@ function GuideCard({
               className="h-full w-full object-cover"
             />
           ) : (
-            <span className="flex h-full items-center justify-center text-2xl font-extrabold text-[#0F3B3E]">
+            <span className="flex h-full items-center justify-center text-2xl font-extrabold text-brand-800 dark:text-brand-200">
               {name.charAt(0)}
             </span>
           )}
@@ -97,10 +108,10 @@ function GuideCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="truncate text-lg font-extrabold leading-tight text-[#1A2E35]">
+              <h3 className="truncate text-lg font-extrabold leading-tight text-slate-950 dark:text-slate-50">
                 {name}
               </h3>
-              <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-[#FAECC5] px-2 py-1 text-[10px] font-extrabold text-[#8A6D1F]">
+              <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-gold-100 px-2 py-1 text-[10px] font-extrabold text-gold-800 dark:bg-gold-950/40 dark:text-gold-300">
                 <ShieldCheckIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
                   Verified {guideTypeLabel(guide.guideType)}
@@ -109,20 +120,20 @@ function GuideCard({
             </div>
             <ChevronRightIcon
               aria-hidden
-              className="mt-1 h-5 w-5 shrink-0 text-[#0F3B3E]"
+              className="mt-1 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
             />
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#6B7A85]">
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
-              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-[#0F3B3E]" />
+              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-brand-700 dark:text-brand-300" />
               {guide.city}
             </span>
-            <span aria-hidden className="text-slate-300">
+            <span aria-hidden className="text-slate-300 dark:text-slate-700">
               |
             </span>
             <span className="inline-flex items-center gap-1">
-              <StarIcon aria-hidden className="h-3.5 w-3.5 text-[#F5C242]" />
-              <span className="font-semibold text-[#1A2E35]">
+              <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
+              <span className="font-semibold text-slate-900 dark:text-slate-50">
                 {guide.rating.toFixed(1)} ({guide.reviewCount})
               </span>
             </span>
@@ -132,7 +143,7 @@ function GuideCard({
               {languages.map((language) => (
                 <span
                   key={language}
-                  className="rounded-full bg-[#E4F1F7] px-2.5 py-1 text-[11px] font-bold text-[#1A2E35]"
+                  className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:bg-brand-950/40 dark:text-slate-100"
                 >
                   {language}
                 </span>
@@ -145,6 +156,22 @@ function GuideCard({
   );
 }
 
+// Creator directory (Tech Spec §5 Creator / §3.2) — a social-style discovery
+// surface for Liberian content creators, guides, and storytellers.
+//
+// Redesigned (Sep 2026 — product feedback: "childish" quick actions, bad
+// spacing, and text disappearing into its own background) to fully adopt
+// the app's shared dark-mode-aware design tokens (brand/slate/gold, all
+// with `dark:` pairs) instead of the raw one-off hex this page previously
+// hardcoded everywhere (`bg-[#F7F8FA]`, `text-[#1A2E35]`, etc.) with no
+// `dark:` variants at all. That mismatch was the real cause of the poor
+// contrast reported below the hero: CreatorFeed → CreatorStories is a
+// shared, theme-aware component that switches to light-colored `dark:`
+// text (e.g. `dark:text-brand-300`, `dark:text-white`) whenever the site's
+// dark mode is on — but this page's own background stayed forced-light
+// regardless of theme, so that text rendered as light-on-light and nearly
+// vanished. Making every surface here theme-aware (not just the shared
+// children) fixes that for good instead of patching one heading at a time.
 export default async function CreatorsPage({
   searchParams,
 }: {
@@ -159,9 +186,9 @@ export default async function CreatorsPage({
   ]);
 
   return (
-    <main className="min-h-screen bg-[#F7F8FA] px-4 pb-28 pt-4 text-[#1A2E35] sm:px-6 sm:pt-6">
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-4 text-slate-900 dark:bg-slate-950 dark:text-slate-50 sm:px-6 sm:pt-6">
       <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4">
-        <section aria-label="Creator quick actions" className="flex gap-2">
+        <section aria-label="Creator quick actions" className="grid grid-cols-3 gap-3">
           <QuickAction
             href="/creators"
             label="Find local creators"
@@ -182,7 +209,7 @@ export default async function CreatorsPage({
 
         <section
           aria-labelledby="creators-hero-heading"
-          className="relative min-h-[312px] overflow-hidden rounded-[24px] bg-[#0F3B3E] shadow-[0_12px_30px_rgba(15,59,62,0.18)]"
+          className="relative min-h-[312px] overflow-hidden rounded-[24px] bg-brand-900 shadow-lg"
           style={{
             backgroundImage: "url('/onboarding/discover.jpg')",
             backgroundPosition: "62% center",
@@ -191,10 +218,10 @@ export default async function CreatorsPage({
         >
           <div
             aria-hidden
-            className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,59,62,0.98)_0%,rgba(15,59,62,0.82)_38%,rgba(15,59,62,0.2)_100%)]"
+            className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,47,59,0.98)_0%,rgba(0,47,59,0.82)_38%,rgba(0,47,59,0.2)_100%)]"
           />
           <div className="relative flex min-h-[312px] flex-col justify-center px-6 py-8">
-            <p className="max-w-[230px] text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#A8E2E0]">
+            <p className="max-w-[230px] text-[10px] font-extrabold uppercase tracking-[0.22em] text-brand-200">
               A LOCAL CREATOR COMMUNITY
             </p>
             <h1
@@ -205,7 +232,7 @@ export default async function CreatorsPage({
             </h1>
             <span
               aria-hidden
-              className="mt-5 h-1.5 w-[60px] rounded-full bg-[#F5C242]"
+              className="mt-5 h-1.5 w-[60px] rounded-full bg-gold-400"
             />
             <p className="mt-4 text-5xl font-black tracking-tight text-white">
               Creators
@@ -215,19 +242,19 @@ export default async function CreatorsPage({
 
         <nav
           aria-label="Creator sections"
-          className="grid grid-cols-2 rounded-full bg-white p-1.5 shadow-[0_5px_18px_rgba(26,46,53,0.08)]"
+          className="grid grid-cols-2 rounded-full bg-white p-1.5 shadow-sm dark:bg-slate-900"
         >
           <Link
             href="/creators"
             aria-current={!isFollowing ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition ${!isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition-colors ${!isFollowing ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
           >
             Discover
           </Link>
           <Link
             href="/creators?view=following"
             aria-current={isFollowing ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition ${isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition-colors ${isFollowing ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
           >
             Following
           </Link>
@@ -239,22 +266,22 @@ export default async function CreatorsPage({
         >
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#0F7775]">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
                 LOCAL EXPERTISE
               </p>
               <h2
                 id="creator-feed-section-heading"
-                className="mt-1 text-[25px] font-extrabold leading-tight tracking-tight text-[#1A2E35]"
+                className="mt-1 text-[25px] font-extrabold leading-tight tracking-tight text-slate-950 dark:text-slate-50"
               >
                 Trip Guides &amp; Hosts
               </h2>
-              <p className="mt-1 text-sm text-[#6B7A85]">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Experience Liberia with trusted locals.
               </p>
             </div>
             <Link
               href="/guides"
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-extrabold text-[#0F3B3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-extrabold text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-brand-300"
             >
               See all <ArrowRightIcon aria-hidden className="h-4 w-4" />
             </Link>
@@ -273,11 +300,11 @@ export default async function CreatorsPage({
               ))}
             </div>
           ) : (
-            <div className="mt-4 rounded-2xl border border-dashed border-[#B9DDE0] bg-white p-5 text-sm text-[#6B7A85]">
+            <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
               No approved guides yet.{" "}
               <Link
                 href="/guides/apply"
-                className="font-bold text-[#0F3B3E] underline"
+                className="font-bold text-brand-700 underline dark:text-brand-300"
               >
                 Become a guide
               </Link>
