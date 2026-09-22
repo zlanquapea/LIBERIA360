@@ -23,10 +23,21 @@ describe("apiRequest", () => {
     mockFetchOnce(200, {});
     await apiRequest("/auth/me", { headers: { Authorization: "Bearer xyz" } });
     const [, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(init.headers).toEqual({
-      "Content-Type": "application/json",
-      Authorization: "Bearer xyz",
+    expect(init.headers).toBeInstanceOf(Headers);
+    expect(init.headers.get("Content-Type")).toBe("application/json");
+    expect(init.headers.get("Authorization")).toBe("Bearer xyz");
+  });
+
+  it("does not force JSON content type for multipart form uploads", async () => {
+    mockFetchOnce(200, { uploaded: true });
+    const form = new FormData();
+    form.append("document", new Blob(["test"], { type: "application/pdf" }));
+    await apiRequest("/guides/me/verification-document", {
+      method: "POST",
+      body: form,
     });
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers.get("Content-Type")).toBeNull();
   });
 
   it("throws HttpError with a single joined string when the API returns a class-validator string[] message", async () => {
