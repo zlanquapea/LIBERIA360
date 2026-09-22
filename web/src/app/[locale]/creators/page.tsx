@@ -63,7 +63,7 @@ function QuickAction({
       <span
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-gold-400 text-brand-950" : "bg-brand-800 text-white"}`}
       >
-        <span className="[&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>
+        <span className="[&>svg]:h-4 [&>svg]:w-4">{icon}</span>
       </span>
       <span className="text-xs font-extrabold leading-tight text-slate-900 dark:text-slate-50">
         {label}
@@ -182,7 +182,7 @@ export default async function CreatorsPage({
       <div className="mx-auto flex w-full max-w-[390px] flex-col">
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
-            href="/creators"
+            href="/creators#creator-feed"
             label="Find local creators"
             icon={<UserGroupIcon aria-hidden className="h-5 w-5" />}
           />
