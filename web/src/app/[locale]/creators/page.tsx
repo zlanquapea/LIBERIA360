@@ -49,19 +49,19 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className={`flex h-20 min-w-0 flex-1 basis-0 items-center gap-1.5 rounded-2xl px-2.5 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2 ${emphasized ? "bg-[#FAECC5]" : "bg-[#E4F1F7]"}`}
+      className={`flex h-[72px] min-w-0 flex-1 basis-0 items-center gap-1 rounded-xl px-2 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2 ${emphasized ? "bg-[#FAECC5]" : "bg-[#E4F1F7]"}`}
     >
       <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
       >
-        <span className="[&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>
+        <span className="[&>svg]:h-4 [&>svg]:w-4">{icon}</span>
       </span>
-      <span className="min-w-0 flex-1 text-left text-[15px] font-extrabold leading-[1.2] text-[#1A2E35]">
+      <span className="min-w-0 flex-1 text-left text-[13px] font-extrabold leading-[1.1] text-[#1A2E35]">
         {label}
       </span>
       <ChevronRightIcon
         aria-hidden
-        className="h-3.5 w-3.5 shrink-0 text-[#0F3B3E]"
+        className="h-3 w-3 shrink-0 text-[#0F3B3E]"
       />
     </Link>
   );
