@@ -39,10 +39,7 @@ function shuffleAds(items: Ad[], avoidFirstIds: string[] = []) {
       (ad, index) => index > 0 && !avoidFirstIds.includes(ad.id),
     );
     if (swapIndex > 0) {
-      [shuffled[0], shuffled[swapIndex]] = [
-        shuffled[swapIndex],
-        shuffled[0],
-      ];
+      [shuffled[0], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[0]];
     }
   }
   return shuffled;
@@ -87,7 +84,7 @@ export function CreatorFeed({
   const [ads, setAds] = useState<Ad[]>([]);
   const adSessionRef = useRef(createCreatorFeedAdSession());
   const [page, setPage] = useState(1);
-  const [loadingInitial, setLoadingInitial] = useState(mode === "following");
+  const [loadingInitial, setLoadingInitial] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(initialPosts.length >= FEED_PAGE_SIZE);
@@ -199,8 +196,8 @@ export function CreatorFeed({
       const nextPosts = varyRecentPosts(postResult.data, posts);
       const nextAds = shuffleAds(
         refreshedAds,
-        [previousFirstAdId, previousLastAdId].filter(
-          (adId): adId is string => Boolean(adId),
+        [previousFirstAdId, previousLastAdId].filter((adId): adId is string =>
+          Boolean(adId),
         ),
       );
 
@@ -216,7 +213,6 @@ export function CreatorFeed({
           ? "No new posts yet — the feed was checked and sponsored rotation was refreshed."
           : "Feed refreshed with the latest creator posts.",
       );
-
     } catch {
       setError("The creator feed could not be refreshed. Please try again.");
     } finally {
@@ -267,8 +263,12 @@ export function CreatorFeed({
       if (shouldRefresh) void refreshFeedRef.current();
     }
 
-    window.addEventListener("touchstart", handleWindowTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleWindowTouchMove, { passive: false });
+    window.addEventListener("touchstart", handleWindowTouchStart, {
+      passive: true,
+    });
+    window.addEventListener("touchmove", handleWindowTouchMove, {
+      passive: false,
+    });
     window.addEventListener("touchend", handleWindowTouchEnd);
     window.addEventListener("touchcancel", handleWindowTouchEnd);
     return () => {
@@ -314,7 +314,9 @@ export function CreatorFeed({
         className={`creator-feed-refresh-indicator ${
           refreshing || pullDistance > 0 ? "is-visible" : ""
         } ${refreshing ? "is-refreshing" : ""}`}
-        style={{ height: refreshing ? 52 : pullDistance > 0 ? pullDistance : 0 }}
+        style={{
+          height: refreshing ? 52 : pullDistance > 0 ? pullDistance : 0,
+        }}
         aria-live="polite"
       >
         <span>
@@ -335,7 +337,7 @@ export function CreatorFeed({
         </span>
       </div>
 
-      <CreatorStories />
+      {mode === "discover" && <CreatorStories />}
 
       {showHeader && (
         <div className="mb-4">
@@ -385,31 +387,22 @@ export function CreatorFeed({
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
           <p className="font-display text-lg font-bold text-slate-900 dark:text-white">
             {mode === "following"
-              ? token
-                ? "Your following feed is empty."
-                : "Log in to see your following feed."
+              ? "You’re not following any creators yet."
               : "The creator feed is ready."}
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {mode === "following" ? (
-              token ? (
-                <>
-                  Follow creators from{" "}
-                  <Link
-                    href="/creators"
-                    className="font-semibold text-brand-700 hover:underline dark:text-brand-300"
-                  >
-                    Discover
-                  </Link>{" "}
-                  to build this feed.
-                </>
-              ) : (
-                <>Sign in to see posts from creators you follow.</>
-              )
-            ) : (
-              "Creators can share a photo or video with a caption, and travelers can like, comment, save, and share it here."
-            )}
+            {mode === "following"
+              ? "Follow creators from Discover to build your feed."
+              : "Creators can share a photo or video with a caption, and travelers can like, comment, save, and share it here."}
           </p>
+          {mode === "following" && (
+            <Link
+              href="/creators"
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-brand-700 px-5 text-sm font-bold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-400 dark:text-brand-300 dark:hover:bg-brand-950/30"
+            >
+              Discover creators
+            </Link>
+          )}
         </div>
       )}
 
