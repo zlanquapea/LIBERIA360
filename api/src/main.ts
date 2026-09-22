@@ -13,6 +13,7 @@ import { localUploadsDir } from "./uploads/local-uploads-dir";
 import { initErrorTracking } from "./error-tracking/error-tracking";
 import { SentryExceptionsFilter } from "./error-tracking/sentry-exceptions.filter";
 import { StructuredLogger } from "./logging/structured-logger";
+import { GuideChatGateway } from "./guides/guide-chat.gateway";
 
 async function bootstrap() {
   // Read directly from process.env here (same fallback as
@@ -116,6 +117,7 @@ async function bootstrap() {
 
   const port = configService.get("port", { infer: true });
   await app.listen(port);
+  app.get(GuideChatGateway).attach(app.getHttpServer());
   // eslint-disable-next-line no-console
   console.log(`LIBERIA360 API listening on http://localhost:${port}`);
 }

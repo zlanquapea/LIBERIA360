@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
@@ -19,9 +19,11 @@ import {
   getGuideReviews,
   getMyGuideExperiences,
   getMyGuideProfile,
+  openGuideChat,
   sendGuideMessage,
   updateGuideExperience,
   updateMyGuideProfile,
+  type GuideChatEvent,
   type GuideMessage,
   type GuideReviewSummary,
 } from "@/lib/guides-api";
@@ -123,6 +125,11 @@ export function GuideProfileTools({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [chatStatus, setChatStatus] = useState<
+    "offline" | "connecting" | "connected" | "reconnecting"
+  >("offline");
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [profile, setProfile] = useState({
@@ -157,6 +164,53 @@ export function GuideProfileTools({
   }, [guide.id]);
 
   useEffect(() => {
+    if (!ready || !token) {
+      setChatStatus("offline");
+      return;
+    }
+    let stopped = false;
+    let reconnectAttempt = 0;
+    const connect = () => {
+      if (stopped) return;
+      setChatStatus(reconnectAttempt === 0 ? "connecting" : "reconnecting");
+      const socket = openGuideChat(token, guide.id, (event: GuideChatEvent) => {
+        if (event.type === "guide.chat.ready") {
+          reconnectAttempt = 0;
+          setChatStatus("connected");
+        } else if (event.type === "guide.message.created") {
+          setMessages((current) =>
+            current.some((item) => item.id === event.message.id)
+              ? current
+              : [...current, event.message],
+          );
+          setActiveVisitorId((current) => current ?? event.message.visitorId);
+        } else if (event.type === "guide.chat.error") {
+          setError(event.message);
+        }
+      });
+      socketRef.current = socket;
+      socket.addEventListener("close", () => {
+        if (stopped) return;
+        setChatStatus("reconnecting");
+        reconnectAttempt += 1;
+        const delay = Math.min(
+          1000 * 2 ** Math.min(reconnectAttempt, 4),
+          15000,
+        );
+        reconnectTimerRef.current = setTimeout(connect, delay);
+      });
+      socket.addEventListener("error", () => setChatStatus("reconnecting"));
+    };
+    connect();
+    return () => {
+      stopped = true;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
+  }, [guide.id, ready, token]);
+
+  useEffect(() => {
     if (!ready || !token) return;
     getMyGuideProfile(token)
       .then((mine) => {
@@ -174,6 +228,13 @@ export function GuideProfileTools({
           getMyGuideExperiences(token)
             .then(setMyExperiences)
             .catch(() => undefined);
+          getGuideMessages(token, guide.id)
+            .then((items) => {
+              setMessages(items);
+              setActiveVisitorId(items[0]?.visitorId);
+            })
+            .catch(() => undefined);
+        } else {
           getGuideMessages(token, guide.id)
             .then((items) => {
               setMessages(items);
@@ -268,14 +329,27 @@ export function GuideProfileTools({
     setSaving(true);
     setError(null);
     try {
-      const created = await sendGuideMessage(
-        token,
-        guide.id,
-        message.trim(),
-        isOwner ? activeVisitorId : undefined,
-      );
-      setMessages((current) => [...current, created]);
-      if (!activeVisitorId) setActiveVisitorId(created.visitorId);
+      const body = message.trim();
+      const socket = socketRef.current;
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(
+          JSON.stringify({
+            type: "guide.message.send",
+            guideId: guide.id,
+            body,
+            visitorId: isOwner ? activeVisitorId : undefined,
+          }),
+        );
+      } else {
+        const created = await sendGuideMessage(
+          token,
+          guide.id,
+          body,
+          isOwner ? activeVisitorId : undefined,
+        );
+        setMessages((current) => [...current, created]);
+        if (!activeVisitorId) setActiveVisitorId(created.visitorId);
+      }
       setMessage("");
     } catch (err) {
       setError(
@@ -553,6 +627,15 @@ export function GuideProfileTools({
               <p className="mt-1 text-sm text-teal-100">
                 Plan with a local before you book an experience.
               </p>
+              {token && (
+                <p className="mt-2 text-xs font-bold text-teal-200">
+                  {chatStatus === "connected"
+                    ? "Live chat connected"
+                    : chatStatus === "reconnecting"
+                      ? "Reconnecting… messages will fall back to standard delivery"
+                      : "Connecting to live chat…"}
+                </p>
+              )}
             </div>
           </div>
           {token ? (

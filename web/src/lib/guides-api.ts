@@ -175,6 +175,31 @@ export interface GuideMessage {
   sender: { id: string; name: string } | null;
 }
 
+export type GuideChatEvent =
+  | { type: "guide.chat.ready"; guideId: string; userId: string }
+  | { type: "guide.message.created"; message: GuideMessage }
+  | { type: "guide.chat.error"; message: string };
+
+export function openGuideChat(
+  token: string,
+  guideId: string,
+  onEvent: (event: GuideChatEvent) => void,
+) {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const socket = new WebSocket(
+    `${protocol}//${window.location.host}/api/v1/guides/chat?guideId=${encodeURIComponent(guideId)}`,
+    [`bearer.${token}`],
+  );
+  socket.addEventListener("message", (event) => {
+    try {
+      onEvent(JSON.parse(event.data as string) as GuideChatEvent);
+    } catch {
+      // Ignore malformed server frames; the REST fallback remains available.
+    }
+  });
+  return socket;
+}
+
 export function getGuideMessages(token: string, guideId: string) {
   return apiRequest<GuideMessage[]>(`/guides/${guideId}/messages`, {
     headers: authHeader(token),

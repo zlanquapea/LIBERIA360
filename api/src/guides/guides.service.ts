@@ -276,6 +276,12 @@ export class GuidesService {
     return messages.map((message) => this.publicMessage(message));
   }
 
+  async getGuideOwnerId(guideId: string) {
+    const guide = await this.guideRepo.findOne({ where: { id: guideId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    return guide.userId;
+  }
+
   async sendGuideMessage(
     userId: string,
     guideId: string,
@@ -286,6 +292,14 @@ export class GuidesService {
     const visitorId = guide.userId === userId ? dto.visitorId : userId;
     if (!visitorId || visitorId === guide.userId) {
       throw new BadRequestException("A visitor conversation is required");
+    }
+    if (
+      guide.userId === userId &&
+      !(await this.messageRepo.exists({ where: { guideId, visitorId } }))
+    ) {
+      throw new ForbiddenException(
+        "This traveler has not started a conversation",
+      );
     }
     const message = await this.messageRepo.save(
       this.messageRepo.create({
