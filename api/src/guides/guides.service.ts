@@ -344,7 +344,7 @@ export class GuidesService {
         type: "guide.message",
         title: "New guide message",
         body: dto.body.trim().slice(0, 120),
-        link: `/messages?guideId=${encodeURIComponent(guideId)}&visitorId=${encodeURIComponent(visitorId)}`,
+        link: `/messages/${encodeURIComponent(guideId)}?visitorId=${encodeURIComponent(visitorId)}`,
       },
     );
     return this.publicMessage(message);
