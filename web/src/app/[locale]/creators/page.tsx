@@ -3,11 +3,13 @@ import { cookies } from "next/headers";
 import {
   ArrowRightIcon,
   CalendarDaysIcon,
+  ChatBubbleLeftRightIcon,
   CheckBadgeIcon,
   ChevronRightIcon,
   MapPinIcon,
   PlusIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   StarIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/solid";
@@ -49,14 +51,14 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className={`flex min-w-0 min-h-[92px] flex-1 items-center gap-2 rounded-2xl px-2.5 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2 ${emphasized ? "bg-[#FAECC5]" : "bg-[#E4F1F7]"}`}
+      className={`flex min-h-[80px] min-w-0 flex-1 items-center gap-1.5 rounded-2xl px-3 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2 ${emphasized ? "bg-[#FAECC5]" : "bg-[#E4F1F7]"}`}
     >
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-[#F5C242] text-[#8A6D1F]" : "bg-[#0F3B3E] text-white"}`}
       >
         {icon}
       </span>
-      <span className="min-w-0 flex-1 text-center text-[11px] font-extrabold leading-tight text-[#1A2E35] sm:text-xs">
+      <span className="min-w-0 flex-1 text-center text-[15px] font-extrabold leading-[1.2] text-[#1A2E35]">
         {label}
       </span>
       <ChevronRightIcon
@@ -159,8 +161,8 @@ export default async function CreatorsPage({
   ]);
 
   return (
-    <main className="min-h-screen bg-[#F7F8FA] px-4 pb-28 pt-4 text-[#1A2E35] sm:px-6 sm:pt-6">
-      <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4">
+    <main className="min-h-screen overflow-x-hidden bg-[#F7F8FA] px-4 pb-28 pt-0 text-[#1A2E35] sm:px-6 sm:pt-6">
+      <div className="mx-auto flex w-full max-w-[420px] flex-col">
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
             href="/creators"
@@ -182,7 +184,7 @@ export default async function CreatorsPage({
 
         <section
           aria-labelledby="creators-hero-heading"
-          className="relative min-h-[312px] overflow-hidden rounded-[24px] bg-[#0F3B3E] shadow-[0_12px_30px_rgba(15,59,62,0.18)]"
+          className="relative mt-4 h-[290px] overflow-hidden rounded-[20px] bg-[#0F3B3E] shadow-[0_12px_30px_rgba(15,59,62,0.18)]"
           style={{
             backgroundImage: "url('/onboarding/discover.jpg')",
             backgroundPosition: "62% center",
@@ -193,21 +195,28 @@ export default async function CreatorsPage({
             aria-hidden
             className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,59,62,0.98)_0%,rgba(15,59,62,0.82)_38%,rgba(15,59,62,0.2)_100%)]"
           />
-          <div className="relative flex min-h-[312px] flex-col justify-center px-6 py-8">
-            <p className="max-w-[230px] text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#A8E2E0]">
+          <div className="relative flex h-full flex-col justify-center px-5 pb-6 pt-5">
+            <div className="absolute right-6 top-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#F5C242] bg-[#0F3B3E]/70 text-[#F5C242] shadow-lg">
+              <ChatBubbleLeftRightIcon aria-hidden className="h-8 w-8" />
+              <SparklesIcon
+                aria-hidden
+                className="absolute right-1 top-1 h-4 w-4"
+              />
+            </div>
+            <p className="max-w-[75%] text-xs font-extrabold uppercase tracking-[1.5px] text-[#A8E2E0]">
               A LOCAL CREATOR COMMUNITY
             </p>
             <h1
               id="creators-hero-heading"
-              className="mt-3 max-w-[285px] text-[27px] font-extrabold leading-[1.12] tracking-tight text-white"
+              className="mt-3 max-w-[75%] text-2xl font-extrabold leading-[1.25] tracking-tight text-white"
             >
               Discover people, stories and experiences from across Liberia.
             </h1>
             <span
               aria-hidden
-              className="mt-5 h-1.5 w-[60px] rounded-full bg-[#F5C242]"
+              className="my-3 h-1 w-10 rounded-full bg-[#F5C242]"
             />
-            <p className="mt-4 text-5xl font-black tracking-tight text-white">
+            <p className="text-[40px] font-black leading-none tracking-tight text-white">
               Creators
             </p>
           </div>
@@ -215,19 +224,19 @@ export default async function CreatorsPage({
 
         <nav
           aria-label="Creator sections"
-          className="grid grid-cols-2 rounded-full bg-white p-1.5 shadow-[0_5px_18px_rgba(26,46,53,0.08)]"
+          className="mt-4 grid h-14 grid-cols-2 rounded-full bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
         >
           <Link
             href="/creators"
             aria-current={!isFollowing ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition ${!isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
+            className={`inline-flex h-12 items-center justify-center rounded-full px-3 text-base font-extrabold transition ${!isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
           >
             Discover
           </Link>
           <Link
             href="/creators?view=following"
             aria-current={isFollowing ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition ${isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
+            className={`inline-flex h-12 items-center justify-center rounded-full px-3 text-base font-extrabold transition ${isFollowing ? "bg-[#0F3B3E] text-white shadow-sm" : "text-[#6B7A85] hover:bg-[#F7F8FA]"}`}
           >
             Following
           </Link>
@@ -235,29 +244,31 @@ export default async function CreatorsPage({
 
         <section
           aria-labelledby="creator-feed-section-heading"
-          className="pt-2"
+          className="mt-6"
         >
-          <div className="flex items-end justify-between gap-3">
+          <div>
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#0F7775]">
+              <p className="text-xs font-extrabold uppercase tracking-[1.5px] text-[#0F7775]">
                 LOCAL EXPERTISE
               </p>
               <h2
                 id="creator-feed-section-heading"
-                className="mt-1 text-[25px] font-extrabold leading-tight tracking-tight text-[#1A2E35]"
+                className="mt-1 text-[28px] font-extrabold leading-tight tracking-tight text-[#1A2E35]"
               >
                 Trip Guides &amp; Hosts
               </h2>
-              <p className="mt-1 text-sm text-[#6B7A85]">
-                Experience Liberia with trusted locals.
-              </p>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <p className="text-[15px] text-[#6B7A85]">
+                  Experience Liberia with trusted locals.
+                </p>
+                <Link
+                  href="/guides"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1 text-[15px] font-extrabold text-[#0F3B3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2"
+                >
+                  See all <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
-            <Link
-              href="/guides"
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-extrabold text-[#0F3B3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F3B3E] focus-visible:ring-offset-2"
-            >
-              See all <ArrowRightIcon aria-hidden className="h-4 w-4" />
-            </Link>
           </div>
 
           {isFollowing ? (
