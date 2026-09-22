@@ -34,14 +34,6 @@ function guideTypeLabel(value: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-// Redesigned (Sep 2026 — "the three buttons look childish/unprofessional")
-// from a row of squeezed horizontal pills (icon bubble + wrapping label +
-// chevron, all fighting for ~110px of width) into the same icon-top tile
-// the rest of the app already uses for a row of quick actions (see
-// account/page.tsx's QUICK_ACTION_GROUPS tiles) — one visual language for
-// "here are some shortcuts" across the app, not a one-off. Also brings
-// dark-mode support the old version never had at all (raw hex, no `dark:`
-// variants anywhere on this page) — see the page's own doc comment below.
 function QuickAction({
   href,
   label,
@@ -56,24 +48,22 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className={`group flex min-h-[104px] flex-col justify-between gap-3 rounded-2xl border p-3.5 shadow-sm transition-colors hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
-        emphasized
-          ? "border-gold-200 bg-gold-50 hover:bg-gold-100 dark:border-gold-800 dark:bg-gold-950/20 dark:hover:bg-gold-950/30"
-          : "border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-brand-800 dark:hover:bg-brand-950/30"
+      className={`flex min-h-[80px] min-w-0 flex-1 items-center gap-1.5 rounded-2xl px-3 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
+        emphasized ? "bg-gold-100 dark:bg-gold-950/30" : "bg-brand-50 dark:bg-brand-950/40"
       }`}
     >
       <span
-        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-          emphasized
-            ? "bg-gold-400 text-brand-950"
-            : "bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300"
-        }`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${emphasized ? "bg-gold-400 text-brand-950" : "bg-brand-800 text-white"}`}
       >
-        {icon}
+        <span className="[&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>
       </span>
-      <span className="text-sm font-bold leading-tight text-slate-900 dark:text-slate-50">
+      <span className="min-w-0 flex-1 text-center text-[15px] font-extrabold leading-[1.2] text-slate-900 dark:text-slate-50">
         {label}
       </span>
+      <ChevronRightIcon
+        aria-hidden
+        className="h-3.5 w-3.5 shrink-0 text-brand-800 dark:text-brand-300"
+      />
     </Link>
   );
 }
@@ -159,19 +149,17 @@ function GuideCard({
 // Creator directory (Tech Spec §5 Creator / §3.2) — a social-style discovery
 // surface for Liberian content creators, guides, and storytellers.
 //
-// Redesigned (Sep 2026 — product feedback: "childish" quick actions, bad
-// spacing, and text disappearing into its own background) to fully adopt
-// the app's shared dark-mode-aware design tokens (brand/slate/gold, all
-// with `dark:` pairs) instead of the raw one-off hex this page previously
-// hardcoded everywhere (`bg-[#F7F8FA]`, `text-[#1A2E35]`, etc.) with no
-// `dark:` variants at all. That mismatch was the real cause of the poor
-// contrast reported below the hero: CreatorFeed → CreatorStories is a
-// shared, theme-aware component that switches to light-colored `dark:`
-// text (e.g. `dark:text-brand-300`, `dark:text-white`) whenever the site's
-// dark mode is on — but this page's own background stayed forced-light
-// regardless of theme, so that text rendered as light-on-light and nearly
-// vanished. Making every surface here theme-aware (not just the shared
-// children) fixes that for good instead of patching one heading at a time.
+// Every surface here uses the app's shared dark-mode-aware design tokens
+// (brand/slate/gold, all with `dark:` pairs) instead of raw one-off hex —
+// this page used to hardcode colors like `bg-[#F7F8FA]`/`text-[#1A2E35]`
+// with no `dark:` variants at all, which was the real cause of text
+// disappearing below the hero: CreatorFeed → CreatorStories is a shared,
+// theme-aware component that switches to light-colored `dark:` text (e.g.
+// `dark:text-brand-300`, `dark:text-white`) whenever the site's dark mode
+// is on — but this page's own background stayed forced-light regardless of
+// theme, so that text rendered as light-on-light and nearly vanished.
+// Making every surface here theme-aware (not just the shared children)
+// fixes that for good instead of patching one heading at a time.
 export default async function CreatorsPage({
   searchParams,
 }: {
@@ -186,9 +174,9 @@ export default async function CreatorsPage({
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-4 text-slate-900 dark:bg-slate-950 dark:text-slate-50 sm:px-6 sm:pt-6">
-      <div className="mx-auto flex w-full max-w-[420px] flex-col gap-4">
-        <section aria-label="Creator quick actions" className="grid grid-cols-3 gap-3">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 pb-28 pt-0 text-slate-900 dark:bg-slate-950 dark:text-slate-50 sm:px-6 sm:pt-6">
+      <div className="mx-auto flex w-full max-w-[390px] flex-col">
+        <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
             href="/creators"
             label="Find local creators"
@@ -209,7 +197,7 @@ export default async function CreatorsPage({
 
         <section
           aria-labelledby="creators-hero-heading"
-          className="relative min-h-[312px] overflow-hidden rounded-[24px] bg-brand-900 shadow-lg"
+          className="relative mt-4 h-[290px] overflow-hidden rounded-[20px] bg-brand-900 shadow-[0_12px_30px_rgba(0,47,59,0.18)]"
           style={{
             backgroundImage: "url('/onboarding/discover.jpg')",
             backgroundPosition: "62% center",
@@ -220,21 +208,21 @@ export default async function CreatorsPage({
             aria-hidden
             className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,47,59,0.98)_0%,rgba(0,47,59,0.82)_38%,rgba(0,47,59,0.2)_100%)]"
           />
-          <div className="relative flex min-h-[312px] flex-col justify-center px-6 py-8">
-            <p className="max-w-[230px] text-[10px] font-extrabold uppercase tracking-[0.22em] text-brand-200">
+          <div className="relative flex h-full flex-col justify-center px-5 pb-6 pt-5">
+            <p className="text-[11px] font-extrabold uppercase tracking-[1.5px] text-brand-200">
               A LOCAL CREATOR COMMUNITY
             </p>
             <h1
               id="creators-hero-heading"
-              className="mt-3 max-w-[285px] text-[27px] font-extrabold leading-[1.12] tracking-tight text-white"
+              className="mt-3 max-w-[220px] text-[22px] font-extrabold leading-[1.25] tracking-tight text-white"
             >
               Discover people, stories and experiences from across Liberia.
             </h1>
             <span
               aria-hidden
-              className="mt-5 h-1.5 w-[60px] rounded-full bg-gold-400"
+              className="my-3 h-1 w-10 rounded-full bg-gold-400"
             />
-            <p className="mt-4 text-5xl font-black tracking-tight text-white">
+            <p className="text-[38px] font-black leading-none tracking-tight text-white">
               Creators
             </p>
           </div>
@@ -242,19 +230,19 @@ export default async function CreatorsPage({
 
         <nav
           aria-label="Creator sections"
-          className="grid grid-cols-2 rounded-full bg-white p-1.5 shadow-sm dark:bg-slate-900"
+          className="mt-4 grid h-14 grid-cols-2 rounded-full bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:bg-slate-900"
         >
           <Link
             href="/creators"
             aria-current={!isFollowing ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition-colors ${!isFollowing ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
+            className={`inline-flex h-12 items-center justify-center rounded-full px-3 text-base font-extrabold transition-colors ${!isFollowing ? "bg-brand-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
           >
             Discover
           </Link>
           <Link
             href="/creators?view=following"
             aria-current={isFollowing ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center justify-center rounded-full px-3 text-sm font-extrabold transition-colors ${isFollowing ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
+            className={`inline-flex h-12 items-center justify-center rounded-full px-3 text-base font-extrabold transition-colors ${isFollowing ? "bg-brand-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
           >
             Following
           </Link>
@@ -262,29 +250,31 @@ export default async function CreatorsPage({
 
         <section
           aria-labelledby="creator-feed-section-heading"
-          className="pt-2"
+          className="mt-6"
         >
-          <div className="flex items-end justify-between gap-3">
+          <div>
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+              <p className="text-[11px] font-extrabold uppercase tracking-[1.5px] text-brand-700 dark:text-brand-300">
                 LOCAL EXPERTISE
               </p>
               <h2
                 id="creator-feed-section-heading"
-                className="mt-1 text-[25px] font-extrabold leading-tight tracking-tight text-slate-950 dark:text-slate-50"
+                className="mt-1 text-[26px] font-extrabold leading-tight tracking-tight text-slate-950 dark:text-slate-50"
               >
                 Trip Guides &amp; Hosts
               </h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Experience Liberia with trusted locals.
-              </p>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <p className="text-[15px] text-slate-500 dark:text-slate-400">
+                  Experience Liberia with trusted locals.
+                </p>
+                <Link
+                  href="/guides"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1 text-[15px] font-extrabold text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-brand-300"
+                >
+                  See all <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
-            <Link
-              href="/guides"
-              className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-extrabold text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-brand-300"
-            >
-              See all <ArrowRightIcon aria-hidden className="h-4 w-4" />
-            </Link>
           </div>
 
           {isFollowing ? (
