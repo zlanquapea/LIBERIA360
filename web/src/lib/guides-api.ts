@@ -1,5 +1,22 @@
 import { apiRequest, authHeader } from "./http";
 
+import type { GuideSummary } from "./api";
+
+export function getMyGuideProfile(token: string) {
+  return apiRequest<GuideSummary>("/guides/me", { headers: authHeader(token) });
+}
+
+export function updateMyGuideProfileImage(
+  token: string,
+  profileImageUrl: string | null,
+) {
+  return apiRequest<GuideSummary>("/guides/me", {
+    method: "PATCH",
+    headers: authHeader(token),
+    body: JSON.stringify({ profileImageUrl }),
+  });
+}
+
 export interface PendingGuideApplication {
   id: string;
   userId: string;

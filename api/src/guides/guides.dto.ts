@@ -201,3 +201,9 @@ export class SetGuideVerificationDto {
   @MaxLength(1000)
   reason?: string;
 }
+
+export class UpdateGuideProfileImageDto {
+  @IsOptional()
+  @IsUrl()
+  profileImageUrl?: string | null;
+}

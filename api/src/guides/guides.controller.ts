@@ -29,6 +29,7 @@ import {
   QueryGuidesDto,
   RespondGuideBookingDto,
   SetGuideVerificationDto,
+  UpdateGuideProfileImageDto,
 } from "./guides.dto";
 
 @ApiTags("Trip Guides & Hosts")
@@ -39,6 +40,23 @@ export class GuidesController {
   @Get("guides")
   listGuides(@Query() query: QueryGuidesDto) {
     return this.guidesService.listGuides(query);
+  }
+
+  @Get("guides/me")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  findMyGuideProfile(@CurrentUser() user: User) {
+    return this.guidesService.findMyProfile(user.id);
+  }
+
+  @Patch("guides/me")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updateMine(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateGuideProfileImageDto,
+  ) {
+    return this.guidesService.updateMine(user.id, dto);
   }
 
   @Get("guides/:slug")

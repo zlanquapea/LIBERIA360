@@ -31,6 +31,7 @@ import {
   QueryGuidesDto,
   RespondGuideBookingDto,
   SetGuideVerificationDto,
+  UpdateGuideProfileImageDto,
 } from "./guides.dto";
 
 const BOOKINGS_LINK = "/account/bookings";
@@ -86,6 +87,19 @@ export class GuidesService {
     });
     if (!guide) throw new NotFoundException(`Guide "${slug}" not found`);
     return this.publicGuide(guide);
+  }
+
+  async findMyProfile(userId: string) {
+    const guide = await this.guideRepo.findOne({ where: { userId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    return this.publicGuide(guide);
+  }
+
+  async updateMine(userId: string, dto: UpdateGuideProfileImageDto) {
+    const guide = await this.guideRepo.findOne({ where: { userId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    guide.profileImageUrl = dto.profileImageUrl ?? null;
+    return this.publicGuide(await this.guideRepo.save(guide));
   }
 
   async listExperiences(query: {
