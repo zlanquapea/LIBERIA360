@@ -272,6 +272,12 @@
       "event": "Search events…",
       "carListing": "Search car rentals…"
     },
+    "browseAll": {
+      "place": "Browse the full map",
+      "stay": "Browse all stays",
+      "event": "Browse all events",
+      "carListing": "Browse the full fleet"
+    },
     "dayChip": "Day {day}",
     "viewDetails": "View details",
     "tripMapLoading": "Loading map…",

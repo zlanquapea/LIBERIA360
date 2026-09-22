@@ -256,4 +256,23 @@ describe("AddTripStop", () => {
       }),
     );
   });
+
+  // Regression: the Stay tab's "browse all" link used to point at
+  // /explore, the general places map, which has no hotel filter of its
+  // own — a traveler following it saw restaurants and attractions, not
+  // the hotels this tab actually searches. /search's `type` query param
+  // is what real hotel filtering looks like.
+  it("scopes the Stay tab's browse-all link to hotels, not the general explore map", () => {
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Stay" }));
+    expect(screen.getByRole("link", { name: /browse/i })).toHaveAttribute(
+      "href",
+      "/search?type=hotel",
+    );
+  });
+
+  it("still points the Places tab's browse-all link at the general explore map", () => {
+    renderWithMessages(<AddTripStop itineraryId="trip-1" durationDays={3} onAdded={jest.fn()} />);
+    expect(screen.getByRole("link", { name: /browse/i })).toHaveAttribute("href", "/explore");
+  });
 });

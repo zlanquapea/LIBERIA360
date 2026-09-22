@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -248,6 +249,8 @@ function resolveDurationDays(dto: {
 
 @Injectable()
 export class ItinerariesService {
+  private readonly logger = new Logger(ItinerariesService.name);
+
   constructor(
     @InjectRepository(Itinerary)
     private readonly itineraryRepo: Repository<Itinerary>,
@@ -1109,7 +1112,8 @@ export class ItinerariesService {
         `This ${STOP_KIND_LABEL[kind]} is already on the trip`,
       );
     }
-    if (!(await this.stopItemExists(kind, itemId))) {
+    const item = await this.findStopItem(kind, itemId);
+    if (!item) {
       throw new NotFoundException(
         `${STOP_KIND_LABEL[kind]} "${itemId}" not found`,
       );
@@ -1128,6 +1132,24 @@ export class ItinerariesService {
           : { ...base, carListingId: itemId };
     itinerary.stops = [...itinerary.stops, newStop];
     const saved = await this.itineraryRepo.save(itinerary);
+    // So everyone on the trip sees a new car/place/event land, not just
+    // whoever added it and happens to still be looking at the stop list —
+    // same "the chat carries a record of what changed" reasoning as
+    // rename/join/cancel above. Best-effort: the stop is already saved by
+    // this point, so a failure here (e.g. the user lookup or the chat
+    // insert) must not surface as the add itself having failed — a retry
+    // would then just hit "already on the trip."
+    try {
+      const adder = await this.usersService.findById(userId);
+      await this.tripChatService.postSystemMessage(
+        itineraryId,
+        `${adder?.name ?? "Someone"} added ${this.stopItemTitle(kind, item)} to Day ${dto.day}.`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to post trip-chat message for stop added to itinerary ${itineraryId}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
     return this.findOne(userId, saved.id);
   }
 
@@ -1194,14 +1216,26 @@ export class ItinerariesService {
     return STOP_KINDS.some((kind) => stop[kind] === itemId);
   }
 
-  private async stopItemExists(kind: StopKind, id: string): Promise<boolean> {
+  private async findStopItem(
+    kind: StopKind,
+    id: string,
+  ): Promise<Place | Event | CarListing | null> {
     if (kind === "placeId") {
-      return !!(await this.placeRepo.findOne({ where: { id } }));
+      return this.placeRepo.findOne({ where: { id } });
     }
     if (kind === "eventId") {
-      return !!(await this.eventRepo.findOne({ where: { id } }));
+      return this.eventRepo.findOne({ where: { id } });
     }
-    return !!(await this.carListingRepo.findOne({ where: { id } }));
+    return this.carListingRepo.findOne({ where: { id } });
+  }
+
+  private stopItemTitle(
+    kind: StopKind,
+    item: Place | Event | CarListing,
+  ): string {
+    return kind === "carListingId"
+      ? (item as CarListing).title
+      : (item as Place | Event).name;
   }
 
   // durationDays is derived from the trip's own start/end date (see

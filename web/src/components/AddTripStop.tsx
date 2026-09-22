@@ -49,6 +49,24 @@ function resultHref(tab: Tab, item: TabResult): string {
   return `/places/${(item as Place).slug}`;
 }
 
+// The inline search above only ever shows 5 results — plenty for "I know
+// what I'm looking for," not for "show me what's out there." This is the
+// door to the real catalog page (with its own filters — category, price,
+// transmission, etc. for cars) for the other kind of browsing, same
+// new-tab reasoning as resultHref above. Each catalog card offers its own
+// quick "add to trip" too (see CarListingCard), so someone can go explore
+// and add straight from there instead of coming back to search again.
+function browseAllHref(tab: Tab): string {
+  if (tab === 'event') return '/events';
+  if (tab === 'carListing') return '/car-rentals';
+  // Explore's own filters are client-side state with no URL-driven initial
+  // value (see ExploreMapClient), so it can't be handed a "hotels only"
+  // starting point — /search's `type` query param can (see SearchPage),
+  // and stays there scoped to the catalog this tab actually searches.
+  if (tab === 'stay') return '/search?type=hotel';
+  return '/explore';
+}
+
 // Owner or any collaborator can add a stop — searches the catalog by name
 // rather than requiring an id, since that's how someone actually finds a
 // place/event/car while planning ("let's add that waterfall Marcus found").
@@ -182,6 +200,16 @@ export function AddTripStop({
           {searching ? t('searching') : t('search')}
         </button>
       </div>
+
+      <Link
+        href={browseAllHref(tab)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group inline-flex w-fit items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"
+      >
+        {t(`browseAll.${tab}`)}
+        <ArrowTopRightOnSquareIcon aria-hidden className="h-3 w-3" />
+      </Link>
 
       {durationDays > 1 && (
         <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { CalendarDaysIcon, PencilSquareIcon, TruckIcon } from '@heroicons/react/24/solid';
 import { formatCarCategory, formatCost, formatEventDateRange, formatPlaceType } from '@/lib/format';
 import { CategoryIcon } from '@/lib/icons';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { SafeImage } from './SafeImage';
 import type { ItineraryStopDetail } from '@/lib/types';
 
 // Groups an itinerary's resolved stops by day (Tech Spec §4.3) — the same
@@ -38,6 +40,34 @@ function StopIcon({ stop }: { stop: ItineraryStopDetail }) {
       iconKey={stop.place!.category.icon}
       categorySlug={stop.place!.category.slug}
       className="h-4 w-4"
+    />
+  );
+}
+
+function stopIconBadge(stop: ItineraryStopDetail) {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg text-white">
+      <StopIcon stop={stop} />
+    </span>
+  );
+}
+
+// A trip that's mostly icons+text reads as a checklist, not a place a
+// group is actually excited about — a real photo (every place/event/car
+// listing already has one) makes a just-added car/hotel/attraction
+// immediately recognizable to everyone on the trip, not just whoever
+// picked it. Falls back to the existing icon badge whenever there's no
+// image, or the image fails to load.
+function StopThumbnail({ stop }: { stop: ItineraryStopDetail }) {
+  const imagePath = stop.place?.images[0] ?? stop.event?.images[0] ?? stop.carListing?.images[0] ?? null;
+  if (!imagePath) return stopIconBadge(stop);
+  return (
+    <SafeImage
+      src={resolveImageUrl(imagePath)}
+      thumbSrc={resolveThumbUrl(imagePath)}
+      alt=""
+      className="h-9 w-9 shrink-0 rounded-full object-cover"
+      fallback={stopIconBadge(stop)}
     />
   );
 }
@@ -107,9 +137,7 @@ export function ItineraryStops({
                   <li key={`${stop.day}-${stop.order}-${itemId}`}>
                     <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card">
                       <Link href={stopHref(stop)} className="flex min-w-0 flex-1 items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-600 text-lg text-white">
-                          <StopIcon stop={stop} />
-                        </span>
+                        <StopThumbnail stop={stop} />
                         <div className="min-w-0">
                           <p className="truncate font-medium text-slate-900 dark:text-slate-50">
                             {stopTitle(stop)}

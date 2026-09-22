@@ -824,6 +824,78 @@ describe("ItinerariesService (collaboration)", () => {
       );
     });
 
+    it("posts a trip-chat system message naming the adder and the added place", async () => {
+      usersService.findById.mockResolvedValue({ id: OWNER_ID, name: "Nadia" });
+      placeRepo.findOne.mockResolvedValue({
+        id: "place-2",
+        name: "Ducor Hill",
+      });
+      await service.addStop(OWNER_ID, ITINERARY_ID, {
+        placeId: "place-2",
+        day: 1,
+      });
+      expect(tripChatService.postSystemMessage).toHaveBeenCalledWith(
+        ITINERARY_ID,
+        "Nadia added Ducor Hill to Day 1.",
+      );
+    });
+
+    it("posts a trip-chat system message for an added event, using its name not an id", async () => {
+      usersService.findById.mockResolvedValue({ id: OWNER_ID, name: "Nadia" });
+      await service.addStop(OWNER_ID, ITINERARY_ID, {
+        eventId: "event-2",
+        day: 1,
+      });
+      expect(tripChatService.postSystemMessage).toHaveBeenCalledWith(
+        ITINERARY_ID,
+        "Nadia added Beach Cleanup to Day 1.",
+      );
+    });
+
+    it("posts a trip-chat system message for an added car listing, using its title", async () => {
+      usersService.findById.mockResolvedValue({ id: OWNER_ID, name: "Nadia" });
+      await service.addStop(OWNER_ID, ITINERARY_ID, {
+        carListingId: "car-2",
+        day: 1,
+      });
+      expect(tripChatService.postSystemMessage).toHaveBeenCalledWith(
+        ITINERARY_ID,
+        "Nadia added Toyota RAV4 to Day 1.",
+      );
+    });
+
+    it("falls back to \"Someone\" in the added-stop message when the adder's name can't be resolved", async () => {
+      usersService.findById.mockResolvedValue(null);
+      await service.addStop(OWNER_ID, ITINERARY_ID, {
+        carListingId: "car-2",
+        day: 1,
+      });
+      expect(tripChatService.postSystemMessage).toHaveBeenCalledWith(
+        ITINERARY_ID,
+        "Someone added Toyota RAV4 to Day 1.",
+      );
+    });
+
+    it("still succeeds when posting the trip-chat message fails, since the stop is already saved", async () => {
+      usersService.findById.mockResolvedValue({ id: OWNER_ID, name: "Nadia" });
+      tripChatService.postSystemMessage.mockRejectedValueOnce(
+        new Error("chat insert failed"),
+      );
+      await expect(
+        service.addStop(OWNER_ID, ITINERARY_ID, {
+          carListingId: "car-2",
+          day: 1,
+        }),
+      ).resolves.toBeDefined();
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stops: expect.arrayContaining([
+            expect.objectContaining({ carListingId: "car-2", day: 1 }),
+          ]),
+        }),
+      );
+    });
+
     it("404s adding an event that doesn't exist", async () => {
       eventRepo.findOne.mockResolvedValue(null);
       await expect(
