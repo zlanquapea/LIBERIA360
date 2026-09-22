@@ -73,6 +73,13 @@ export class GuidesController {
     return this.guidesService.updateMyDetails(user.id, dto);
   }
 
+  @Get("guides/messages")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getMyGuideConversations(@CurrentUser() user: User) {
+    return this.guidesService.getMyGuideConversations(user.id);
+  }
+
   @Get("guides/:slug")
   findGuide(@Param("slug") slug: string) {
     return this.guidesService.findGuide(slug);
@@ -81,13 +88,6 @@ export class GuidesController {
   @Get("guides/:id/reviews")
   getGuideReviews(@Param("id") id: string) {
     return this.guidesService.getGuideReviews(id);
-  }
-
-  @Get("guides/messages")
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  getMyGuideConversations(@CurrentUser() user: User) {
-    return this.guidesService.getMyGuideConversations(user.id);
   }
 
   @Post("guides/:id/reviews")
