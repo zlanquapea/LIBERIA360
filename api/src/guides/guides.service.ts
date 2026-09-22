@@ -126,18 +126,33 @@ export class GuidesService {
 
   async apply(userId: string, dto: ApplyGuideDto) {
     const existing = await this.guideRepo.findOne({ where: { userId } });
-    if (existing)
+    if (
+      existing &&
+      existing.verificationStatus !== GuideVerificationStatus.REJECTED
+    )
       throw new ConflictException("You already have a guide application");
     const slugExists = await this.guideRepo.exists({
       where: { slug: dto.slug },
     });
-    if (slugExists)
+    if (slugExists && existing?.slug !== dto.slug)
       throw new ConflictException("That guide URL is already in use");
     if (
       dto.countyId &&
       !(await this.countyRepo.exists({ where: { id: dto.countyId } }))
     ) {
       throw new BadRequestException("The selected county does not exist");
+    }
+    if (existing) {
+      Object.assign(existing, {
+        ...dto,
+        countyId: dto.countyId ?? null,
+        verificationStatus: GuideVerificationStatus.PENDING,
+        verifiedAt: null,
+        verifiedBy: null,
+        ltaLicenseNumber: dto.ltaLicenseNumber ?? null,
+        whatsappNumber: dto.whatsappNumber ?? null,
+      });
+      return this.guideRepo.save(existing);
     }
     return this.guideRepo.save(
       this.guideRepo.create({

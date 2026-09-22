@@ -107,6 +107,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
+    id: "guide-applications",
+    label: "Guide Applications",
+    icon: DocumentTextIcon,
+    href: "/admin/guides",
+  },
+  {
     id: "users",
     label: "Users & Roles",
     icon: UsersIcon,

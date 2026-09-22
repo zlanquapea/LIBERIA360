@@ -12,12 +12,12 @@ export function GuideApplicationForm({
 }: {
   counties: { id: string; name: string }[];
 }) {
-  const { token } = useAuth();
+  const { token, ready } = useAuth();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) {
+    if (!ready || !token) {
       setMessage("Please sign in before applying.");
       return;
     }
@@ -41,8 +41,17 @@ export function GuideApplicationForm({
         slug: String(form.get("slug")),
       });
       const document = form.get("document");
-      if (document instanceof File && document.size > 0)
-        await uploadGuideVerificationDocument(token, document);
+      if (document instanceof File && document.size > 0) {
+        try {
+          await uploadGuideVerificationDocument(token, document);
+        } catch {
+          setMessage(
+            "Application submitted, but the verification document could not be uploaded. Please contact support or upload it again.",
+          );
+          event.currentTarget.reset();
+          return;
+        }
+      }
       setMessage(
         "Application submitted. An admin will review your profile before it becomes public.",
       );
