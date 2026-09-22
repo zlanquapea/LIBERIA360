@@ -591,20 +591,28 @@ export interface ExperienceSummary {
   guide: GuideSummary;
 }
 
-export function getGuides(
+export async function getGuides(
   query: { search?: string; county?: string; language?: string } = {},
 ): Promise<GuideSummary[]> {
-  return apiFetch<GuideSummary[]>("/guides", query, []);
+  try {
+    return await apiFetch<GuideSummary[]>("/guides", query, []);
+  } catch {
+    return [];
+  }
 }
 
 export function getGuide(slug: string): Promise<GuideSummary> {
   return apiFetch<GuideSummary>(`/guides/${slug}`);
 }
 
-export function getExperiences(
+export async function getExperiences(
   query: { search?: string; category?: string; county?: string } = {},
 ): Promise<ExperienceSummary[]> {
-  return apiFetch<ExperienceSummary[]>("/experiences", query, []);
+  try {
+    return await apiFetch<ExperienceSummary[]>("/experiences", query, []);
+  } catch {
+    return [];
+  }
 }
 
 export function getExperience(id: string): Promise<ExperienceSummary> {
