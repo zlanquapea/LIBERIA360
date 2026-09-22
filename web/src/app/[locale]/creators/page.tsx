@@ -5,10 +5,6 @@ import { CreatorCard } from "@/components/CreatorCard";
 import { CreatorFeed } from "@/components/CreatorFeed";
 import { CreatorFilters } from "@/components/CreatorFilters";
 import { CreatorDirectoryHeader } from "@/components/CreatorDirectoryHeader";
-import { SafeImage } from "@/components/SafeImage";
-import { colorForCreator, gradientForCategory } from "@/lib/category-colors";
-import { formatCreatorCategory } from "@/lib/format";
-import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import type { CreatorCategory } from "@/lib/types";
 
 export const metadata = { title: "Creators — LIBERIA360" };
@@ -59,8 +55,6 @@ export default async function CreatorsPage({
   }
 
   const hasFilters = Boolean(search || category || countyId);
-  const railCreators = result.data.slice(0, 5);
-
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 pb-12 sm:gap-6 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
       <header className="flex flex-col gap-5">
@@ -127,74 +121,6 @@ export default async function CreatorsPage({
             </section>
           )}
 
-          {!isDirectory && !hasFilters && railCreators.length > 0 && (
-            <section
-              aria-labelledby="trending-creators-heading"
-              className="flex flex-col gap-3"
-            >
-              <div className="flex items-center justify-between">
-                <h2
-                  id="trending-creators-heading"
-                  className="font-display text-lg font-bold text-slate-950 dark:text-slate-50"
-                >
-                  Trending creators
-                </h2>
-                <Link
-                  href="/creators?view=directory"
-                  aria-label="See more creators"
-                  className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/30"
-                >
-                  See more
-                </Link>
-              </div>
-              <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
-                {railCreators.map((creator) => {
-                  const avatar = creator.profileImage
-                    ? resolveImageUrl(creator.profileImage)
-                    : null;
-                  const avatarThumb = creator.profileImage
-                    ? resolveThumbUrl(creator.profileImage)
-                    : null;
-                  return (
-                    <Link
-                      key={creator.id}
-                      href={`/creators/${creator.username}`}
-                      className="flex w-20 shrink-0 flex-col items-center gap-1.5 text-center"
-                    >
-                      <span
-                        className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-accent-400 p-0.5"
-                        style={{
-                          backgroundColor: colorForCreator(creator.username),
-                        }}
-                      >
-                        <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white text-lg font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-100">
-                          <SafeImage
-                            src={avatar}
-                            thumbSrc={avatarThumb}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            fallback={
-                              <span>
-                                {creator.name.trim().charAt(0).toUpperCase() ||
-                                  "?"}
-                              </span>
-                            }
-                          />
-                        </span>
-                      </span>
-                      <span className="w-full truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        {creator.name}
-                      </span>
-                      <span className="w-full truncate text-xs text-slate-500 dark:text-slate-400">
-                        {formatCreatorCategory(creator.category)}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
           {isDirectory || hasFilters ? (
             <section
               aria-labelledby="creator-results-heading"
@@ -229,7 +155,17 @@ export default async function CreatorsPage({
               )}
             </section>
           ) : (
-            <CreatorFeed initialPosts={feed.data} />
+            <>
+              <div className="flex justify-end">
+                <Link
+                  href="/creators?view=directory"
+                  className="inline-flex min-h-11 items-center rounded-full border border-brand-200 px-4 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30"
+                >
+                  Browse creator directory
+                </Link>
+              </div>
+              <CreatorFeed initialPosts={feed.data} />
+            </>
           )}
         </>
       )}
