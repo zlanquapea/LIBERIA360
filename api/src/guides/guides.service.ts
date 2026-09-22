@@ -96,6 +96,7 @@ export class GuidesService {
   }
 
   async findExperience(id: string) {
+    if (!isUuid(id)) throw new BadRequestException("Invalid experience id");
     const experience = await this.experienceRepo.findOne({ where: { id, status: ExperienceStatus.PUBLISHED } });
     if (!experience) throw new NotFoundException(`Experience "${id}" not found`);
     return this.publicExperience(experience);
@@ -181,6 +182,7 @@ export class GuidesService {
   }
 
   async createBooking(userId: string, experienceId: string, dto: CreateGuideBookingDto) {
+    if (!isUuid(experienceId)) throw new BadRequestException("Invalid experience id");
     const experience = await this.experienceRepo.findOne({ where: { id: experienceId, status: ExperienceStatus.PUBLISHED } });
     if (!experience || experience.guide.verificationStatus !== GuideVerificationStatus.VERIFIED) {
       throw new NotFoundException("Published experience not found");
@@ -227,6 +229,7 @@ export class GuidesService {
   }
 
   async respond(userId: string, bookingId: string, dto: RespondGuideBookingDto) {
+    if (!isUuid(bookingId)) throw new BadRequestException("Invalid booking id");
     const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
     if (!booking) throw new NotFoundException("Booking not found");
     if (booking.experience.guide.userId !== userId) throw new ForbiddenException("Only the guide can respond");
@@ -247,6 +250,7 @@ export class GuidesService {
   }
 
   async review(userId: string, bookingId: string, dto: CreateGuideReviewDto) {
+    if (!isUuid(bookingId)) throw new BadRequestException("Invalid booking id");
     const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
     if (!booking) throw new NotFoundException("Booking not found");
     if (booking.travelerId !== userId) throw new ForbiddenException("Only the traveler can review this booking");
@@ -296,4 +300,8 @@ function startOfToday() {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   return date;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
