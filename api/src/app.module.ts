@@ -81,6 +81,7 @@ import { GuideProfile } from "./guides/entities/guide-profile.entity";
 import { Experience } from "./guides/entities/experience.entity";
 import { GuideBooking } from "./guides/entities/guide-booking.entity";
 import { GuideReview } from "./guides/entities/guide-review.entity";
+import { GuideMessage } from "./guides/entities/guide-message.entity";
 import { GuidesModule } from "./guides/guides.module";
 
 @Module({
@@ -151,6 +152,7 @@ import { GuidesModule } from "./guides/guides.module";
             Experience,
             GuideBooking,
             GuideReview,
+            GuideMessage,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API

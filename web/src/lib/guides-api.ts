@@ -1,6 +1,5 @@
 import { apiRequest, authHeader } from "./http";
-
-import type { GuideSummary } from "./api";
+import type { ExperienceSummary, GuideSummary } from "./api";
 
 export function getMyGuideProfile(token: string) {
   return apiRequest<GuideSummary>("/guides/me", { headers: authHeader(token) });
@@ -14,6 +13,28 @@ export function updateMyGuideProfileImage(
     method: "PATCH",
     headers: authHeader(token),
     body: JSON.stringify({ profileImageUrl }),
+  });
+}
+
+export interface UpdateGuideProfileInput {
+  guideType: string;
+  bio: string;
+  city: string;
+  countyId?: string | null;
+  languages: string[];
+  ltaLicenseNumber?: string | null;
+  whatsappNumber?: string | null;
+  slug: string;
+}
+
+export function updateMyGuideProfile(
+  token: string,
+  input: UpdateGuideProfileInput,
+) {
+  return apiRequest<GuideSummary>("/guides/me/details", {
+    method: "PATCH",
+    headers: authHeader(token),
+    body: JSON.stringify(input),
   });
 }
 
@@ -116,5 +137,88 @@ export function uploadGuideVerificationDocument(token: string, file: File) {
     method: "POST",
     headers: authHeader(token),
     body,
+  });
+}
+
+export interface GuideReviewSummary {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer: { id: string; name: string } | null;
+}
+
+export function getGuideReviews(guideId: string) {
+  return apiRequest<GuideReviewSummary[]>(`/guides/${guideId}/reviews`);
+}
+
+export function createGuideReview(
+  token: string,
+  guideId: string,
+  input: { rating: number; comment?: string },
+) {
+  return apiRequest<GuideReviewSummary>(`/guides/${guideId}/reviews`, {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export interface GuideMessage {
+  id: string;
+  guideId: string;
+  visitorId: string;
+  senderId: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+  sender: { id: string; name: string } | null;
+}
+
+export function getGuideMessages(token: string, guideId: string) {
+  return apiRequest<GuideMessage[]>(`/guides/${guideId}/messages`, {
+    headers: authHeader(token),
+  });
+}
+
+export function sendGuideMessage(
+  token: string,
+  guideId: string,
+  body: string,
+  visitorId?: string,
+) {
+  return apiRequest<GuideMessage>(`/guides/${guideId}/messages`, {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify({ body, visitorId }),
+  });
+}
+
+export function getMyGuideExperiences(token: string) {
+  return apiRequest<ExperienceSummary[]>("/guides/me/experiences", {
+    headers: authHeader(token),
+  });
+}
+
+export function createGuideExperience(
+  token: string,
+  input: Record<string, unknown>,
+) {
+  return apiRequest<ExperienceSummary>("/experiences", {
+    method: "POST",
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateGuideExperience(
+  token: string,
+  experienceId: string,
+  input: Record<string, unknown>,
+) {
+  return apiRequest<ExperienceSummary>(`/experiences/${experienceId}`, {
+    method: "PATCH",
+    headers: authHeader(token),
+    body: JSON.stringify(input),
   });
 }

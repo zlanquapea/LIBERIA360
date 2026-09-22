@@ -17,12 +17,12 @@ export class GuideReview {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(() => GuideBooking, { onDelete: "CASCADE" })
+  @ManyToOne(() => GuideBooking, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "booking_id" })
   booking: GuideBooking;
 
-  @Column({ name: "booking_id" })
-  bookingId: string;
+  @Column({ name: "booking_id", nullable: true })
+  bookingId: string | null;
 
   @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
   @JoinColumn({ name: "traveler_id" })

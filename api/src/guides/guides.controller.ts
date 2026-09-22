@@ -26,11 +26,15 @@ import {
   CreateExperienceDto,
   CreateGuideBookingDto,
   CreateGuideReviewDto,
+  CreatePublicGuideReviewDto,
   QueryGuidesDto,
   RespondGuideBookingDto,
   SetGuideVerificationDto,
+  UpdateExperienceDto,
+  UpdateGuideProfileDto,
   UpdateGuideProfileImageDto,
 } from "./guides.dto";
+import { SendGuideMessageDto } from "./dto/guide-message.dto";
 
 @ApiTags("Trip Guides & Hosts")
 @Controller()
@@ -59,9 +63,53 @@ export class GuidesController {
     return this.guidesService.updateMine(user.id, dto);
   }
 
+  @Patch("guides/me/details")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updateMyDetails(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateGuideProfileDto,
+  ) {
+    return this.guidesService.updateMyDetails(user.id, dto);
+  }
+
   @Get("guides/:slug")
   findGuide(@Param("slug") slug: string) {
     return this.guidesService.findGuide(slug);
+  }
+
+  @Get("guides/:id/reviews")
+  getGuideReviews(@Param("id") id: string) {
+    return this.guidesService.getGuideReviews(id);
+  }
+
+  @Post("guides/:id/reviews")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  createPublicGuideReview(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreatePublicGuideReviewDto,
+  ) {
+    return this.guidesService.createPublicReview(user.id, id, dto);
+  }
+
+  @Get("guides/:id/messages")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getGuideMessages(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.guidesService.getGuideMessages(user.id, id);
+  }
+
+  @Post("guides/:id/messages")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  sendGuideMessage(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: SendGuideMessageDto,
+  ) {
+    return this.guidesService.sendGuideMessage(user.id, id, dto);
   }
 
   @Get("experiences")
@@ -106,6 +154,24 @@ export class GuidesController {
     @Body() dto: CreateExperienceDto,
   ) {
     return this.guidesService.createExperience(user.id, dto);
+  }
+
+  @Get("guides/me/experiences")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getMyExperiences(@CurrentUser() user: User) {
+    return this.guidesService.getMyExperiences(user.id);
+  }
+
+  @Patch("experiences/:id")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updateExperience(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: UpdateExperienceDto,
+  ) {
+    return this.guidesService.updateExperience(user.id, id, dto);
   }
 
   @Post("experiences/:id/book")

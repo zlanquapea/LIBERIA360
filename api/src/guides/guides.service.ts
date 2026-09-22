@@ -17,6 +17,7 @@ import { GuideProfile } from "./entities/guide-profile.entity";
 import { Experience } from "./entities/experience.entity";
 import { GuideBooking } from "./entities/guide-booking.entity";
 import { GuideReview } from "./entities/guide-review.entity";
+import { GuideMessage } from "./entities/guide-message.entity";
 import {
   ExperienceStatus,
   GuideBookingStatus,
@@ -28,11 +29,15 @@ import {
   CreateExperienceDto,
   CreateGuideBookingDto,
   CreateGuideReviewDto,
+  CreatePublicGuideReviewDto,
   QueryGuidesDto,
   RespondGuideBookingDto,
   SetGuideVerificationDto,
+  UpdateExperienceDto,
+  UpdateGuideProfileDto,
   UpdateGuideProfileImageDto,
 } from "./guides.dto";
+import { SendGuideMessageDto } from "./dto/guide-message.dto";
 
 const BOOKINGS_LINK = "/account/bookings";
 
@@ -47,6 +52,8 @@ export class GuidesService {
     private readonly bookingRepo: Repository<GuideBooking>,
     @InjectRepository(GuideReview)
     private readonly reviewRepo: Repository<GuideReview>,
+    @InjectRepository(GuideMessage)
+    private readonly messageRepo: Repository<GuideMessage>,
     @InjectRepository(County)
     private readonly countyRepo: Repository<County>,
     private readonly notificationsService: NotificationsService,
@@ -102,6 +109,30 @@ export class GuidesService {
     return this.publicGuide(await this.guideRepo.save(guide));
   }
 
+  async updateMyDetails(userId: string, dto: UpdateGuideProfileDto) {
+    const guide = await this.guideRepo.findOne({ where: { userId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    const slugExists = await this.guideRepo.exists({
+      where: { slug: dto.slug },
+    });
+    if (slugExists && guide.slug !== dto.slug) {
+      throw new ConflictException("That guide URL is already in use");
+    }
+    if (
+      dto.countyId &&
+      !(await this.countyRepo.exists({ where: { id: dto.countyId } }))
+    ) {
+      throw new BadRequestException("The selected county does not exist");
+    }
+    Object.assign(guide, {
+      ...dto,
+      countyId: dto.countyId ?? null,
+      ltaLicenseNumber: dto.ltaLicenseNumber ?? null,
+      whatsappNumber: dto.whatsappNumber ?? null,
+    });
+    return this.publicGuide(await this.guideRepo.save(guide));
+  }
+
   async listExperiences(query: {
     search?: string;
     category?: string;
@@ -136,6 +167,145 @@ export class GuidesService {
     if (!experience)
       throw new NotFoundException(`Experience "${id}" not found`);
     return this.publicExperience(experience);
+  }
+
+  async getMyExperiences(userId: string) {
+    const guide = await this.guideRepo.findOne({ where: { userId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    const experiences = await this.experienceRepo.find({
+      where: { guideId: guide.id },
+      order: { createdAt: "DESC" },
+    });
+    return Promise.all(
+      experiences.map((experience) => this.publicExperience(experience)),
+    );
+  }
+
+  async updateExperience(userId: string, id: string, dto: UpdateExperienceDto) {
+    if (!isUuid(id)) throw new BadRequestException("Invalid experience id");
+    const experience = await this.experienceRepo.findOne({ where: { id } });
+    if (!experience) throw new NotFoundException("Experience not found");
+    if (experience.guide.userId !== userId) {
+      throw new ForbiddenException("Only the guide can edit this experience");
+    }
+    Object.assign(experience, dto);
+    return this.publicExperience(await this.experienceRepo.save(experience));
+  }
+
+  async getGuideReviews(guideId: string) {
+    const reviews = await this.reviewRepo.find({
+      where: { guideId },
+      order: { createdAt: "DESC" },
+    });
+    return reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: review.createdAt,
+      reviewer: review.traveler
+        ? { id: review.traveler.id, name: review.traveler.name }
+        : null,
+    }));
+  }
+
+  async createPublicReview(
+    userId: string,
+    guideId: string,
+    dto: CreatePublicGuideReviewDto,
+  ) {
+    const guide = await this.guideRepo.findOne({ where: { id: guideId } });
+    if (
+      !guide ||
+      guide.verificationStatus !== GuideVerificationStatus.VERIFIED
+    ) {
+      throw new NotFoundException("Guide profile not found");
+    }
+    if (guide.userId === userId) {
+      throw new ForbiddenException("You cannot review your own guide profile");
+    }
+    const alreadyReviewed = await this.reviewRepo.exists({
+      where: { guideId, travelerId: userId },
+    });
+    if (alreadyReviewed)
+      throw new ConflictException("You already reviewed this guide");
+    const review = await this.reviewRepo.save(
+      this.reviewRepo.create({
+        bookingId: null,
+        travelerId: userId,
+        guideId,
+        rating: dto.rating,
+        comment: dto.comment?.trim() || null,
+      }),
+    );
+    return {
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: review.createdAt,
+      reviewer: review.traveler
+        ? { id: review.traveler.id, name: review.traveler.name }
+        : null,
+    };
+  }
+
+  async getGuideMessages(userId: string, guideId: string) {
+    const guide = await this.guideRepo.findOne({ where: { id: guideId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    const visitorId = guide.userId === userId ? undefined : userId;
+    const messages = await this.messageRepo
+      .createQueryBuilder("message")
+      .where("message.guide_id = :guideId", { guideId })
+      .andWhere(
+        visitorId
+          ? "message.visitor_id = :visitorId"
+          : "message.visitor_id IN (SELECT DISTINCT visitor_id FROM guide_messages WHERE guide_id = :guideId AND sender_id = :guideUserId)",
+        visitorId ? { visitorId } : { guideUserId: guide.userId },
+      )
+      .orderBy("message.created_at", "ASC")
+      .getMany();
+    if (messages.length) {
+      await this.messageRepo
+        .createQueryBuilder()
+        .update(GuideMessage)
+        .set({ readAt: new Date() })
+        .where("guide_id = :guideId", { guideId })
+        .andWhere("sender_id != :userId", { userId })
+        .andWhere("read_at IS NULL")
+        .execute();
+    }
+    return messages.map((message) => this.publicMessage(message));
+  }
+
+  async sendGuideMessage(
+    userId: string,
+    guideId: string,
+    dto: SendGuideMessageDto,
+  ) {
+    const guide = await this.guideRepo.findOne({ where: { id: guideId } });
+    if (!guide) throw new NotFoundException("Guide profile not found");
+    const visitorId = guide.userId === userId ? dto.visitorId : userId;
+    if (!visitorId || visitorId === guide.userId) {
+      throw new BadRequestException("A visitor conversation is required");
+    }
+    const message = await this.messageRepo.save(
+      this.messageRepo.create({
+        guideId,
+        visitorId,
+        senderId: userId,
+        body: dto.body.trim(),
+        readAt: null,
+      }),
+    );
+    await this.notificationsService.create(
+      userId === guide.userId ? visitorId : guide.userId,
+      {
+        type: "guide.message",
+        title: "New guide message",
+        body: dto.body.trim().slice(0, 120),
+        link: `/guides/${guide.slug}`,
+      },
+    );
+    return this.publicMessage(message);
   }
 
   async apply(userId: string, dto: ApplyGuideDto) {
@@ -444,6 +614,21 @@ export class GuidesService {
       profileImageUrl: guide.profileImageUrl,
       rating: Number(Number(stats?.rating ?? 0).toFixed(1)),
       reviewCount: Number(stats?.reviewCount ?? 0),
+    };
+  }
+
+  private publicMessage(message: GuideMessage) {
+    return {
+      id: message.id,
+      guideId: message.guideId,
+      visitorId: message.visitorId,
+      senderId: message.senderId,
+      body: message.body,
+      readAt: message.readAt,
+      createdAt: message.createdAt,
+      sender: message.sender
+        ? { id: message.sender.id, name: message.sender.name }
+        : null,
     };
   }
 

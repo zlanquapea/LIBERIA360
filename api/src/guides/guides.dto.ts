@@ -207,3 +207,123 @@ export class UpdateGuideProfileImageDto {
   @IsUrl()
   profileImageUrl?: string | null;
 }
+
+export class UpdateGuideProfileDto {
+  @IsEnum(GuideType)
+  guideType: GuideType;
+
+  @IsString()
+  @MinLength(30)
+  @MaxLength(4000)
+  bio: string;
+
+  @IsString()
+  @MaxLength(120)
+  city: string;
+
+  @IsOptional()
+  @IsString()
+  countyId?: string | null;
+
+  @IsArray()
+  @IsString({ each: true })
+  languages: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  ltaLicenseNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  whatsappNumber?: string | null;
+
+  @IsString()
+  @MaxLength(180)
+  slug: string;
+}
+
+export class CreatePublicGuideReviewDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(3000)
+  comment?: string;
+}
+
+export class UpdateExperienceDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(180)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(30)
+  @MaxLength(10000)
+  description?: string;
+
+  @IsOptional()
+  @IsEnum(ExperienceCategory)
+  category?: ExperienceCategory;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  county?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  @Max(1440)
+  durationMinutes?: number;
+
+  @IsOptional()
+  @IsEnum(ExperienceGroupType)
+  groupType?: ExperienceGroupType;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  maxGroupSize?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceUsd?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  priceLrd?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  meetingPointText?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  includes?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  cancellationPolicy?: string;
+
+  @IsOptional()
+  @IsUrl()
+  coverImageUrl?: string | null;
+
+  @IsOptional()
+  @IsEnum(ExperienceStatus)
+  status?: ExperienceStatus;
+}

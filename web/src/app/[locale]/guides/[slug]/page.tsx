@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getGuide, getExperiences } from "@/lib/api";
 import { ChevronRightIcon, MapPinIcon } from "@heroicons/react/24/solid";
 import { GuideProfileHero } from "@/components/GuideProfileHero";
+import { GuideProfileTools } from "@/components/GuideProfileTools";
 
 export async function generateMetadata({
   params,
@@ -97,6 +98,7 @@ export default async function GuidePage({
           </div>
         )}
       </section>
+      <GuideProfileTools guide={guide} initialExperiences={experiences} />
     </main>
   );
 }
