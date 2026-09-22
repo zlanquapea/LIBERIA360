@@ -144,7 +144,17 @@ export class GuideChatGateway {
     const bearerProtocol = protocols.find((protocol) =>
       protocol.startsWith("bearer."),
     );
-    return bearerProtocol?.slice("bearer.".length) ?? null;
+    if (bearerProtocol) return bearerProtocol.slice("bearer.".length);
+    const cookie = String(request.headers.cookie ?? "")
+      .split(";")
+      .map((item) => item.trim())
+      .find((item) => item.startsWith("liberia360_session="));
+    if (!cookie) return null;
+    try {
+      return decodeURIComponent(cookie.slice("liberia360_session=".length));
+    } catch {
+      return null;
+    }
   }
 
   private broadcast(guideId: string, visitorId: string, payload: unknown) {

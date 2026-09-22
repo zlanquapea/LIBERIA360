@@ -186,10 +186,11 @@ export function openGuideChat(
   onEvent: (event: GuideChatEvent) => void,
 ) {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const socket = new WebSocket(
-    `${protocol}//${window.location.host}/api/v1/guides/chat?guideId=${encodeURIComponent(guideId)}`,
-    [`bearer.${token}`],
-  );
+  const url = `${protocol}//${window.location.host}/api/v1/guides/chat?guideId=${encodeURIComponent(guideId)}`;
+  const socket =
+    token === "cookie-session"
+      ? new WebSocket(url)
+      : new WebSocket(url, [`bearer.${token}`]);
   socket.addEventListener("message", (event) => {
     try {
       onEvent(JSON.parse(event.data as string) as GuideChatEvent);

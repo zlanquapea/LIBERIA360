@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDaysIcon,
   CheckBadgeIcon,
   ChatBubbleLeftRightIcon,
   MapPinIcon,
+  PhoneIcon,
   StarIcon,
 } from "@heroicons/react/24/solid";
 import { useAuth } from "@/hooks/useAuth";
@@ -126,21 +128,26 @@ export function GuideProfileHero({
         </div>
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        {!isOwner && (
+        <Link
+          href={`/guides/${guide.slug}/messages`}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 font-bold text-white transition hover:bg-brand-800"
+        >
+          <ChatBubbleLeftRightIcon className="h-5 w-5" />
+          {isOwner ? "Open inbox" : "Message in app"}
+        </Link>
+        {!isOwner && guide.whatsappNumber && (
           <a
-            href={
-              guide.whatsappNumber
-                ? `https://wa.me/${guide.whatsappNumber.replace(/\D/g, "")}`
-                : undefined
-            }
-            className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 font-bold text-white ${!guide.whatsappNumber ? "pointer-events-none opacity-50" : ""}`}
+            href={`https://wa.me/${guide.whatsappNumber.replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-emerald-600 px-5 font-bold text-emerald-700 transition hover:bg-emerald-50 dark:text-emerald-300"
           >
-            <ChatBubbleLeftRightIcon className="h-5 w-5" /> Message
+            <PhoneIcon className="h-5 w-5" /> WhatsApp
           </a>
         )}
         <a
           href="#experiences"
-          className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-brand-700 px-5 font-bold text-brand-700 ${isOwner ? "sm:col-span-2" : ""}`}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-brand-700 px-5 font-bold text-brand-700"
         >
           <CalendarDaysIcon className="h-5 w-5" /> View Experiences
         </a>
