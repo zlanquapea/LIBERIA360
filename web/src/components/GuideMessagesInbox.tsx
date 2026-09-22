@@ -16,12 +16,16 @@ export function GuideMessagesInbox() {
   const { token, ready, user } = useAuth();
   const [items, setItems] = useState<GuideConversationSummary[]>([]);
   const [query, setQuery] = useState("");
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!ready || !token) return;
     getMyGuideConversations(token)
       .then(setItems)
-      .catch(() => setItems([]));
+      .catch(() => {
+        setItems([]);
+        setLoadError(true);
+      });
   }, [ready, token]);
 
   const filtered = useMemo(
@@ -72,7 +76,16 @@ export function GuideMessagesInbox() {
           </p>
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto p-2">
-          {filtered.length === 0 ? (
+          {loadError ? (
+            <div className="px-5 py-16 text-center">
+              <ChatBubbleLeftRightIcon className="mx-auto h-10 w-10 text-rose-300" />
+              <p className="mt-3 font-bold">Messages could not be loaded</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Refresh the page and try again. Your saved conversations have
+                not been deleted.
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="px-5 py-16 text-center">
               <ChatBubbleLeftRightIcon className="mx-auto h-10 w-10 text-brand-300" />
               <p className="mt-3 font-bold">No chats yet</p>

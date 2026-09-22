@@ -277,12 +277,20 @@ export class GuidesService {
   }
 
   async getMyGuideConversations(userId: string) {
+    const ownedGuides = await this.guideRepo.find({ where: { userId } });
+    const ownedGuideIds = ownedGuides.map((guide) => guide.id);
     const messages = await this.messageRepo
       .createQueryBuilder("message")
       .leftJoinAndSelect("message.guide", "guide")
-      .leftJoinAndSelect("guide.user", "guideUser")
+      .leftJoinAndSelect("message.visitor", "visitor")
+      .leftJoinAndSelect("message.sender", "sender")
       .where("message.visitor_id = :userId", { userId })
-      .orWhere("guide.user_id = :userId", { userId })
+      .orWhere(
+        ownedGuideIds.length
+          ? "message.guide_id IN (:...ownedGuideIds)"
+          : "1 = 0",
+        { ownedGuideIds },
+      )
       .orderBy("message.created_at", "DESC")
       .getMany();
     const conversations = new Map<string, GuideMessage>();
