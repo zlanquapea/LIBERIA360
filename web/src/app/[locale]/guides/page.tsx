@@ -39,7 +39,7 @@ export default async function GuidesPage({ searchParams }: { searchParams: Promi
       <PageHeader
         eyebrow="Explore with a local"
         title="Trip Guides & Hosts"
-        description="Meet verified local guides offering bookable city, culture, nature, food, and adventure experiences."
+        description="Meet verified local guides offering bookable city, culture, nature, food, and adventure experiences across Liberia."
         action={<Link href="/guides/apply" className="button-secondary">Become a guide</Link>}
       />
       <form className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
