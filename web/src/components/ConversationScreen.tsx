@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   FaceSmileIcon,
+  MicrophoneIcon,
   PaperClipIcon,
   PaperAirplaneIcon,
   PhoneIcon,
+  StopIcon,
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +18,8 @@ import {
   openConversationSocket,
   sendConversationMessage,
   toggleConversationReaction,
+  uploadMessageMedia,
+  type ConversationAttachment,
   type Conversation,
   type ConversationMessage,
   type ConversationRealtimeClientEvent,
@@ -35,10 +39,18 @@ export function ConversationScreen({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const pendingBodyRef = useRef<string | null>(null);
+  const pendingAttachmentsRef = useRef<ConversationAttachment[]>([]);
   const other = conversation?.otherParticipant ?? null;
   useEffect(() => {
     if (!token) return;
@@ -96,8 +108,10 @@ export function ConversationScreen({
               } satisfies ConversationRealtimeClientEvent),
             );
           }
-          if (payload.message.senderId === user?.id)
+          if (payload.message.senderId === user?.id) {
             pendingBodyRef.current = null;
+            pendingAttachmentsRef.current = [];
+          }
           setSending(false);
         } else if (payload.type === "conversation.receipt") {
           setMessages((current) =>
@@ -123,6 +137,8 @@ export function ConversationScreen({
           setTypingUserId(null);
         } else if (payload.type === "conversation.error") {
           if (pendingBodyRef.current) setDraft(pendingBodyRef.current);
+          if (pendingAttachmentsRef.current.length)
+            setAttachments(pendingAttachmentsRef.current);
           pendingBodyRef.current = null;
           setSending(false);
           setError(payload.message);
@@ -146,14 +162,29 @@ export function ConversationScreen({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
   async function send() {
-    if (!token || !draft.trim() || sending) return;
+    if (
+      !token ||
+      (!draft.trim() && attachments.length === 0) ||
+      sending ||
+      uploading
+    )
+      return;
     setSending(true);
     setError(null);
     const body = draft.trim();
+    const outgoingAttachments = attachments;
+    const messageType =
+      outgoingAttachments.length === 1
+        ? outgoingAttachments[0].kind === "audio"
+          ? "voice"
+          : outgoingAttachments[0].kind
+        : "file";
     setDraft("");
+    setAttachments([]);
     const socket = socketRef.current;
     if (socket?.readyState === WebSocket.OPEN) {
       pendingBodyRef.current = body;
+      pendingAttachmentsRef.current = outgoingAttachments;
       socket.send(
         JSON.stringify({
           type: "conversation.typing.stop",
@@ -163,6 +194,8 @@ export function ConversationScreen({
         JSON.stringify({
           type: "conversation.message.send",
           body,
+          messageType,
+          attachments: outgoingAttachments,
         } satisfies ConversationRealtimeClientEvent),
       );
       setSending(false);
@@ -173,6 +206,8 @@ export function ConversationScreen({
         token,
         conversationId,
         body,
+        messageType,
+        outgoingAttachments,
       );
       setMessages((current) =>
         current.some((item) => item.id === created.id)
@@ -181,6 +216,7 @@ export function ConversationScreen({
       );
     } catch (err) {
       setDraft(body);
+      setAttachments(outgoingAttachments);
       setError(
         err instanceof HttpError ? err.message : "Message could not be sent.",
       );
@@ -209,6 +245,83 @@ export function ConversationScreen({
             } satisfies ConversationRealtimeClientEvent),
           );
       }, 2200);
+    }
+  }
+  async function uploadFiles(files: FileList | null) {
+    if (!token || !files?.length) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const uploaded: ConversationAttachment[] = [];
+      for (const file of Array.from(files).slice(0, 10 - attachments.length)) {
+        uploaded.push(await uploadMessageMedia(token, file));
+      }
+      setAttachments((current) => [...current, ...uploaded].slice(0, 10));
+    } catch (err) {
+      setError(err instanceof HttpError ? err.message : "Media upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function toggleRecording() {
+    if (!token) return;
+    if (recording) {
+      recorderRef.current?.stop();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+      setRecording(false);
+      return;
+    }
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setError("Voice notes are not supported in this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/ogg;codecs=opus",
+        "audio/webm",
+      ].find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(recordingChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        const file = new File([blob], `voice-note-${Date.now()}.webm`, {
+          type: blob.type,
+        });
+        setUploading(true);
+        try {
+          const uploaded = await uploadMessageMedia(token, file);
+          setAttachments((current) => [...current, uploaded].slice(0, 10));
+        } catch (err) {
+          setError(
+            err instanceof HttpError
+              ? err.message
+              : "Voice note upload failed.",
+          );
+        } finally {
+          setUploading(false);
+          recordingStreamRef.current = null;
+          recorderRef.current = null;
+        }
+      };
+      recorder.start();
+      setRecording(true);
+    } catch {
+      setError("Microphone access was not granted.");
     }
   }
   async function react(messageId: string, emoji: string) {
@@ -295,7 +408,53 @@ export function ConversationScreen({
                 <div
                   className={`relative max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${own ? "rounded-br-md bg-[#d9fdd3] text-slate-900" : "rounded-bl-md bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"}`}
                 >
-                  <p className="whitespace-pre-wrap">{message.body}</p>
+                  {message.attachments?.map((attachment) => (
+                    <div
+                      key={attachment.url}
+                      className="mb-2 overflow-hidden rounded-xl"
+                    >
+                      {attachment.kind === "image" ? (
+                        <a
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <img
+                            src={attachment.url}
+                            alt={attachment.name ?? "Shared image"}
+                            className="max-h-72 max-w-full object-cover"
+                          />
+                        </a>
+                      ) : attachment.kind === "video" ? (
+                        <video
+                          controls
+                          preload="metadata"
+                          poster={attachment.thumbnailUrl ?? undefined}
+                          src={attachment.url}
+                          className="max-h-72 max-w-full"
+                        />
+                      ) : attachment.kind === "audio" ? (
+                        <audio
+                          controls
+                          preload="metadata"
+                          src={attachment.url}
+                          className="max-w-full"
+                        />
+                      ) : (
+                        <a
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block px-3 py-2 text-xs font-semibold underline"
+                        >
+                          {attachment.name ?? "Download attachment"}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                  {message.body && (
+                    <p className="whitespace-pre-wrap">{message.body}</p>
+                  )}
                   <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-500">
                     <span>
                       {new Date(message.createdAt).toLocaleTimeString([], {
@@ -346,6 +505,60 @@ export function ConversationScreen({
           </p>
         )}
         <div className="border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,audio/*"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              void uploadFiles(event.target.files);
+              event.currentTarget.value = "";
+            }}
+          />
+          {attachments.length > 0 && (
+            <div className="mb-3 flex gap-2 overflow-x-auto">
+              {attachments.map((attachment, index) => (
+                <div
+                  key={`${attachment.url}-${index}`}
+                  className="relative shrink-0 rounded-xl bg-slate-100 p-2 text-xs dark:bg-slate-800"
+                >
+                  {attachment.kind === "image" ? (
+                    <img
+                      src={attachment.thumbnailUrl ?? attachment.url}
+                      alt={attachment.name ?? "Attachment preview"}
+                      className="h-16 w-16 rounded-lg object-cover"
+                    />
+                  ) : attachment.kind === "audio" ? (
+                    <span className="flex h-16 w-24 items-center justify-center font-bold text-brand-700">
+                      Voice note
+                    </span>
+                  ) : (
+                    <span className="flex h-16 w-24 items-center justify-center font-bold capitalize text-slate-600">
+                      {attachment.kind}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${attachment.name ?? "attachment"}`}
+                    onClick={() =>
+                      setAttachments((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index),
+                      )
+                    }
+                    className="absolute -right-1 -top-1 rounded-full bg-slate-900 px-1.5 text-xs text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {uploading && (
+            <p className="mb-2 text-xs font-semibold text-brand-700">
+              Uploading media…
+            </p>
+          )}
           <div className="mb-2 flex gap-2 overflow-x-auto">
             <button
               onClick={() =>
@@ -371,16 +584,33 @@ export function ConversationScreen({
           <div className="flex items-end gap-2">
             <button
               aria-label="Add attachment"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
               className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
             >
               <PaperClipIcon className="h-5 w-5" />
             </button>
             <button
               aria-label="Add emoji"
+              type="button"
               onClick={() => setDraft((current) => `${current} 😊`)}
               className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
             >
               <FaceSmileIcon className="h-5 w-5" />
+            </button>
+            <button
+              aria-label={
+                recording ? "Stop voice note recording" : "Record voice note"
+              }
+              type="button"
+              onClick={() => void toggleRecording()}
+              className={`rounded-full p-2 ${recording ? "bg-rose-100 text-rose-700" : "text-slate-500 hover:bg-slate-100"}`}
+            >
+              {recording ? (
+                <StopIcon className="h-5 w-5" />
+              ) : (
+                <MicrophoneIcon className="h-5 w-5" />
+              )}
             </button>
             <textarea
               aria-label="Message"
@@ -398,7 +628,12 @@ export function ConversationScreen({
             />
             <button
               onClick={() => void send()}
-              disabled={!draft.trim() || sending}
+              disabled={
+                (!draft.trim() && attachments.length === 0) ||
+                sending ||
+                uploading ||
+                recording
+              }
               aria-label="Send message"
               className="rounded-full bg-brand-700 p-3 text-white shadow-lg disabled:opacity-40"
             >

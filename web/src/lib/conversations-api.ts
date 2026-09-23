@@ -1,4 +1,12 @@
-import { apiRequest, authHeader } from "./http";
+import { apiRequest, authHeader, HttpError } from "./http";
+export interface ConversationAttachment {
+  url: string;
+  thumbnailUrl?: string | null;
+  contentType: string;
+  kind: "image" | "video" | "audio" | "file";
+  name?: string;
+  size?: number;
+}
 export interface ConversationParticipant {
   id: string;
   name: string;
@@ -12,7 +20,7 @@ export interface ConversationMessage {
   sender: { id: string; name: string; profileImage: string | null } | null;
   body: string;
   messageType: string;
-  attachments: Array<Record<string, unknown>>;
+  attachments: ConversationAttachment[];
   reactions: Record<string, string[]>;
   deliveredAt: string | null;
   readAt: string | null;
@@ -50,7 +58,12 @@ export type ConversationRealtimeEvent =
     }
   | { type: "conversation.error"; message: string };
 export type ConversationRealtimeClientEvent =
-  | { type: "conversation.message.send"; body: string }
+  | {
+      type: "conversation.message.send";
+      body?: string;
+      messageType?: string;
+      attachments?: ConversationAttachment[];
+    }
   | { type: "conversation.typing.start" }
   | { type: "conversation.typing.stop" }
   | { type: "conversation.read" };
@@ -78,12 +91,67 @@ export function sendConversationMessage(
   token: string,
   id: string,
   body: string,
+  messageType = "text",
+  attachments: ConversationAttachment[] = [],
 ) {
   return apiRequest<ConversationMessage>(`/conversations/${id}/messages`, {
     method: "POST",
     headers: authHeader(token),
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, messageType, attachments }),
   });
+}
+const MAX_MESSAGE_MEDIA_BYTES = 50 * 1024 * 1024;
+const MESSAGE_MEDIA_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/ogg",
+  "audio/webm",
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/wav",
+  "audio/x-m4a",
+];
+export async function uploadMessageMedia(
+  token: string,
+  file: File,
+): Promise<ConversationAttachment> {
+  void token;
+  if (!MESSAGE_MEDIA_TYPES.includes(file.type))
+    throw new HttpError(
+      400,
+      "This image, video, or audio format is not supported.",
+    );
+  if (file.size > MAX_MESSAGE_MEDIA_BYTES)
+    throw new HttpError(400, "Message media must be smaller than 50MB.");
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch("/api/v1/uploads/message-media", {
+    method: "POST",
+    credentials: "same-origin",
+    body: form,
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = (data as { message?: unknown } | null)?.message;
+    throw new HttpError(
+      response.status,
+      typeof message === "string" ? message : "Media upload failed.",
+    );
+  }
+  const result = data as {
+    url: string;
+    thumbnailUrl: string | null;
+    contentType: string;
+    kind: ConversationAttachment["kind"];
+    size: number;
+  };
+  return { ...result, name: file.name, size: file.size };
 }
 export function markConversationRead(token: string, id: string) {
   return apiRequest<void>(`/conversations/${id}/read`, {

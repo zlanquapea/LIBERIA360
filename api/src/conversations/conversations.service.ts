@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -166,13 +167,44 @@ export class ConversationsService {
     dto: SendConversationMessageDto,
   ) {
     const membership = await this.requireMember(userId, conversationId);
+    const body = dto.body?.trim() ?? "";
+    const attachments = dto.attachments ?? [];
+    if (!body && attachments.length === 0) {
+      throw new BadRequestException("A message needs text or an attachment");
+    }
+    if (attachments.length > 10) {
+      throw new BadRequestException(
+        "A message can include up to 10 attachments",
+      );
+    }
+    if (
+      dto.messageType &&
+      !["text", "image", "file", "voice", "location"].includes(dto.messageType)
+    ) {
+      throw new BadRequestException("Unsupported message type");
+    }
+    for (const attachment of attachments) {
+      if (
+        typeof attachment.url !== "string" ||
+        attachment.url.length === 0 ||
+        attachment.url.length > 2000
+      ) {
+        throw new BadRequestException("Every attachment needs a valid URL");
+      }
+      if (
+        attachment.kind !== undefined &&
+        !["image", "video", "audio", "file"].includes(String(attachment.kind))
+      ) {
+        throw new BadRequestException("Unsupported attachment type");
+      }
+    }
     const message = await this.messageRepo.save(
       this.messageRepo.create({
         conversationId,
         senderId: userId,
-        body: dto.body.trim(),
+        body,
         messageType: dto.messageType ?? "text",
-        attachments: dto.attachments ?? [],
+        attachments,
         reactions: {},
         deliveredAt: null,
         readAt: null,
@@ -193,7 +225,7 @@ export class ConversationsService {
       await this.notifications.createMany(recipientIds, {
         type: "guide.message",
         title: "New message",
-        body: dto.body.trim().slice(0, 120),
+        body: body.slice(0, 120) || "Sent an attachment",
         link: `/messages/${encodeURIComponent(conversationId)}`,
       });
     void membership;

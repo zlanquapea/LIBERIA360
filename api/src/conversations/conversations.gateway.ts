@@ -15,7 +15,12 @@ interface ConversationSocket extends WebSocket {
   conversationId?: string;
 }
 type ClientEvent =
-  | { type: "conversation.message.send"; body: string }
+  | {
+      type: "conversation.message.send";
+      body?: string;
+      messageType?: string;
+      attachments?: Array<Record<string, unknown>>;
+    }
   | { type: "conversation.typing.start" }
   | { type: "conversation.typing.stop" }
   | { type: "conversation.read" };
@@ -125,15 +130,14 @@ export class ConversationsGateway {
       }
       if (event.type !== "conversation.message.send")
         throw new Error("Unsupported conversation event");
-      if (
-        typeof event.body !== "string" ||
-        event.body.trim().length === 0 ||
-        event.body.length > 4000
-      ) {
-        throw new Error("Message body must be between 1 and 4000 characters");
+      const body = typeof event.body === "string" ? event.body : "";
+      if (body.length > 4000 || (!body.trim() && !event.attachments?.length)) {
+        throw new Error("Message body or attachment is required");
       }
       const message = await this.conversations.send(userId, conversationId, {
-        body: event.body,
+        body,
+        messageType: event.messageType,
+        attachments: event.attachments,
       } satisfies SendConversationMessageDto);
       this.broadcast(conversationId, {
         type: "conversation.message.created",

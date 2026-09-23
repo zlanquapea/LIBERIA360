@@ -18,7 +18,7 @@ export class CreateConversationDto {
 }
 
 export class SendConversationMessageDto {
-  @IsString() @MinLength(1) @MaxLength(4000) body: string;
+  @IsString() @MaxLength(4000) body: string;
   @IsOptional()
   @IsIn(["text", "image", "file", "voice", "location"])
   messageType?: string;

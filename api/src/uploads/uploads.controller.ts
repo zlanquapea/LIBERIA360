@@ -36,6 +36,22 @@ const ALLOWED_MIME_TYPES = [
 // Raw upload cap, before re-encoding shrinks it further (see
 // image-processing.ts) — generous enough for an unedited phone photo.
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_MESSAGE_MEDIA_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+const ALLOWED_AUDIO_MIME_TYPES = [
+  "audio/webm",
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/wav",
+  "audio/x-m4a",
+];
+function isAllowedAudioMimeType(mimeType: string) {
+  return (
+    ALLOWED_AUDIO_MIME_TYPES.includes(mimeType) ||
+    mimeType.startsWith("audio/webm") ||
+    mimeType.startsWith("audio/ogg")
+  );
+}
 
 /**
  * Photo upload for reviews/business/place listings. Every upload is
@@ -137,6 +153,135 @@ export class UploadsController {
         }),
     ]);
     return { url };
+  }
+
+  @Post("message-media")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 20, ttl: seconds(60) } })
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_MESSAGE_MEDIA_FILE_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        const supported =
+          ALLOWED_MIME_TYPES.includes(file.mimetype) ||
+          ALLOWED_VIDEO_MIME_TYPES.includes(
+            file.mimetype as (typeof ALLOWED_VIDEO_MIME_TYPES)[number],
+          ) ||
+          isAllowedAudioMimeType(file.mimetype);
+        if (!supported) {
+          callback(
+            new BadRequestException(
+              "Only images, MP4/WebM videos, or browser-compatible audio are allowed",
+            ),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadMessageMedia(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException(
+        'No file uploaded (expected multipart field "file")',
+      );
+    }
+    const id = randomUUID();
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      let processed;
+      try {
+        processed = await processUploadedImage(file.buffer);
+      } catch (err) {
+        if (err instanceof ImageTooSmallError) {
+          throw new BadRequestException(err.message);
+        }
+        throw new BadRequestException("Could not process that image");
+      }
+      const filename = `messages/${id}.${processed.full.extension}`;
+      const thumbFilename = `messages/${id}-thumb.${processed.thumb.extension}`;
+      const [{ url }] = await Promise.all([
+        this.storage.save({
+          buffer: processed.full.buffer,
+          filename,
+          contentType: processed.full.contentType,
+        }),
+        this.storage.save({
+          buffer: processed.thumb.buffer,
+          filename: thumbFilename,
+          contentType: processed.thumb.contentType,
+        }),
+      ]);
+      return {
+        url,
+        thumbnailUrl: url.replace(
+          `.${processed.full.extension}`,
+          `-thumb.${processed.thumb.extension}`,
+        ),
+        contentType: processed.full.contentType,
+        kind: "image",
+        size: file.size,
+      };
+    }
+    if (
+      ALLOWED_VIDEO_MIME_TYPES.includes(
+        file.mimetype as (typeof ALLOWED_VIDEO_MIME_TYPES)[number],
+      )
+    ) {
+      assertSupportedVideo(file);
+      const filename = `messages/${id}.${videoExtensionForMime(file.mimetype)}`;
+      const { url } = await this.storage.save({
+        buffer: file.buffer,
+        filename,
+        contentType: file.mimetype,
+      });
+      let thumbnailUrl: string | null = null;
+      try {
+        const thumbnail = await extractVideoThumbnail(file.buffer);
+        thumbnailUrl = (
+          await this.storage.save({
+            buffer: thumbnail,
+            filename: `messages/${id}-poster.jpg`,
+            contentType: "image/jpeg",
+          })
+        ).url;
+      } catch (error) {
+        this.logger.warn(
+          `Could not generate message video poster for ${filename}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+      return {
+        url,
+        thumbnailUrl,
+        contentType: file.mimetype,
+        kind: "video",
+        size: file.size,
+      };
+    }
+    const audioExtensions: Record<string, string> = {
+      "audio/webm": "webm",
+      "audio/ogg": "ogg",
+      "audio/mpeg": "mp3",
+      "audio/mp4": "m4a",
+      "audio/wav": "wav",
+      "audio/x-m4a": "m4a",
+    };
+    const audioMimeType = file.mimetype.split(";", 1)[0];
+    const filename = `messages/${id}.${audioExtensions[audioMimeType] ?? "audio"}`;
+    const { url } = await this.storage.save({
+      buffer: file.buffer,
+      filename,
+      contentType: file.mimetype,
+    });
+    return {
+      url,
+      thumbnailUrl: null,
+      contentType: file.mimetype,
+      kind: "audio",
+      size: file.size,
+    };
   }
 
   @Post("video")
