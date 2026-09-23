@@ -252,15 +252,15 @@ export class GuidesService {
     const guide = await this.guideRepo.findOne({ where: { id: guideId } });
     if (!guide) throw new NotFoundException("Guide profile not found");
     const visitorId = guide.userId === userId ? undefined : userId;
-    const messages = await this.messageRepo
+    const messagesQuery = this.messageRepo
       .createQueryBuilder("message")
-      .where("message.guide_id = :guideId", { guideId })
-      .andWhere(
-        visitorId
-          ? "message.visitor_id = :visitorId"
-          : "message.visitor_id IN (SELECT DISTINCT visitor_id FROM guide_messages WHERE guide_id = :guideId AND sender_id = :guideUserId)",
-        visitorId ? { visitorId } : { guideUserId: guide.userId },
-      )
+      .where("message.guide_id = :guideId", { guideId });
+    if (visitorId) {
+      messagesQuery.andWhere("message.visitor_id = :visitorId", {
+        visitorId,
+      });
+    }
+    const messages = await messagesQuery
       .orderBy("message.created_at", "ASC")
       .getMany();
     if (messages.length) {
