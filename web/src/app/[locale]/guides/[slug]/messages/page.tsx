@@ -1,5 +1,5 @@
 import { getGuide } from "@/lib/api";
-import { GuideMessenger } from "@/components/GuideMessenger";
+import { GuideConversationLauncher } from "@/components/GuideConversationLauncher";
 
 export async function generateMetadata({
   params,
@@ -21,5 +21,5 @@ export default async function GuideMessagesPage({
 }) {
   const { slug } = await params;
   const guide = await getGuide(slug);
-  return <GuideMessenger guide={guide} />;
+  return <GuideConversationLauncher guideId={guide.id} slug={guide.slug} />;
 }

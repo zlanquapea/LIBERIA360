@@ -15,6 +15,7 @@ import { getMyGuideProfile, updateMyGuideProfileImage } from "@/lib/guides-api";
 import { HttpError } from "@/lib/http";
 import type { GuideSummary } from "@/lib/api";
 import { CreatorPhotoActionMenu } from "./CreatorPhotoActionMenu";
+import { StartConversationButton } from "./StartConversationButton";
 
 export function GuideProfileHero({
   guide,
@@ -128,13 +129,20 @@ export function GuideProfileHero({
         </div>
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <Link
-          href={isOwner ? "/messages" : `/guides/${guide.slug}/messages`}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 font-bold text-white transition hover:bg-brand-800"
-        >
-          <ChatBubbleLeftRightIcon className="h-5 w-5" />
-          {isOwner ? "Open inbox" : "Message in app"}
-        </Link>
+        {isOwner ? (
+          <Link
+            href="/messages"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 font-bold text-white transition hover:bg-brand-800"
+          >
+            <ChatBubbleLeftRightIcon className="h-5 w-5" /> Open inbox
+          </Link>
+        ) : (
+          <StartConversationButton
+            type="guide"
+            targetId={guide.id}
+            label="Message in app"
+          />
+        )}
         {!isOwner && guide.whatsappNumber && (
           <a
             href={`https://wa.me/${guide.whatsappNumber.replace(/\D/g, "")}`}

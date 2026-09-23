@@ -1,5 +1,5 @@
-import { GuideMessagesInbox } from "@/components/GuideMessagesInbox";
+import { ConversationInbox } from "@/components/ConversationInbox";
 
 export default function MessagesPage() {
-  return <GuideMessagesInbox />;
+  return <ConversationInbox />;
 }

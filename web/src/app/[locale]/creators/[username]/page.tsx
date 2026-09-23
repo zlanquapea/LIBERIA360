@@ -21,7 +21,11 @@ import {
   formatPriceFrom,
   formatRating,
 } from "@/lib/format";
-import { absoluteImageUrl, resolveImageUrl, resolveThumbUrl } from "@/lib/images";
+import {
+  absoluteImageUrl,
+  resolveImageUrl,
+  resolveThumbUrl,
+} from "@/lib/images";
 import { DEFAULT_OG_IMAGE, absoluteUrl } from "@/lib/site";
 import { whatsappLink } from "@/lib/contact";
 import { CreatorPortfolioGallery } from "@/components/CreatorPortfolioGallery";
@@ -35,6 +39,7 @@ import { CreatorFollowButton } from "@/components/CreatorFollowButton";
 import { SafeImage } from "@/components/SafeImage";
 import { CreatorPublicPhotoViewer } from "@/components/CreatorPublicPhotoViewer";
 import { CreatorDashboardShortcut } from "@/components/CreatorDashboardShortcut";
+import { StartConversationButton } from "@/components/StartConversationButton";
 import { JsonLd } from "@/components/JsonLd";
 import { creatorJsonLd } from "@/lib/structured-data";
 import type { CreatorAvailabilityStatus } from "@/lib/types";
@@ -75,7 +80,8 @@ export async function generateMetadata({
   const title = `${creator.name} (@${creator.username}) — LIBERIA360`;
   const url = absoluteUrl(`/creators/${creator.username}`);
   const coverPath = creator.coverImage ?? creator.profileImage;
-  const image = (coverPath ? absoluteImageUrl(coverPath) : null) ?? DEFAULT_OG_IMAGE;
+  const image =
+    (coverPath ? absoluteImageUrl(coverPath) : null) ?? DEFAULT_OG_IMAGE;
   return {
     title,
     description,
@@ -348,6 +354,13 @@ export default async function CreatorProfilePage({
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {creator.user?.id && (
+              <StartConversationButton
+                type="creator"
+                targetId={creator.id}
+                label="Message"
+              />
+            )}
             <CreatorFollowButton
               creatorId={creator.id}
               initialFollowerCount={creator.followerCount}

@@ -83,6 +83,10 @@ import { GuideBooking } from "./guides/entities/guide-booking.entity";
 import { GuideReview } from "./guides/entities/guide-review.entity";
 import { GuideMessage } from "./guides/entities/guide-message.entity";
 import { GuidesModule } from "./guides/guides.module";
+import { Conversation } from "./conversations/entities/conversation.entity";
+import { ConversationParticipant } from "./conversations/entities/conversation-participant.entity";
+import { ConversationMessage } from "./conversations/entities/conversation-message.entity";
+import { ConversationsModule } from "./conversations/conversations.module";
 
 @Module({
   imports: [
@@ -153,6 +157,9 @@ import { GuidesModule } from "./guides/guides.module";
             GuideBooking,
             GuideReview,
             GuideMessage,
+            Conversation,
+            ConversationParticipant,
+            ConversationMessage,
           ],
           migrations: ["dist/database/migrations/*.js"],
           // Apply committed schema changes during deployment before the API
@@ -201,6 +208,7 @@ import { GuidesModule } from "./guides/guides.module";
     EventNotificationsModule,
     TripNotificationsModule,
     GuidesModule,
+    ConversationsModule,
   ],
   providers: [
     {
