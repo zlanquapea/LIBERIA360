@@ -97,4 +97,13 @@ describe("PushService", () => {
       }),
     );
   });
+
+  it("only removes a subscription from the account that owns it", async () => {
+    const service = await buildService(VALID_VAPID);
+    await service.unsubscribe("user-1", "https://example.com/ep");
+    expect(subscriptionRepo.delete).toHaveBeenCalledWith({
+      endpoint: "https://example.com/ep",
+      userId: "user-1",
+    });
+  });
 });

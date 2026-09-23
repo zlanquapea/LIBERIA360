@@ -38,7 +38,10 @@ export class PushController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async unsubscribe(@Body() dto: UnsubscribePushDto) {
-    await this.pushService.unsubscribe(dto.endpoint);
+  async unsubscribe(
+    @CurrentUser() user: User,
+    @Body() dto: UnsubscribePushDto,
+  ) {
+    await this.pushService.unsubscribe(user.id, dto.endpoint);
   }
 }

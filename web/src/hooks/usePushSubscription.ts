@@ -1,10 +1,18 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from './useAuth';
-import { getVapidPublicKey, subscribePush, unsubscribePush } from '@/lib/push-api';
-import { getExistingSubscription, isPushSupported, subscribeToPush } from '@/lib/push-browser';
-import { HttpError } from '@/lib/http';
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "./useAuth";
+import {
+  getVapidPublicKey,
+  subscribePush,
+  unsubscribePush,
+} from "@/lib/push-api";
+import {
+  getExistingSubscription,
+  isPushSupported,
+  subscribeToPush,
+} from "@/lib/push-browser";
+import { HttpError } from "@/lib/http";
 
 export function usePushSubscription() {
   const { token, ready: authReady } = useAuth();
@@ -27,6 +35,13 @@ export function usePushSubscription() {
         if (cancelled) return;
         setVapidPublicKey(publicKey);
         setSubscribed(existing !== null);
+        // A browser subscription belongs to the device, but the server row
+        // belongs to the signed-in account. Re-bind it after account changes
+        // so the next user on the same device receives their own notifications
+        // instead of silently leaving the subscription attached to the prior user.
+        if (token && existing) {
+          void subscribePush(token, existing.toJSON() as PushSubscriptionJSON);
+        }
       })
       .catch(() => {
         // Checking current state is best-effort — leave subscribed at its
@@ -38,7 +53,7 @@ export function usePushSubscription() {
     return () => {
       cancelled = true;
     };
-  }, [supported, authReady]);
+  }, [supported, authReady, token]);
 
   const enable = useCallback(async () => {
     if (!token || !vapidPublicKey) return;
@@ -46,8 +61,10 @@ export function usePushSubscription() {
     setError(null);
     try {
       const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        setError('Notifications were not allowed. Enable them in your browser settings to turn this on.');
+      if (permission !== "granted") {
+        setError(
+          "Notifications were not allowed. Enable them in your browser settings to turn this on.",
+        );
         return;
       }
       const subscription = await subscribeToPush(vapidPublicKey);
@@ -58,7 +75,11 @@ export function usePushSubscription() {
       // push-browser timeout above both carry a message worth showing;
       // anything else (a raw browser/DOMException) falls back to a generic
       // message rather than surfacing internals.
-      setError(err instanceof HttpError || err instanceof Error ? err.message : 'Could not enable notifications. Please try again.');
+      setError(
+        err instanceof HttpError || err instanceof Error
+          ? err.message
+          : "Could not enable notifications. Please try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -77,7 +98,11 @@ export function usePushSubscription() {
       }
       setSubscribed(false);
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : 'Could not disable notifications. Please try again.');
+      setError(
+        err instanceof HttpError
+          ? err.message
+          : "Could not disable notifications. Please try again.",
+      );
     } finally {
       setBusy(false);
     }

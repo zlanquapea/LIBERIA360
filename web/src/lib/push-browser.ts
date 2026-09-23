@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 // Browser-side Web Push mechanics — converting the API's base64url VAPID
 // key into the Uint8Array PushManager.subscribe() expects, and thin
@@ -7,15 +7,30 @@
 // to do with fetch.
 
 export function isPushSupported(): boolean {
-  return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
+  return (
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window
+  );
+}
+
+export async function getPushServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+  if (!isPushSupported()) {
+    throw new Error("Push notifications are not supported in this browser.");
+  }
+  return (
+    (await navigator.serviceWorker.getRegistration()) ??
+    navigator.serviceWorker.register("/sw.js")
+  );
 }
 
 // Web Push's applicationServerKey wants a Uint8Array, but VAPID public keys
 // are handed around as base64url strings everywhere else (this is the
 // standard conversion, not LIBERIA360-specific).
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; i++) {
@@ -25,7 +40,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 export async function getExistingSubscription(): Promise<PushSubscription | null> {
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await getPushServiceWorkerRegistration();
   return registration.pushManager.getSubscription();
 }
 
@@ -37,8 +52,10 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
 // failure, so cap it and surface a real error instead.
 const SUBSCRIBE_TIMEOUT_MS = 15_000;
 
-export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubscription> {
-  const registration = await navigator.serviceWorker.ready;
+export async function subscribeToPush(
+  vapidPublicKey: string,
+): Promise<PushSubscription> {
+  const registration = await getPushServiceWorkerRegistration();
   return Promise.race([
     registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -47,11 +64,18 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<PushSubsc
       // also covers SharedArrayBuffer), so a plain Uint8Array return
       // doesn't structurally satisfy it even though this one is always a
       // real ArrayBuffer at runtime.
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+      applicationServerKey: urlBase64ToUint8Array(
+        vapidPublicKey,
+      ) as BufferSource,
     }),
     new Promise<never>((_, reject) =>
       setTimeout(
-        () => reject(new Error('Timed out reaching the push notification service. Check your connection and try again.')),
+        () =>
+          reject(
+            new Error(
+              "Timed out reaching the push notification service. Check your connection and try again.",
+            ),
+          ),
         SUBSCRIBE_TIMEOUT_MS,
       ),
     ),

@@ -10,26 +10,41 @@
 // the visitor plainly "this is a saved copy" instead of silently serving
 // possibly-stale data with no indication either way.
 
-const CACHE_NAME = 'liberia360-shell-v3';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE_NAME = "liberia360-shell-v3";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest",
+  "/logo.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+];
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting()),
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
   // Never put API responses, cross-origin resources, or authenticated
@@ -37,9 +52,9 @@ self.addEventListener('fetch', (event) => {
   // the network and is deliberately unavailable offline.
   if (
     url.origin !== self.location.origin ||
-    url.pathname === '/api' ||
-    url.pathname.startsWith('/api/') ||
-    event.request.headers.has('authorization')
+    url.pathname === "/api" ||
+    url.pathname.startsWith("/api/") ||
+    event.request.headers.has("authorization")
   ) {
     return;
   }
@@ -51,24 +66,30 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/'))),
+      .catch(() =>
+        caches
+          .match(event.request)
+          .then((cached) => cached ?? caches.match("/")),
+      ),
   );
 });
 
 // Logout posts this message from every open client. Delete every app cache,
 // including caches created by older service-worker versions.
-self.addEventListener('message', (event) => {
-  if (event.data?.type !== 'CLEAR_PRIVATE_CACHES') return;
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "CLEAR_PRIVATE_CACHES") return;
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
   );
 });
 
 // Phase 2 push notifications (Tech Spec §3.2 "events nearby") — the API
 // sends a JSON payload of {title, body, url}; this just needs to turn that
 // into a real OS notification and route a click back into the app.
-self.addEventListener('push', (event) => {
-  let payload = { title: 'LIBERIA360', body: '' };
+self.addEventListener("push", (event) => {
+  let payload = { title: "LIBERIA360", body: "", url: "/" };
   if (event.data) {
     try {
       payload = { ...payload, ...event.data.json() };
@@ -80,22 +101,32 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { url: payload.url || '/' },
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: payload.url || "/" },
+      tag: payload.url || "liberia360-notification",
+      renotify: true,
     }),
   );
 });
 
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+  const target =
+    event.notification.data && event.notification.data.url
+      ? event.notification.data.url
+      : "/";
+  const url = new URL(target, self.location.origin);
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      const existing = clientList.find((client) => new URL(client.url).pathname === url);
-      if (existing) return existing.focus();
-      return self.clients.openWindow(url);
-    }),
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        const existing = clientList.find(
+          (client) => new URL(client.url).pathname === url.pathname,
+        );
+        if (existing) return existing.focus();
+        return self.clients.openWindow(url.href);
+      }),
   );
 });

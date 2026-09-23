@@ -62,8 +62,8 @@ export class PushService {
     );
   }
 
-  async unsubscribe(endpoint: string): Promise<void> {
-    await this.subscriptionRepo.delete({ endpoint });
+  async unsubscribe(userId: string, endpoint: string): Promise<void> {
+    await this.subscriptionRepo.delete({ endpoint, userId });
   }
 
   /** Sends to every subscription belonging to the given users. Best-effort:
