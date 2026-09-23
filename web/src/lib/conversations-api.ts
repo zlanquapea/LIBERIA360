@@ -32,6 +32,33 @@ export interface Conversation {
   participants: ConversationParticipant[];
   otherParticipant: ConversationParticipant | null;
 }
+export type ConversationRealtimeEvent =
+  | { type: "conversation.ready"; conversationId: string; userId: string }
+  | { type: "conversation.message.created"; message: ConversationMessage }
+  | {
+      type: "conversation.receipt";
+      status: "delivered" | "read";
+      messageId: string;
+      conversationId: string;
+      deliveredAt: string | null;
+      readAt: string | null;
+    }
+  | {
+      type: "conversation.typing.start" | "conversation.typing.stop";
+      conversationId: string;
+      userId: string;
+    }
+  | { type: "conversation.error"; message: string };
+export type ConversationRealtimeClientEvent =
+  | { type: "conversation.message.send"; body: string }
+  | { type: "conversation.typing.start" }
+  | { type: "conversation.typing.stop" }
+  | { type: "conversation.read" };
+export function openConversationSocket(token: string, conversationId: string) {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const url = `${protocol}//${window.location.host}/api/v1/conversations/realtime?conversationId=${encodeURIComponent(conversationId)}`;
+  return new WebSocket(url, token ? [`bearer.${token}`] : undefined);
+}
 export function listConversations(token: string) {
   return apiRequest<Conversation[]>("/conversations", {
     headers: authHeader(token),

@@ -13,11 +13,13 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   getConversation,
   getConversationMessages,
-  markConversationRead,
+  openConversationSocket,
   sendConversationMessage,
   toggleConversationReaction,
   type Conversation,
   type ConversationMessage,
+  type ConversationRealtimeClientEvent,
+  type ConversationRealtimeEvent,
 } from "@/lib/conversations-api";
 import { HttpError } from "@/lib/http";
 
@@ -32,7 +34,11 @@ export function ConversationScreen({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
+  const pendingBodyRef = useRef<string | null>(null);
   const other = conversation?.otherParticipant ?? null;
   useEffect(() => {
     if (!token) return;
@@ -59,6 +65,84 @@ export function ConversationScreen({
     };
   }, [token, conversationId]);
   useEffect(() => {
+    if (!token) return;
+    const socket = openConversationSocket(token, conversationId);
+    socketRef.current = socket;
+    socket.onopen = () => {
+      socket.send(
+        JSON.stringify({
+          type: "conversation.read",
+        } satisfies ConversationRealtimeClientEvent),
+      );
+    };
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(
+          event.data as string,
+        ) as ConversationRealtimeEvent;
+        if (payload.type === "conversation.message.created") {
+          setMessages((current) =>
+            current.some((item) => item.id === payload.message.id)
+              ? current
+              : [...current, payload.message],
+          );
+          if (
+            payload.message.senderId !== user?.id &&
+            socket.readyState === WebSocket.OPEN
+          ) {
+            socket.send(
+              JSON.stringify({
+                type: "conversation.read",
+              } satisfies ConversationRealtimeClientEvent),
+            );
+          }
+          if (payload.message.senderId === user?.id)
+            pendingBodyRef.current = null;
+          setSending(false);
+        } else if (payload.type === "conversation.receipt") {
+          setMessages((current) =>
+            current.map((item) =>
+              item.id === payload.messageId
+                ? {
+                    ...item,
+                    deliveredAt: payload.deliveredAt ?? item.deliveredAt,
+                    readAt: payload.readAt ?? item.readAt,
+                  }
+                : item,
+            ),
+          );
+        } else if (
+          payload.type === "conversation.typing.start" &&
+          payload.userId !== user?.id
+        ) {
+          setTypingUserId(payload.userId);
+        } else if (
+          payload.type === "conversation.typing.stop" &&
+          payload.userId !== user?.id
+        ) {
+          setTypingUserId(null);
+        } else if (payload.type === "conversation.error") {
+          if (pendingBodyRef.current) setDraft(pendingBodyRef.current);
+          pendingBodyRef.current = null;
+          setSending(false);
+          setError(payload.message);
+        }
+      } catch {
+        setError("The realtime chat connection sent an invalid event.");
+      }
+    };
+    socket.onerror = () =>
+      setError(
+        "Realtime updates are unavailable; sending will use the secure fallback.",
+      );
+    return () => {
+      socket.close();
+      socketRef.current = null;
+      setTypingUserId(null);
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    };
+  }, [conversationId, token, user?.id]);
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
   async function send() {
@@ -67,6 +151,23 @@ export function ConversationScreen({
     setError(null);
     const body = draft.trim();
     setDraft("");
+    const socket = socketRef.current;
+    if (socket?.readyState === WebSocket.OPEN) {
+      pendingBodyRef.current = body;
+      socket.send(
+        JSON.stringify({
+          type: "conversation.typing.stop",
+        } satisfies ConversationRealtimeClientEvent),
+      );
+      socket.send(
+        JSON.stringify({
+          type: "conversation.message.send",
+          body,
+        } satisfies ConversationRealtimeClientEvent),
+      );
+      setSending(false);
+      return;
+    }
     try {
       const created = await sendConversationMessage(
         token,
@@ -85,6 +186,29 @@ export function ConversationScreen({
       );
     } finally {
       setSending(false);
+    }
+  }
+  function handleDraftChange(value: string) {
+    setDraft(value);
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(
+      JSON.stringify({
+        type: value.trim()
+          ? "conversation.typing.start"
+          : "conversation.typing.stop",
+      } satisfies ConversationRealtimeClientEvent),
+    );
+    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    if (value.trim()) {
+      typingTimerRef.current = window.setTimeout(() => {
+        if (socket.readyState === WebSocket.OPEN)
+          socket.send(
+            JSON.stringify({
+              type: "conversation.typing.stop",
+            } satisfies ConversationRealtimeClientEvent),
+          );
+      }, 2200);
     }
   }
   async function react(messageId: string, emoji: string) {
@@ -134,9 +258,11 @@ export function ConversationScreen({
               {other?.name ?? conversation?.title ?? "Conversation"}
             </strong>
             <small className="text-teal-200">
-              {conversation?.contextType === "direct"
-                ? "Active conversation"
-                : `${conversation?.contextType} chat`}
+              {typingUserId
+                ? "typing…"
+                : conversation?.contextType === "direct"
+                  ? "Active conversation"
+                  : `${conversation?.contextType} chat`}
             </small>
           </span>
           <button
@@ -179,7 +305,11 @@ export function ConversationScreen({
                     </span>
                     {own && (
                       <span className="font-bold text-brand-700">
-                        {message.readAt ? "✓✓" : "✓"}
+                        {message.readAt
+                          ? "✓✓"
+                          : message.deliveredAt
+                            ? "✓✓"
+                            : "✓"}
                       </span>
                     )}
                   </div>
@@ -255,7 +385,7 @@ export function ConversationScreen({
             <textarea
               aria-label="Message"
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => handleDraftChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();

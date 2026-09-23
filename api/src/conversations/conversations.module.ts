@@ -8,6 +8,7 @@ import { GuideProfile } from "../guides/entities/guide-profile.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { ConversationsController } from "./conversations.controller";
 import { ConversationsService } from "./conversations.service";
+import { ConversationsGateway } from "./conversations.gateway";
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { ConversationsService } from "./conversations.service";
     NotificationsModule,
   ],
   controllers: [ConversationsController],
-  providers: [ConversationsService],
+  providers: [ConversationsService, ConversationsGateway],
   exports: [ConversationsService],
 })
 export class ConversationsModule {}

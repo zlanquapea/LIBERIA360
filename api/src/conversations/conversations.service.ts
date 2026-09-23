@@ -174,7 +174,7 @@ export class ConversationsService {
         messageType: dto.messageType ?? "text",
         attachments: dto.attachments ?? [],
         reactions: {},
-        deliveredAt: new Date(),
+        deliveredAt: null,
         readAt: null,
         editedAt: null,
         deletedAt: null,
@@ -200,18 +200,46 @@ export class ConversationsService {
     return this.publicMessage(message);
   }
 
+  async markDelivered(
+    userId: string,
+    conversationId: string,
+    messageId: string,
+  ) {
+    await this.requireMember(userId, conversationId);
+    const message = await this.messageRepo.findOne({
+      where: { id: messageId, conversationId },
+    });
+    if (!message || message.senderId === userId) return null;
+    if (!message.deliveredAt) {
+      message.deliveredAt = new Date();
+      await this.messageRepo.save(message);
+    }
+    return this.publicMessage(message);
+  }
+
   async markRead(userId: string, conversationId: string) {
     const membership = await this.requireMember(userId, conversationId);
+    const unread = await this.messageRepo.find({
+      where: { conversationId, readAt: IsNull() },
+    });
+    const received = unread.filter((message) => message.senderId !== userId);
+    const readAt = new Date();
     await this.messageRepo
       .createQueryBuilder()
       .update(ConversationMessage)
-      .set({ readAt: new Date() })
+      .set({ readAt, deliveredAt: readAt })
       .where("conversation_id = :conversationId", { conversationId })
       .andWhere("sender_id != :userId", { userId })
       .andWhere("read_at IS NULL")
       .execute();
     membership.lastReadAt = new Date();
     await this.participantRepo.save(membership);
+    return received.map((message) => ({
+      messageId: message.id,
+      conversationId,
+      deliveredAt: readAt,
+      readAt,
+    }));
   }
 
   async updateMessage(
@@ -295,7 +323,7 @@ export class ConversationsService {
     return null;
   }
 
-  private async requireMember(userId: string, conversationId: string) {
+  async requireMember(userId: string, conversationId: string) {
     const membership = await this.participantRepo.findOne({
       where: { conversationId, userId },
     });
