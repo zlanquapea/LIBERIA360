@@ -30,6 +30,7 @@ export interface Conversation {
   lastMessage: ConversationMessage | null;
   unreadCount: number;
   participants: ConversationParticipant[];
+  otherParticipant: ConversationParticipant | null;
 }
 export function listConversations(token: string) {
   return apiRequest<Conversation[]>("/conversations", {

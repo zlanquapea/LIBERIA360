@@ -54,6 +54,7 @@ export class ConversationsService {
       });
       result.push(
         this.publicConversation(
+          userId,
           membership.conversation,
           participants,
           last,
@@ -141,6 +142,7 @@ export class ConversationsService {
       where: { conversationId, readAt: IsNull() },
     });
     return this.publicConversation(
+      userId,
       membership.conversation,
       participants,
       last,
@@ -299,11 +301,18 @@ export class ConversationsService {
   }
 
   private publicConversation(
+    viewerId: string,
     conversation: Conversation,
     participants: ConversationParticipant[],
     lastMessage: ConversationMessage | null,
     unread: number,
   ) {
+    const participantList = participants.map((item) => ({
+      id: item.userId,
+      name: item.user?.name ?? "Member",
+      profileImage: item.user?.profileImage ?? null,
+      role: item.role,
+    }));
     return {
       id: conversation.id,
       contextType: conversation.contextType,
@@ -313,12 +322,10 @@ export class ConversationsService {
       createdAt: conversation.createdAt,
       lastMessage,
       unreadCount: unread,
-      participants: participants.map((item) => ({
-        id: item.userId,
-        name: item.user?.name ?? "Member",
-        profileImage: item.user?.profileImage ?? null,
-        role: item.role,
-      })),
+      participants: participantList,
+      otherParticipant:
+        participantList.find((participant) => participant.id !== viewerId) ??
+        null,
     };
   }
   private publicMessage(message: ConversationMessage) {

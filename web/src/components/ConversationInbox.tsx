@@ -57,7 +57,7 @@ export function ConversationInbox() {
       </main>
     );
   return (
-    <main className="mx-auto min-h-[calc(100vh-5rem)] max-w-3xl px-0 pb-8 sm:px-5 sm:py-6">
+    <main className="min-h-[calc(100dvh-4rem)] w-full px-0 pb-0">
       <div className="mb-4 flex items-center justify-between px-4 sm:px-0">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-700">
@@ -77,7 +77,7 @@ export function ConversationInbox() {
           <PlusIcon className="h-5 w-5" />
         </button>
       </div>
-      <section className="overflow-hidden rounded-none border-y border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950 sm:rounded-[2rem] sm:border">
+      <section className="min-h-[calc(100dvh-9rem)] overflow-hidden border-y border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950 sm:min-h-[calc(100dvh-8rem)]">
         <div className="border-b border-slate-100 p-4 dark:border-slate-800">
           <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3 dark:bg-slate-900">
             <MagnifyingGlassIcon className="h-4 w-4 text-slate-400" />
@@ -98,9 +98,7 @@ export function ConversationInbox() {
             </div>
           ) : (
             filtered.map((item) => {
-              const other = item.participants.find(
-                (participant) => participant.id !== user?.id,
-              );
+              const other = item.otherParticipant;
               return (
                 <Link
                   key={item.id}

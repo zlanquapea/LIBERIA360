@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   FaceSmileIcon,
@@ -33,13 +33,7 @@ export function ConversationScreen({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const other = useMemo(
-    () =>
-      conversation?.participants.find(
-        (participant) => participant.id !== user?.id,
-      ),
-    [conversation, user?.id],
-  );
+  const other = conversation?.otherParticipant ?? null;
   useEffect(() => {
     if (!token) return;
     let alive = true;
@@ -112,8 +106,8 @@ export function ConversationScreen({
       </div>
     );
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-4xl flex-col px-0 pb-6 sm:px-5 sm:py-5">
-      <section className="flex min-h-[calc(100vh-8rem)] flex-1 flex-col overflow-hidden rounded-none border-y border-slate-200 bg-[#efeae2] shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:rounded-[2rem] sm:border">
+    <main className="flex min-h-[calc(100dvh-4rem)] w-full flex-col px-0 pb-0">
+      <section className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-hidden border-y border-slate-200 bg-[#efeae2] shadow-xl dark:border-slate-800 dark:bg-slate-900">
         <header className="flex items-center gap-3 bg-brand-950 px-4 py-3 text-white">
           <Link
             href="/messages"
