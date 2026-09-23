@@ -102,7 +102,7 @@ const displayFont = Plus_Jakarta_Sans({
 // for anyone who's chosen dark mode, since useTheme's effect can't run
 // until after React hydrates. Inlined (not next/script) specifically
 // because it has to block, not defer.
-const themeInitScript = `(function(){try{var t=localStorage.getItem('liberia360:theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+const themeInitScript = `(function(){try{var t=localStorage.getItem('liberia360:theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
 
 // Hide the SSR splash before the first paint on repeat visits. First visits
 // deliberately keep the splash visible in the server HTML so page content

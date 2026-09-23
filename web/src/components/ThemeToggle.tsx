@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
-import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
-import { useTheme } from '@/hooks/useTheme';
+import { useTranslations } from "next-intl";
+import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
+import { useTheme } from "@/hooks/useTheme";
 
 // One button, both icons always in the DOM — swapping the icon based on
 // `theme` (rather than rendering conditionally) means there's no
@@ -10,9 +10,10 @@ import { useTheme } from '@/hooks/useTheme';
 // markup, and the correct icon is just a CSS class away once the client
 // figures out the real theme in its first effect.
 export function ThemeToggle() {
-  const t = useTranslations('common');
-  const { theme, toggleTheme } = useTheme();
-  const label = theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode');
+  const t = useTranslations("common");
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const label =
+    resolvedTheme === "dark" ? t("switchToLightMode") : t("switchToDarkMode");
 
   return (
     <button
@@ -22,8 +23,14 @@ export function ThemeToggle() {
       title={label}
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/5 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >
-      <SunIcon aria-hidden className={`h-5 w-5 ${theme === 'dark' ? 'hidden' : 'block'}`} />
-      <MoonIcon aria-hidden className={`h-5 w-5 ${theme === 'dark' ? 'block' : 'hidden'}`} />
+      <SunIcon
+        aria-hidden
+        className={`h-5 w-5 ${resolvedTheme === "dark" ? "hidden" : "block"}`}
+      />
+      <MoonIcon
+        aria-hidden
+        className={`h-5 w-5 ${resolvedTheme === "dark" ? "block" : "hidden"}`}
+      />
     </button>
   );
 }

@@ -22,6 +22,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLoader } from "@/components/BrandLoader";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { ThemeSelector } from "@/components/ThemeSelector";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { AccountSecurity } from "@/components/AccountSecurity";
 import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
@@ -172,7 +173,9 @@ export default function AccountPage() {
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
         <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+          Loading…
+        </p>
       </main>
     );
   }
@@ -270,19 +273,19 @@ export default function AccountPage() {
               </span>
               <ChevronRightIcon
                 aria-hidden
-                  className="h-4 w-4 text-gold-600 dark:text-gold-300"
-                />
+                className="h-4 w-4 text-gold-600 dark:text-gold-300"
+              />
+            </span>
+            <span>
+              <span className="block text-sm font-semibold">
+                Admin dashboard
               </span>
-              <span>
-                <span className="block text-sm font-semibold">
-                  Admin dashboard
-                </span>
-                <span className="mt-0.5 block text-[11px] leading-4 text-slate-600 dark:text-slate-300">
-                  Manage Liberia360
-                </span>
+              <span className="mt-0.5 block text-[11px] leading-4 text-slate-600 dark:text-slate-300">
+                Manage Liberia360
               </span>
-            </Link>
-          )}
+            </span>
+          </Link>
+        )}
       </section>
 
       <RecentlyViewedSection />
@@ -334,6 +337,8 @@ export default function AccountPage() {
       <TwoFactorSettings />
 
       <AccountSecurity />
+
+      <ThemeSelector />
 
       <PushNotificationToggle />
 
