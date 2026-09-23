@@ -55,6 +55,36 @@ export function usePushSubscription() {
     };
   }, [supported, authReady, token]);
 
+  useEffect(() => {
+    if (!supported || !token) return;
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "PUSH_SUBSCRIPTION_CHANGED") return;
+      const subscription = event.data
+        .subscription as PushSubscriptionJSON | null;
+      if (!subscription) {
+        setSubscribed(false);
+        return;
+      }
+      void subscribePush(token, subscription).then(
+        () => setSubscribed(true),
+        () =>
+          setError(
+            "Your browser subscription changed. Please turn push notifications on again.",
+          ),
+      );
+    };
+    navigator.serviceWorker.addEventListener(
+      "message",
+      handleServiceWorkerMessage,
+    );
+    return () => {
+      navigator.serviceWorker.removeEventListener(
+        "message",
+        handleServiceWorkerMessage,
+      );
+    };
+  }, [supported, token]);
+
   const enable = useCallback(async () => {
     if (!token || !vapidPublicKey) return;
     setBusy(true);

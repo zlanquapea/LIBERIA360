@@ -1,14 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // Offline support is a progressive enhancement — a failed
-        // registration shouldn't break the app.
-      });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/", updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch(() => {
+          // Offline support is a progressive enhancement — a failed
+          // registration shouldn't break the app.
+        });
     }
   }, []);
 
