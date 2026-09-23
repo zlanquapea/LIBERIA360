@@ -1,37 +1,39 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowDownTrayIcon,
   ChatBubbleLeftRightIcon,
   ShoppingBagIcon,
-} from '@heroicons/react/24/outline';
-import { StarIcon } from '@heroicons/react/24/solid';
-import { useAuth } from '@/hooks/useAuth';
-import { BrandLoader } from '@/components/BrandLoader';
-import { SuccessCheck } from '@/components/SuccessCheck';
-import FoodOrderMessageThread from '@/components/FoodOrderMessageThread';
-import { cancelFoodOrder, getMyFoodOrders } from '@/lib/food-orders-api';
-import { formatCost, formatFoodOrderStatus } from '@/lib/format';
-import { getFriendlyErrorMessage } from '@/lib/errors';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
+} from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
+import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/BrandLoader";
+import { SuccessCheck } from "@/components/SuccessCheck";
+import { cancelFoodOrder, getMyFoodOrders } from "@/lib/food-orders-api";
+import { formatCost, formatFoodOrderStatus } from "@/lib/format";
+import { getFriendlyErrorMessage } from "@/lib/errors";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   getMyPharmacyOrders,
   pharmacyOrderReceiptUrl,
   resubmitPrescription,
   submitPharmacyOrderFeedback,
   type PharmacyOrder,
-} from '@/lib/pharmacy-api';
-import type { FoodOrder } from '@/lib/types';
+} from "@/lib/pharmacy-api";
+import type { FoodOrder } from "@/lib/types";
 
-function statusBadgeClass(status: FoodOrder['status']) {
-  if (status === 'confirmed') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
-  if (status === 'pending') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
-  if (status === 'declined') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
-  return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+function statusBadgeClass(status: FoodOrder["status"]) {
+  if (status === "confirmed")
+    return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300";
+  if (status === "pending")
+    return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
+  if (status === "declined")
+    return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
+  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
 }
 
 // A buyer's complete order history — every kind of order they've ever
@@ -45,40 +47,46 @@ function statusBadgeClass(status: FoodOrder['status']) {
 // pharmacy order's prescription/receipt/feedback flow), but they now share
 // one chronological list, one loading state, and one empty state.
 const PHARMACY_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  under_review: 'Under review',
-  accepted: 'Accepted',
-  preparing: 'Preparing',
-  ready_for_pickup: 'Ready for pickup',
-  out_for_delivery: 'Out for delivery',
-  completed: 'Completed',
-  rejected: 'Rejected',
-  cancelled: 'Cancelled',
+  pending: "Pending",
+  under_review: "Under review",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready_for_pickup: "Ready for pickup",
+  out_for_delivery: "Out for delivery",
+  completed: "Completed",
+  rejected: "Rejected",
+  cancelled: "Cancelled",
 };
 // Same grouping as the pharmacy dashboard's own status pills — amber while
 // something needs to happen, blue/violet while it's actively moving,
 // emerald/red/slate once it's settled — kept in sync deliberately so a
 // customer and pharmacy staff describe the same order with the same color.
 const PHARMACY_STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
-  under_review: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
-  accepted: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',
-  preparing: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300',
-  ready_for_pickup: 'bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300',
-  out_for_delivery: 'bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300',
-  completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
-  rejected: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300',
-  cancelled: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  pending:
+    "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  under_review:
+    "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  accepted: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+  preparing: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+  ready_for_pickup:
+    "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300",
+  out_for_delivery:
+    "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300",
+  completed:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  rejected: "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300",
+  cancelled:
+    "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
 // A simple 4-stop progress trail for the common, non-prescription happy
 // path (pending → accepted → preparing/dispatch → completed) — gives a
 // customer an at-a-glance sense of "how far along is this" instead of just
 // one status word. Not shown for a terminal order that never got there
 // (rejected/cancelled) — a broken progress bar reads worse than none.
-const HAPPY_PATH = ['pending', 'accepted', 'preparing', 'completed'] as const;
+const HAPPY_PATH = ["pending", "accepted", "preparing", "completed"] as const;
 function happyPathIndex(status: string): number {
-  if (status === 'under_review') return 0;
-  if (status === 'ready_for_pickup' || status === 'out_for_delivery') return 2;
+  if (status === "under_review") return 0;
+  if (status === "ready_for_pickup" || status === "out_for_delivery") return 2;
   return HAPPY_PATH.indexOf(status as (typeof HAPPY_PATH)[number]);
 }
 function PharmacyOrderProgress({ status }: { status: string }) {
@@ -89,7 +97,7 @@ function PharmacyOrderProgress({ status }: { status: string }) {
       {HAPPY_PATH.map((step, i) => (
         <span
           key={step}
-          className={`h-1.5 flex-1 rounded-full ${i <= index ? 'bg-brand-600 dark:bg-brand-400' : 'bg-slate-200 dark:bg-slate-700'}`}
+          className={`h-1.5 flex-1 rounded-full ${i <= index ? "bg-brand-600 dark:bg-brand-400" : "bg-slate-200 dark:bg-slate-700"}`}
         />
       ))}
     </div>
@@ -109,14 +117,16 @@ function ClarificationReply({
 }) {
   const [file, setFile] = useState<File | null>(null),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState('');
+    [error, setError] = useState("");
   return (
     <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30">
       <p className="font-semibold text-amber-800 dark:text-amber-300">
         The pharmacist requested clarification on your prescription
       </p>
       {order.latestReviewNotes && (
-        <p className="mt-1 text-amber-800 dark:text-amber-300">&ldquo;{order.latestReviewNotes}&rdquo;</p>
+        <p className="mt-1 text-amber-800 dark:text-amber-300">
+          &ldquo;{order.latestReviewNotes}&rdquo;
+        </p>
       )}
       <label className="mt-2 block">
         <span className="sr-only">Upload a replacement prescription</span>
@@ -138,19 +148,19 @@ function ClarificationReply({
         onClick={async () => {
           if (!file) return;
           setBusy(true);
-          setError('');
+          setError("");
           try {
             await resubmitPrescription(order.id, file);
             onResubmitted();
           } catch (e) {
-            setError(e instanceof Error ? e.message : 'Upload failed');
+            setError(e instanceof Error ? e.message : "Upload failed");
           } finally {
             setBusy(false);
           }
         }}
         className="btn-secondary mt-2 min-h-9 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {busy ? 'Uploading…' : 'Submit new prescription'}
+        {busy ? "Uploading…" : "Submit new prescription"}
       </button>
     </div>
   );
@@ -168,9 +178,9 @@ function PharmacyFeedbackPrompt({
   onSubmitted: (feedback: { rating: number; comment: string | null }) => void;
 }) {
   const [rating, setRating] = useState(5),
-    [comment, setComment] = useState(''),
+    [comment, setComment] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
+    [error, setError] = useState(""),
     // Only true for the request this component instance itself just made —
     // not for feedback that already existed when this order first loaded
     // (e.g. revisiting the page days later). The checkmark below is a
@@ -192,13 +202,15 @@ function PharmacyFeedbackPrompt({
                 <StarIcon
                   key={i}
                   aria-hidden
-                  className={`h-4 w-4 ${i < order.feedback!.rating ? 'text-gold-500' : 'text-slate-300 dark:text-slate-700'}`}
+                  className={`h-4 w-4 ${i < order.feedback!.rating ? "text-gold-500" : "text-slate-300 dark:text-slate-700"}`}
                 />
               ))}
             </span>
           </p>
           {order.feedback.comment && (
-            <p className="mt-1 text-slate-600 dark:text-slate-300">&ldquo;{order.feedback.comment}&rdquo;</p>
+            <p className="mt-1 text-slate-600 dark:text-slate-300">
+              &ldquo;{order.feedback.comment}&rdquo;
+            </p>
           )}
         </div>
       </div>
@@ -207,7 +219,7 @@ function PharmacyFeedbackPrompt({
 
   async function submit() {
     setBusy(true);
-    setError('');
+    setError("");
     try {
       const saved = await submitPharmacyOrderFeedback(order.id, {
         rating,
@@ -216,7 +228,7 @@ function PharmacyFeedbackPrompt({
       setJustSubmitted(true);
       onSubmitted(saved);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not submit feedback.');
+      setError(e instanceof Error ? e.message : "Could not submit feedback.");
     } finally {
       setBusy(false);
     }
@@ -224,8 +236,14 @@ function PharmacyFeedbackPrompt({
 
   return (
     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">How was this order?</p>
-      <div className="mt-2 flex items-center gap-1" role="radiogroup" aria-label="Rating">
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+        How was this order?
+      </p>
+      <div
+        className="mt-2 flex items-center gap-1"
+        role="radiogroup"
+        aria-label="Rating"
+      >
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
@@ -233,8 +251,8 @@ function PharmacyFeedbackPrompt({
             onClick={() => setRating(value)}
             role="radio"
             aria-checked={rating === value}
-            aria-label={`${value} star${value === 1 ? '' : 's'}`}
-            className={`transition-transform hover:scale-110 ${value <= rating ? 'text-gold-500' : 'text-slate-300 dark:text-slate-700'}`}
+            aria-label={`${value} star${value === 1 ? "" : "s"}`}
+            className={`transition-transform hover:scale-110 ${value <= rating ? "text-gold-500" : "text-slate-300 dark:text-slate-700"}`}
           >
             <StarIcon aria-hidden className="h-6 w-6" />
           </button>
@@ -259,7 +277,7 @@ function PharmacyFeedbackPrompt({
         onClick={submit}
         className="btn-secondary mt-2 min-h-9 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {busy ? 'Submitting…' : 'Submit feedback'}
+        {busy ? "Submitting…" : "Submit feedback"}
       </button>
     </div>
   );
@@ -272,7 +290,10 @@ function PharmacyOrderCard({
 }: {
   order: PharmacyOrder;
   onResubmitted: () => void;
-  onFeedbackSubmitted: (feedback: { rating: number; comment: string | null }) => void;
+  onFeedbackSubmitted: (feedback: {
+    rating: number;
+    comment: string | null;
+  }) => void;
 }) {
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -283,16 +304,17 @@ function PharmacyOrderCard({
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {new Date(o.createdAt).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}{' '}
-            · {o.fulfillmentMethod === 'delivery' ? 'Delivery' : 'Pickup'} · Pharmacy
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}{" "}
+            · {o.fulfillmentMethod === "delivery" ? "Delivery" : "Pickup"} ·
+            Pharmacy
             {o.pharmacy?.name && ` · ${o.pharmacy.name}`}
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${PHARMACY_STATUS_STYLES[o.status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${PHARMACY_STATUS_STYLES[o.status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
         >
           {PHARMACY_STATUS_LABELS[o.status] ?? o.status}
         </span>
@@ -302,9 +324,13 @@ function PharmacyOrderCard({
         {o.items && o.items.length > 0 && (
           <ul className="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
             {o.items.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 py-2">
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-3 py-2"
+              >
                 <span className="text-slate-700 dark:text-slate-300">
-                  {item.name} <span className="text-slate-400">× {item.quantity}</span>
+                  {item.name}{" "}
+                  <span className="text-slate-400">× {item.quantity}</span>
                 </span>
                 <span className="font-medium text-slate-900 dark:text-slate-100">
                   L${(Number(item.unitPrice) * item.quantity).toFixed(2)}
@@ -317,15 +343,17 @@ function PharmacyOrderCard({
           <span>Total</span>
           <span>L${Number(o.finalTotal).toFixed(2)}</span>
         </p>
-        {o.status === 'under_review' && o.latestReviewDecision === 'clarification_requested' && (
-          <ClarificationReply order={o} onResubmitted={onResubmitted} />
-        )}
-        {o.status === 'cancelled' && (
+        {o.status === "under_review" &&
+          o.latestReviewDecision === "clarification_requested" && (
+            <ClarificationReply order={o} onResubmitted={onResubmitted} />
+          )}
+        {o.status === "cancelled" && (
           <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300">
-            This order was cancelled. Contact the pharmacy if you believe this was a mistake.
+            This order was cancelled. Contact the pharmacy if you believe this
+            was a mistake.
           </p>
         )}
-        {o.status === 'completed' && (
+        {o.status === "completed" && (
           <>
             <a
               href={pharmacyOrderReceiptUrl(o.id)}
@@ -335,7 +363,10 @@ function PharmacyOrderCard({
               <ArrowDownTrayIcon aria-hidden className="h-4 w-4" />
               Download receipt
             </a>
-            <PharmacyFeedbackPrompt order={o} onSubmitted={onFeedbackSubmitted} />
+            <PharmacyFeedbackPrompt
+              order={o}
+              onSubmitted={onFeedbackSubmitted}
+            />
           </>
         )}
       </div>
@@ -349,7 +380,6 @@ export default function MyOrdersPage() {
   const [pharmacyOrders, setPharmacyOrders] = useState<PharmacyOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -357,7 +387,13 @@ export default function MyOrdersPage() {
   function loadPharmacyOrders() {
     getMyPharmacyOrders()
       .then(setPharmacyOrders)
-      .catch((err) => setError(getFriendlyErrorMessage(err, { context: { action: 'load-my-pharmacy-orders' } })));
+      .catch((err) =>
+        setError(
+          getFriendlyErrorMessage(err, {
+            context: { action: "load-my-pharmacy-orders" },
+          }),
+        ),
+      );
   }
 
   useEffect(() => {
@@ -369,7 +405,13 @@ export default function MyOrdersPage() {
       getMyFoodOrders(token).then(setFoodOrders),
       getMyPharmacyOrders().then(setPharmacyOrders),
     ])
-      .catch((err) => setError(getFriendlyErrorMessage(err, { context: { action: 'load-my-orders' } })))
+      .catch((err) =>
+        setError(
+          getFriendlyErrorMessage(err, {
+            context: { action: "load-my-orders" },
+          }),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -379,10 +421,16 @@ export default function MyOrdersPage() {
     setCancelError(null);
     try {
       const updated = await cancelFoodOrder(token, cancellingId);
-      setFoodOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      setFoodOrders((prev) =>
+        prev.map((o) => (o.id === updated.id ? updated : o)),
+      );
       setCancellingId(null);
     } catch (err) {
-      setCancelError(getFriendlyErrorMessage(err, { context: { action: 'cancel-food-order', orderId: cancellingId } }));
+      setCancelError(
+        getFriendlyErrorMessage(err, {
+          context: { action: "cancel-food-order", orderId: cancellingId },
+        }),
+      );
     } finally {
       setCancelling(false);
     }
@@ -392,7 +440,9 @@ export default function MyOrdersPage() {
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
         <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading your orders…</p>
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+          Loading your orders…
+        </p>
       </main>
     );
   }
@@ -400,12 +450,21 @@ export default function MyOrdersPage() {
   if (!user) {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-16 text-center">
-        <ShoppingBagIcon aria-hidden className="h-10 w-10 text-brand-700 dark:text-brand-300" />
-        <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Track all your orders.</h1>
+        <ShoppingBagIcon
+          aria-hidden
+          className="h-10 w-10 text-brand-700 dark:text-brand-300"
+        />
+        <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
+          Track all your orders.
+        </h1>
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          Log in to see your order status, message restaurants, and track pharmacy deliveries.
+          Log in to see your order status, message restaurants, and track
+          pharmacy deliveries.
         </p>
-        <Link href="/login" className="flex items-center gap-1 font-semibold text-brand-700 hover:underline dark:text-brand-300">
+        <Link
+          href="/login"
+          className="flex items-center gap-1 font-semibold text-brand-700 hover:underline dark:text-brand-300"
+        >
           Log in <ArrowRightIcon aria-hidden className="h-4 w-4" />
         </Link>
       </main>
@@ -417,41 +476,65 @@ export default function MyOrdersPage() {
   // sections here any more than two food orders from different
   // restaurants would.
   type Combined =
-    | { kind: 'food'; createdAt: string; order: FoodOrder }
-    | { kind: 'pharmacy'; createdAt: string; order: PharmacyOrder };
+    | { kind: "food"; createdAt: string; order: FoodOrder }
+    | { kind: "pharmacy"; createdAt: string; order: PharmacyOrder };
   const combined: Combined[] = [
-    ...foodOrders.map((order): Combined => ({ kind: 'food', createdAt: order.createdAt, order })),
-    ...pharmacyOrders.map((order): Combined => ({ kind: 'pharmacy', createdAt: order.createdAt, order })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    ...foodOrders.map((order): Combined => ({
+      kind: "food",
+      createdAt: order.createdAt,
+      order,
+    })),
+    ...pharmacyOrders.map((order): Combined => ({
+      kind: "pharmacy",
+      createdAt: order.createdAt,
+      order,
+    })),
+  ].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8">
-      <Link href="/account" className="flex w-fit items-center gap-1 text-sm text-slate-500 hover:underline dark:text-slate-400">
+      <Link
+        href="/account"
+        className="flex w-fit items-center gap-1 text-sm text-slate-500 hover:underline dark:text-slate-400"
+      >
         <ArrowLeftIcon aria-hidden className="h-4 w-4" /> Account
       </Link>
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">My orders</p>
-        <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Your orders.</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+          My orders
+        </p>
+        <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
+          Your orders.
+        </h1>
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
           <BrandLoader />
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading…</p>
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Loading…
+          </p>
         </div>
       ) : combined.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-[2rem] border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
           <ShoppingBagIcon aria-hidden className="h-8 w-8 text-slate-400" />
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            No orders yet. Order from a restaurant or a pharmacy and it&apos;ll show up here.
+            No orders yet. Order from a restaurant or a pharmacy and it&apos;ll
+            show up here.
           </p>
         </div>
       ) : (
         <ul className="flex flex-col gap-4">
           {combined.map((entry) => {
-            if (entry.kind === 'pharmacy') {
+            if (entry.kind === "pharmacy") {
               return (
                 <li key={`pharmacy-${entry.order.id}`}>
                   <PharmacyOrderCard
@@ -459,7 +542,9 @@ export default function MyOrdersPage() {
                     onResubmitted={loadPharmacyOrders}
                     onFeedbackSubmitted={(feedback) =>
                       setPharmacyOrders((prev) =>
-                        prev.map((o) => (o.id === entry.order.id ? { ...o, feedback } : o)),
+                        prev.map((o) =>
+                          o.id === entry.order.id ? { ...o, feedback } : o,
+                        ),
                       )
                     }
                   />
@@ -467,10 +552,13 @@ export default function MyOrdersPage() {
               );
             }
             const order = entry.order;
-            const expanded = expandedId === order.id;
-            const canCancel = order.status === 'pending' || order.status === 'confirmed';
+            const canCancel =
+              order.status === "pending" || order.status === "confirmed";
             return (
-              <li key={`food-${order.id}`} className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900">
+              <li
+                key={`food-${order.id}`}
+                className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     {order.business?.linkedPlace ? (
@@ -482,25 +570,36 @@ export default function MyOrdersPage() {
                       </Link>
                     ) : (
                       <p className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
-                        {order.business?.name ?? 'Restaurant'}
+                        {order.business?.name ?? "Restaurant"}
                       </p>
                     )}
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(order.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase ${statusBadgeClass(order.status)}`}>
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase ${statusBadgeClass(order.status)}`}
+                  >
                     {formatFoodOrderStatus(order.status)}
                   </span>
                 </div>
 
                 <ul className="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800">
                   {order.items.map((item) => (
-                    <li key={item.menuItemId} className="flex items-center justify-between py-1.5">
+                    <li
+                      key={item.menuItemId}
+                      className="flex items-center justify-between py-1.5"
+                    >
                       <span className="text-slate-700 dark:text-slate-200">
                         {item.quantity} × {item.name}
                       </span>
-                      <span className="text-slate-500 dark:text-slate-400">{formatCost(Number(item.unitPrice) * item.quantity)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {formatCost(Number(item.unitPrice) * item.quantity)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -510,7 +609,9 @@ export default function MyOrdersPage() {
                 </div>
 
                 {order.notes && (
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Note: {order.notes}</p>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                    Note: {order.notes}
+                  </p>
                 )}
                 {order.businessResponse && (
                   <p className="mt-2 rounded-xl bg-slate-50 p-2 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
@@ -519,14 +620,13 @@ export default function MyOrdersPage() {
                 )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(expanded ? null : order.id)}
+                  <Link
+                    href={`/messages/context?type=food-order&id=${order.id}`}
                     className="flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
                   >
                     <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
-                    {expanded ? 'Hide messages' : 'Message the restaurant'}
-                  </button>
+                    Message the restaurant
+                  </Link>
                   {canCancel && (
                     <button
                       type="button"
@@ -537,12 +637,6 @@ export default function MyOrdersPage() {
                     </button>
                   )}
                 </div>
-
-                {expanded && (
-                  <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-                    <FoodOrderMessageThread orderId={order.id} />
-                  </div>
-                )}
               </li>
             );
           })}

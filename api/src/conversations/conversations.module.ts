@@ -10,6 +10,7 @@ import { Creator } from "../creators/entities/creator.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
+import { FoodOrder } from "../food-orders/entities/food-order.entity";
 import { ConversationsController } from "./conversations.controller";
 import { ConversationsService } from "./conversations.service";
 import { ConversationsGateway } from "./conversations.gateway";
@@ -25,6 +26,7 @@ import { ConversationsGateway } from "./conversations.gateway";
       Booking,
       Itinerary,
       ItineraryCollaborator,
+      FoodOrder,
     ]),
     NotificationsModule,
     AuthModule,

@@ -12,6 +12,7 @@ import { Creator } from "../creators/entities/creator.entity";
 import { Booking } from "../bookings/entities/booking.entity";
 import { Itinerary } from "../itineraries/entities/itinerary.entity";
 import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
+import { FoodOrder } from "../food-orders/entities/food-order.entity";
 import { Conversation } from "./entities/conversation.entity";
 import { ConversationParticipant } from "./entities/conversation-participant.entity";
 import { ConversationMessage } from "./entities/conversation-message.entity";
@@ -41,6 +42,8 @@ export class ConversationsService {
     private readonly itineraryRepo: Repository<Itinerary>,
     @InjectRepository(ItineraryCollaborator)
     private readonly collaboratorRepo: Repository<ItineraryCollaborator>,
+    @InjectRepository(FoodOrder)
+    private readonly foodOrderRepo: Repository<FoodOrder>,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -197,6 +200,24 @@ export class ConversationsService {
         ),
       );
       return this.get(userId, conversation.id);
+    }
+
+    if (contextType === "food-order") {
+      const order = await this.foodOrderRepo.findOne({
+        where: { id: contextId },
+      });
+      const ownerId = order?.business?.ownerUserId;
+      if (!order || !ownerId)
+        throw new NotFoundException("Food order not found");
+      if (userId !== order.buyerUserId && userId !== ownerId)
+        throw new ForbiddenException("You are not part of this order");
+      return this.createDirect(userId, {
+        participantId:
+          userId === order.buyerUserId ? ownerId : order.buyerUserId,
+        contextType,
+        contextId,
+        title: `Food order ${order.id.slice(0, 8)}`,
+      });
     }
 
     throw new BadRequestException("Unsupported conversation context");
