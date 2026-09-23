@@ -588,6 +588,8 @@ export interface ExperienceSummary {
   includes: string[];
   cancellationPolicy: string;
   coverImageUrl: string | null;
+  imageUrls: string[];
+  isFeatured: boolean;
   status?: string;
   guide: GuideSummary;
 }

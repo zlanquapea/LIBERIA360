@@ -111,6 +111,17 @@ export class Experience {
   coverImageUrl: string | null;
 
   @Column({
+    name: "image_urls",
+    type: "text",
+    array: true,
+    default: () => "'{}'",
+  })
+  imageUrls: string[];
+
+  @Column({ name: "is_featured", default: false })
+  isFeatured: boolean;
+
+  @Column({
     type: "enum",
     enum: ExperienceStatus,
     default: ExperienceStatus.DRAFT,

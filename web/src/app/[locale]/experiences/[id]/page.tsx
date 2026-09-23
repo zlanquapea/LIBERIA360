@@ -51,14 +51,26 @@ export default async function ExperiencePage({
         </p>
       </div>
       <section className="overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-slate-900">
-        {experience.coverImageUrl ? (
+        {(experience.imageUrls?.[0] ?? experience.coverImageUrl) ? (
           <img
-            src={experience.coverImageUrl}
-            alt=""
+            src={experience.imageUrls?.[0] ?? experience.coverImageUrl ?? ""}
+            alt={`${experience.title} experience`}
             className="h-56 w-full object-cover sm:h-80"
           />
         ) : (
           <div className="h-56 bg-gradient-to-br from-brand-900 via-brand-700 to-cyan-400 sm:h-80" />
+        )}
+        {experience.imageUrls && experience.imageUrls.length > 1 && (
+          <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 dark:bg-slate-800">
+            {experience.imageUrls.slice(0, 4).map((url, index) => (
+              <img
+                key={url}
+                src={url}
+                alt={`${experience.title} photo ${index + 1}`}
+                className="h-20 w-full object-cover sm:h-28"
+              />
+            ))}
+          </div>
         )}
         <div className="p-5 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">

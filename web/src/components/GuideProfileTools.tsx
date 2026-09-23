@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { useAuth } from "@/hooks/useAuth";
 import { HttpError } from "@/lib/http";
+import { uploadImage } from "@/lib/uploads-api";
 import type { ExperienceSummary, GuideSummary } from "@/lib/api";
 import {
   createGuideExperience,
@@ -155,7 +156,11 @@ export function GuideProfileTools({
     cancellationPolicy:
       "Free cancellation up to 24 hours before the experience.",
     coverImageUrl: "",
+    imageUrls: [] as string[],
+    isFeatured: false,
   });
+  const [uploadingExperienceImages, setUploadingExperienceImages] =
+    useState(false);
 
   useEffect(() => {
     getGuideReviews(guide.id)
@@ -301,6 +306,9 @@ export function GuideProfileTools({
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+        imageUrls: experience.imageUrls,
+        coverImageUrl: experience.imageUrls[0] || undefined,
+        isFeatured: experience.isFeatured,
         status: "published",
       });
       setMyExperiences((current) => [created, ...current]);
@@ -309,6 +317,9 @@ export function GuideProfileTools({
         title: "",
         description: "",
         includes: "",
+        imageUrls: [],
+        coverImageUrl: "",
+        isFeatured: false,
       }));
       setShowExperienceForm(false);
       setNotice("Your experience is now published.");
@@ -317,6 +328,74 @@ export function GuideProfileTools({
         err instanceof HttpError
           ? err.message
           : "Experience could not be published.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function addExperienceImages(files: FileList | null) {
+    if (!token || !files?.length) return;
+    setUploadingExperienceImages(true);
+    setError(null);
+    try {
+      const remaining = Math.max(0, 6 - experience.imageUrls.length);
+      const urls = await Promise.all(
+        Array.from(files)
+          .slice(0, remaining)
+          .map((file) => uploadImage(token, file)),
+      );
+      setExperience((current) => ({
+        ...current,
+        imageUrls: [...current.imageUrls, ...urls],
+        coverImageUrl: current.coverImageUrl || urls[0] || "",
+      }));
+    } catch (err) {
+      setError(
+        err instanceof HttpError
+          ? err.message
+          : "Images could not be uploaded.",
+      );
+    } finally {
+      setUploadingExperienceImages(false);
+    }
+  }
+
+  function removeExperienceImage(url: string) {
+    setExperience((current) => {
+      const imageUrls = current.imageUrls.filter((item) => item !== url);
+      return { ...current, imageUrls, coverImageUrl: imageUrls[0] ?? "" };
+    });
+  }
+
+  async function toggleFeaturedExperience(item: ExperienceSummary) {
+    if (!token || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateGuideExperience(token, item.id, {
+        isFeatured: !item.isFeatured,
+      });
+      setMyExperiences((current) =>
+        current.map((experienceItem) => ({
+          ...experienceItem,
+          ...(experienceItem.id === updated.id
+            ? updated
+            : updated.isFeatured
+              ? { isFeatured: false }
+              : {}),
+        })),
+      );
+      setNotice(
+        updated.isFeatured
+          ? "Experience featured on your profile."
+          : "Experience removed from featured.",
+      );
+    } catch (err) {
+      setError(
+        err instanceof HttpError
+          ? err.message
+          : "Featured experience could not be updated.",
       );
     } finally {
       setSaving(false);
@@ -586,6 +665,78 @@ export function GuideProfileTools({
                   }
                 />
               </div>
+              <div className="sm:col-span-2 rounded-2xl border border-dashed border-teal-200 bg-white/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">
+                      Experience photos
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Add up to 6 photos. The first photo becomes the cover.
+                    </p>
+                  </div>
+                  <label className="cursor-pointer rounded-full bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800">
+                    {uploadingExperienceImages ? "Uploading…" : "Upload photos"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      multiple
+                      disabled={
+                        uploadingExperienceImages ||
+                        experience.imageUrls.length >= 6
+                      }
+                      onChange={(event) => {
+                        void addExperienceImages(event.target.files);
+                        event.currentTarget.value = "";
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {experience.imageUrls.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                    {experience.imageUrls.map((url, index) => (
+                      <div
+                        key={url}
+                        className="group relative aspect-square overflow-hidden rounded-xl bg-slate-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`Experience photo ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {index === 0 && (
+                          <span className="absolute bottom-1 left-1 rounded bg-slate-950/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            Cover
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeExperienceImage(url)}
+                          className="absolute right-1 top-1 hidden h-6 w-6 rounded-full bg-slate-950/75 text-white group-hover:block"
+                          aria-label="Remove photo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <label className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-950 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={experience.isFeatured}
+                  onChange={(event) =>
+                    setExperience({
+                      ...experience,
+                      isFeatured: event.target.checked,
+                    })
+                  }
+                  className="h-4 w-4 accent-amber-500"
+                />
+                Feature this experience on my public profile
+              </label>
               <button
                 disabled={saving}
                 className="rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-60 sm:col-span-2"
@@ -604,10 +755,26 @@ export function GuideProfileTools({
                   key={item.id}
                   className="flex items-center justify-between gap-3 rounded-2xl bg-white px-3 py-3 text-sm shadow-sm"
                 >
-                  <span className="font-semibold">{item.title}</span>
-                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
-                    {item.status ?? "published"}
-                  </span>
+                  <div className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {item.title}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {item.imageUrls?.length ?? 0} photos
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
+                      {item.status ?? "published"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void toggleFeaturedExperience(item)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold ${item.isFeatured ? "bg-amber-400 text-amber-950" : "border border-slate-300 text-slate-600 hover:border-amber-400 hover:text-amber-700"}`}
+                    >
+                      {item.isFeatured ? "Featured" : "Feature"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

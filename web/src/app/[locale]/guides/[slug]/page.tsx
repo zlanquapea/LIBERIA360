@@ -71,19 +71,35 @@ export default async function GuidePage({
                 href={`/experiences/${experience.id}`}
                 className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
               >
-                {experience.coverImageUrl ? (
+                {(experience.imageUrls?.[0] ?? experience.coverImageUrl) ? (
                   <img
-                    src={experience.coverImageUrl}
-                    alt=""
+                    src={
+                      experience.imageUrls?.[0] ??
+                      experience.coverImageUrl ??
+                      ""
+                    }
+                    alt={`${experience.title} experience`}
                     className="h-44 w-full object-cover transition group-hover:scale-[1.02]"
                   />
                 ) : (
                   <div className="h-44 bg-gradient-to-br from-brand-800 to-cyan-400" />
                 )}
                 <div className="p-4">
-                  <h3 className="font-display text-xl font-extrabold">
-                    {experience.title}
-                  </h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-display text-xl font-extrabold">
+                      {experience.title}
+                    </h3>
+                    {experience.isFeatured && (
+                      <span className="shrink-0 rounded-full bg-amber-400 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-amber-950">
+                        Featured
+                      </span>
+                    )}
+                  </div>
+                  {experience.imageUrls?.length > 1 && (
+                    <p className="mt-1 text-xs font-semibold text-brand-700">
+                      {experience.imageUrls.length} photos
+                    </p>
+                  )}
                   <p className="mt-2 text-sm text-slate-500">
                     <MapPinIcon className="mr-1 inline h-4 w-4 text-brand-700" />
                     {experience.county}

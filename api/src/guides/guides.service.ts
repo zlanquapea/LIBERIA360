@@ -145,7 +145,7 @@ export class GuidesService {
     if (query.county) where.county = query.county;
     const experiences = await this.experienceRepo.find({
       where,
-      order: { createdAt: "DESC" },
+      order: { isFeatured: "DESC", createdAt: "DESC" },
     });
     const filtered = query.search
       ? experiences.filter((item) =>
@@ -187,6 +187,12 @@ export class GuidesService {
     if (!experience) throw new NotFoundException("Experience not found");
     if (experience.guide.userId !== userId) {
       throw new ForbiddenException("Only the guide can edit this experience");
+    }
+    if (dto.isFeatured) {
+      await this.experienceRepo.update(
+        { guideId: experience.guideId },
+        { isFeatured: false },
+      );
     }
     Object.assign(experience, dto);
     return this.publicExperience(await this.experienceRepo.save(experience));
@@ -463,7 +469,13 @@ export class GuidesService {
         "Your guide profile must be verified before publishing experiences",
       );
     }
-    return this.experienceRepo.save(
+    if (dto.isFeatured) {
+      await this.experienceRepo.update(
+        { guideId: guide.id },
+        { isFeatured: false },
+      );
+    }
+    const created = await this.experienceRepo.save(
       this.experienceRepo.create({
         ...dto,
         guideId: guide.id,
@@ -472,9 +484,12 @@ export class GuidesService {
         meetingLat: dto.meetingLat ?? null,
         meetingLng: dto.meetingLng ?? null,
         coverImageUrl: dto.coverImageUrl ?? null,
+        imageUrls: dto.imageUrls ?? [],
+        isFeatured: dto.isFeatured ?? false,
         status: dto.status ?? ExperienceStatus.DRAFT,
       }),
     );
+    return this.publicExperience(created);
   }
 
   async uploadVerificationDocument(
@@ -685,6 +700,9 @@ export class GuidesService {
   private async publicExperience(experience: Experience) {
     return {
       ...experience,
+      imageUrls:
+        experience.imageUrls ??
+        (experience.coverImageUrl ? [experience.coverImageUrl] : []),
       guide: await this.publicGuide(experience.guide),
     };
   }

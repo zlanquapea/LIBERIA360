@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -128,6 +129,15 @@ export class CreateExperienceDto {
   @IsOptional()
   @IsUrl()
   coverImageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  imageUrls?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
 
   @IsOptional()
   @IsEnum(ExperienceStatus)
@@ -322,6 +332,15 @@ export class UpdateExperienceDto {
   @IsOptional()
   @IsUrl()
   coverImageUrl?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsUrl({}, { each: true })
+  imageUrls?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
 
   @IsOptional()
   @IsEnum(ExperienceStatus)
