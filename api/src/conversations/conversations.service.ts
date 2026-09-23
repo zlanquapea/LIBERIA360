@@ -259,7 +259,11 @@ export class ConversationsService {
     await this.requireMember(userId, message.conversationId);
     const reactions = message.reactions ?? {};
     const users = new Set(reactions[dto.emoji] ?? []);
-    users.has(userId) ? users.delete(userId) : users.add(userId);
+    if (users.has(userId)) {
+      users.delete(userId);
+    } else {
+      users.add(userId);
+    }
     reactions[dto.emoji] = [...users];
     message.reactions = reactions;
     return this.publicMessage(await this.messageRepo.save(message));
