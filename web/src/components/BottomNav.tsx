@@ -10,6 +10,7 @@ import {
   MapIcon,
   CalendarDaysIcon,
   UserGroupIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -17,6 +18,7 @@ import {
   MapIcon as MapIconSolid,
   CalendarDaysIcon as CalendarDaysIconSolid,
   UserGroupIcon as UserGroupIconSolid,
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
 } from "@heroicons/react/24/solid";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -78,6 +80,12 @@ const TABS: {
     labelKey: "creators",
     icon: UserGroupIcon,
     activeIcon: UserGroupIconSolid,
+  },
+  {
+    href: "/messages",
+    labelKey: "messages",
+    icon: ChatBubbleLeftRightIcon,
+    activeIcon: ChatBubbleLeftRightIconSolid,
   },
 ];
 
