@@ -220,6 +220,12 @@ export function getMyGuideConversations(token: string) {
   });
 }
 
+export function getMyGuideUnreadCount(token: string) {
+  return apiRequest<{ count: number }>("/guides/messages/unread-count", {
+    headers: authHeader(token),
+  });
+}
+
 export function sendGuideMessage(
   token: string,
   guideId: string,

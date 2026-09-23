@@ -12,6 +12,7 @@
     "home": "Home",
     "trips": "Trips",
     "messages": "Messages",
+    "messagesUnread": "Messages — {count} unread",
     "search": "Search",
     "mainNavigation": "Main navigation",
     "primaryNavigation": "Primary navigation",

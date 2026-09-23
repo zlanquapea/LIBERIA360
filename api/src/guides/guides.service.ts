@@ -318,6 +318,22 @@ export class GuidesService {
     }));
   }
 
+  async getMyGuideUnreadCount(userId: string) {
+    const ownedGuides = await this.guideRepo.find({ where: { userId } });
+    const ownedGuideIds = ownedGuides.map((guide) => guide.id);
+    const query = this.messageRepo
+      .createQueryBuilder("message")
+      .where("message.read_at IS NULL")
+      .andWhere("message.sender_id != :userId", { userId })
+      .andWhere(
+        ownedGuideIds.length
+          ? "(message.visitor_id = :userId OR message.guide_id IN (:...ownedGuideIds))"
+          : "message.visitor_id = :userId",
+        { userId, ownedGuideIds },
+      );
+    return { count: await query.getCount() };
+  }
+
   async getGuideOwnerId(guideId: string) {
     const guide = await this.guideRepo.findOne({ where: { id: guideId } });
     if (!guide) throw new NotFoundException("Guide profile not found");

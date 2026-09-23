@@ -12,6 +12,7 @@
     "home": "الرئيسية",
     "trips": "الرحلات",
     "messages": "الرسائل",
+    "messagesUnread": "الرسائل — {count} غير مقروءة",
     "search": "بحث",
     "mainNavigation": "التنقل الرئيسي",
     "primaryNavigation": "التنقل الرئيسي",

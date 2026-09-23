@@ -20,6 +20,7 @@ import {
   UserGroupIcon as UserGroupIconSolid,
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightIconSolid,
 } from "@heroicons/react/24/solid";
+import { useGuideUnreadCount } from "@/hooks/useGuideUnreadCount";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -95,6 +96,7 @@ const TABS: {
 export function BottomNav() {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const unreadCount = useGuideUnreadCount();
   const activeIndex = TABS.findIndex((tab) =>
     tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href),
   );
@@ -140,6 +142,11 @@ export function BottomNav() {
                 aria-hidden
                 className={`h-5 w-5 shrink-0 transition-transform ${active ? "scale-110" : ""}`}
               />
+              {tab.href === "/messages" && unreadCount > 0 && (
+                <span aria-label={t("messagesUnread", { count: unreadCount })} className="absolute left-1/2 top-1 flex min-h-4 min-w-4 -translate-y-1/2 translate-x-2 items-center justify-center rounded-full border-2 border-brand-900 bg-flag-500 px-1 text-[9px] font-bold leading-none text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
               <span className="truncate">{t(tab.labelKey)}</span>
             </Link>
           );

@@ -12,6 +12,7 @@
     "home": "首页",
     "trips": "行程",
     "messages": "消息",
+    "messagesUnread": "消息 — {count} 条未读",
     "search": "搜索",
     "mainNavigation": "主导航",
     "primaryNavigation": "主导航",

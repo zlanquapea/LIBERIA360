@@ -80,6 +80,13 @@ export class GuidesController {
     return this.guidesService.getMyGuideConversations(user.id);
   }
 
+  @Get("guides/messages/unread-count")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  getMyGuideUnreadCount(@CurrentUser() user: User) {
+    return this.guidesService.getMyGuideUnreadCount(user.id);
+  }
+
   @Get("guides/:slug")
   findGuide(@Param("slug") slug: string) {
     return this.guidesService.findGuide(slug);

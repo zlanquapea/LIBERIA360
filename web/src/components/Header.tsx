@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
+import { useGuideUnreadCount } from "@/hooks/useGuideUnreadCount";
 import { SITE_NAVIGATION } from "@/lib/site-nav";
 import { AccountLink } from "./AccountLink";
 import { GlobalSearch } from "./GlobalSearch";
@@ -27,6 +28,7 @@ import { ThemeToggle } from "./ThemeToggle";
 export function Header() {
   const t = useTranslations("nav");
   const { user, ready } = useAuth();
+  const unreadCount = useGuideUnreadCount();
 
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-brand-900/95 text-white shadow-[0_8px_24px_rgba(0,47,59,0.16)] backdrop-blur-xl supports-[backdrop-filter]:bg-brand-900/90">
@@ -80,12 +82,16 @@ export function Header() {
           {ready && user && (
             <Link
               href="/messages"
-              aria-label={t("messages")}
+              aria-label={unreadCount > 0 ? t("messagesUnread", { count: unreadCount }) : t("messages")}
               title={t("messages")}
               className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-brand-950 shadow-[0_4px_12px_rgba(251,191,36,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(251,191,36,0.4)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-900"
             >
               <ChatBubbleLeftRightIcon aria-hidden className="h-[1.15rem] w-[1.15rem] transition-transform duration-200 group-hover:scale-110" />
-              <span aria-hidden className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-brand-900 bg-emerald-400" />
+              {unreadCount > 0 && (
+                <span aria-hidden className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-brand-900 bg-flag-500 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           )}
           <AccountLink />
