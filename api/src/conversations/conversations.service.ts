@@ -9,6 +9,9 @@ import { IsNull, Repository } from "typeorm";
 import { NotificationsService } from "../notifications/notifications.service";
 import { GuideProfile } from "../guides/entities/guide-profile.entity";
 import { Creator } from "../creators/entities/creator.entity";
+import { Booking } from "../bookings/entities/booking.entity";
+import { Itinerary } from "../itineraries/entities/itinerary.entity";
+import { ItineraryCollaborator } from "../itineraries/entities/itinerary-collaborator.entity";
 import { Conversation } from "./entities/conversation.entity";
 import { ConversationParticipant } from "./entities/conversation-participant.entity";
 import { ConversationMessage } from "./entities/conversation-message.entity";
@@ -32,6 +35,12 @@ export class ConversationsService {
     private readonly guideRepo: Repository<GuideProfile>,
     @InjectRepository(Creator)
     private readonly creatorRepo: Repository<Creator>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
+    @InjectRepository(Itinerary)
+    private readonly itineraryRepo: Repository<Itinerary>,
+    @InjectRepository(ItineraryCollaborator)
+    private readonly collaboratorRepo: Repository<ItineraryCollaborator>,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -123,6 +132,74 @@ export class ConversationsService {
       title: creator.name,
       avatarUrl: creator.profileImage ?? undefined,
     });
+  }
+
+  async createForContext(
+    userId: string,
+    contextType: string,
+    contextId: string,
+  ) {
+    if (contextType === "booking") {
+      const booking = await this.bookingRepo.findOne({
+        where: { id: contextId },
+      });
+      if (!booking) throw new NotFoundException("Booking not found");
+      const ownerId =
+        booking.business?.ownerUserId ??
+        booking.creator?.userId ??
+        booking.carListing?.ownerUserId;
+      if (!ownerId)
+        throw new BadRequestException("This booking has no messageable owner");
+      if (userId !== booking.guestUserId && userId !== ownerId)
+        throw new ForbiddenException("You are not part of this booking");
+      return this.createDirect(userId, {
+        participantId:
+          userId === booking.guestUserId ? ownerId : booking.guestUserId,
+        contextType,
+        contextId,
+        title: "Booking conversation",
+      });
+    }
+
+    if (contextType === "trip") {
+      const itinerary = await this.itineraryRepo.findOne({
+        where: { id: contextId },
+      });
+      if (!itinerary) throw new NotFoundException("Trip not found");
+      const collaborators = await this.collaboratorRepo.find({
+        where: { itineraryId: contextId },
+      });
+      const memberIds = [
+        itinerary.userId,
+        ...collaborators.map((item) => item.userId),
+      ].filter((id, index, all) => all.indexOf(id) === index);
+      if (!memberIds.includes(userId))
+        throw new ForbiddenException("You are not part of this trip");
+      const existing = await this.conversationRepo.findOne({
+        where: { contextType, contextId },
+      });
+      if (existing) return this.get(userId, existing.id);
+      const conversation = await this.conversationRepo.save(
+        this.conversationRepo.create({
+          contextType,
+          contextId,
+          title: itinerary.title,
+          avatarUrl: itinerary.coverImage,
+          lastMessageAt: null,
+        }),
+      );
+      await this.participantRepo.save(
+        memberIds.map((memberId) =>
+          this.participantRepo.create({
+            conversationId: conversation.id,
+            userId: memberId,
+          }),
+        ),
+      );
+      return this.get(userId, conversation.id);
+    }
+
+    throw new BadRequestException("Unsupported conversation context");
   }
 
   async get(userId: string, conversationId: string) {

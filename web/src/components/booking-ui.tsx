@@ -1,14 +1,21 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/hooks/useAuth';
-import BookingMessageThread from '@/components/BookingMessageThread';
-import { cancelBooking, respondToBooking } from '@/lib/booking-api';
-import { formatBookingWhen, formatBookingStatus, formatCost } from '@/lib/format';
-import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import type { Booking } from '@/lib/types';
+import { useState } from "react";
+import Link from "next/link";
+import {
+  ChatBubbleLeftRightIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
+import { cancelBooking, respondToBooking } from "@/lib/booking-api";
+import {
+  formatBookingWhen,
+  formatBookingStatus,
+  formatCost,
+} from "@/lib/format";
+import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import type { Booking } from "@/lib/types";
 
 // Shared row/modal pieces for "a list of bookings with a click-through
 // detail view" — originally built for the combined /account/bookings page
@@ -31,15 +38,29 @@ export interface SelectedBooking {
 // when viewing a guest's own requests.
 export function counterpartName(booking: Booking, showGuest?: boolean): string {
   return showGuest
-    ? booking.guest?.name ?? 'A guest'
-    : booking.business?.name ?? booking.creator?.name ?? booking.carListing?.title ?? 'Listing';
+    ? (booking.guest?.name ?? "A guest")
+    : (booking.business?.name ??
+        booking.creator?.name ??
+        booking.carListing?.title ??
+        "Listing");
 }
 
 // A small colored initial badge — cheap stand-in for an avatar that gives
 // every row a bit of personality instead of a bare wall of text.
-export function InitialBadge({ name, size = 10 }: { name: string; size?: 8 | 10 | 11 }) {
-  const initial = name.trim().charAt(0).toUpperCase() || '?';
-  const sizeClass = size === 8 ? 'h-8 w-8 text-xs' : size === 11 ? 'h-11 w-11 text-base' : 'h-10 w-10 text-sm';
+export function InitialBadge({
+  name,
+  size = 10,
+}: {
+  name: string;
+  size?: 8 | 10 | 11;
+}) {
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  const sizeClass =
+    size === 8
+      ? "h-8 w-8 text-xs"
+      : size === 11
+        ? "h-11 w-11 text-base"
+        : "h-10 w-10 text-sm";
   return (
     <span
       aria-hidden
@@ -50,15 +71,20 @@ export function InitialBadge({ name, size = 10 }: { name: string; size?: 8 | 10 
   );
 }
 
-export function StatusBadge({ status }: { status: Booking['status'] }) {
-  const styles: Record<Booking['status'], string> = {
-    pending: 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200',
-    confirmed: 'bg-emerald-100 text-emerald-800',
-    declined: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
-    cancelled: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400',
+export function StatusBadge({ status }: { status: Booking["status"] }) {
+  const styles: Record<Booking["status"], string> = {
+    pending:
+      "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200",
+    confirmed: "bg-emerald-100 text-emerald-800",
+    declined:
+      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+    cancelled:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400",
   };
   return (
-    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}>
+    <span
+      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}
+    >
       {formatBookingStatus(status)}
     </span>
   );
@@ -67,7 +93,15 @@ export function StatusBadge({ status }: { status: Booking['status'] }) {
 // One compact, clickable summary of a booking. Tapping it (or the chat
 // icon) is the only way in — full details, actions, and the message
 // thread all live behind that one click, in BookingDetailModal.
-export function BookingRow({ booking, showGuest, onOpen }: { booking: Booking; showGuest?: boolean; onOpen: () => void }) {
+export function BookingRow({
+  booking,
+  showGuest,
+  onOpen,
+}: {
+  booking: Booking;
+  showGuest?: boolean;
+  onOpen: () => void;
+}) {
   const name = counterpartName(booking, showGuest);
   return (
     <li>
@@ -79,7 +113,9 @@ export function BookingRow({ booking, showGuest, onOpen }: { booking: Booking; s
         <InitialBadge name={name} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
-            <span className="truncate font-medium text-slate-900 dark:text-slate-50">{name}</span>
+            <span className="truncate font-medium text-slate-900 dark:text-slate-50">
+              {name}
+            </span>
             <StatusBadge status={booking.status} />
           </span>
           <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
@@ -93,7 +129,10 @@ export function BookingRow({ booking, showGuest, onOpen }: { booking: Booking; s
             {booking.partySize && ` · Party of ${booking.partySize}`}
           </span>
         </span>
-        <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300" />
+        <ChatBubbleLeftRightIcon
+          aria-hidden
+          className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300"
+        />
       </button>
     </li>
   );
@@ -112,7 +151,14 @@ export function BookingDetailModal({
   token: string;
   onClose: () => void;
 }) {
-  const { booking, showGuest, canCancel, canRespond, onCancelled, onResponded } = selected;
+  const {
+    booking,
+    showGuest,
+    canCancel,
+    canRespond,
+    onCancelled,
+    onResponded,
+  } = selected;
   const name = counterpartName(booking, showGuest);
 
   return (
@@ -130,7 +176,9 @@ export function BookingDetailModal({
         <div className="flex items-center gap-3 border-b border-slate-100 p-4 dark:border-slate-800">
           <InitialBadge name={name} size={11} />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold text-slate-900 dark:text-slate-50">{name}</p>
+            <p className="truncate font-semibold text-slate-900 dark:text-slate-50">
+              {name}
+            </p>
             <StatusBadge status={booking.status} />
           </div>
           <button
@@ -160,7 +208,11 @@ export function BookingDetailModal({
                 Estimated total: {formatCost(booking.estimatedTotal)}
               </p>
             )}
-            {booking.notes && <p className="text-slate-500 dark:text-slate-400">&ldquo;{booking.notes}&rdquo;</p>}
+            {booking.notes && (
+              <p className="text-slate-500 dark:text-slate-400">
+                &ldquo;{booking.notes}&rdquo;
+              </p>
+            )}
             {booking.businessResponse && (
               <p className="mt-1 rounded-lg bg-white px-2.5 py-1.5 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                 Response: {booking.businessResponse}
@@ -168,12 +220,25 @@ export function BookingDetailModal({
             )}
           </div>
 
-          {canRespond && onResponded && <OwnerResponseForm bookingId={booking.id} onDone={onResponded} />}
+          {canRespond && onResponded && (
+            <OwnerResponseForm bookingId={booking.id} onDone={onResponded} />
+          )}
 
-          {canCancel && onCancelled && <CancelBookingButton token={token} bookingId={booking.id} onCancelled={onCancelled} />}
+          {canCancel && onCancelled && (
+            <CancelBookingButton
+              token={token}
+              bookingId={booking.id}
+              onCancelled={onCancelled}
+            />
+          )}
 
           <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
-            <BookingMessageThread bookingId={booking.id} />
+            <Link
+              href={`/messages/context?type=booking&id=${booking.id}`}
+              className="flex min-h-11 items-center justify-center rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              Open conversation in Messages
+            </Link>
           </div>
         </div>
       </div>
@@ -212,7 +277,11 @@ export function CancelBookingButton({
         setConfirming(false);
         onCancelled();
       } else {
-        setError(getFriendlyErrorMessage(err, { context: { action: 'cancel-booking', bookingId } }));
+        setError(
+          getFriendlyErrorMessage(err, {
+            context: { action: "cancel-booking", bookingId },
+          }),
+        );
       }
     } finally {
       setCancelling(false);
@@ -248,21 +317,38 @@ export function CancelBookingButton({
   );
 }
 
-export function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
+export function OwnerResponseForm({
+  bookingId,
+  onDone,
+}: {
+  bookingId: string;
+  onDone: () => void;
+}) {
   const { token } = useAuth();
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState<'confirm' | 'decline' | null>(null);
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState<"confirm" | "decline" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
-  async function respond(action: 'confirm' | 'decline') {
+  async function respond(action: "confirm" | "decline") {
     if (!token) return;
     setSubmitting(action);
     setError(null);
     try {
-      await respondToBooking(token, bookingId, action, message.trim() || undefined);
+      await respondToBooking(
+        token,
+        bookingId,
+        action,
+        message.trim() || undefined,
+      );
       onDone();
     } catch (err) {
-      setError(getFriendlyErrorMessage(err, { context: { action: 'respond-to-booking', bookingId } }));
+      setError(
+        getFriendlyErrorMessage(err, {
+          context: { action: "respond-to-booking", bookingId },
+        }),
+      );
       setSubmitting(null);
     }
   }
@@ -277,23 +363,25 @@ export function OwnerResponseForm({ bookingId, onDone }: { bookingId: string; on
         maxLength={1000}
         className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       />
-      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+      {error && (
+        <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>
+      )}
       <div className="flex gap-2">
         <button
           type="button"
           disabled={submitting !== null}
-          onClick={() => respond('confirm')}
+          onClick={() => respond("confirm")}
           className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
         >
-          {submitting === 'confirm' ? 'Confirming…' : 'Confirm'}
+          {submitting === "confirm" ? "Confirming…" : "Confirm"}
         </button>
         <button
           type="button"
           disabled={submitting !== null}
-          onClick={() => respond('decline')}
+          onClick={() => respond("decline")}
           className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-flag-500 hover:text-flag-700 dark:hover:text-flag-300 disabled:opacity-60"
         >
-          {submitting === 'decline' ? 'Declining…' : 'Decline'}
+          {submitting === "decline" ? "Declining…" : "Decline"}
         </button>
       </div>
     </div>

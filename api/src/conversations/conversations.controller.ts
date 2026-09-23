@@ -47,6 +47,13 @@ export class ConversationsController {
   ) {
     return this.conversations.createForCreator(user.id, creatorId);
   }
+  @Post("context/:contextType/:contextId") createForContext(
+    @CurrentUser() user: User,
+    @Param("contextType") contextType: string,
+    @Param("contextId") contextId: string,
+  ) {
+    return this.conversations.createForContext(user.id, contextType, contextId);
+  }
   @Get(":id") get(@CurrentUser() user: User, @Param("id") id: string) {
     return this.conversations.get(user.id, id);
   }

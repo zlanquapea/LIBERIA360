@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { DocumentDuplicateIcon, PencilIcon, TrashIcon, MapPinIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/hooks/useAuth';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import {
+  DocumentDuplicateIcon,
+  PencilIcon,
+  TrashIcon,
+  MapPinIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
 import {
   cancelTrip,
   deleteItinerary,
@@ -17,22 +23,35 @@ import {
   requestToJoinTrip,
   updateItineraryStop,
   updatePartySize,
-} from '@/lib/itinerary-api';
-import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
-import { formatBudgetBand, formatTripDateRange, formatTripStatus, formatTripVisibility } from '@/lib/format';
-import { ItineraryStops } from '@/components/ItineraryStops';
-import { BrandLoader } from '@/components/BrandLoader';
-import { TripPeoplePanel } from '@/components/TripPeoplePanel';
-import { TripChatPanel } from '@/components/TripChatPanel';
-import { AddTripStop } from '@/components/AddTripStop';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { SuccessBanner } from '@/components/SuccessBanner';
-import { ShareMenu } from '@/components/ShareMenu';
-import { TripShareCard, tripHasShareableContent } from '@/components/TripShareCard';
-import { TripMapLoader } from '@/components/TripMapLoader';
-import { TripCostSummary } from '@/components/TripCostSummary';
-import { tripHasMapPins } from '@/lib/trip-map';
-import type { ItineraryDetail, Place, PublicTripDetail, TripStatus, TripVisibility } from '@/lib/types';
+} from "@/lib/itinerary-api";
+import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
+import {
+  formatBudgetBand,
+  formatTripDateRange,
+  formatTripStatus,
+  formatTripVisibility,
+} from "@/lib/format";
+import { ItineraryStops } from "@/components/ItineraryStops";
+import { BrandLoader } from "@/components/BrandLoader";
+import { TripPeoplePanel } from "@/components/TripPeoplePanel";
+import { AddTripStop } from "@/components/AddTripStop";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { SuccessBanner } from "@/components/SuccessBanner";
+import { ShareMenu } from "@/components/ShareMenu";
+import {
+  TripShareCard,
+  tripHasShareableContent,
+} from "@/components/TripShareCard";
+import { TripMapLoader } from "@/components/TripMapLoader";
+import { TripCostSummary } from "@/components/TripCostSummary";
+import { tripHasMapPins } from "@/lib/trip-map";
+import type {
+  ItineraryDetail,
+  Place,
+  PublicTripDetail,
+  TripStatus,
+  TripVisibility,
+} from "@/lib/types";
 
 // Kept in sync with the same threshold on the trips list page — a trip
 // with this many saved stops, or any collaborators at all, gets an extra
@@ -40,15 +59,18 @@ import type { ItineraryDetail, Place, PublicTripDetail, TripStatus, TripVisibili
 const SUBSTANTIAL_STOPS_THRESHOLD = 5;
 
 const STATUS_BADGE_STYLES: Record<TripStatus, string> = {
-  upcoming: 'bg-brand-100 text-brand-800 dark:bg-brand-950/40 dark:text-brand-200',
-  ongoing: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-  completed: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  cancelled: 'bg-flag-500/10 text-flag-700 dark:text-flag-300',
+  upcoming:
+    "bg-brand-100 text-brand-800 dark:bg-brand-950/40 dark:text-brand-200",
+  ongoing:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+  completed:
+    "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+  cancelled: "bg-flag-500/10 text-flag-700 dark:text-flag-300",
 };
 
 const VISIBILITY_BADGE_STYLES: Record<TripVisibility, string> = {
-  public: 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300',
-  private: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  public: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+  private: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
 };
 
 // The interactive trip detail experience — member view (rename, delete,
@@ -59,9 +81,9 @@ const VISIBILITY_BADGE_STYLES: Record<TripVisibility, string> = {
 // The route's page.tsx wraps this to add per-trip <head> metadata, which
 // Next.js only generates from a Server Component.
 export function TripDetailClient({ id }: { id: string }) {
-  const t = useTranslations('trips');
-  const tCommon = useTranslations('common');
-  const notFoundMessage = t('notFoundMessage');
+  const t = useTranslations("trips");
+  const tCommon = useTranslations("common");
+  const notFoundMessage = t("notFoundMessage");
   const router = useRouter();
   const { user, token, ready } = useAuth();
 
@@ -81,7 +103,9 @@ export function TripDetailClient({ id }: { id: string }) {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  const [joinRequestState, setJoinRequestState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [joinRequestState, setJoinRequestState] = useState<
+    "idle" | "sending" | "sent"
+  >("idle");
   const [joinRequestError, setJoinRequestError] = useState<string | null>(null);
 
   // A member reload (after renaming, adding a stop, a collaborator
@@ -92,7 +116,9 @@ export function TripDetailClient({ id }: { id: string }) {
     if (!token) return;
     getItinerary(token, id)
       .then((result) => setItinerary(result))
-      .catch((err) => setLoadError(getFriendlyErrorMessage(err, { notFoundMessage })));
+      .catch((err) =>
+        setLoadError(getFriendlyErrorMessage(err, { notFoundMessage })),
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, id]);
 
@@ -104,7 +130,7 @@ export function TripDetailClient({ id }: { id: string }) {
       return getPublicTrip(id)
         .then((result) => {
           if (cancelled) return;
-          if ('visibility' in result) {
+          if ("visibility" in result) {
             // RestrictedTripPreview — a real trip, but private, and this
             // viewer isn't on it (Section 15 of the Aug 2026 spec).
             setRestricted(true);
@@ -117,7 +143,7 @@ export function TripDetailClient({ id }: { id: string }) {
             setLoadError(
               getFriendlyErrorMessage(err, {
                 notFoundMessage,
-                context: { action: 'load-public-trip', itineraryId: id },
+                context: { action: "load-public-trip", itineraryId: id },
               }),
             );
           }
@@ -142,7 +168,7 @@ export function TripDetailClient({ id }: { id: string }) {
           setLoadError(
             getFriendlyErrorMessage(err, {
               notFoundMessage,
-              context: { action: 'load-itinerary', itineraryId: id },
+              context: { action: "load-itinerary", itineraryId: id },
             }),
           );
         })
@@ -161,7 +187,9 @@ export function TripDetailClient({ id }: { id: string }) {
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
         <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">{tCommon('loading')}</p>
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+          {tCommon("loading")}
+        </p>
       </main>
     );
   }
@@ -169,10 +197,17 @@ export function TripDetailClient({ id }: { id: string }) {
   if (restricted) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-3 px-4 py-10 text-center">
-        <p className="text-lg font-bold text-slate-900 dark:text-slate-50">{t('privateTripTitle')}</p>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('privateTripDescription')}</p>
-        <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          ← {t('backToMyTrips')}
+        <p className="text-lg font-bold text-slate-900 dark:text-slate-50">
+          {t("privateTripTitle")}
+        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {t("privateTripDescription")}
+        </p>
+        <Link
+          href="/trips"
+          className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+        >
+          ← {t("backToMyTrips")}
         </Link>
       </main>
     );
@@ -184,8 +219,11 @@ export function TripDetailClient({ id }: { id: string }) {
         <p className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
           {loadError ?? notFoundMessage}
         </p>
-        <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          ← {t('backToMyTrips')}
+        <Link
+          href="/trips"
+          className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+        >
+          ← {t("backToMyTrips")}
         </Link>
       </main>
     );
@@ -226,39 +264,60 @@ export function TripDetailClient({ id }: { id: string }) {
   const isAdmin = user?.id === trip.admin?.id;
   // Only meaningful when the owner set a cap — see Itinerary.
   // maxParticipants's doc comment on the API side.
-  const isFull = trip.maxParticipants != null && trip.participantCount >= trip.maxParticipants;
+  const isFull =
+    trip.maxParticipants != null &&
+    trip.participantCount >= trip.maxParticipants;
 
   async function handleRequestToJoin() {
     if (!token) return;
-    setJoinRequestState('sending');
+    setJoinRequestState("sending");
     setJoinRequestError(null);
     try {
       await requestToJoinTrip(token, trip.id);
-      setJoinRequestState('sent');
+      setJoinRequestState("sent");
     } catch (err) {
-      setJoinRequestState('idle');
-      setJoinRequestError(getFriendlyErrorMessage(err, { context: { action: 'request-to-join', itineraryId: trip.id } }));
+      setJoinRequestState("idle");
+      setJoinRequestError(
+        getFriendlyErrorMessage(err, {
+          context: { action: "request-to-join", itineraryId: trip.id },
+        }),
+      );
     }
   }
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
       <div>
-        <Link href="/trips/community" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
-          ← {t('backToCommunityTrips')}
+        <Link
+          href="/trips/community"
+          className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+        >
+          ← {t("backToCommunityTrips")}
         </Link>
 
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{trip.title}</h1>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${VISIBILITY_BADGE_STYLES.public}`}>{t('visibilityPublic')}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE_STYLES[trip.status]}`}>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+            {trip.title}
+          </h1>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${VISIBILITY_BADGE_STYLES.public}`}
+          >
+            {t("visibilityPublic")}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE_STYLES[trip.status]}`}
+          >
             {formatTripStatus(trip.status)}
           </span>
         </div>
 
         <TripMeta trip={trip} />
 
-        {trip.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{trip.description}</p>}
+        {trip.description && (
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {trip.description}
+          </p>
+        )}
 
         <div className="mt-3">
           <TripCostSummary stops={trip.stops} />
@@ -273,38 +332,48 @@ export function TripDetailClient({ id }: { id: string }) {
               <TripShareCard trip={trip} />
             </div>
           )}
-          {!isAdmin && trip.status !== 'cancelled' && (
+          {!isAdmin && trip.status !== "cancelled" && (
             <>
               {isFull ? (
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('tripFull')}</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {t("tripFull")}
+                </p>
               ) : !user ? (
                 <Link
                   href={`/login?next=/trips/${trip.id}`}
                   className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
                 >
-                  {t('logInToJoin')}
+                  {t("logInToJoin")}
                 </Link>
-              ) : joinRequestState === 'sent' ? (
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{t('requestSent')}</p>
+              ) : joinRequestState === "sent" ? (
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  {t("requestSent")}
+                </p>
               ) : (
                 <button
                   type="button"
-                  disabled={joinRequestState === 'sending'}
+                  disabled={joinRequestState === "sending"}
                   onClick={handleRequestToJoin}
                   className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
                 >
-                  {joinRequestState === 'sending' ? t('sendingRequest') : t('requestToJoin')}
+                  {joinRequestState === "sending"
+                    ? t("sendingRequest")
+                    : t("requestToJoin")}
                 </button>
               )}
             </>
           )}
         </div>
-        {joinRequestError && <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">{joinRequestError}</p>}
+        {joinRequestError && (
+          <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">
+            {joinRequestError}
+          </p>
+        )}
       </div>
 
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {t('goingCount', { count: trip.participantCount })}
-        {trip.admin && ` · ${t('organizedBy', { name: trip.admin.name })}`}
+        {t("goingCount", { count: trip.participantCount })}
+        {trip.admin && ` · ${t("organizedBy", { name: trip.admin.name })}`}
       </p>
 
       <ItineraryStops stops={trip.stops} />
@@ -320,7 +389,11 @@ export function TripDetailClient({ id }: { id: string }) {
 function TripMeta({
   trip,
 }: {
-  trip: { destination: Place | null; startDate: string | null; endDate: string | null };
+  trip: {
+    destination: Place | null;
+    startDate: string | null;
+    endDate: string | null;
+  };
 }) {
   const dateRange = formatTripDateRange(trip.startDate, trip.endDate);
   return (
@@ -388,7 +461,7 @@ function MemberTripView({
   cancelError: string | null;
   setCancelError: (v: string | null) => void;
 }) {
-  const t = useTranslations('trips');
+  const t = useTranslations("trips");
   const isOwner = itinerary.userId === user?.id;
   const isCollaborator = itinerary.collaborators.some((c) => c.id === user?.id);
   const canEdit = isOwner || isCollaborator;
@@ -406,7 +479,9 @@ function MemberTripView({
       router.push(`/trips/${copy.id}`);
     } catch (err) {
       setActionError(
-        getFriendlyErrorMessage(err, { context: { action: 'duplicate-itinerary', itineraryId: itinerary.id } }),
+        getFriendlyErrorMessage(err, {
+          context: { action: "duplicate-itinerary", itineraryId: itinerary.id },
+        }),
       );
       setDuplicating(false);
     }
@@ -423,8 +498,8 @@ function MemberTripView({
     } catch (err) {
       setActionError(
         getFriendlyErrorMessage(err, {
-          notFoundMessage: t('notFoundMessage'),
-          context: { action: 'rename-itinerary', itineraryId: itinerary.id },
+          notFoundMessage: t("notFoundMessage"),
+          context: { action: "rename-itinerary", itineraryId: itinerary.id },
         }),
       );
     }
@@ -436,13 +511,15 @@ function MemberTripView({
     setDeleteError(null);
     try {
       await deleteItinerary(token, itinerary.id);
-      finishDelete(t('tripDeletedSuccessful'));
+      finishDelete(t("tripDeletedSuccessful"));
     } catch (err) {
       if (isNotFoundError(err)) {
-        finishDelete(t('tripAlreadyDeleted'));
+        finishDelete(t("tripAlreadyDeleted"));
       } else {
         setDeleteError(
-          getFriendlyErrorMessage(err, { context: { action: 'delete-itinerary', itineraryId: itinerary.id } }),
+          getFriendlyErrorMessage(err, {
+            context: { action: "delete-itinerary", itineraryId: itinerary.id },
+          }),
         );
         setDeleting(false);
       }
@@ -453,7 +530,7 @@ function MemberTripView({
     setConfirmingDelete(false);
     setDeleting(false);
     setSuccessMessage(message);
-    setTimeout(() => router.push('/trips'), 900);
+    setTimeout(() => router.push("/trips"), 900);
   }
 
   async function handleCancelConfirmed() {
@@ -464,25 +541,36 @@ function MemberTripView({
       await cancelTrip(token, itinerary.id);
       setConfirmingCancel(false);
       setCancelling(false);
-      setSuccessMessage(t('tripCancelled'));
+      setSuccessMessage(t("tripCancelled"));
       reload();
     } catch (err) {
-      setCancelError(getFriendlyErrorMessage(err, { context: { action: 'cancel-trip', itineraryId: itinerary.id } }));
+      setCancelError(
+        getFriendlyErrorMessage(err, {
+          context: { action: "cancel-trip", itineraryId: itinerary.id },
+        }),
+      );
       setCancelling(false);
     }
   }
 
   const collaboratorCount = itinerary.collaborators.length;
   const consequences =
-    collaboratorCount > 0 ? [t('collaboratorsWillLoseAccess', { count: collaboratorCount })] : undefined;
-  const requiresTypedConfirmation = itinerary.stops.length >= SUBSTANTIAL_STOPS_THRESHOLD || collaboratorCount > 0;
+    collaboratorCount > 0
+      ? [t("collaboratorsWillLoseAccess", { count: collaboratorCount })]
+      : undefined;
+  const requiresTypedConfirmation =
+    itinerary.stops.length >= SUBSTANTIAL_STOPS_THRESHOLD ||
+    collaboratorCount > 0;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
       <div>
         <div className="flex items-center justify-between gap-3">
-          <Link href="/trips" className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
-            ← {t('myTrips')}
+          <Link
+            href="/trips"
+            className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+          >
+            ← {t("myTrips")}
           </Link>
           <div className="flex items-center gap-2">
             {canEdit && (
@@ -493,19 +581,21 @@ function MemberTripView({
                 className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
               >
                 <DocumentDuplicateIcon aria-hidden className="h-3.5 w-3.5" />
-                {duplicating ? t('duplicating') : t('duplicateTrip')}
+                {duplicating ? t("duplicating") : t("duplicateTrip")}
               </button>
             )}
-            {isOwner && itinerary.status !== 'cancelled' && itinerary.status !== 'completed' && (
-              <button
-                type="button"
-                onClick={() => setConfirmingCancel(true)}
-                className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-flag-400 hover:text-flag-700 dark:border-slate-700 dark:text-slate-300"
-              >
-                <XCircleIcon aria-hidden className="h-3.5 w-3.5" />
-                {t('cancelTrip')}
-              </button>
-            )}
+            {isOwner &&
+              itinerary.status !== "cancelled" &&
+              itinerary.status !== "completed" && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingCancel(true)}
+                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-flag-400 hover:text-flag-700 dark:border-slate-700 dark:text-slate-300"
+                >
+                  <XCircleIcon aria-hidden className="h-3.5 w-3.5" />
+                  {t("cancelTrip")}
+                </button>
+              )}
             {isOwner && (
               <button
                 type="button"
@@ -513,18 +603,26 @@ function MemberTripView({
                 className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 dark:border-flag-600 dark:text-flag-300"
               >
                 <TrashIcon aria-hidden className="h-3.5 w-3.5" />
-                {t('deleteTrip')}
+                {t("deleteTrip")}
               </button>
             )}
           </div>
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <TripTitle title={itinerary.title} editable={canEdit} onRename={handleRename} />
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${VISIBILITY_BADGE_STYLES[itinerary.visibility]}`}>
+          <TripTitle
+            title={itinerary.title}
+            editable={canEdit}
+            onRename={handleRename}
+          />
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${VISIBILITY_BADGE_STYLES[itinerary.visibility]}`}
+          >
             {formatTripVisibility(itinerary.visibility)}
           </span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE_STYLES[itinerary.status]}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE_STYLES[itinerary.status]}`}
+          >
             {formatTripStatus(itinerary.status)}
           </span>
         </div>
@@ -532,10 +630,12 @@ function MemberTripView({
         <TripMeta trip={itinerary} />
 
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {t('days', { count: itinerary.durationDays })} · {formatBudgetBand(itinerary.budgetBand)}
-          {itinerary.interests.length > 0 && ` · ${itinerary.interests.join(', ')}`}
-          {!isOwner && isCollaborator && ` · ${t('sharedWithYou')}`}
-          {' · '}
+          {t("days", { count: itinerary.durationDays })} ·{" "}
+          {formatBudgetBand(itinerary.budgetBand)}
+          {itinerary.interests.length > 0 &&
+            ` · ${itinerary.interests.join(", ")}`}
+          {!isOwner && isCollaborator && ` · ${t("sharedWithYou")}`}
+          {" · "}
           <TripPartySize
             partySize={itinerary.partySize}
             editable={canEdit}
@@ -547,7 +647,11 @@ function MemberTripView({
           />
         </p>
 
-        {itinerary.description && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{itinerary.description}</p>}
+        {itinerary.description && (
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {itinerary.description}
+          </p>
+        )}
 
         <div className="mt-3">
           <TripCostSummary stops={itinerary.stops} />
@@ -569,7 +673,11 @@ function MemberTripView({
             <SuccessBanner>{successMessage}</SuccessBanner>
           </div>
         )}
-        {actionError && <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">{actionError}</p>}
+        {actionError && (
+          <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">
+            {actionError}
+          </p>
+        )}
       </div>
 
       <TripPeoplePanel
@@ -580,10 +688,12 @@ function MemberTripView({
         onChange={reload}
       />
 
-      {/* Every viewer who reaches MemberTripView is already a member —
-          getItinerary is member-gated (404s a non-member before this ever
-          renders) — so the chat panel needs no extra `canEdit` check here. */}
-      <TripChatPanel itineraryId={itinerary.id} />
+      <Link
+        href={`/messages/context?type=trip&id=${itinerary.id}`}
+        className="flex min-h-12 items-center justify-center rounded-full bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
+      >
+        Open trip conversation in Messages
+      </Link>
 
       {tripHasMapPins(itinerary.stops) && (
         <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-80">
@@ -615,15 +725,19 @@ function MemberTripView({
       />
 
       {canEdit && (
-        <AddTripStop itineraryId={itinerary.id} durationDays={itinerary.durationDays} onAdded={reload} />
+        <AddTripStop
+          itineraryId={itinerary.id}
+          durationDays={itinerary.durationDays}
+          onAdded={reload}
+        />
       )}
 
       <ConfirmDialog
         open={confirmingCancel}
-        title={t('cancelTripTitle')}
-        description={t('cancelTripDescription')}
-        confirmLabel={t('cancelTripConfirm')}
-        loadingLabel={t('cancellingTrip')}
+        title={t("cancelTripTitle")}
+        description={t("cancelTripDescription")}
+        confirmLabel={t("cancelTripConfirm")}
+        loadingLabel={t("cancellingTrip")}
         isLoading={cancelling}
         error={cancelError}
         onConfirm={handleCancelConfirmed}
@@ -636,12 +750,14 @@ function MemberTripView({
 
       <ConfirmDialog
         open={confirmingDelete}
-        title={t('deleteTripTitle', { title: itinerary.title })}
-        description={t('deleteTripDescription')}
+        title={t("deleteTripTitle", { title: itinerary.title })}
+        description={t("deleteTripDescription")}
         consequences={consequences}
-        confirmationPhrase={requiresTypedConfirmation ? itinerary.title : undefined}
-        confirmLabel={t('deleteTripConfirm')}
-        loadingLabel={t('deletingTrip')}
+        confirmationPhrase={
+          requiresTypedConfirmation ? itinerary.title : undefined
+        }
+        confirmLabel={t("deleteTripConfirm")}
+        loadingLabel={t("deletingTrip")}
         isLoading={deleting}
         error={deleteError}
         onConfirm={handleDeleteConfirmed}
@@ -669,7 +785,7 @@ function TripTitle({
   editable: boolean;
   onRename: (title: string) => void;
 }) {
-  const t = useTranslations('trips');
+  const t = useTranslations("trips");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -688,7 +804,11 @@ function TripTitle({
   }
 
   if (!editable) {
-    return <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{title}</h1>;
+    return (
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+        {title}
+      </h1>
+    );
   }
 
   if (editing) {
@@ -701,10 +821,10 @@ function TripTitle({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
             commit();
-          } else if (e.key === 'Escape') {
+          } else if (e.key === "Escape") {
             setDraft(title);
             setEditing(false);
           }
@@ -719,9 +839,11 @@ function TripTitle({
       type="button"
       onClick={() => setEditing(true)}
       className="group flex items-center gap-1.5 text-left"
-      aria-label={t('renameAriaLabel', { title })}
+      aria-label={t("renameAriaLabel", { title })}
     >
-      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{title}</h1>
+      <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+        {title}
+      </h1>
       <PencilIcon
         aria-hidden
         className="h-4 w-4 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-slate-600"
@@ -744,18 +866,24 @@ function TripPartySize({
   editable: boolean;
   onSave: (partySize: number) => void;
 }) {
-  const t = useTranslations('trips');
+  const t = useTranslations("trips");
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(partySize ? String(partySize) : '');
+  const [draft, setDraft] = useState(partySize ? String(partySize) : "");
 
   useEffect(() => {
-    setDraft(partySize ? String(partySize) : '');
+    setDraft(partySize ? String(partySize) : "");
   }, [partySize]);
 
   function commit() {
     setEditing(false);
     const value = Number(draft);
-    if (draft && Number.isInteger(value) && value >= 1 && value <= 50 && value !== partySize) {
+    if (
+      draft &&
+      Number.isInteger(value) &&
+      value >= 1 &&
+      value <= 50 &&
+      value !== partySize
+    ) {
       onSave(value);
     }
   }
@@ -763,7 +891,7 @@ function TripPartySize({
   if (!editable && partySize == null) return null;
 
   if (!editable) {
-    return <span>{t('travelerCount', { count: partySize! })}</span>;
+    return <span>{t("travelerCount", { count: partySize! })}</span>;
   }
 
   if (editing) {
@@ -777,11 +905,11 @@ function TripPartySize({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
             commit();
-          } else if (e.key === 'Escape') {
-            setDraft(partySize ? String(partySize) : '');
+          } else if (e.key === "Escape") {
+            setDraft(partySize ? String(partySize) : "");
             setEditing(false);
           }
         }}
@@ -791,8 +919,14 @@ function TripPartySize({
   }
 
   return (
-    <button type="button" onClick={() => setEditing(true)} className="hover:underline">
-      {partySize == null ? t('addTravelerCount') : t('travelerCount', { count: partySize })}
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="hover:underline"
+    >
+      {partySize == null
+        ? t("addTravelerCount")
+        : t("travelerCount", { count: partySize })}
     </button>
   );
 }

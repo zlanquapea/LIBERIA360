@@ -171,6 +171,19 @@ export function createCreatorConversation(token: string, creatorId: string) {
     headers: authHeader(token),
   });
 }
+export function createContextConversation(
+  token: string,
+  contextType: string,
+  contextId: string,
+) {
+  return apiRequest<Conversation>(
+    `/conversations/context/${encodeURIComponent(contextType)}/${encodeURIComponent(contextId)}`,
+    {
+      method: "POST",
+      headers: authHeader(token),
+    },
+  );
+}
 export function toggleConversationReaction(
   token: string,
   messageId: string,
