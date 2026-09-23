@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { AuthModule } from "../auth/auth.module";
 import { Conversation } from "./entities/conversation.entity";
 import { ConversationParticipant } from "./entities/conversation-participant.entity";
 import { ConversationMessage } from "./entities/conversation-message.entity";
@@ -20,6 +21,7 @@ import { ConversationsGateway } from "./conversations.gateway";
       Creator,
     ]),
     NotificationsModule,
+    AuthModule,
   ],
   controllers: [ConversationsController],
   providers: [ConversationsService, ConversationsGateway],
