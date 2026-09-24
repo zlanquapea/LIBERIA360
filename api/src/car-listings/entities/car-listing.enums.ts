@@ -26,6 +26,29 @@ export enum CarFuelType {
   ELECTRIC = "electric",
 }
 
+/** How a renter is expected to return the tank — the standard three
+ * rental-industry conventions. */
+export enum CarFuelPolicy {
+  FULL_TO_FULL = "full_to_full",
+  PREPAID = "prepaid",
+  SAME_TO_SAME = "same_to_same",
+}
+
+/**
+ * Disclosure-only — NOT a refund policy. This platform collects no
+ * payment (see Booking.paymentStatus, never actually charged), so
+ * there's nothing to refund. This describes how much notice a guest
+ * should give before a *request* likely won't be honored if cancelled
+ * late; it is never enforced server-side against Booking.cancel(). See
+ * CarListingsController/web's describeCarCancellationPolicy for the
+ * exact disclosure copy shown per value.
+ */
+export enum CarCancellationPolicy {
+  FLEXIBLE = "flexible",
+  MODERATE = "moderate",
+  STRICT = "strict",
+}
+
 /**
  * The publish/moderation lifecycle for a CarListing — same shape and
  * reasoning as AdvertisementReviewStatus (see its doc comment for the

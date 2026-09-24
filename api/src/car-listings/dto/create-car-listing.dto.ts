@@ -13,7 +13,9 @@ import {
   Min,
 } from "class-validator";
 import {
+  CarCancellationPolicy,
   CarCategory,
+  CarFuelPolicy,
   CarFuelType,
   CarTransmission,
 } from "../entities/car-listing.enums";
@@ -84,6 +86,24 @@ export class CreateCarListingDto {
   @IsOptional() @IsInt() @Min(1) @Max(24) minRentalHours?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(50000) driverFeePerHour?: number;
 
+  @IsOptional() @IsString() @MaxLength(60) color?: string | null;
+  @IsOptional() @IsInt() @Min(0) @Max(5000) mileageLimitPerDay?: number | null;
+  @IsOptional() @IsNumber() @Min(0) @Max(10000) excessMileageFee?:
+    number | null;
+  @IsOptional() @IsEnum(CarFuelPolicy) fuelPolicy?: CarFuelPolicy | null;
+  @IsOptional() @IsInt() @Min(16) @Max(99) minDriverAge?: number | null;
+  @IsOptional() @IsBoolean() additionalDriverAllowed?: boolean;
+  @IsOptional() @IsNumber() @Min(0) @Max(50000) additionalDriverFee?:
+    number | null;
+  @IsOptional() @IsBoolean() insuranceIncluded?: boolean;
+  @IsOptional() @IsString() @MaxLength(1000) insuranceNotes?: string | null;
+  @IsOptional()
+  @IsEnum(CarCancellationPolicy)
+  cancellationPolicy?: CarCancellationPolicy | null;
+  @IsOptional() @IsBoolean() deliveryAvailable?: boolean;
+  @IsOptional() @IsNumber() @Min(0) @Max(50000) deliveryFee?: number | null;
+  @IsOptional() @IsBoolean() instantBookEnabled?: boolean;
+
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
@@ -92,7 +112,7 @@ export class CreateCarListingDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(12)
+  @ArrayMaxSize(15)
   @IsString({ each: true })
   images?: string[];
 

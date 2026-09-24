@@ -13,6 +13,7 @@ import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
 import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
+import { CarListingBlockedDate } from "../car-listings/entities/car-listing-blocked-date.entity";
 import { CreateBookingDto } from "./dto/create-booking.dto";
 import { RespondBookingDto } from "./dto/respond-booking.dto";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -34,6 +35,8 @@ export class BookingsService {
     private readonly creatorRepo: Repository<Creator>,
     @InjectRepository(CarListing)
     private readonly carListingRepo: Repository<CarListing>,
+    @InjectRepository(CarListingBlockedDate)
+    private readonly carListingBlockedDateRepo: Repository<CarListingBlockedDate>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -115,6 +118,15 @@ export class BookingsService {
     const isHourly =
       carListing !== null && dto.rentalUnit === BookingRentalUnit.HOUR;
 
+    // A second authorized driver — a one-time fee for the whole rental
+    // (an administrative/insurance disclosure, not a continuous service
+    // like the chauffeur `withDriver` fee below), only honored when the
+    // listing actually allows it.
+    const wantsAdditionalDriver =
+      carListing !== null &&
+      Boolean(dto.wantsAdditionalDriver) &&
+      carListing.additionalDriverAllowed;
+
     let estimatedTotal: number | null = null;
     if (carListing && isHourly) {
       const hours = hoursBetween(
@@ -136,7 +148,8 @@ export class BookingsService {
         Boolean(dto.withDriver) && carListing.withDriverAvailable;
       estimatedTotal =
         hours * carListing.pricePerHour! +
-        (withDriver ? hours * (carListing.driverFeePerHour ?? 0) : 0);
+        (withDriver ? hours * (carListing.driverFeePerHour ?? 0) : 0) +
+        (wantsAdditionalDriver ? (carListing.additionalDriverFee ?? 0) : 0);
     } else if (carListing) {
       const days = rentalDays(dto.requestedDate, dto.requestedEndDate!);
       if (days < carListing.minRentalDays) {
@@ -148,7 +161,8 @@ export class BookingsService {
         Boolean(dto.withDriver) && carListing.withDriverAvailable;
       estimatedTotal =
         days * carListing.pricePerDay +
-        (withDriver ? days * (carListing.driverFeePerDay ?? 0) : 0);
+        (withDriver ? days * (carListing.driverFeePerDay ?? 0) : 0) +
+        (wantsAdditionalDriver ? (carListing.additionalDriverFee ?? 0) : 0);
     }
 
     const candidateInterval: IntervalInput = {
@@ -159,65 +173,132 @@ export class BookingsService {
       requestedEndTime: isHourly ? (dto.requestedEndTime ?? null) : null,
     };
 
-    if (carListing) {
-      // A car already CONFIRMED for an overlapping window can't be handed
-      // to a second renter — PENDING requests don't block a new one (the
-      // owner is still free to decline whichever they don't confirm),
-      // only an actual, already-agreed booking does. Fetched and compared
-      // in JS rather than a single SQL predicate (as the day-only version
-      // of this check used to do) because "overlapping" now means two
-      // different things depending on each row's own rentalUnit — a plain
-      // date-range comparison can't express both at once.
-      const confirmed = await this.bookingRepo.find({
-        where: { carListingId: carListing.id, status: BookingStatus.CONFIRMED },
-      });
-      const overlapping = confirmed.some((existing) =>
-        intervalsOverlap(
-          bookingInterval(candidateInterval),
-          bookingInterval(existing),
-        ),
-      );
-      if (overlapping) {
-        throw new ConflictException(
-          "This car is already booked for part of the requested dates",
-        );
-      }
-    }
+    // Owner opt-in: skip the manual-review step and confirm the moment
+    // availability clears — see CarListing.instantBookEnabled.
+    const isInstantBooked = Boolean(carListing?.instantBookEnabled);
+    const initialStatus = isInstantBooked
+      ? BookingStatus.CONFIRMED
+      : BookingStatus.PENDING;
 
-    const booking = await this.bookingRepo.save(
-      this.bookingRepo.create({
-        businessId: dto.businessId ?? null,
-        creatorId: dto.creatorId ?? null,
-        carListingId: carListing?.id ?? null,
-        guestUserId: userId,
-        requestedDate: dto.requestedDate,
-        requestedEndDate: candidateInterval.requestedEndDate,
-        rentalUnit: carListing
-          ? isHourly
-            ? BookingRentalUnit.HOUR
-            : BookingRentalUnit.DAY
-          : null,
-        requestedStartTime: candidateInterval.requestedStartTime,
-        requestedEndTime: candidateInterval.requestedEndTime,
-        partySize: dto.partySize ?? null,
-        withDriver: carListing
-          ? Boolean(dto.withDriver) && carListing.withDriverAvailable
-          : false,
-        pickupLocation: carListing ? (dto.pickupLocation ?? null) : null,
-        estimatedTotal,
-        notes: dto.notes ?? null,
-      }),
+    // The overlap check-then-insert below must be atomic per car listing:
+    // without a lock, two concurrent requests for the same (or an
+    // overlapping) window can both read "no conflict" before either
+    // commits, so both proceed to save — a real double-booking, most
+    // visible with Instant Book where both would land CONFIRMED. A
+    // Postgres advisory lock scoped to this transaction (auto-released on
+    // commit/rollback) serializes every booking-creation attempt for a
+    // given carListing.id; CarListingsService.createBlockedDate takes the
+    // exact same lock before its insert so a manual block can't race this
+    // check either. A no-op (no lock acquired) for business/creator
+    // bookings, which have no such overlap check at all.
+    const saved = await this.bookingRepo.manager.transaction(
+      async (manager) => {
+        if (carListing) {
+          await manager.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+            carListing.id,
+          ]);
+
+          // A car already CONFIRMED or PENDING for an overlapping window
+          // can't be handed to a second renter — a pending request now acts
+          // as a soft hold on its dates (the owner is still free to decline
+          // it and free the dates back up), not just an already-agreed
+          // booking, closing a real gap where two overlapping requests could
+          // both sit PENDING and the owner could accidentally confirm a
+          // conflict. Manually blocked-out ranges (maintenance, personal use)
+          // count the same way. Fetched and compared in JS rather than a
+          // single SQL predicate (as the day-only version of this check used
+          // to do) because "overlapping" now means two different things
+          // depending on each row's own rentalUnit — a plain date-range
+          // comparison can't express both at once.
+          const existingBookings = await manager.find(Booking, {
+            where: {
+              carListingId: carListing.id,
+              status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+            },
+          });
+          const blockedDates = await manager.find(CarListingBlockedDate, {
+            where: { carListingId: carListing.id },
+          });
+          const candidate = bookingInterval(candidateInterval);
+          const overlapping =
+            existingBookings.some((existing) =>
+              intervalsOverlap(candidate, bookingInterval(existing)),
+            ) ||
+            blockedDates.some((block) =>
+              intervalsOverlap(
+                candidate,
+                bookingInterval({
+                  requestedDate: block.startDate,
+                  requestedEndDate: block.endDate,
+                  rentalUnit: null,
+                  requestedStartTime: null,
+                  requestedEndTime: null,
+                }),
+              ),
+            );
+          if (overlapping) {
+            throw new ConflictException(
+              "This car isn't available for part of the requested dates — it's already booked, requested, or blocked by the owner",
+            );
+          }
+        }
+
+        const created = await manager.save(
+          Booking,
+          manager.create(Booking, {
+            businessId: dto.businessId ?? null,
+            creatorId: dto.creatorId ?? null,
+            carListingId: carListing?.id ?? null,
+            guestUserId: userId,
+            requestedDate: dto.requestedDate,
+            requestedEndDate: candidateInterval.requestedEndDate,
+            rentalUnit: carListing
+              ? isHourly
+                ? BookingRentalUnit.HOUR
+                : BookingRentalUnit.DAY
+              : null,
+            requestedStartTime: candidateInterval.requestedStartTime,
+            requestedEndTime: candidateInterval.requestedEndTime,
+            partySize: dto.partySize ?? null,
+            withDriver: carListing
+              ? Boolean(dto.withDriver) && carListing.withDriverAvailable
+              : false,
+            wantsAdditionalDriver,
+            pickupLocation: carListing ? (dto.pickupLocation ?? null) : null,
+            estimatedTotal,
+            notes: dto.notes ?? null,
+            status: initialStatus,
+            respondedAt: isInstantBooked ? new Date() : null,
+          }),
+        );
+        return manager.findOneOrFail(Booking, { where: { id: created.id } });
+      },
     );
-    const saved = await this.bookingRepo.findOneOrFail({
-      where: { id: booking.id },
-    });
 
     const ownerUserId = getOwnerUserId(saved);
     if (ownerUserId) {
       await this.notificationsService.create(ownerUserId, {
-        type: "booking.requested",
-        title: "New booking request",
-        body: `${saved.guest.name} requested a booking for ${describeRequestedWhen(saved)}.`,
+        type: isInstantBooked
+          ? "booking.instantly_confirmed"
+          : "booking.requested",
+        title: isInstantBooked
+          ? "Instant booking confirmed"
+          : "New booking request",
+        body: isInstantBooked
+          ? `${saved.guest.name} instantly booked your car for ${describeRequestedWhen(saved)}. No action needed.`
+          : `${saved.guest.name} requested a booking for ${describeRequestedWhen(saved)}.`,
+        link: BOOKINGS_LINK,
+      });
+    }
+    if (isInstantBooked) {
+      // respond() is what normally tells the guest their booking was
+      // confirmed — instant book skips it entirely, so send the
+      // equivalent notification here instead of leaving the guest with
+      // nothing but the synchronous HTTP response as their record of it.
+      await this.notificationsService.create(saved.guestUserId, {
+        type: "booking.confirmed",
+        title: "Booking confirmed",
+        body: `Your booking for ${describeRequestedWhen(saved)} was instantly confirmed.`,
         link: BOOKINGS_LINK,
       });
     }

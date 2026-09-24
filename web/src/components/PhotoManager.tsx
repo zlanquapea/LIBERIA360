@@ -6,23 +6,27 @@ import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
 import { SafeImage } from './SafeImage';
 
-const MAX_PHOTOS = 10; // matches the API's ArrayMaxSize(10) on images
+const DEFAULT_MAX_PHOTOS = 10; // matches most APIs' ArrayMaxSize(10) on images
 
 // Shared "manage this listing's photos" control — a thumbnail grid with a
 // remove button per photo, plus a file input that uploads and appends.
 // Used by both the business owner's self-edit form and the admin content
 // management screens (Place and Business both carry the same `images: []`
 // shape), so the upload/attach behavior only needs to be right once.
+// `maxPhotos` defaults to 10 to match most callers' API cap — pass the
+// listing type's actual cap when it differs (e.g. car listings allow 15).
 export function PhotoManager({
   token,
   images,
   onChange,
   label = 'Photos',
+  maxPhotos = DEFAULT_MAX_PHOTOS,
 }: {
   token: string;
   images: string[];
   onChange: (next: string[]) => void;
   label?: string;
+  maxPhotos?: number;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,9 +34,9 @@ export function PhotoManager({
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const room = MAX_PHOTOS - images.length;
+    const room = maxPhotos - images.length;
     if (room <= 0) {
-      setError(`Up to ${MAX_PHOTOS} photos — remove one first.`);
+      setError(`Up to ${maxPhotos} photos — remove one first.`);
       return;
     }
     setError(null);
@@ -94,7 +98,7 @@ export function PhotoManager({
         </div>
       )}
 
-      {images.length < MAX_PHOTOS && (
+      {images.length < maxPhotos && (
         <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300">
           {uploading ? 'Uploading…' : '+ Add photos'}
           <input

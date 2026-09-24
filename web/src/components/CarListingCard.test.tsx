@@ -40,6 +40,19 @@ const LISTING: CarListing = {
   minRentalHours: null,
   driverFeePerHour: null,
   securityDeposit: null,
+  color: null,
+  mileageLimitPerDay: null,
+  excessMileageFee: null,
+  fuelPolicy: null,
+  minDriverAge: null,
+  additionalDriverAllowed: false,
+  additionalDriverFee: null,
+  insuranceIncluded: false,
+  insuranceNotes: null,
+  cancellationPolicy: null,
+  deliveryAvailable: false,
+  deliveryFee: null,
+  instantBookEnabled: false,
   features: [],
   images: [],
   description: null,
@@ -85,5 +98,35 @@ describe("CarListingCard", () => {
     render(<CarListingCard listing={LISTING} />);
     const loginLink = screen.getByRole("link", { name: /add to trip/i });
     expect(loginLink).toHaveAttribute("href", "/login");
+  });
+
+  it("shows Instant Book and Delivery available pills when the listing opts in", () => {
+    render(
+      <CarListingCard
+        listing={{
+          ...LISTING,
+          instantBookEnabled: true,
+          deliveryAvailable: true,
+        }}
+      />,
+    );
+    expect(screen.getByText(/instant book/i)).toBeInTheDocument();
+    expect(screen.getByText(/delivery available/i)).toBeInTheDocument();
+  });
+
+  it("omits the pills entirely for a plain listing with neither feature", () => {
+    render(<CarListingCard listing={LISTING} />);
+    expect(screen.queryByText(/instant book/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/delivery available/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a not-yet-rated rating line until the listing has reviews", () => {
+    render(<CarListingCard listing={LISTING} />);
+    expect(screen.getByText(/not yet rated/i)).toBeInTheDocument();
+  });
+
+  it("shows the numeric rating and review count once reviewed", () => {
+    render(<CarListingCard listing={{ ...LISTING, rating: 4.5, reviewCount: 3 }} />);
+    expect(screen.getByText(/4\.5 \(3 reviews\)/i)).toBeInTheDocument();
   });
 });

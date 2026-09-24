@@ -120,6 +120,14 @@ export class Booking {
   @Column({ name: "with_driver", type: "boolean", default: false })
   withDriver: boolean;
 
+  // A second person also legally driving the rental (distinct from
+  // withDriver above, which is a chauffeur service) — only meaningful
+  // when the listing has additionalDriverAllowed set; the flat
+  // additionalDriverFee is added once to estimatedTotal, not per-day/hour
+  // — see BookingsService.create.
+  @Column({ name: "wants_additional_driver", type: "boolean", default: false })
+  wantsAdditionalDriver: boolean;
+
   // Car-rental-only: HOUR narrows the request to a single day's time
   // window (requestedStartTime/requestedEndTime) instead of the whole
   // requestedDate…requestedEndDate span above — a renter booking a car for

@@ -13,7 +13,9 @@ import { County } from "../../counties/entities/county.entity";
 import { User } from "../../users/entities/user.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
 import {
+  CarCancellationPolicy,
   CarCategory,
+  CarFuelPolicy,
   CarFuelType,
   CarListingReviewStatus,
   CarTransmission,
@@ -180,6 +182,92 @@ export class CarListing {
     transformer: decimalTransformer,
   })
   securityDeposit: number | null;
+
+  @Column({ type: "varchar", length: 60, nullable: true })
+  color: string | null;
+
+  // Disclosure fields expected by a professional rental listing —
+  // added alongside onboarding real rental companies as partners. All
+  // nullable/defaulted so existing rows stay valid unmigrated data.
+  @Column({ name: "mileage_limit_per_day", type: "int", nullable: true })
+  mileageLimitPerDay: number | null;
+
+  @Column({
+    name: "excess_mileage_fee",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  excessMileageFee: number | null;
+
+  @Column({
+    name: "fuel_policy",
+    type: "enum",
+    enum: CarFuelPolicy,
+    nullable: true,
+  })
+  fuelPolicy: CarFuelPolicy | null;
+
+  @Column({ name: "min_driver_age", type: "smallint", nullable: true })
+  minDriverAge: number | null;
+
+  // Distinct from withDriverAvailable/driverFeePerDay above (a chauffeur
+  // service): this is "a second person may also legally drive this
+  // rental," not "we provide a driver." Booking.wantsAdditionalDriver
+  // carries the renter's actual per-booking choice.
+  @Column({
+    name: "additional_driver_allowed",
+    type: "boolean",
+    default: false,
+  })
+  additionalDriverAllowed: boolean;
+
+  @Column({
+    name: "additional_driver_fee",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  additionalDriverFee: number | null;
+
+  @Column({ name: "insurance_included", type: "boolean", default: false })
+  insuranceIncluded: boolean;
+
+  @Column({ name: "insurance_notes", type: "text", nullable: true })
+  insuranceNotes: string | null;
+
+  // Disclosure-only — see CarCancellationPolicy's own doc comment. Never
+  // enforced against Booking.cancel().
+  @Column({
+    name: "cancellation_policy",
+    type: "enum",
+    enum: CarCancellationPolicy,
+    nullable: true,
+  })
+  cancellationPolicy: CarCancellationPolicy | null;
+
+  @Column({ name: "delivery_available", type: "boolean", default: false })
+  deliveryAvailable: boolean;
+
+  @Column({
+    name: "delivery_fee",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: decimalTransformer,
+  })
+  deliveryFee: number | null;
+
+  // Owner opt-in: a booking request against this listing skips the
+  // owner's manual review and is saved CONFIRMED immediately — see
+  // BookingsService.create.
+  @Column({ name: "instant_book_enabled", type: "boolean", default: false })
+  instantBookEnabled: boolean;
 
   // Freeform tags ("aircon", "gps", "bluetooth", "child_seat", "4x4",
   // "dashcam", "usb_charger", "unlimited_mileage") — same convention as

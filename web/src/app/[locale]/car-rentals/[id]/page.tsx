@@ -7,7 +7,11 @@ import {
   PhoneIcon,
   TruckIcon,
 } from "@heroicons/react/24/outline";
-import { CalendarDaysIcon, UserGroupIcon } from "@heroicons/react/24/solid";
+import {
+  BoltIcon,
+  CalendarDaysIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/solid";
 import {
   ApiError,
   getCarListingById,
@@ -16,7 +20,10 @@ import {
 } from "@/lib/api";
 import { recommendCars } from "@/lib/car-recommendations";
 import {
+  describeCarCancellationPolicy,
+  formatCarCancellationPolicy,
   formatCarCategory,
+  formatCarFuelPolicy,
   formatCarFuelType,
   formatCarTransmission,
   formatCost,
@@ -236,6 +243,13 @@ export default async function CarListingDetailPage({
           </p>
         )}
 
+        {listing.instantBookEnabled && (
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-brand-700 dark:text-brand-300">
+            <BoltIcon aria-hidden className="h-4 w-4" />
+            Instant Book — confirmed immediately, no waiting for approval
+          </p>
+        )}
+
         <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:items-center">
           <BookingRequestSection
             carListing={listing}
@@ -271,6 +285,96 @@ export default async function CarListingDetailPage({
               </span>
             ))}
           </div>
+        </Section>
+      )}
+
+      {(listing.mileageLimitPerDay != null ||
+        listing.fuelPolicy != null ||
+        listing.minDriverAge != null ||
+        listing.insuranceIncluded ||
+        listing.cancellationPolicy != null ||
+        listing.deliveryAvailable) && (
+        <Section title="Rental details">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {listing.mileageLimitPerDay != null && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Mileage limit
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  {listing.mileageLimitPerDay} mi/day
+                  {listing.excessMileageFee != null &&
+                    ` · ${formatCost(listing.excessMileageFee)}/mi over`}
+                </dd>
+              </div>
+            )}
+            {listing.fuelPolicy != null && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Fuel policy
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  {formatCarFuelPolicy(listing.fuelPolicy)}
+                </dd>
+              </div>
+            )}
+            {listing.minDriverAge != null && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Minimum driver age
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  {listing.minDriverAge}+
+                </dd>
+              </div>
+            )}
+            {listing.additionalDriverAllowed && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Additional driver
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  Allowed
+                  {listing.additionalDriverFee != null &&
+                    ` · ${formatCost(listing.additionalDriverFee)} one-time fee`}
+                </dd>
+              </div>
+            )}
+            {listing.insuranceIncluded && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Insurance
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  Included
+                  {listing.insuranceNotes && ` · ${listing.insuranceNotes}`}
+                </dd>
+              </div>
+            )}
+            {listing.cancellationPolicy != null && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Cancellation
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  {formatCarCancellationPolicy(listing.cancellationPolicy)} ·{" "}
+                  {describeCarCancellationPolicy(listing.cancellationPolicy)}
+                </dd>
+              </div>
+            )}
+            {listing.deliveryAvailable && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Delivery
+                </dt>
+                <dd className="text-sm text-slate-700 dark:text-slate-200">
+                  Available
+                  {listing.deliveryFee != null &&
+                    ` · ${formatCost(listing.deliveryFee)}`}
+                </dd>
+              </div>
+            )}
+          </dl>
         </Section>
       )}
 

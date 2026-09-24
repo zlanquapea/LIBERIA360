@@ -1,12 +1,14 @@
 import Link from 'next/link';
-import { TruckIcon, UserGroupIcon } from '@heroicons/react/24/solid';
+import { StarIcon, TruckIcon, UserGroupIcon } from '@heroicons/react/24/solid';
+import { BoltIcon, TruckIcon as DeliveryIcon } from '@heroicons/react/24/outline';
 import type { CarListing } from '@/lib/types';
 import { gradientForCategory } from '@/lib/category-colors';
-import { formatCarCategory, formatCarTransmission, formatCost } from '@/lib/format';
+import { formatCarCategory, formatCarTransmission, formatCost, formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { staggerDelay } from '@/lib/animation';
 import { AddToTripButton } from './AddToTripButton';
 import { SafeImage } from './SafeImage';
+import { VerificationBadge } from './VerificationBadge';
 
 // The discovery card for the /car-rentals directory — same visual
 // language as BusinessCard/PlaceCard/CreatorCard (cover image,
@@ -57,9 +59,12 @@ export function CarListingCard({ listing, index }: { listing: CarListing; index?
           />
         </div>
         <div className="flex flex-1 flex-col gap-1.5 p-3">
-          <h3 className="min-w-0 truncate font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300">
-            {listing.title}
-          </h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="min-w-0 truncate font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300">
+              {listing.title}
+            </h3>
+            {listing.business && <VerificationBadge status={listing.business.verificationStatus} compact />}
+          </div>
           <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {formatCarCategory(listing.category)} · {formatCarTransmission(listing.transmission)}
             {location ? ` · ${location}` : ''}
@@ -69,6 +74,26 @@ export function CarListingCard({ listing, index }: { listing: CarListing; index?
             {listing.seats} seats
             {listing.withDriverAvailable && ' · Driver available'}
           </p>
+          <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+            {listing.reviewCount > 0 && <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />}
+            {formatRating(listing.rating, listing.reviewCount)}
+          </p>
+          {(listing.instantBookEnabled || listing.deliveryAvailable) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {listing.instantBookEnabled && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-1.5 py-0.5 text-[11px] font-medium text-brand-800 dark:bg-brand-900/40 dark:text-brand-300">
+                  <BoltIcon aria-hidden className="h-3 w-3" />
+                  Instant Book
+                </span>
+              )}
+              {listing.deliveryAvailable && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <DeliveryIcon aria-hidden className="h-3 w-3" />
+                  Delivery available
+                </span>
+              )}
+            </div>
+          )}
           <div className="mt-auto flex items-end justify-between pt-1">
             <span className="flex flex-col">
               <span className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">

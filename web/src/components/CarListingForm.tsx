@@ -4,9 +4,26 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { createCarListing, updateCarListing } from '@/lib/car-rentals-api';
 import { HttpError } from '@/lib/http';
-import { formatCarCategory, formatCarFuelType, formatCarTransmission } from '@/lib/format';
+import {
+  describeCarCancellationPolicy,
+  formatCarCancellationPolicy,
+  formatCarCategory,
+  formatCarFuelPolicy,
+  formatCarFuelType,
+  formatCarTransmission,
+} from '@/lib/format';
 import { PhotoManager } from './PhotoManager';
-import type { Business, CarCategory, CarFuelType, CarListing, County, CarTransmission } from '@/lib/types';
+import { CarListingBlockedDatesManager } from './CarListingBlockedDatesManager';
+import type {
+  Business,
+  CarCancellationPolicy,
+  CarCategory,
+  CarFuelPolicy,
+  CarFuelType,
+  CarListing,
+  County,
+  CarTransmission,
+} from '@/lib/types';
 
 const CAR_CATEGORIES: CarCategory[] = [
   'economy',
@@ -20,6 +37,8 @@ const CAR_CATEGORIES: CarCategory[] = [
 ];
 const CAR_TRANSMISSIONS: CarTransmission[] = ['automatic', 'manual'];
 const CAR_FUEL_TYPES: CarFuelType[] = ['petrol', 'diesel', 'hybrid', 'electric'];
+const CAR_FUEL_POLICIES: CarFuelPolicy[] = ['full_to_full', 'prepaid', 'same_to_same'];
+const CAR_CANCELLATION_POLICIES: CarCancellationPolicy[] = ['flexible', 'moderate', 'strict'];
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -83,6 +102,33 @@ export function CarListingForm({
   const [securityDeposit, setSecurityDeposit] = useState(
     listing?.securityDeposit != null ? String(listing.securityDeposit) : '',
   );
+  const [color, setColor] = useState(listing?.color ?? '');
+  const [mileageLimitPerDay, setMileageLimitPerDay] = useState(
+    listing?.mileageLimitPerDay != null ? String(listing.mileageLimitPerDay) : '',
+  );
+  const [excessMileageFee, setExcessMileageFee] = useState(
+    listing?.excessMileageFee != null ? String(listing.excessMileageFee) : '',
+  );
+  const [fuelPolicy, setFuelPolicy] = useState<CarFuelPolicy | ''>(listing?.fuelPolicy ?? '');
+  const [minDriverAge, setMinDriverAge] = useState(
+    listing?.minDriverAge != null ? String(listing.minDriverAge) : '',
+  );
+  const [additionalDriverAllowed, setAdditionalDriverAllowed] = useState(
+    listing?.additionalDriverAllowed ?? false,
+  );
+  const [additionalDriverFee, setAdditionalDriverFee] = useState(
+    listing?.additionalDriverFee != null ? String(listing.additionalDriverFee) : '',
+  );
+  const [insuranceIncluded, setInsuranceIncluded] = useState(listing?.insuranceIncluded ?? false);
+  const [insuranceNotes, setInsuranceNotes] = useState(listing?.insuranceNotes ?? '');
+  const [cancellationPolicy, setCancellationPolicy] = useState<CarCancellationPolicy | ''>(
+    listing?.cancellationPolicy ?? '',
+  );
+  const [deliveryAvailable, setDeliveryAvailable] = useState(listing?.deliveryAvailable ?? false);
+  const [deliveryFee, setDeliveryFee] = useState(
+    listing?.deliveryFee != null ? String(listing.deliveryFee) : '',
+  );
+  const [instantBookEnabled, setInstantBookEnabled] = useState(listing?.instantBookEnabled ?? false);
   const [features, setFeatures] = useState(listing?.features.join(', ') ?? '');
   const [images, setImages] = useState<string[]>(listing?.images ?? []);
   const [description, setDescription] = useState(listing?.description ?? '');
@@ -121,6 +167,24 @@ export function CarListingForm({
         driverFeePerHour:
           withDriverAvailable && pricePerHour && driverFeePerHour ? Number(driverFeePerHour) : undefined,
         securityDeposit: securityDeposit ? Number(securityDeposit) : undefined,
+        // null (not undefined) below for every clearable disclosure field —
+        // an edit that blanks a field must actually clear the stored value,
+        // and a plain omitted key leaves it untouched (Object.assign only
+        // overwrites keys present in the request body). See
+        // UpdateCarListingDto's doc comment.
+        color: color.trim() || null,
+        mileageLimitPerDay: mileageLimitPerDay ? Number(mileageLimitPerDay) : null,
+        excessMileageFee: mileageLimitPerDay && excessMileageFee ? Number(excessMileageFee) : null,
+        fuelPolicy: fuelPolicy || null,
+        minDriverAge: minDriverAge ? Number(minDriverAge) : null,
+        additionalDriverAllowed,
+        additionalDriverFee: additionalDriverAllowed && additionalDriverFee ? Number(additionalDriverFee) : null,
+        insuranceIncluded,
+        insuranceNotes: insuranceIncluded ? insuranceNotes.trim() || null : null,
+        cancellationPolicy: cancellationPolicy || null,
+        deliveryAvailable,
+        deliveryFee: deliveryAvailable && deliveryFee ? Number(deliveryFee) : null,
+        instantBookEnabled,
         features: splitList(features),
         images,
         description: description.trim() || undefined,
@@ -143,6 +207,19 @@ export function CarListingForm({
         setMinRentalHours('1');
         setDriverFeePerHour('');
         setSecurityDeposit('');
+        setColor('');
+        setMileageLimitPerDay('');
+        setExcessMileageFee('');
+        setFuelPolicy('');
+        setMinDriverAge('');
+        setAdditionalDriverAllowed(false);
+        setAdditionalDriverFee('');
+        setInsuranceIncluded(false);
+        setInsuranceNotes('');
+        setCancellationPolicy('');
+        setDeliveryAvailable(false);
+        setDeliveryFee('');
+        setInstantBookEnabled(false);
         setFeatures('');
         setImages([]);
         setDescription('');
@@ -387,6 +464,181 @@ export function CarListingForm({
         />
       </label>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Color (optional)</span>
+          <input maxLength={40} value={color} onChange={(e) => setColor(e.target.value)} className={inputClass} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Minimum driver age (optional)</span>
+          <input
+            type="number"
+            min={16}
+            max={99}
+            value={minDriverAge}
+            onChange={(e) => setMinDriverAge(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Mileage limit per day (optional)</span>
+          <input
+            type="number"
+            min={0}
+            max={5000}
+            value={mileageLimitPerDay}
+            onChange={(e) => setMileageLimitPerDay(e.target.value)}
+            placeholder="Leave blank for unlimited"
+            className={inputClass}
+          />
+        </label>
+        {mileageLimitPerDay && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700 dark:text-slate-200">Excess mileage fee ($/mile, optional)</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              value={excessMileageFee}
+              onChange={(e) => setExcessMileageFee(e.target.value)}
+              className={inputClass}
+            />
+          </label>
+        )}
+      </div>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium text-slate-700 dark:text-slate-200">Fuel policy (optional)</span>
+        <select
+          value={fuelPolicy}
+          onChange={(e) => setFuelPolicy(e.target.value as CarFuelPolicy | '')}
+          className={inputClass}
+        >
+          <option value="">Not specified</option>
+          {CAR_FUEL_POLICIES.map((p) => (
+            <option key={p} value={p}>
+              {formatCarFuelPolicy(p)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <input
+          type="checkbox"
+          checked={additionalDriverAllowed}
+          onChange={(e) => setAdditionalDriverAllowed(e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
+        />
+        A second driver may also be listed on the rental
+      </label>
+
+      {additionalDriverAllowed && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Additional driver fee ($, one-time, optional)</span>
+          <input
+            type="number"
+            min={0}
+            max={5000}
+            step="0.01"
+            value={additionalDriverFee}
+            onChange={(e) => setAdditionalDriverFee(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      )}
+
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <input
+          type="checkbox"
+          checked={insuranceIncluded}
+          onChange={(e) => setInsuranceIncluded(e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
+        />
+        Insurance included
+      </label>
+
+      {insuranceIncluded && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Insurance notes (optional)</span>
+          <textarea
+            maxLength={1000}
+            rows={2}
+            value={insuranceNotes}
+            onChange={(e) => setInsuranceNotes(e.target.value)}
+            placeholder="e.g. Comprehensive coverage, $500 deductible"
+            className={inputClass}
+          />
+        </label>
+      )}
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium text-slate-700 dark:text-slate-200">Cancellation flexibility (optional)</span>
+        <select
+          value={cancellationPolicy}
+          onChange={(e) => setCancellationPolicy(e.target.value as CarCancellationPolicy | '')}
+          className={inputClass}
+        >
+          <option value="">Not specified</option>
+          {CAR_CANCELLATION_POLICIES.map((p) => (
+            <option key={p} value={p}>
+              {formatCarCancellationPolicy(p)}
+            </option>
+          ))}
+        </select>
+        {cancellationPolicy && (
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {describeCarCancellationPolicy(cancellationPolicy)} No payment is collected through this platform — this
+            just tells renters how much notice to give.
+          </span>
+        )}
+      </label>
+
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+        <input
+          type="checkbox"
+          checked={deliveryAvailable}
+          onChange={(e) => setDeliveryAvailable(e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
+        />
+        Delivery available
+      </label>
+
+      {deliveryAvailable && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-200">Delivery fee ($, optional)</span>
+          <input
+            type="number"
+            min={0}
+            max={5000}
+            step="0.01"
+            value={deliveryFee}
+            onChange={(e) => setDeliveryFee(e.target.value)}
+            className={inputClass}
+          />
+        </label>
+      )}
+
+      <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-900 dark:bg-brand-950/40">
+        <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <input
+            type="checkbox"
+            checked={instantBookEnabled}
+            onChange={(e) => setInstantBookEnabled(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
+          />
+          Instant Book
+        </label>
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+          Bookings are confirmed automatically the moment a renter requests — you won&apos;t get a chance to review
+          first. You can turn this off anytime.
+        </p>
+      </div>
+
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-700 dark:text-slate-200">Features (comma-separated, optional)</span>
         <input
@@ -397,7 +649,7 @@ export function CarListingForm({
         />
       </label>
 
-      <PhotoManager token={token} images={images} onChange={setImages} label="Photos" />
+      <PhotoManager token={token} images={images} onChange={setImages} label="Photos" maxPhotos={15} />
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-700 dark:text-slate-200">Description (optional)</span>
@@ -443,6 +695,8 @@ export function CarListingForm({
           />
         </label>
       </div>
+
+      {listing && <CarListingBlockedDatesManager token={token} carListingId={listing.id} />}
 
       {error && (
         <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">

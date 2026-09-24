@@ -7,7 +7,9 @@ import type {
   BusinessContentType,
   BusinessReviewStatus,
   BusinessType,
+  CarCancellationPolicy,
   CarCategory,
+  CarFuelPolicy,
   CarFuelType,
   CarListingReviewStatus,
   CarTransmission,
@@ -158,6 +160,38 @@ const CAR_LISTING_REVIEW_STATUS_LABELS: Record<CarListingReviewStatus, string> =
 
 export function formatCarListingReviewStatus(status: CarListingReviewStatus): string {
   return CAR_LISTING_REVIEW_STATUS_LABELS[status] ?? status;
+}
+
+const CAR_FUEL_POLICY_LABELS: Record<CarFuelPolicy, string> = {
+  full_to_full: 'Full to full',
+  prepaid: 'Prepaid fuel',
+  same_to_same: 'Same to same',
+};
+
+export function formatCarFuelPolicy(policy: CarFuelPolicy): string {
+  return CAR_FUEL_POLICY_LABELS[policy] ?? policy;
+}
+
+const CAR_CANCELLATION_POLICY_LABELS: Record<CarCancellationPolicy, string> = {
+  flexible: 'Flexible',
+  moderate: 'Moderate',
+  strict: 'Strict',
+};
+
+export function formatCarCancellationPolicy(policy: CarCancellationPolicy): string {
+  return CAR_CANCELLATION_POLICY_LABELS[policy] ?? policy;
+}
+
+// Disclosure copy only — no payment is collected on this platform, so this
+// describes notice/flexibility expectations, never a refund policy.
+const CAR_CANCELLATION_POLICY_DESCRIPTIONS: Record<CarCancellationPolicy, string> = {
+  flexible: 'Free to cancel up to 24 hours before pickup.',
+  moderate: 'Free to cancel up to 3 days before pickup.',
+  strict: 'Cancellations within 7 days of pickup may not be accommodated.',
+};
+
+export function describeCarCancellationPolicy(policy: CarCancellationPolicy): string {
+  return CAR_CANCELLATION_POLICY_DESCRIPTIONS[policy] ?? '';
 }
 
 const BUSINESS_CONTENT_TYPE_LABELS: Record<BusinessContentType, string> = {

@@ -506,6 +506,10 @@ export interface Booking {
   partySize: number | null;
   // Car-listing-only fields — see the backend entity's doc comment.
   withDriver: boolean;
+  // A second authorized driver — distinct from withDriver (a chauffeur
+  // service) — only meaningful when the listing has
+  // CarListing.additionalDriverAllowed set.
+  wantsAdditionalDriver: boolean;
   rentalUnit: BookingRentalUnit | null;
   requestedStartTime: string | null;
   requestedEndTime: string | null;
@@ -1784,6 +1788,14 @@ export type CarFuelType = "petrol" | "diesel" | "hybrid" | "electric";
 export type CarListingReviewStatus =
   "draft" | "submitted_for_review" | "approved" | "rejected" | "suspended";
 
+export type CarFuelPolicy = "full_to_full" | "prepaid" | "same_to_same";
+
+// Disclosure-only — see the backend CarCancellationPolicy enum's doc
+// comment: no payment is collected on this platform, so this describes
+// how much notice a guest should give before a request likely won't be
+// honored if cancelled late, never a refund policy this system enforces.
+export type CarCancellationPolicy = "flexible" | "moderate" | "strict";
+
 // api/src/car-listings/entities/car-listing.entity.ts (sanitized — owner
 // and business.owner are the public user shape, same convention as
 // Advertisement.owner). A peer-to-peer vehicle listing: `owner` is the
@@ -1817,6 +1829,19 @@ export interface CarListing {
   minRentalHours: number | null;
   driverFeePerHour: number | null;
   securityDeposit: number | null;
+  color: string | null;
+  mileageLimitPerDay: number | null;
+  excessMileageFee: number | null;
+  fuelPolicy: CarFuelPolicy | null;
+  minDriverAge: number | null;
+  additionalDriverAllowed: boolean;
+  additionalDriverFee: number | null;
+  insuranceIncluded: boolean;
+  insuranceNotes: string | null;
+  cancellationPolicy: CarCancellationPolicy | null;
+  deliveryAvailable: boolean;
+  deliveryFee: number | null;
+  instantBookEnabled: boolean;
   features: string[];
   images: string[];
   description: string | null;
@@ -1856,6 +1881,32 @@ export interface QueryCarListingsParams {
 export interface SetCarListingReviewStatusInput {
   status: CarListingReviewStatus;
   reason?: string;
+}
+
+// api/src/car-listings/entities/car-listing-blocked-date.entity.ts — a
+// date range the owner manually blocked (maintenance, personal use, an
+// off-platform rental). `reason` is private to the owner; never present
+// in CarListingAvailability's public unavailable entries below.
+export interface CarListingBlockedDate {
+  id: string;
+  carListingId: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  createdAt: string;
+}
+
+// GET /car-listings/:id/availability (CarListingsService.getAvailability)
+// — the merged, public set of date ranges a booking request would just
+// get declined for. Advisory only, day-level granularity — the real
+// hour-precise enforcement lives server-side in BookingsService.create.
+export interface CarListingAvailability {
+  carListingId: string;
+  unavailable: {
+    startDate: string;
+    endDate: string;
+    source: "booking" | "blocked";
+  }[];
 }
 
 export type SupportTicketStatus = "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
