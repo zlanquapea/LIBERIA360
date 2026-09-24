@@ -208,6 +208,11 @@ export function BookingDetailModal({
                 Estimated total: {formatCost(booking.estimatedTotal)}
               </p>
             )}
+            {booking.wantsAdditionalDriver && (
+              <p className="text-slate-700 dark:text-slate-200">
+                Additional driver requested
+              </p>
+            )}
             {booking.notes && (
               <p className="text-slate-500 dark:text-slate-400">
                 &ldquo;{booking.notes}&rdquo;

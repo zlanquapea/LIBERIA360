@@ -291,6 +291,7 @@ export default async function CarListingDetailPage({
       {(listing.mileageLimitPerDay != null ||
         listing.fuelPolicy != null ||
         listing.minDriverAge != null ||
+        listing.additionalDriverAllowed ||
         listing.insuranceIncluded ||
         listing.cancellationPolicy != null ||
         listing.deliveryAvailable) && (
