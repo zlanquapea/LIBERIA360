@@ -41,18 +41,22 @@ export interface CreateCarListingInput {
   minRentalHours?: number;
   driverFeePerHour?: number;
   securityDeposit?: number;
-  color?: string;
-  mileageLimitPerDay?: number;
-  excessMileageFee?: number;
-  fuelPolicy?: CarFuelPolicy;
-  minDriverAge?: number;
+  // These accept an explicit `null` (as opposed to simply omitting the
+  // key) so an edit can clear a previously-set value — see
+  // UpdateCarListingDto's doc comment on the backend for why the
+  // distinction matters.
+  color?: string | null;
+  mileageLimitPerDay?: number | null;
+  excessMileageFee?: number | null;
+  fuelPolicy?: CarFuelPolicy | null;
+  minDriverAge?: number | null;
   additionalDriverAllowed?: boolean;
-  additionalDriverFee?: number;
+  additionalDriverFee?: number | null;
   insuranceIncluded?: boolean;
-  insuranceNotes?: string;
-  cancellationPolicy?: CarCancellationPolicy;
+  insuranceNotes?: string | null;
+  cancellationPolicy?: CarCancellationPolicy | null;
   deliveryAvailable?: boolean;
-  deliveryFee?: number;
+  deliveryFee?: number | null;
   instantBookEnabled?: boolean;
   features?: string[];
   images?: string[];

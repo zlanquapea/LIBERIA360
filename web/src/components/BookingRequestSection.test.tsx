@@ -140,6 +140,45 @@ describe("BookingRequestSection (car listing)", () => {
     );
   });
 
+  it("shows a confirmed message, not a pending 'request sent' message, when Instant Book confirms immediately", async () => {
+    const listing = makeCarListing({ instantBookEnabled: true });
+    render(<BookingRequestSection carListing={listing} startExpanded />);
+    await waitFor(() => expect(mockGetCarListingAvailability).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/pickup date/i), {
+      target: { value: "2026-01-01" },
+    });
+    fireEvent.change(screen.getByLabelText(/return date/i), {
+      target: { value: "2026-01-03" },
+    });
+
+    mockCreateBooking.mockResolvedValue({ status: "confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: /send request/i }));
+
+    expect(await screen.findByText(/booking confirmed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/request sent/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/you'll hear back/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the ordinary pending message when the booking is not Instant Book", async () => {
+    const listing = makeCarListing();
+    render(<BookingRequestSection carListing={listing} startExpanded />);
+    await waitFor(() => expect(mockGetCarListingAvailability).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByLabelText(/pickup date/i), {
+      target: { value: "2026-01-01" },
+    });
+    fireEvent.change(screen.getByLabelText(/return date/i), {
+      target: { value: "2026-01-03" },
+    });
+
+    mockCreateBooking.mockResolvedValue({ status: "pending" });
+    fireEvent.click(screen.getByRole("button", { name: /send request/i }));
+
+    expect(await screen.findByText(/request sent/i)).toBeInTheDocument();
+    expect(screen.queryByText(/booking confirmed/i)).not.toBeInTheDocument();
+  });
+
   it("shows a non-blocking warning when the chosen dates overlap a reported unavailable range", async () => {
     mockGetCarListingAvailability.mockResolvedValue({
       unavailable: [

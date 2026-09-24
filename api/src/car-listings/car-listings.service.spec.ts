@@ -52,7 +52,9 @@ describe("CarListingsService", () => {
     save: jest.Mock;
     find: jest.Mock;
     delete: jest.Mock;
+    manager: { transaction: jest.Mock };
   };
+  let fakeBlockedDateManager: { query: jest.Mock };
   let bookingRepo: { find: jest.Mock };
   let notificationsService: { createMany: jest.Mock };
   let usersService: { findAdminIds: jest.Mock };
@@ -94,7 +96,27 @@ describe("CarListingsService", () => {
       save: jest.fn((data) => ({ id: "blocked-1", ...data })),
       find: jest.fn().mockResolvedValue([]),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      manager: { transaction: jest.fn() },
     };
+    // CarListingsService.createBlockedDate wraps its insert in
+    // `this.blockedDateRepo.manager.transaction(...)` to take the same
+    // per-listing advisory lock BookingsService.create uses — see its own
+    // doc comment. The fake manager just forwards to the mocks above.
+    fakeBlockedDateManager = {
+      query: jest.fn().mockResolvedValue(undefined),
+    };
+    blockedDateRepo.manager.transaction.mockImplementation(
+      (cb: (m: unknown) => unknown) =>
+        cb({
+          ...fakeBlockedDateManager,
+          create: jest.fn((_entity: unknown, data: unknown) =>
+            blockedDateRepo.create(data),
+          ),
+          save: jest.fn((_entity: unknown, data: unknown) =>
+            blockedDateRepo.save(data),
+          ),
+        }),
+    );
     bookingRepo = { find: jest.fn().mockResolvedValue([]) };
     notificationsService = {
       createMany: jest.fn().mockResolvedValue(undefined),
@@ -499,6 +521,10 @@ describe("CarListingsService", () => {
         endDate: "2026-11-05",
         reason: "In the shop",
       });
+      expect(fakeBlockedDateManager.query).toHaveBeenCalledWith(
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        [LISTING_ID],
+      );
       expect(blockedDateRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           carListingId: LISTING_ID,

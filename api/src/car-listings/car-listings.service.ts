@@ -322,14 +322,23 @@ export class CarListingsService {
     if (new Date(dto.endDate) < new Date(dto.startDate)) {
       throw new BadRequestException("endDate cannot be before startDate");
     }
-    return this.blockedDateRepo.save(
-      this.blockedDateRepo.create({
+    // Same per-listing advisory lock BookingsService.create takes around
+    // its overlap-check-then-insert, so this insert can't land in the gap
+    // between that check and its commit (and vice versa).
+    return this.blockedDateRepo.manager.transaction(async (manager) => {
+      await manager.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
         carListingId,
-        startDate: dto.startDate,
-        endDate: dto.endDate,
-        reason: dto.reason ?? null,
-      }),
-    );
+      ]);
+      return manager.save(
+        CarListingBlockedDate,
+        manager.create(CarListingBlockedDate, {
+          carListingId,
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+          reason: dto.reason ?? null,
+        }),
+      );
+    });
   }
 
   async findBlockedDates(

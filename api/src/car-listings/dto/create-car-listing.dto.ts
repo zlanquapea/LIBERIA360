@@ -86,20 +86,22 @@ export class CreateCarListingDto {
   @IsOptional() @IsInt() @Min(1) @Max(24) minRentalHours?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(50000) driverFeePerHour?: number;
 
-  @IsOptional() @IsString() @MaxLength(60) color?: string;
-  @IsOptional() @IsInt() @Min(0) @Max(5000) mileageLimitPerDay?: number;
-  @IsOptional() @IsNumber() @Min(0) @Max(10000) excessMileageFee?: number;
-  @IsOptional() @IsEnum(CarFuelPolicy) fuelPolicy?: CarFuelPolicy;
-  @IsOptional() @IsInt() @Min(16) @Max(99) minDriverAge?: number;
+  @IsOptional() @IsString() @MaxLength(60) color?: string | null;
+  @IsOptional() @IsInt() @Min(0) @Max(5000) mileageLimitPerDay?: number | null;
+  @IsOptional() @IsNumber() @Min(0) @Max(10000) excessMileageFee?:
+    number | null;
+  @IsOptional() @IsEnum(CarFuelPolicy) fuelPolicy?: CarFuelPolicy | null;
+  @IsOptional() @IsInt() @Min(16) @Max(99) minDriverAge?: number | null;
   @IsOptional() @IsBoolean() additionalDriverAllowed?: boolean;
-  @IsOptional() @IsNumber() @Min(0) @Max(50000) additionalDriverFee?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(50000) additionalDriverFee?:
+    number | null;
   @IsOptional() @IsBoolean() insuranceIncluded?: boolean;
-  @IsOptional() @IsString() @MaxLength(1000) insuranceNotes?: string;
+  @IsOptional() @IsString() @MaxLength(1000) insuranceNotes?: string | null;
   @IsOptional()
   @IsEnum(CarCancellationPolicy)
-  cancellationPolicy?: CarCancellationPolicy;
+  cancellationPolicy?: CarCancellationPolicy | null;
   @IsOptional() @IsBoolean() deliveryAvailable?: boolean;
-  @IsOptional() @IsNumber() @Min(0) @Max(50000) deliveryFee?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(50000) deliveryFee?: number | null;
   @IsOptional() @IsBoolean() instantBookEnabled?: boolean;
 
   @IsOptional()

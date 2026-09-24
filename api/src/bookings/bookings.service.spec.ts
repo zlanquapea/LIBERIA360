@@ -26,12 +26,20 @@ describe("BookingsService", () => {
     create: jest.Mock;
     find: jest.Mock;
     exists: jest.Mock;
+    manager: { transaction: jest.Mock };
   };
   let businessRepo: { findOne: jest.Mock; exists: jest.Mock };
   let creatorRepo: { findOne: jest.Mock; exists: jest.Mock };
   let carListingRepo: { findOne: jest.Mock; find: jest.Mock };
   let carListingBlockedDateRepo: { find: jest.Mock };
   let notificationsService: { create: jest.Mock };
+  let fakeManager: {
+    query: jest.Mock;
+    find: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    findOneOrFail: jest.Mock;
+  };
 
   beforeEach(async () => {
     bookingRepo = {
@@ -41,7 +49,34 @@ describe("BookingsService", () => {
       create: jest.fn((x) => x),
       find: jest.fn().mockResolvedValue([]),
       exists: jest.fn().mockResolvedValue(false),
+      manager: { transaction: jest.fn() },
     };
+    // BookingsService.create wraps its overlap-check-then-insert in
+    // `this.bookingRepo.manager.transaction(...)` (see its own doc
+    // comment) to serialize concurrent requests per car listing. The fake
+    // transactional `manager` here just forwards each call to the same
+    // bookingRepo/carListingBlockedDateRepo mocks below, keyed by entity
+    // class, so every existing assertion against those mocks still holds.
+    fakeManager = {
+      query: jest.fn().mockResolvedValue(undefined),
+      find: jest.fn((entity: unknown, opts: unknown) =>
+        entity === CarListingBlockedDate
+          ? carListingBlockedDateRepo.find(opts)
+          : bookingRepo.find(opts),
+      ),
+      create: jest.fn((_entity: unknown, data: unknown) =>
+        bookingRepo.create(data),
+      ),
+      save: jest.fn((_entity: unknown, data: unknown) =>
+        bookingRepo.save(data),
+      ),
+      findOneOrFail: jest.fn((_entity: unknown, opts: unknown) =>
+        bookingRepo.findOneOrFail(opts),
+      ),
+    };
+    bookingRepo.manager.transaction.mockImplementation(
+      (cb: (m: unknown) => unknown) => cb(fakeManager),
+    );
     businessRepo = {
       findOne: jest.fn(),
       exists: jest.fn().mockResolvedValue(true),
@@ -730,6 +765,51 @@ describe("BookingsService", () => {
         requestedDate: "2099-01-01",
       });
       expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it("takes a per-listing advisory lock around the overlap-check-then-insert for a car booking", async () => {
+      carListingRepo.findOne.mockResolvedValue(approvedCarListing());
+      bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        id: "booking-1",
+        guestUserId: "guest-1",
+        guest: { name: "Ada" },
+        requestedDate: "2099-01-01",
+        rentalUnit: null,
+        requestedStartTime: null,
+        requestedEndTime: null,
+        carListing: { ownerUserId: "owner-1", title: "RAV4" },
+      });
+
+      await service.create("guest-1", {
+        carListingId: "car-1",
+        requestedDate: "2099-01-01",
+        requestedEndDate: "2099-01-03",
+      });
+
+      expect(bookingRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(fakeManager.query).toHaveBeenCalledWith(
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        ["car-1"],
+      );
+    });
+
+    it("does not attempt an advisory lock for a business booking (no overlap check applies)", async () => {
+      bookingRepo.save.mockResolvedValue({ id: "booking-1" });
+      bookingRepo.findOneOrFail.mockResolvedValue({
+        id: "booking-1",
+        guest: { name: "Ada" },
+        requestedDate: "2099-01-01",
+        business: { ownerUserId: "owner-1" },
+      });
+      await service.create("guest-1", {
+        businessId: "biz-1",
+        requestedDate: "2099-01-01",
+      });
+      // The transaction wrapper still runs (harmless for a plain insert),
+      // but with no carListing there's nothing to lock or check.
+      expect(bookingRepo.find).not.toHaveBeenCalled();
+      expect(carListingBlockedDateRepo.find).not.toHaveBeenCalled();
     });
   });
 

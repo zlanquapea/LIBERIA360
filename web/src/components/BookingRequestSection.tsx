@@ -270,13 +270,19 @@ export function BookingRequestSection({
   }
 
   if (sent) {
+    const isConfirmed = sent.status === "confirmed";
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
         <p className="font-medium">
-          Request sent — {formatBookingStatus(sent.status).toLowerCase()}.
+          {isConfirmed
+            ? "Booking confirmed!"
+            : `Request sent — ${formatBookingStatus(sent.status).toLowerCase()}.`}
         </p>
         <p className="mt-1">
-          You&apos;ll hear back with a confirm or decline. Track it under{" "}
+          {isConfirmed
+            ? "Instant Book confirmed this immediately — no need to wait for a response."
+            : "You'll hear back with a confirm or decline."}{" "}
+          Track it under{" "}
           <Link href="/account/bookings" className="font-medium underline">
             My Bookings
           </Link>

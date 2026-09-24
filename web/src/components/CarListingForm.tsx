@@ -167,18 +167,23 @@ export function CarListingForm({
         driverFeePerHour:
           withDriverAvailable && pricePerHour && driverFeePerHour ? Number(driverFeePerHour) : undefined,
         securityDeposit: securityDeposit ? Number(securityDeposit) : undefined,
-        color: color.trim() || undefined,
-        mileageLimitPerDay: mileageLimitPerDay ? Number(mileageLimitPerDay) : undefined,
-        excessMileageFee: mileageLimitPerDay && excessMileageFee ? Number(excessMileageFee) : undefined,
-        fuelPolicy: fuelPolicy || undefined,
-        minDriverAge: minDriverAge ? Number(minDriverAge) : undefined,
+        // null (not undefined) below for every clearable disclosure field —
+        // an edit that blanks a field must actually clear the stored value,
+        // and a plain omitted key leaves it untouched (Object.assign only
+        // overwrites keys present in the request body). See
+        // UpdateCarListingDto's doc comment.
+        color: color.trim() || null,
+        mileageLimitPerDay: mileageLimitPerDay ? Number(mileageLimitPerDay) : null,
+        excessMileageFee: mileageLimitPerDay && excessMileageFee ? Number(excessMileageFee) : null,
+        fuelPolicy: fuelPolicy || null,
+        minDriverAge: minDriverAge ? Number(minDriverAge) : null,
         additionalDriverAllowed,
-        additionalDriverFee: additionalDriverAllowed && additionalDriverFee ? Number(additionalDriverFee) : undefined,
+        additionalDriverFee: additionalDriverAllowed && additionalDriverFee ? Number(additionalDriverFee) : null,
         insuranceIncluded,
-        insuranceNotes: insuranceIncluded ? insuranceNotes.trim() || undefined : undefined,
-        cancellationPolicy: cancellationPolicy || undefined,
+        insuranceNotes: insuranceIncluded ? insuranceNotes.trim() || null : null,
+        cancellationPolicy: cancellationPolicy || null,
         deliveryAvailable,
-        deliveryFee: deliveryAvailable && deliveryFee ? Number(deliveryFee) : undefined,
+        deliveryFee: deliveryAvailable && deliveryFee ? Number(deliveryFee) : null,
         instantBookEnabled,
         features: splitList(features),
         images,
@@ -483,7 +488,7 @@ export function CarListingForm({
           <input
             type="number"
             min={0}
-            max={10000}
+            max={5000}
             value={mileageLimitPerDay}
             onChange={(e) => setMileageLimitPerDay(e.target.value)}
             placeholder="Leave blank for unlimited"

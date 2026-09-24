@@ -173,52 +173,6 @@ export class BookingsService {
       requestedEndTime: isHourly ? (dto.requestedEndTime ?? null) : null,
     };
 
-    if (carListing) {
-      // A car already CONFIRMED or PENDING for an overlapping window
-      // can't be handed to a second renter — a pending request now acts
-      // as a soft hold on its dates (the owner is still free to decline
-      // it and free the dates back up), not just an already-agreed
-      // booking, closing a real gap where two overlapping requests could
-      // both sit PENDING and the owner could accidentally confirm a
-      // conflict. Manually blocked-out ranges (maintenance, personal use)
-      // count the same way. Fetched and compared in JS rather than a
-      // single SQL predicate (as the day-only version of this check used
-      // to do) because "overlapping" now means two different things
-      // depending on each row's own rentalUnit — a plain date-range
-      // comparison can't express both at once.
-      const existingBookings = await this.bookingRepo.find({
-        where: {
-          carListingId: carListing.id,
-          status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
-        },
-      });
-      const blockedDates = await this.carListingBlockedDateRepo.find({
-        where: { carListingId: carListing.id },
-      });
-      const candidate = bookingInterval(candidateInterval);
-      const overlapping =
-        existingBookings.some((existing) =>
-          intervalsOverlap(candidate, bookingInterval(existing)),
-        ) ||
-        blockedDates.some((block) =>
-          intervalsOverlap(
-            candidate,
-            bookingInterval({
-              requestedDate: block.startDate,
-              requestedEndDate: block.endDate,
-              rentalUnit: null,
-              requestedStartTime: null,
-              requestedEndTime: null,
-            }),
-          ),
-        );
-      if (overlapping) {
-        throw new ConflictException(
-          "This car isn't available for part of the requested dates — it's already booked, requested, or blocked by the owner",
-        );
-      }
-    }
-
     // Owner opt-in: skip the manual-review step and confirm the moment
     // availability clears — see CarListing.instantBookEnabled.
     const isInstantBooked = Boolean(carListing?.instantBookEnabled);
@@ -226,36 +180,100 @@ export class BookingsService {
       ? BookingStatus.CONFIRMED
       : BookingStatus.PENDING;
 
-    const booking = await this.bookingRepo.save(
-      this.bookingRepo.create({
-        businessId: dto.businessId ?? null,
-        creatorId: dto.creatorId ?? null,
-        carListingId: carListing?.id ?? null,
-        guestUserId: userId,
-        requestedDate: dto.requestedDate,
-        requestedEndDate: candidateInterval.requestedEndDate,
-        rentalUnit: carListing
-          ? isHourly
-            ? BookingRentalUnit.HOUR
-            : BookingRentalUnit.DAY
-          : null,
-        requestedStartTime: candidateInterval.requestedStartTime,
-        requestedEndTime: candidateInterval.requestedEndTime,
-        partySize: dto.partySize ?? null,
-        withDriver: carListing
-          ? Boolean(dto.withDriver) && carListing.withDriverAvailable
-          : false,
-        wantsAdditionalDriver,
-        pickupLocation: carListing ? (dto.pickupLocation ?? null) : null,
-        estimatedTotal,
-        notes: dto.notes ?? null,
-        status: initialStatus,
-        respondedAt: isInstantBooked ? new Date() : null,
-      }),
+    // The overlap check-then-insert below must be atomic per car listing:
+    // without a lock, two concurrent requests for the same (or an
+    // overlapping) window can both read "no conflict" before either
+    // commits, so both proceed to save — a real double-booking, most
+    // visible with Instant Book where both would land CONFIRMED. A
+    // Postgres advisory lock scoped to this transaction (auto-released on
+    // commit/rollback) serializes every booking-creation attempt for a
+    // given carListing.id; CarListingsService.createBlockedDate takes the
+    // exact same lock before its insert so a manual block can't race this
+    // check either. A no-op (no lock acquired) for business/creator
+    // bookings, which have no such overlap check at all.
+    const saved = await this.bookingRepo.manager.transaction(
+      async (manager) => {
+        if (carListing) {
+          await manager.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+            carListing.id,
+          ]);
+
+          // A car already CONFIRMED or PENDING for an overlapping window
+          // can't be handed to a second renter — a pending request now acts
+          // as a soft hold on its dates (the owner is still free to decline
+          // it and free the dates back up), not just an already-agreed
+          // booking, closing a real gap where two overlapping requests could
+          // both sit PENDING and the owner could accidentally confirm a
+          // conflict. Manually blocked-out ranges (maintenance, personal use)
+          // count the same way. Fetched and compared in JS rather than a
+          // single SQL predicate (as the day-only version of this check used
+          // to do) because "overlapping" now means two different things
+          // depending on each row's own rentalUnit — a plain date-range
+          // comparison can't express both at once.
+          const existingBookings = await manager.find(Booking, {
+            where: {
+              carListingId: carListing.id,
+              status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+            },
+          });
+          const blockedDates = await manager.find(CarListingBlockedDate, {
+            where: { carListingId: carListing.id },
+          });
+          const candidate = bookingInterval(candidateInterval);
+          const overlapping =
+            existingBookings.some((existing) =>
+              intervalsOverlap(candidate, bookingInterval(existing)),
+            ) ||
+            blockedDates.some((block) =>
+              intervalsOverlap(
+                candidate,
+                bookingInterval({
+                  requestedDate: block.startDate,
+                  requestedEndDate: block.endDate,
+                  rentalUnit: null,
+                  requestedStartTime: null,
+                  requestedEndTime: null,
+                }),
+              ),
+            );
+          if (overlapping) {
+            throw new ConflictException(
+              "This car isn't available for part of the requested dates — it's already booked, requested, or blocked by the owner",
+            );
+          }
+        }
+
+        const created = await manager.save(
+          Booking,
+          manager.create(Booking, {
+            businessId: dto.businessId ?? null,
+            creatorId: dto.creatorId ?? null,
+            carListingId: carListing?.id ?? null,
+            guestUserId: userId,
+            requestedDate: dto.requestedDate,
+            requestedEndDate: candidateInterval.requestedEndDate,
+            rentalUnit: carListing
+              ? isHourly
+                ? BookingRentalUnit.HOUR
+                : BookingRentalUnit.DAY
+              : null,
+            requestedStartTime: candidateInterval.requestedStartTime,
+            requestedEndTime: candidateInterval.requestedEndTime,
+            partySize: dto.partySize ?? null,
+            withDriver: carListing
+              ? Boolean(dto.withDriver) && carListing.withDriverAvailable
+              : false,
+            wantsAdditionalDriver,
+            pickupLocation: carListing ? (dto.pickupLocation ?? null) : null,
+            estimatedTotal,
+            notes: dto.notes ?? null,
+            status: initialStatus,
+            respondedAt: isInstantBooked ? new Date() : null,
+          }),
+        );
+        return manager.findOneOrFail(Booking, { where: { id: created.id } });
+      },
     );
-    const saved = await this.bookingRepo.findOneOrFail({
-      where: { id: booking.id },
-    });
 
     const ownerUserId = getOwnerUserId(saved);
     if (ownerUserId) {
