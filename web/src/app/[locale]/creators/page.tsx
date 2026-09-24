@@ -57,7 +57,9 @@ function QuickAction({
     <Link
       href={href}
       className={`flex min-h-[92px] min-w-0 flex-1 flex-col items-center justify-center gap-2 rounded-2xl px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
-        emphasized ? "bg-gold-100 dark:bg-gold-950/30" : "bg-brand-50 dark:bg-brand-950/40"
+        emphasized
+          ? "bg-gold-100 dark:bg-gold-950/30"
+          : "bg-brand-50 dark:bg-brand-950/40"
       }`}
     >
       <span
@@ -119,7 +121,10 @@ function GuideCard({
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
-              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-brand-700 dark:text-brand-300" />
+              <MapPinIcon
+                aria-hidden
+                className="h-3.5 w-3.5 text-brand-700 dark:text-brand-300"
+              />
               {guide.city}
             </span>
             <span aria-hidden className="text-slate-300 dark:text-slate-700">
@@ -203,8 +208,8 @@ export default async function CreatorsPage({
           aria-labelledby="creators-hero-heading"
           className="relative mt-4 h-[290px] overflow-hidden rounded-[20px] bg-brand-900 shadow-[0_12px_30px_rgba(0,47,59,0.18)]"
           style={{
-            backgroundImage: "url('/onboarding/discover.jpg')",
-            backgroundPosition: "62% center",
+            backgroundImage: "url('/creators/hero-background.jpg')",
+            backgroundPosition: "center",
             backgroundSize: "cover",
           }}
         >
