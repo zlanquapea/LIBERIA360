@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { User } from "./entities/user.entity";
+import { normalizePhoneOrThrow } from "../common/phone";
 
 @Injectable()
 export class UsersService {
@@ -45,7 +46,15 @@ export class UsersService {
 
   /** PATCH /auth/me — see UpdateProfileDto for why this exists. */
   async update(id: string, data: Partial<User>): Promise<User> {
-    await this.userRepo.update({ id }, data);
+    await this.userRepo.update(
+      { id },
+      {
+        ...data,
+        ...(data.phone === undefined
+          ? {}
+          : { phone: normalizePhoneOrThrow(data.phone, "Phone number") }),
+      },
+    );
     return (await this.findById(id))!;
   }
 

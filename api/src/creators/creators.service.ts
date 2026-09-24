@@ -19,6 +19,7 @@ import { CreateOfferingDto } from "./dto/create-offering.dto";
 import { UpdateOfferingDto } from "./dto/update-offering.dto";
 import { CreatorCategory } from "./entities/creator.enums";
 import { clearStaleRelation } from "../common/typeorm-relations";
+import { normalizePhoneOrThrow } from "../common/phone";
 
 export interface PaginatedCreators {
   data: Creator[];
@@ -74,7 +75,12 @@ export class CreatorsService {
     }
 
     const creator = await this.creatorRepo.save(
-      this.creatorRepo.create({ ...dto, userId }),
+      this.creatorRepo.create({
+        ...dto,
+        userId,
+        contactPhone: normalizePhoneOrThrow(dto.contactPhone, "Contact phone"),
+        whatsapp: normalizePhoneOrThrow(dto.whatsapp, "WhatsApp number"),
+      }),
     );
     return this.creatorRepo.findOneOrFail({ where: { id: creator.id } });
   }
@@ -98,7 +104,17 @@ export class CreatorsService {
       // without this, reassigning countyId (home county) silently no-ops.
       clearStaleRelation(creator, "county");
     }
-    this.creatorRepo.merge(creator, dto);
+    this.creatorRepo.merge(creator, {
+      ...dto,
+      contactPhone:
+        dto.contactPhone === undefined
+          ? undefined
+          : normalizePhoneOrThrow(dto.contactPhone, "Contact phone"),
+      whatsapp:
+        dto.whatsapp === undefined
+          ? undefined
+          : normalizePhoneOrThrow(dto.whatsapp, "WhatsApp number"),
+    });
     await this.creatorRepo.save(creator);
     return this.creatorRepo.findOneOrFail({ where: { userId } });
   }

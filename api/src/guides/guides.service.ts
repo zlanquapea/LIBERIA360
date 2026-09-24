@@ -38,6 +38,7 @@ import {
   UpdateGuideProfileImageDto,
 } from "./guides.dto";
 import { SendGuideMessageDto } from "./dto/guide-message.dto";
+import { normalizePhoneOrThrow } from "../common/phone";
 
 const BOOKINGS_LINK = "/account/bookings";
 
@@ -128,7 +129,10 @@ export class GuidesService {
       ...dto,
       countyId: dto.countyId ?? null,
       ltaLicenseNumber: dto.ltaLicenseNumber ?? null,
-      whatsappNumber: dto.whatsappNumber ?? null,
+      whatsappNumber: normalizePhoneOrThrow(
+        dto.whatsappNumber,
+        "WhatsApp number",
+      ),
     });
     return this.publicGuide(await this.guideRepo.save(guide));
   }
@@ -406,7 +410,10 @@ export class GuidesService {
         verifiedAt: null,
         verifiedBy: null,
         ltaLicenseNumber: dto.ltaLicenseNumber ?? null,
-        whatsappNumber: dto.whatsappNumber ?? null,
+        whatsappNumber: normalizePhoneOrThrow(
+          dto.whatsappNumber,
+          "WhatsApp number",
+        ),
       });
       return this.guideRepo.save(existing);
     }
@@ -419,7 +426,10 @@ export class GuidesService {
         verifiedAt: null,
         verifiedBy: null,
         ltaLicenseNumber: dto.ltaLicenseNumber ?? null,
-        whatsappNumber: dto.whatsappNumber ?? null,
+        whatsappNumber: normalizePhoneOrThrow(
+          dto.whatsappNumber,
+          "WhatsApp number",
+        ),
         verificationDocumentKey: null,
         profileImageUrl: dto.profileImageUrl ?? null,
       }),

@@ -9,6 +9,7 @@ import {
   MinLength,
 } from "class-validator";
 import { TravelerType } from "../../users/entities/user.enums";
+import { IsValidPhoneNumber } from "../../common/phone";
 
 // The traveler-type/interests fields register.dto.ts captures at signup
 // weren't previously editable afterward — nor was homeCountyId, actually
@@ -24,6 +25,7 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   @MaxLength(40)
+  @IsValidPhoneNumber()
   phone?: string;
 
   @IsOptional()
