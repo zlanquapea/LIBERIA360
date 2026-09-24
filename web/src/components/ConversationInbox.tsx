@@ -59,6 +59,21 @@ export function ConversationInbox() {
       ),
     [items, query, category],
   );
+  const unreadByCategory = useMemo(
+    () =>
+      Object.fromEntries(
+        CONVERSATION_CATEGORIES.map((option) => [
+          option.key,
+          items
+            .filter(
+              (item) =>
+                item.unreadCount > 0 && matchesCategory(item, option.key),
+            )
+            .reduce((total, item) => total + item.unreadCount, 0),
+        ]),
+      ) as Record<ConversationCategory, number>,
+    [items],
+  );
   if (!ready)
     return (
       <div className="p-8 text-center text-slate-500">Loading messages…</div>
@@ -117,6 +132,16 @@ export function ConversationInbox() {
                   className={`min-h-9 shrink-0 rounded-full px-4 text-xs font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${selected ? "bg-brand-800 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-brand-50 hover:text-brand-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-200"}`}
                 >
                   {option.label}
+                  {unreadByCategory[option.key] > 0 && (
+                    <span
+                      aria-label={`${unreadByCategory[option.key]} unread`}
+                      className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] leading-none ${selected ? "bg-gold-400 text-brand-950" : "bg-brand-700 text-white"}`}
+                    >
+                      {unreadByCategory[option.key] > 99
+                        ? "99+"
+                        : unreadByCategory[option.key]}
+                    </span>
+                  )}
                 </button>
               );
             })}
