@@ -5,16 +5,29 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { CarListing } from "./entities/car-listing.entity";
+import { CarListingBlockedDate } from "./entities/car-listing-blocked-date.entity";
 import { CarListingReviewStatus } from "./entities/car-listing.enums";
 import { Business } from "../businesses/entities/business.entity";
 import { County } from "../counties/entities/county.entity";
+import { Booking } from "../bookings/entities/booking.entity";
+import { BookingStatus } from "../bookings/entities/booking.enums";
 import { CreateCarListingDto } from "./dto/create-car-listing.dto";
 import { UpdateCarListingDto } from "./dto/update-car-listing.dto";
 import { QueryCarListingsDto } from "./dto/query-car-listings.dto";
+import { CreateCarListingBlockedDateDto } from "./dto/create-car-listing-blocked-date.dto";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
+
+export interface CarListingAvailability {
+  carListingId: string;
+  unavailable: {
+    startDate: string;
+    endDate: string;
+    source: "booking" | "blocked";
+  }[];
+}
 
 export interface PaginatedCarListings {
   data: CarListing[];
@@ -35,6 +48,10 @@ export class CarListingsService {
     private readonly businessRepo: Repository<Business>,
     @InjectRepository(County)
     private readonly countyRepo: Repository<County>,
+    @InjectRepository(CarListingBlockedDate)
+    private readonly blockedDateRepo: Repository<CarListingBlockedDate>,
+    @InjectRepository(Booking)
+    private readonly bookingRepo: Repository<Booking>,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
   ) {}
@@ -109,6 +126,19 @@ export class CarListingsService {
       minRentalHours: dto.pricePerHour ? (dto.minRentalHours ?? 1) : null,
       driverFeePerHour: dto.driverFeePerHour ?? null,
       securityDeposit: dto.securityDeposit ?? null,
+      color: dto.color ?? null,
+      mileageLimitPerDay: dto.mileageLimitPerDay ?? null,
+      excessMileageFee: dto.excessMileageFee ?? null,
+      fuelPolicy: dto.fuelPolicy ?? null,
+      minDriverAge: dto.minDriverAge ?? null,
+      additionalDriverAllowed: dto.additionalDriverAllowed ?? false,
+      additionalDriverFee: dto.additionalDriverFee ?? null,
+      insuranceIncluded: dto.insuranceIncluded ?? false,
+      insuranceNotes: dto.insuranceNotes ?? null,
+      cancellationPolicy: dto.cancellationPolicy ?? null,
+      deliveryAvailable: dto.deliveryAvailable ?? false,
+      deliveryFee: dto.deliveryFee ?? null,
+      instantBookEnabled: dto.instantBookEnabled ?? false,
       features: dto.features ?? [],
       images: dto.images ?? [],
       description: dto.description ?? null,
@@ -274,5 +304,92 @@ export class CarListingsService {
       throw new NotFoundException(`Car listing "${id}" not found`);
     }
     return listing;
+  }
+
+  /** Owner blocks a date range on their own listing (maintenance,
+   * personal use, an off-platform rental) — excluded from availability
+   * alongside CONFIRMED/PENDING bookings, see BookingsService.create's
+   * overlap check and getAvailability below. No check against an
+   * already-confirmed booking on the same range — an owner
+   * double-blocking a date they've already confirmed is their own
+   * mistake to notice, kept simple deliberately. */
+  async createBlockedDate(
+    userId: string,
+    carListingId: string,
+    dto: CreateCarListingBlockedDateDto,
+  ): Promise<CarListingBlockedDate> {
+    await this.findOwnedOrFail(userId, carListingId);
+    if (new Date(dto.endDate) < new Date(dto.startDate)) {
+      throw new BadRequestException("endDate cannot be before startDate");
+    }
+    return this.blockedDateRepo.save(
+      this.blockedDateRepo.create({
+        carListingId,
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+        reason: dto.reason ?? null,
+      }),
+    );
+  }
+
+  async findBlockedDates(
+    userId: string,
+    carListingId: string,
+  ): Promise<CarListingBlockedDate[]> {
+    await this.findOwnedOrFail(userId, carListingId);
+    return this.blockedDateRepo.find({
+      where: { carListingId },
+      order: { startDate: "ASC" },
+    });
+  }
+
+  async removeBlockedDate(
+    userId: string,
+    carListingId: string,
+    blockedDateId: string,
+  ): Promise<void> {
+    await this.findOwnedOrFail(userId, carListingId);
+    await this.blockedDateRepo.delete({
+      id: blockedDateId,
+      carListingId,
+    });
+  }
+
+  /** Public — the merged set of date ranges a renter shouldn't bother
+   * requesting, so the booking form can warn before a doomed submission.
+   * Day-level granularity only (an HOUR-mode booking's whole calendar day
+   * is reported unavailable here even though it only occupies part of
+   * it) — this endpoint is advisory only; the real, hour-precise
+   * enforcement lives in BookingsService.create's own overlap check.
+   * `reason` is deliberately omitted from blocked-date entries — it may
+   * hold a private note ("in the shop," "personal trip"). */
+  async getAvailability(id: string): Promise<CarListingAvailability> {
+    await this.findApprovedOne(id);
+
+    const [bookings, blocks] = await Promise.all([
+      this.bookingRepo.find({
+        where: {
+          carListingId: id,
+          status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+        },
+      }),
+      this.blockedDateRepo.find({ where: { carListingId: id } }),
+    ]);
+
+    return {
+      carListingId: id,
+      unavailable: [
+        ...bookings.map((booking) => ({
+          startDate: booking.requestedDate,
+          endDate: booking.requestedEndDate ?? booking.requestedDate,
+          source: "booking" as const,
+        })),
+        ...blocks.map((block) => ({
+          startDate: block.startDate,
+          endDate: block.endDate,
+          source: "blocked" as const,
+        })),
+      ],
+    };
   }
 }

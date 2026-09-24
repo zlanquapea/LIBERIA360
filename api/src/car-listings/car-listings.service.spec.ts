@@ -5,11 +5,15 @@ import {
 } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { In } from "typeorm";
 import { CarListingsService } from "./car-listings.service";
 import { CarListing } from "./entities/car-listing.entity";
+import { CarListingBlockedDate } from "./entities/car-listing-blocked-date.entity";
 import { CarListingReviewStatus } from "./entities/car-listing.enums";
 import { Business } from "../businesses/entities/business.entity";
 import { County } from "../counties/entities/county.entity";
+import { Booking } from "../bookings/entities/booking.entity";
+import { BookingStatus } from "../bookings/entities/booking.enums";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 
@@ -43,6 +47,13 @@ describe("CarListingsService", () => {
   };
   let businessRepo: { findOne: jest.Mock };
   let countyRepo: { exists: jest.Mock };
+  let blockedDateRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    find: jest.Mock;
+    delete: jest.Mock;
+  };
+  let bookingRepo: { find: jest.Mock };
   let notificationsService: { createMany: jest.Mock };
   let usersService: { findAdminIds: jest.Mock };
 
@@ -78,6 +89,13 @@ describe("CarListingsService", () => {
     };
     businessRepo = { findOne: jest.fn() };
     countyRepo = { exists: jest.fn().mockResolvedValue(true) };
+    blockedDateRepo = {
+      create: jest.fn((data) => data),
+      save: jest.fn((data) => ({ id: "blocked-1", ...data })),
+      find: jest.fn().mockResolvedValue([]),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    bookingRepo = { find: jest.fn().mockResolvedValue([]) };
     notificationsService = {
       createMany: jest.fn().mockResolvedValue(undefined),
     };
@@ -91,6 +109,11 @@ describe("CarListingsService", () => {
         { provide: getRepositoryToken(CarListing), useValue: carListingRepo },
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(County), useValue: countyRepo },
+        {
+          provide: getRepositoryToken(CarListingBlockedDate),
+          useValue: blockedDateRepo,
+        },
+        { provide: getRepositoryToken(Booking), useValue: bookingRepo },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: UsersService, useValue: usersService },
       ],
@@ -457,6 +480,138 @@ describe("CarListingsService", () => {
     it("404s a listing that isn't approved/active (pending, rejected, suspended, paused, or unknown)", async () => {
       carListingRepo.findOne.mockResolvedValue(null);
       await expect(service.findApprovedOne(LISTING_ID)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("createBlockedDate / findBlockedDates / removeBlockedDate", () => {
+    beforeEach(() => {
+      carListingRepo.findOne.mockResolvedValue({
+        id: LISTING_ID,
+        ownerUserId: OWNER_ID,
+      });
+    });
+
+    it("lets the owner block a date range with an optional reason", async () => {
+      await service.createBlockedDate(OWNER_ID, LISTING_ID, {
+        startDate: "2026-11-01",
+        endDate: "2026-11-05",
+        reason: "In the shop",
+      });
+      expect(blockedDateRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          carListingId: LISTING_ID,
+          startDate: "2026-11-01",
+          endDate: "2026-11-05",
+          reason: "In the shop",
+        }),
+      );
+    });
+
+    it("defaults reason to null when omitted", async () => {
+      await service.createBlockedDate(OWNER_ID, LISTING_ID, {
+        startDate: "2026-11-01",
+        endDate: "2026-11-05",
+      });
+      expect(blockedDateRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ reason: null }),
+      );
+    });
+
+    it("400s when endDate is before startDate", async () => {
+      await expect(
+        service.createBlockedDate(OWNER_ID, LISTING_ID, {
+          startDate: "2026-11-05",
+          endDate: "2026-11-01",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(blockedDateRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("403s a stranger trying to block dates on someone else's listing", async () => {
+      await expect(
+        service.createBlockedDate(STRANGER_ID, LISTING_ID, {
+          startDate: "2026-11-01",
+          endDate: "2026-11-05",
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(blockedDateRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("lists the owner's own blocked dates, earliest first", async () => {
+      await service.findBlockedDates(OWNER_ID, LISTING_ID);
+      expect(blockedDateRepo.find).toHaveBeenCalledWith({
+        where: { carListingId: LISTING_ID },
+        order: { startDate: "ASC" },
+      });
+    });
+
+    it("403s a stranger trying to list someone else's blocked dates", async () => {
+      await expect(
+        service.findBlockedDates(STRANGER_ID, LISTING_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("deletes a blocked date scoped to both the id and the listing", async () => {
+      await service.removeBlockedDate(OWNER_ID, LISTING_ID, "blocked-1");
+      expect(blockedDateRepo.delete).toHaveBeenCalledWith({
+        id: "blocked-1",
+        carListingId: LISTING_ID,
+      });
+    });
+
+    it("403s a stranger trying to delete someone else's blocked date", async () => {
+      await expect(
+        service.removeBlockedDate(STRANGER_ID, LISTING_ID, "blocked-1"),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(blockedDateRepo.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getAvailability", () => {
+    beforeEach(() => {
+      carListingRepo.findOne.mockResolvedValue({
+        id: LISTING_ID,
+        reviewStatus: CarListingReviewStatus.APPROVED,
+        isActive: true,
+      });
+    });
+
+    it("merges CONFIRMED/PENDING bookings and blocked dates, omitting the private reason", async () => {
+      bookingRepo.find.mockResolvedValue([
+        { requestedDate: "2026-12-01", requestedEndDate: "2026-12-03" },
+      ]);
+      blockedDateRepo.find.mockResolvedValue([
+        {
+          startDate: "2026-12-10",
+          endDate: "2026-12-12",
+          reason: "personal trip",
+        },
+      ]);
+      const result = await service.getAvailability(LISTING_ID);
+      expect(bookingRepo.find).toHaveBeenCalledWith({
+        where: {
+          carListingId: LISTING_ID,
+          status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+        },
+      });
+      expect(result).toEqual({
+        carListingId: LISTING_ID,
+        unavailable: [
+          {
+            startDate: "2026-12-01",
+            endDate: "2026-12-03",
+            source: "booking",
+          },
+          { startDate: "2026-12-10", endDate: "2026-12-12", source: "blocked" },
+        ],
+      });
+    });
+
+    it("404s for a listing that isn't public (same gate as the detail page)", async () => {
+      carListingRepo.findOne.mockResolvedValue(null);
+      await expect(service.getAvailability(LISTING_ID)).rejects.toBeInstanceOf(
         NotFoundException,
       );
     });

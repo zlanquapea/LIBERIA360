@@ -52,6 +52,12 @@ export class CreateBookingDto {
   @IsBoolean()
   withDriver?: boolean;
 
+  // Car-listing bookings only, and only meaningful when the listing has
+  // additionalDriverAllowed set — see Booking.wantsAdditionalDriver.
+  @IsOptional()
+  @IsBoolean()
+  wantsAdditionalDriver?: boolean;
+
   // Car-listing bookings only, and only for a listing with pricePerHour
   // set. Omit (or DAY) to keep booking by day; HOUR requires both time
   // fields below and is validated against the same calendar day as

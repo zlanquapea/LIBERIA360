@@ -1,4 +1,13 @@
-import type { CarCategory, CarFuelType, CarListing, CarTransmission } from './types';
+import type {
+  CarCancellationPolicy,
+  CarCategory,
+  CarFuelPolicy,
+  CarFuelType,
+  CarListing,
+  CarListingAvailability,
+  CarListingBlockedDate,
+  CarTransmission,
+} from './types';
 import { apiRequest, authHeader } from './http';
 
 // Owner-side fleet management for a car-rental Business — mirrors
@@ -32,6 +41,19 @@ export interface CreateCarListingInput {
   minRentalHours?: number;
   driverFeePerHour?: number;
   securityDeposit?: number;
+  color?: string;
+  mileageLimitPerDay?: number;
+  excessMileageFee?: number;
+  fuelPolicy?: CarFuelPolicy;
+  minDriverAge?: number;
+  additionalDriverAllowed?: boolean;
+  additionalDriverFee?: number;
+  insuranceIncluded?: boolean;
+  insuranceNotes?: string;
+  cancellationPolicy?: CarCancellationPolicy;
+  deliveryAvailable?: boolean;
+  deliveryFee?: number;
+  instantBookEnabled?: boolean;
   features?: string[];
   images?: string[];
   description?: string;
@@ -82,4 +104,48 @@ export async function deleteCarListing(token: string, id: string): Promise<void>
     method: 'DELETE',
     headers: authHeader(token),
   });
+}
+
+export interface CreateCarListingBlockedDateInput {
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
+export function getCarListingBlockedDates(
+  token: string,
+  carListingId: string,
+): Promise<CarListingBlockedDate[]> {
+  return apiRequest<CarListingBlockedDate[]>(`/car-listings/${carListingId}/blocked-dates`, {
+    headers: authHeader(token),
+  });
+}
+
+export function createCarListingBlockedDate(
+  token: string,
+  carListingId: string,
+  input: CreateCarListingBlockedDateInput,
+): Promise<CarListingBlockedDate> {
+  return apiRequest<CarListingBlockedDate>(`/car-listings/${carListingId}/blocked-dates`, {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCarListingBlockedDate(
+  token: string,
+  carListingId: string,
+  blockedDateId: string,
+): Promise<void> {
+  await apiRequest<void>(`/car-listings/${carListingId}/blocked-dates/${blockedDateId}`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
+}
+
+// Public — no token. Used by the booking form's non-blocking
+// availability warning (see BookingRequestSection).
+export function getCarListingAvailability(carListingId: string): Promise<CarListingAvailability> {
+  return apiRequest<CarListingAvailability>(`/car-listings/${carListingId}/availability`);
 }

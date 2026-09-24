@@ -16,6 +16,7 @@ import { CarListingsService } from "./car-listings.service";
 import { CreateCarListingDto } from "./dto/create-car-listing.dto";
 import { UpdateCarListingDto } from "./dto/update-car-listing.dto";
 import { QueryCarListingsDto } from "./dto/query-car-listings.dto";
+import { CreateCarListingBlockedDateDto } from "./dto/create-car-listing-blocked-date.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
@@ -120,5 +121,43 @@ export class CarListingsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@CurrentUser() user: User, @Param("id") id: string) {
     await this.carListingsService.remove(user.id, id);
+  }
+
+  // Public — the merged set of unavailable date ranges for the booking
+  // form's non-blocking availability warning. Same visibility gate as
+  // findApprovedOne (404s unless approved+active).
+  @Get(":id/availability")
+  getAvailability(@Param("id") id: string) {
+    return this.carListingsService.getAvailability(id);
+  }
+
+  @Post(":id/blocked-dates")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  createBlockedDate(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: CreateCarListingBlockedDateDto,
+  ) {
+    return this.carListingsService.createBlockedDate(user.id, id, dto);
+  }
+
+  @Get(":id/blocked-dates")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  findBlockedDates(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.carListingsService.findBlockedDates(user.id, id);
+  }
+
+  @Delete(":id/blocked-dates/:blockedDateId")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeBlockedDate(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Param("blockedDateId") blockedDateId: string,
+  ) {
+    await this.carListingsService.removeBlockedDate(user.id, id, blockedDateId);
   }
 }

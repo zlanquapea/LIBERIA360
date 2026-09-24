@@ -20,6 +20,7 @@ export type NotificationType =
   | "booking.requested"
   | "booking.confirmed"
   | "booking.declined"
+  | "booking.instantly_confirmed"
   | "booking_message.received"
   | "food_order.requested"
   | "food_order.confirmed"

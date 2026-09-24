@@ -1,16 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { createBooking } from "@/lib/booking-api";
+import { getCarListingAvailability } from "@/lib/car-rentals-api";
 import {
   recordAnalyticsEvent,
   recordCreatorAnalyticsEvent,
 } from "@/lib/analytics-api";
 import { HttpError } from "@/lib/http";
 import { formatBookingStatus, formatCost } from "@/lib/format";
-import type { Business, CarListing, Creator, BookingStatus } from "@/lib/types";
+import type {
+  Business,
+  CarListing,
+  Creator,
+  BookingStatus,
+  CarListingAvailability,
+} from "@/lib/types";
+
+// Day-level overlap check against the advisory availability endpoint —
+// mirrors the server's own inclusive-range comparison closely enough for
+// a UX warning (the server, via BookingsService.create, remains the sole
+// authority; this never blocks submission, just flags it).
+function rangesOverlap(
+  aStart: string,
+  aEnd: string,
+  bStart: string,
+  bEnd: string,
+): boolean {
+  return aStart <= bEnd && bStart <= aEnd;
+}
 
 // "Request to book" (Tech Spec §3.3). Request-to-book only — no real
 // payment capture yet (see Booking.paymentProvider: MTN MoMo is the
@@ -91,6 +111,7 @@ export function BookingRequestSection({
   const [requestedEndTime, setRequestedEndTime] = useState("");
   const [partySize, setPartySize] = useState("");
   const [withDriver, setWithDriver] = useState(false);
+  const [wantsAdditionalDriver, setWantsAdditionalDriver] = useState(false);
   const [pickupLocation, setPickupLocation] = useState(
     initialRentalDetails?.pickupLocation ?? "",
   );
@@ -98,17 +119,39 @@ export function BookingRequestSection({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ status: BookingStatus } | null>(null);
+  const [availability, setAvailability] =
+    useState<CarListingAvailability | null>(null);
+
+  useEffect(() => {
+    if (!carListing) return;
+    let cancelled = false;
+    getCarListingAvailability(carListing.id)
+      .then((data) => {
+        if (!cancelled) setAvailability(data);
+      })
+      .catch(() => {
+        // Advisory only — a failed fetch just means no warning is shown.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [carListing]);
 
   const isHourly = Boolean(
     carListing?.pricePerHour != null && rentalUnit === "hour",
   );
 
-  // Live estimate shown under the time inputs — mirrors
-  // BookingsService.create's own hoursBetween/estimatedTotal math so a
+  const additionalDriverFee =
+    wantsAdditionalDriver && carListing?.additionalDriverAllowed
+      ? (carListing.additionalDriverFee ?? 0)
+      : 0;
+
+  // Live estimate shown under the date/time inputs — mirrors
+  // BookingsService.create's own hours/days × rate + fees math so a
   // renter sees roughly what they'll be asked to pay before sending the
-  // request; null (nothing shown) until both times are filled in and
-  // valid, same as the server would reject an empty/backwards range.
-  let estimatedHourlyTotal: number | null = null;
+  // request; null (nothing shown) until the relevant inputs are filled in
+  // and valid, same as the server would reject an empty/backwards range.
+  let estimatedTotal: number | null = null;
   if (
     isHourly &&
     carListing?.pricePerHour != null &&
@@ -126,9 +169,47 @@ export function BookingRequestSection({
         carListing.driverFeePerHour != null
           ? hours * carListing.driverFeePerHour
           : 0;
-      estimatedHourlyTotal = hours * carListing.pricePerHour + driverFee;
+      estimatedTotal =
+        hours * carListing.pricePerHour + driverFee + additionalDriverFee;
     }
+  } else if (
+    carListing &&
+    !isHourly &&
+    requestedDate &&
+    requestedEndDate
+  ) {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const days = Math.max(
+      1,
+      Math.round(
+        (new Date(requestedEndDate).getTime() -
+          new Date(requestedDate).getTime()) /
+          msPerDay,
+      ),
+    );
+    const driverFee =
+      withDriver &&
+      carListing.withDriverAvailable &&
+      carListing.driverFeePerDay != null
+        ? days * carListing.driverFeePerDay
+        : 0;
+    estimatedTotal =
+      days * carListing.pricePerDay + driverFee + additionalDriverFee;
   }
+
+  // Non-blocking heads-up only — the server (BookingsService.create) is
+  // the sole authority on what's actually bookable.
+  const overlappingRanges =
+    carListing && availability && requestedDate
+      ? availability.unavailable.filter((range) =>
+          rangesOverlap(
+            requestedDate,
+            isHourly ? requestedDate : requestedEndDate || requestedDate,
+            range.startDate,
+            range.endDate,
+          ),
+        )
+      : [];
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -147,6 +228,7 @@ export function BookingRequestSection({
         requestedEndTime: isHourly ? requestedEndTime : undefined,
         partySize: partySize ? Number(partySize) : undefined,
         withDriver: carListing ? withDriver : undefined,
+        wantsAdditionalDriver: carListing ? wantsAdditionalDriver : undefined,
         pickupLocation: carListing
           ? pickupLocation.trim() || undefined
           : undefined,
@@ -330,9 +412,18 @@ export function BookingRequestSection({
         </div>
       )}
 
-      {estimatedHourlyTotal != null && (
+      {carListing && overlappingRanges.length > 0 && (
+        <p className="rounded-lg bg-gold-500/10 px-3 py-2 text-xs text-gold-800 dark:text-gold-300">
+          These dates overlap with an existing request, booking, or an
+          owner-blocked period. You can still send this request, but it may
+          be declined. Unavailable:{" "}
+          {overlappingRanges.map((r) => `${r.startDate}–${r.endDate}`).join(", ")}
+        </p>
+      )}
+
+      {estimatedTotal != null && (
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-          Estimated total: {formatCost(estimatedHourlyTotal)}
+          Estimated total: {formatCost(estimatedTotal)}
         </p>
       )}
 
@@ -360,6 +451,22 @@ export function BookingRequestSection({
                   )}
             </label>
           )}
+          {carListing.additionalDriverAllowed && (
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+              <input
+                type="checkbox"
+                checked={wantsAdditionalDriver}
+                onChange={(e) => setWantsAdditionalDriver(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-500 dark:border-slate-700"
+              />
+              Add an additional driver
+              {carListing.additionalDriverFee != null && (
+                <span className="text-slate-500 dark:text-slate-400">
+                  (+{formatCost(carListing.additionalDriverFee)}, one-time)
+                </span>
+              )}
+            </label>
+          )}
           <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
             Pickup location (optional)
             <input
@@ -374,6 +481,15 @@ export function BookingRequestSection({
               className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
             />
           </label>
+          {(carListing.mileageLimitPerDay != null ||
+            carListing.securityDeposit != null) && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {carListing.mileageLimitPerDay != null &&
+                `Mileage limit: ${carListing.mileageLimitPerDay} mi/day. `}
+              {carListing.securityDeposit != null &&
+                `Security deposit of ${formatCost(carListing.securityDeposit)} is collected separately, not through this request.`}
+            </p>
+          )}
         </>
       ) : (
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -410,8 +526,9 @@ export function BookingRequestSection({
       )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        This sends a request rather than an instant booking — you&apos;ll get a
-        confirm or decline. No payment is taken now.
+        {carListing?.instantBookEnabled
+          ? "Instant Book — this will confirm immediately, no waiting for approval. No payment is taken now."
+          : "This sends a request rather than an instant booking — you'll get a confirm or decline. No payment is taken now."}
       </p>
 
       <div className="flex gap-2">
