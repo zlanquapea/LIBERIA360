@@ -9,7 +9,6 @@ import {
   PaperAirplaneIcon,
   PhoneIcon,
   StopIcon,
-  VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -378,18 +377,22 @@ export function ConversationScreen({
                   : `${conversation?.contextType} chat`}
             </small>
           </span>
-          <button
-            aria-label="Voice call"
-            className="rounded-full p-2 hover:bg-white/10"
+          <a
+            aria-label={
+              other?.phone ? `Call ${other.name}` : "Phone number unavailable"
+            }
+            href={other?.phone ? `tel:${other.phone}` : undefined}
+            aria-disabled={!other?.phone}
+            title={
+              other?.phone ? `Call ${other.name}` : "No phone number available"
+            }
+            className={`rounded-full p-2 ${other?.phone ? "hover:bg-white/10" : "cursor-not-allowed opacity-40"}`}
+            onClick={(event) => {
+              if (!other?.phone) event.preventDefault();
+            }}
           >
             <PhoneIcon className="h-5 w-5" />
-          </button>
-          <button
-            aria-label="Video call"
-            className="rounded-full p-2 hover:bg-white/10"
-          >
-            <VideoCameraIcon className="h-5 w-5" />
-          </button>
+          </a>
         </header>
         <div className="flex-1 space-y-2 overflow-y-auto bg-[radial-gradient(#d6ccc2_1px,transparent_1px)] bg-[size:16px_16px] p-4 dark:bg-[radial-gradient(#334155_1px,transparent_1px)] sm:p-6">
           {messages.length === 0 && (

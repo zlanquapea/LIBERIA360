@@ -66,7 +66,7 @@ export class ConversationsService {
         where: { conversationId: membership.conversationId, readAt: IsNull() },
       });
       result.push(
-        this.publicConversation(
+        await this.publicConversation(
           userId,
           membership.conversation,
           participants,
@@ -462,17 +462,32 @@ export class ConversationsService {
     return membership;
   }
 
-  private publicConversation(
+  private async publicConversation(
     viewerId: string,
     conversation: Conversation,
     participants: ConversationParticipant[],
     lastMessage: ConversationMessage | null,
     unread: number,
   ) {
+    const contactPhones = new Map<string, string>();
+    if (conversation.contextType === "creator" && conversation.contextId) {
+      const creator = await this.creatorRepo.findOne({
+        where: { id: conversation.contextId },
+      });
+      const phone = creator?.contactPhone ?? creator?.whatsapp ?? null;
+      if (creator && phone) contactPhones.set(creator.userId, phone);
+    } else if (conversation.contextType === "guide" && conversation.contextId) {
+      const guide = await this.guideRepo.findOne({
+        where: { id: conversation.contextId },
+      });
+      if (guide?.whatsappNumber)
+        contactPhones.set(guide.userId, guide.whatsappNumber);
+    }
     const participantList = participants.map((item) => ({
       id: item.userId,
       name: item.user?.name ?? "Member",
       profileImage: item.user?.profileImage ?? null,
+      phone: contactPhones.get(item.userId) ?? item.user?.phone ?? null,
       role: item.role,
     }));
     return {

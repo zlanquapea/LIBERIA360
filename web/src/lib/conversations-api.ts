@@ -11,6 +11,7 @@ export interface ConversationParticipant {
   id: string;
   name: string;
   profileImage: string | null;
+  phone: string | null;
   role: string;
 }
 export interface ConversationMessage {
