@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
-import { Booking } from "../bookings/entities/booking.entity";
-import { BookingMessage } from "../booking-messages/entities/booking-message.entity";
-import { FoodOrder } from "../food-orders/entities/food-order.entity";
-import { FoodOrderMessage } from "../food-order-messages/entities/food-order-message.entity";
-import { SupportMessage } from "../support/entities/support-message.entity";
-import { SupportTicket } from "../support/entities/support-ticket.entity";
-import { ConversationsService } from "./conversations.service";
+import { Booking } from "../../bookings/entities/booking.entity";
+import { BookingMessage } from "../../booking-messages/entities/booking-message.entity";
+import { FoodOrder } from "../../food-orders/entities/food-order.entity";
+import { FoodOrderMessage } from "../../food-order-messages/entities/food-order-message.entity";
+import { SupportMessage } from "../../support/entities/support-message.entity";
+import { SupportTicket } from "../../support/entities/support-ticket.entity";
+import { ConversationsService } from "../conversations.service";
 
 export interface UnifiedInboxItem {
   id: string;
