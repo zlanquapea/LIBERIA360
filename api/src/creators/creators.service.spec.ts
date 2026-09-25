@@ -263,7 +263,7 @@ describe("CreatorsService", () => {
         featuredOnly: true,
       });
       expect(creatorQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "(creator.name ILIKE :search OR creator.username ILIKE :search)",
+        "(creator.name ILIKE :search OR creator.username ILIKE :search OR county.name ILIKE :search)",
         { search: "%ann%" },
       );
       expect(creatorQueryBuilder.andWhere).toHaveBeenCalledWith(
