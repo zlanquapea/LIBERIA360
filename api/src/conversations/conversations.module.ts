@@ -18,7 +18,7 @@ import { SupportMessage } from "../support/entities/support-message.entity";
 import { ConversationsController } from "./conversations.controller";
 import { ConversationsService } from "./conversations.service";
 import { ConversationsGateway } from "./conversations.gateway";
-import { UnifiedInboxService } from "./unified-inbox.service";
+import { UnifiedInboxService } from "./unified-inbox.service.ts/unified-inbox.service";
 
 @Module({
   imports: [
