@@ -73,7 +73,7 @@ export class GuidesService {
       .orderBy("guide.created_at", "DESC");
     if (query.search) {
       qb.andWhere(
-        "(guide.slug ILIKE :search OR guide.bio ILIKE :search OR guide.city ILIKE :search)",
+        "(guide.slug ILIKE :search OR guide.bio ILIKE :search OR guide.city ILIKE :search OR user.name ILIKE :search OR county.name ILIKE :search)",
         {
           search: `%${query.search}%`,
         },

@@ -247,6 +247,16 @@ describe("EventsService", () => {
   });
 
   describe("findAll — past-event filtering", () => {
+    it("searches an event's venue and county as well as its name", async () => {
+      await service.findAll({ search: "Robertsport" });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "place.city ILIKE :search OR county.name ILIKE :search",
+        ),
+        { search: "%Robertsport%" },
+      );
+    });
+
     function dateFromBound(): Date {
       const where = queryBuilder.wheres.find((w) =>
         w.sql.includes("event.startDate >= :dateFrom"),

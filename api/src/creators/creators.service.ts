@@ -248,7 +248,7 @@ export class CreatorsService {
 
     if (params.search) {
       qb.andWhere(
-        "(creator.name ILIKE :search OR creator.username ILIKE :search)",
+        "(creator.name ILIKE :search OR creator.username ILIKE :search OR county.name ILIKE :search)",
         { search: `%${params.search}%` },
       );
     }

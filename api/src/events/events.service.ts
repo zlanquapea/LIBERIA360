@@ -285,7 +285,10 @@ export class EventsService {
       });
 
     if (query.search) {
-      qb.andWhere("event.name ILIKE :search", { search: `%${query.search}%` });
+      qb.andWhere(
+        "(event.name ILIKE :search OR event.locationText ILIKE :search OR place.name ILIKE :search OR place.city ILIKE :search OR county.name ILIKE :search)",
+        { search: `%${query.search}%` },
+      );
     }
     if (query.category) {
       qb.andWhere("event.category = :category", { category: query.category });

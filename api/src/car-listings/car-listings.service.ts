@@ -246,7 +246,7 @@ export class CarListingsService {
 
     if (params.search) {
       qb.andWhere(
-        "(listing.title ILIKE :search OR listing.make ILIKE :search OR listing.model ILIKE :search)",
+        "(listing.title ILIKE :search OR listing.make ILIKE :search OR listing.model ILIKE :search OR listing.pickupLocation ILIKE :search OR county.name ILIKE :search)",
         { search: `%${params.search}%` },
       );
     }
