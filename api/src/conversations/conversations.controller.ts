@@ -13,6 +13,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { ConversationsService } from "./conversations.service";
+import { UnifiedInboxService } from "./unified-inbox.service.ts/unified-inbox.service";
 import {
   CreateConversationDto,
   SendConversationMessageDto,
@@ -25,9 +26,15 @@ import {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
-  constructor(private readonly conversations: ConversationsService) {}
+  constructor(
+    private readonly conversations: ConversationsService,
+    private readonly unifiedInbox: UnifiedInboxService,
+  ) {}
   @Get() list(@CurrentUser() user: User) {
     return this.conversations.list(user.id);
+  }
+  @Get("inbox") inbox(@CurrentUser() user: User) {
+    return this.unifiedInbox.list(user.id);
   }
   @Post() create(
     @CurrentUser() user: User,
