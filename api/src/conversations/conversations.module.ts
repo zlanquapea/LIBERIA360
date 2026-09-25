@@ -18,6 +18,7 @@ import { SupportMessage } from "../support/entities/support-message.entity";
 import { ConversationsController } from "./conversations.controller";
 import { ConversationsService } from "./conversations.service";
 import { ConversationsGateway } from "./conversations.gateway";
+import { UnifiedInboxService } from "./unified-inbox.service";
 
 @Module({
   imports: [
@@ -40,7 +41,7 @@ import { ConversationsGateway } from "./conversations.gateway";
     AuthModule,
   ],
   controllers: [ConversationsController],
-  providers: [ConversationsService, ConversationsGateway],
-  exports: [ConversationsService],
+  providers: [ConversationsService, UnifiedInboxService, ConversationsGateway],
+  exports: [ConversationsService, UnifiedInboxService],
 })
 export class ConversationsModule {}
