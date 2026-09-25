@@ -143,6 +143,25 @@ export async function uploadMessageMedia(
     throw new HttpError(
       response.status,
       typeof message === "string" ? message : "Media upload failed.",
+
+
+export interface InboxItem {
+  id: string;
+  kind: "conversation" | "booking" | "food-order" | "support";
+  title: string;
+  preview: string;
+  updatedAt: string;
+  unreadCount: number;
+  href: string;
+  contextType: string;
+  sourceId: string;
+}
+
+export function listInbox(token: string) {
+  return apiRequest<InboxItem[]>("/conversations/inbox", {
+    headers: authHeader(token),
+  });
+}
     );
   }
   const result = data as {
