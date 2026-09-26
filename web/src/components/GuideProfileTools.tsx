@@ -161,6 +161,7 @@ export function GuideProfileTools({
   });
   const [uploadingExperienceImages, setUploadingExperienceImages] =
     useState(false);
+  const publishingExperienceRef = useRef(false);
 
   useEffect(() => {
     getGuideReviews(guide.id)
@@ -291,7 +292,8 @@ export function GuideProfileTools({
 
   async function publishExperience(event: FormEvent) {
     event.preventDefault();
-    if (!token) return;
+    if (!token || saving || publishingExperienceRef.current) return;
+    publishingExperienceRef.current = true;
     setSaving(true);
     setError(null);
     setNotice(null);
@@ -330,6 +332,7 @@ export function GuideProfileTools({
           : "Experience could not be published.",
       );
     } finally {
+      publishingExperienceRef.current = false;
       setSaving(false);
     }
   }
@@ -738,7 +741,8 @@ export function GuideProfileTools({
                 Feature this experience on my public profile
               </label>
               <button
-                disabled={saving}
+                type="submit"
+                disabled={saving || publishingExperienceRef.current}
                 className="rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-60 sm:col-span-2"
               >
                 {saving ? "Publishing…" : "Publish experience"}

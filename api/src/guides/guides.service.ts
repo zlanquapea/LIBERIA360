@@ -515,6 +515,10 @@ export class GuidesService {
         status: dto.status ?? ExperienceStatus.DRAFT,
       }),
     );
+    // `save()` returns the persisted entity but does not guarantee that its
+    // eager relation is hydrated. Reuse the guide already loaded above so
+    // serialization cannot throw after the row has been committed.
+    created.guide = guide;
     return this.publicExperience(created);
   }
 

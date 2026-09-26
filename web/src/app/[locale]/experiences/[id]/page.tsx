@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getExperience } from "@/lib/api";
 import { GuideBookingForm } from "@/components/GuideBookingForm";
+import { formatExperienceDuration } from "@/lib/format";
 import {
   MapPinIcon,
   ClockIcon,
@@ -115,7 +116,7 @@ export default async function ExperiencePage({
           <div className="mt-6 grid gap-3 border-y border-slate-200 py-4 text-sm dark:border-slate-800 sm:grid-cols-3">
             <span>
               <ClockIcon className="mr-2 inline h-5 w-5 text-brand-700" />
-              {Math.round(experience.durationMinutes / 60)} hours
+              {formatExperienceDuration(experience.durationMinutes)}
             </span>
             <span>
               <UserGroupIcon className="mr-2 inline h-5 w-5 text-brand-700" />
