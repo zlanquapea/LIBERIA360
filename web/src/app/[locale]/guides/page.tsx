@@ -132,7 +132,7 @@ export default async function GuidesPage({
           visibleGuides.map((guide) => (
             <article
               key={guide.id}
-              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] sm:p-5"
+              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-cyan-400/35 dark:bg-[#111d3a] dark:shadow-[0_10px_28px_rgba(0,0,0,0.32)] sm:p-5"
             >
               <div className="flex items-center gap-3">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-emerald-500 bg-brand-100 shadow-sm dark:bg-brand-950/80">
@@ -177,7 +177,7 @@ export default async function GuidesPage({
                 </div>
                 <Link
                   href={`/guides/${guide.slug}`}
-                  className="hidden min-h-11 shrink-0 items-center gap-1 rounded-full bg-brand-700 px-4 py-2.5 text-sm font-bold text-white sm:inline-flex"
+                  className="hidden min-h-11 shrink-0 items-center gap-1 rounded-full bg-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 sm:inline-flex"
                 >
                   View Guide <ChevronRightIcon className="h-4 w-4" />
                 </Link>
@@ -196,7 +196,7 @@ export default async function GuidesPage({
       <div className="mt-6 text-center sm:hidden">
         <Link
           href="/guides/apply"
-          className="inline-flex min-h-11 items-center rounded-full border border-brand-300 px-5 py-2.5 text-sm font-bold text-brand-700"
+          className="inline-flex min-h-11 items-center rounded-full border border-brand-300 px-5 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-cyan-300/70 dark:bg-brand-800 dark:text-white dark:hover:bg-brand-700"
         >
           Become a guide
         </Link>

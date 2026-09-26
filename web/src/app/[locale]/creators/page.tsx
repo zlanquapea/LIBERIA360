@@ -85,10 +85,10 @@ function GuideCard({
   return (
     <Link
       href={`/guides/${guide.slug}`}
-      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
+      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-cyan-400/35 dark:bg-[#111d3a] dark:shadow-[0_10px_28px_rgba(0,0,0,0.32)]"
     >
       <div className="flex items-start gap-3">
-        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-100 bg-brand-100 shadow-sm dark:border-brand-700/70 dark:bg-brand-950/80">
+        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-100 bg-brand-100 shadow-sm dark:border-emerald-400/80 dark:bg-brand-950/80">
           {guide.profileImageUrl ? (
             <img
               src={guide.profileImageUrl}
