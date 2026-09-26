@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { SafeImage } from './SafeImage';
+import { localePath } from '@/lib/locale-path';
 
 // Header account affordance — signed out shows "Log in", signed in shows
 // the user's initial as a small avatar pill. Used to also carry its own
@@ -17,10 +18,11 @@ import { SafeImage } from './SafeImage';
 // /account, which itself decides whether to show the profile or redirect
 // to /login.
 //
-// Plain next/link, not @/i18n/navigation's locale-aware Link — see
-// Header.tsx's doc comment for why (renders in both root layouts).
+// This renders in both root layouts, so localePath adds the active public
+// locale without incorrectly localizing English-only admin/legal routes.
 export function AccountLink() {
   const t = useTranslations('nav');
+  const locale = useLocale();
   const { user, ready } = useAuth();
 
   // Before the client-side localStorage check has run, render the
@@ -28,7 +30,7 @@ export function AccountLink() {
   if (!ready || !user) {
     return (
       <Link
-        href="/login"
+        href={localePath('/login', locale)}
         className="flex items-center gap-1.5 rounded-full border border-white/30 bg-white/5 px-3 py-1.5 text-sm text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
       >
         <UserCircleIcon aria-hidden className="h-4 w-4" />
@@ -41,7 +43,7 @@ export function AccountLink() {
 
   return (
     <Link
-      href="/account"
+      href={localePath('/account', locale)}
       aria-label={t('accountAriaLabel', { name: user.name })}
       className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/15 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
     >

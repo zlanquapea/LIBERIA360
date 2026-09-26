@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   BuildingStorefrontIcon,
   CalendarDaysIcon,
@@ -24,6 +24,7 @@ import {
 } from "@/lib/format";
 import { SafeImage } from "./SafeImage";
 import type { SearchSuggestResponse, SearchSuggestion } from "@/lib/types";
+import { localePath } from "@/lib/locale-path";
 
 const RECENT_SEARCHES_KEY = "liberia360:recent-searches";
 const MAX_RECENT = 6;
@@ -138,6 +139,7 @@ function saveRecentSearch(query: string, current: string[]): string[] {
 // only needs to render this one component) and the overlay it opens.
 export function GlobalSearch() {
   const t = useTranslations("search");
+  const locale = useLocale();
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
@@ -230,7 +232,7 @@ export function GlobalSearch() {
   function goTo(href: string, searchTerm: string) {
     setRecent(saveRecentSearch(searchTerm, recent));
     close();
-    router.push(href);
+    router.push(localePath(href, locale));
   }
 
   function commitFullSearch(raw: string) {
@@ -238,7 +240,7 @@ export function GlobalSearch() {
     if (!trimmed) return;
     setRecent(saveRecentSearch(trimmed, recent));
     close();
-    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    router.push(localePath(`/search?q=${encodeURIComponent(trimmed)}`, locale));
   }
 
   function clearRecent() {

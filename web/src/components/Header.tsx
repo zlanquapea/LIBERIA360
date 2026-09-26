@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { useGuideUnreadCount } from "@/hooks/useGuideUnreadCount";
@@ -12,21 +12,18 @@ import { GlobalSearch } from "./GlobalSearch";
 import { MobileMenu } from "./MobileMenu";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { localePath } from "@/lib/locale-path";
 
 // 'use client' (i18n, Sep 2026): useTranslations() needs to read from
 // whichever NextIntlClientProvider is above it in the tree — the [locale]
 // layout's real one, or the (no-locale) layout's English-pinned one (see
 // that layout's own doc comment) — and Server Components can't consume a
-// context a Client Component provides. Plain <Link>/<a> below are
-// intentional too: this renders in BOTH root layouts, and @/i18n/navigation's
-// locale-aware Link requires the same provider context that (no-locale)
-// deliberately never has real i18n behind. An unprefixed Link still
-// resolves correctly for every locale (next-intl's own middleware redirects
-// to the locale-prefixed URL using the visitor's cookie) — it just costs an
-// extra hop instead of an instant client-side transition for non-English
-// locales. See I18N_PLAN.md if that hop needs closing later.
+// context a Client Component provides. Plain next/link remains intentional
+// because this renders in BOTH root layouts; localePath bridges the gap by
+// preserving the active public locale without localizing admin/legal routes.
 export function Header() {
   const t = useTranslations("nav");
+  const locale = useLocale();
   const { user, ready } = useAuth();
   const unreadCount = useGuideUnreadCount();
 
@@ -39,7 +36,7 @@ export function Header() {
               MobileMenu's own doc comment for why. */}
           <MobileMenu />
           <Link
-            href="/"
+            href={localePath("/", locale)}
             className="group flex shrink-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             aria-label={t("homeLink")}
           >
@@ -68,7 +65,7 @@ export function Header() {
           {SITE_NAVIGATION.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={localePath(item.href, locale)}
               className="rounded-full px-3 py-2 text-sm font-semibold text-brand-100 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               {t(item.labelKey)}
@@ -81,7 +78,7 @@ export function Header() {
           <NotificationBell />
           {ready && user && (
             <Link
-              href="/messages"
+              href={localePath("/messages", locale)}
               aria-label={unreadCount > 0 ? t("messagesUnread", { count: unreadCount }) : t("messages")}
               title={t("messages")}
               className="group relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold-300 via-gold-400 to-amber-500 text-brand-950 shadow-[0_4px_12px_rgba(251,191,36,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(251,191,36,0.4)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-900"

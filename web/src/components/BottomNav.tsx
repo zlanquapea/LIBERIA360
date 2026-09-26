@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { ComponentType, SVGProps } from "react";
+import { localePath, routeWithoutLocale } from "@/lib/locale-path";
 import {
   HomeIcon,
   MapPinIcon,
@@ -81,14 +82,16 @@ const TABS: {
   },
 ];
 
-// Plain next/link, not @/i18n/navigation's locale-aware Link — see
-// Header.tsx's doc comment for why (this renders in both root layouts,
-// only one of which has real i18n behind its provider).
+// This component renders in both root layouts, so it keeps plain next/link;
+// localePath preserves a visitor's language in the localized tree while
+// leaving the English-only admin/legal tree untouched.
 export function BottomNav() {
   const t = useTranslations("nav");
+  const locale = useLocale();
   const pathname = usePathname();
+  const routePathname = routeWithoutLocale(pathname);
   const activeIndex = TABS.findIndex((tab) =>
-    tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href),
+    tab.href === "/" ? routePathname === "/" : routePathname.startsWith(tab.href),
   );
 
   return (
@@ -120,7 +123,7 @@ export function BottomNav() {
           return (
             <Link
               key={tab.href}
-              href={tab.href}
+              href={localePath(tab.href, locale)}
               className={`relative flex min-h-[4.25rem] min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-1 px-1 pb-1 pt-2 text-[11px] leading-none transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400 sm:text-xs ${
                 active
                   ? "font-semibold text-white"
