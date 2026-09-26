@@ -36,6 +36,9 @@ export default async function EventsPage({
   const dateFrom = first(params.dateFrom);
   const dateTo = first(params.dateTo);
   const page = Number(first(params.page) ?? "1") || 1;
+  const hasFilters = Boolean(
+    search || category || county || dateFrom || dateTo,
+  );
 
   // The "Featured events" shelf is a discovery ribbon independent of
   // whatever filter/page the visitor is looking at below it — same
@@ -47,7 +50,15 @@ export default async function EventsPage({
 
   const [counties, result, featured] = await Promise.all([
     getCounties(),
-    getUpcomingEvents({ search, category, county, dateFrom, dateTo, page, limit: 20 }),
+    getUpcomingEvents({
+      search,
+      category,
+      county,
+      dateFrom,
+      dateTo,
+      page,
+      limit: 20,
+    }),
     showFeatured
       ? getUpcomingEvents({ limit: FEATURED_EVENTS_LIMIT })
       : Promise.resolve(null),
@@ -105,7 +116,21 @@ export default async function EventsPage({
       <EventFilters counties={counties} />
 
       {result.data.length === 0 ? (
-        <p className="empty-state">No upcoming events match these filters.</p>
+        <div className="empty-state text-center">
+          <p>
+            {hasFilters
+              ? "No upcoming events match your filters."
+              : "No upcoming events are available yet."}
+          </p>
+          {hasFilters && (
+            <Link
+              href="/events"
+              className="mt-3 inline-flex min-h-11 items-center rounded-full border border-brand-300 px-4 py-2 text-sm font-bold text-brand-700 dark:text-brand-300"
+            >
+              Clear filters
+            </Link>
+          )}
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           {result.data.map((event, i) => (

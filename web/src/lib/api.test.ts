@@ -4,74 +4,74 @@
 // changing `process.env.NEXT_PHASE` after import wouldn't do anything.
 const ORIGINAL_ENV = process.env;
 
-describe('server API origin configuration', () => {
+describe("server API origin configuration", () => {
   afterEach(() => {
     process.env = ORIGINAL_ENV;
     jest.resetModules();
   });
 
-  it('normalizes the legacy Railway URL when API_ORIGIN is absent', () => {
+  it("normalizes the legacy Railway URL when API_ORIGIN is absent", () => {
     process.env = {
       ...ORIGINAL_ENV,
-      API_ORIGIN: '',
-      NEXT_PUBLIC_API_URL: 'https://api.example.com/api/v1/',
+      API_ORIGIN: "",
+      NEXT_PUBLIC_API_URL: "https://api.example.com/api/v1/",
     };
-    const { serverApiOrigin } = require('./api') as typeof import('./api');
+    const { serverApiOrigin } = require("./api") as typeof import("./api");
 
-    expect(serverApiOrigin()).toBe('https://api.example.com');
+    expect(serverApiOrigin()).toBe("https://api.example.com");
   });
 
-  it('prefers the server-only API_ORIGIN variable', () => {
+  it("prefers the server-only API_ORIGIN variable", () => {
     process.env = {
       ...ORIGINAL_ENV,
-      API_ORIGIN: 'https://private-api.railway.app/',
-      NEXT_PUBLIC_API_URL: 'https://legacy.example/api/v1',
+      API_ORIGIN: "https://private-api.railway.app/",
+      NEXT_PUBLIC_API_URL: "https://legacy.example/api/v1",
     };
-    const { serverApiOrigin } = require('./api') as typeof import('./api');
+    const { serverApiOrigin } = require("./api") as typeof import("./api");
 
-    expect(serverApiOrigin()).toBe('https://private-api.railway.app');
+    expect(serverApiOrigin()).toBe("https://private-api.railway.app");
   });
 
-  it('uses a platform-provided private service host and port', () => {
+  it("uses a platform-provided private service host and port", () => {
     process.env = {
       ...ORIGINAL_ENV,
-      API_ORIGIN: '',
-      API_HOST: 'liberia360-api',
-      API_PORT: '10000',
-      NEXT_PUBLIC_API_URL: '',
+      API_ORIGIN: "",
+      API_HOST: "liberia360-api",
+      API_PORT: "10000",
+      NEXT_PUBLIC_API_URL: "",
     };
-    const { serverApiOrigin } = require('./api') as typeof import('./api');
+    const { serverApiOrigin } = require("./api") as typeof import("./api");
 
-    expect(serverApiOrigin()).toBe('http://liberia360-api:10000');
+    expect(serverApiOrigin()).toBe("http://liberia360-api:10000");
   });
 });
 
 function loadApiModule(
   nextPhase?: string,
-  nodeEnv: NodeJS.ProcessEnv['NODE_ENV'] = ORIGINAL_ENV.NODE_ENV,
-): typeof import('./api') {
+  nodeEnv: NodeJS.ProcessEnv["NODE_ENV"] = ORIGINAL_ENV.NODE_ENV,
+): typeof import("./api") {
   jest.resetModules();
   process.env = { ...ORIGINAL_ENV, NEXT_PHASE: nextPhase, NODE_ENV: nodeEnv };
-  return require('./api');
+  return require("./api");
 }
 
 function mockFetchResolved(ok: boolean, status: number) {
   global.fetch = jest.fn().mockResolvedValue({
     ok,
     status,
-    text: () => Promise.resolve('{}'),
+    text: () => Promise.resolve("{}"),
   }) as unknown as typeof fetch;
 }
 
-describe('apiFetch build-time fallback', () => {
+describe("apiFetch build-time fallback", () => {
   afterEach(() => {
     process.env = ORIGINAL_ENV;
     jest.restoreAllMocks();
   });
 
-  it('falls back to an empty result on a 502 during the build phase (API mid-redeploy behind a gateway)', async () => {
+  it("falls back to an empty result on a 502 during the build phase (API mid-redeploy behind a gateway)", async () => {
     mockFetchResolved(false, 502);
-    const api = loadApiModule('phase-production-build');
+    const api = loadApiModule("phase-production-build");
 
     await expect(api.getEvents()).resolves.toEqual({
       data: [],
@@ -79,38 +79,56 @@ describe('apiFetch build-time fallback', () => {
     });
   });
 
-  it('falls back on 503 and 504 too', async () => {
+  it("falls back on 503 and 504 too", async () => {
     for (const status of [503, 504]) {
       mockFetchResolved(false, status);
-      const api = loadApiModule('phase-production-build');
+      const api = loadApiModule("phase-production-build");
       await expect(api.getCounties()).resolves.toEqual([]);
     }
   });
 
-  it('still throws on a 502 outside the build phase — a real request should surface a real error', async () => {
+  it("still throws on a 502 outside the build phase — a real request should surface a real error", async () => {
     mockFetchResolved(false, 502);
     const api = loadApiModule(undefined);
 
-    await expect(api.getEvents()).rejects.toThrow('failed with 502');
+    await expect(api.getEvents()).rejects.toThrow("failed with 502");
   });
 
-  it('still throws on a non-gateway error status during the build phase — the API is up and something is actually wrong', async () => {
+  it("still throws on a non-gateway error status during the build phase — the API is up and something is actually wrong", async () => {
     mockFetchResolved(false, 500);
-    const api = loadApiModule('phase-production-build');
+    const api = loadApiModule("phase-production-build");
 
-    await expect(api.getEvents()).rejects.toThrow('failed with 500');
+    await expect(api.getEvents()).rejects.toThrow("failed with 500");
   });
 
-  it('does not turn a build-time event gateway failure into a false empty upcoming result', async () => {
+  it("does not turn guide catalog failures into a false empty directory", async () => {
+    mockFetchResolved(false, 500);
+    const api = loadApiModule(undefined);
+
+    await expect(api.getGuides()).rejects.toThrow("failed with 500");
+  });
+
+  it("does not turn experience catalog failures into a false empty directory", async () => {
+    mockFetchResolved(false, 503);
+    const api = loadApiModule(undefined);
+
+    await expect(api.getExperiences()).rejects.toThrow("failed with 503");
+  });
+
+  it("does not turn a build-time event gateway failure into a false empty upcoming result", async () => {
     mockFetchResolved(false, 502);
-    const api = loadApiModule('phase-production-build');
+    const api = loadApiModule("phase-production-build");
 
-    await expect(api.getUpcomingEvents()).rejects.toThrow('failed with 502');
+    await expect(api.getUpcomingEvents()).rejects.toThrow("failed with 502");
   });
 
-  it('keeps falling back on a raw connection failure during the build phase (pre-existing behavior, unchanged)', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
-    const api = loadApiModule('phase-production-build');
+  it("keeps falling back on a raw connection failure during the build phase (pre-existing behavior, unchanged)", async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(
+        new Error("connect ECONNREFUSED"),
+      ) as unknown as typeof fetch;
+    const api = loadApiModule("phase-production-build");
 
     await expect(api.getCounties()).resolves.toEqual([]);
   });
@@ -124,15 +142,15 @@ describe('apiFetch build-time fallback', () => {
 // (the account page's getCategories/getCounties, admin content's same
 // pair, ...) would fail outright in the browser. Force a non-test
 // NODE_ENV to exercise that real branch under jsdom's `window`.
-describe('apiFetch in the browser', () => {
+describe("apiFetch in the browser", () => {
   afterEach(() => {
     process.env = ORIGINAL_ENV;
     jest.restoreAllMocks();
   });
 
-  it('builds a resolvable absolute URL from the relative client-side API_URL instead of throwing', async () => {
+  it("builds a resolvable absolute URL from the relative client-side API_URL instead of throwing", async () => {
     mockFetchResolved(true, 200);
-    const api = loadApiModule(undefined, 'production');
+    const api = loadApiModule(undefined, "production");
 
     await expect(api.getCategories()).resolves.toBeDefined();
     const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;

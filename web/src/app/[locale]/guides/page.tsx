@@ -34,7 +34,19 @@ export default async function GuidesPage({
   const category = first(params.category);
   const county = first(params.county);
   const language = first(params.language);
+  const hasFilters = Boolean(search || category || county || language);
   const guides = await getGuides({ search, county, language });
+  const categoryTypes: Record<string, string[]> = {
+    city: ["tour_guide"],
+    culture: ["cultural_host"],
+    nature: ["nature_guide", "adventure_guide"],
+    food: ["food_host"],
+  };
+  const visibleGuides = category
+    ? guides.filter((guide) =>
+        categoryTypes[category]?.includes(guide.guideType),
+      )
+    : guides;
   function href(nextCategory?: string) {
     const query = new URLSearchParams();
     if (search) query.set("search", search);
@@ -100,12 +112,24 @@ export default async function GuidesPage({
       </form>
 
       <section className="mt-5 space-y-3" aria-label="Verified trip guides">
-        {guides.length === 0 ? (
+        {visibleGuides.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 px-4 py-12 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            No guides in this search yet. Try another search or category.
+            <p>
+              {hasFilters
+                ? "No guides match your filters."
+                : "No approved guides are available yet."}
+            </p>
+            {hasFilters && (
+              <Link
+                href="/guides"
+                className="mt-3 inline-flex min-h-11 items-center rounded-full border border-brand-300 px-4 py-2 text-sm font-bold text-brand-700 dark:text-brand-300"
+              >
+                Clear filters
+              </Link>
+            )}
           </div>
         ) : (
-          guides.map((guide) => (
+          visibleGuides.map((guide) => (
             <article
               key={guide.id}
               className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5"

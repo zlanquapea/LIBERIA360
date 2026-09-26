@@ -619,11 +619,7 @@ export interface ExperienceSummary {
 export async function getGuides(
   query: { search?: string; county?: string; language?: string } = {},
 ): Promise<GuideSummary[]> {
-  try {
-    return await apiFetch<GuideSummary[]>("/guides", query, []);
-  } catch {
-    return [];
-  }
+  return apiFetch<GuideSummary[]>("/guides", query, []);
 }
 
 export function getGuide(slug: string): Promise<GuideSummary> {
@@ -633,11 +629,7 @@ export function getGuide(slug: string): Promise<GuideSummary> {
 export async function getExperiences(
   query: { search?: string; category?: string; county?: string } = {},
 ): Promise<ExperienceSummary[]> {
-  try {
-    return await apiFetch<ExperienceSummary[]>("/experiences", query, []);
-  } catch {
-    return [];
-  }
+  return apiFetch<ExperienceSummary[]>("/experiences", query, []);
 }
 
 export function getExperience(id: string): Promise<ExperienceSummary> {
