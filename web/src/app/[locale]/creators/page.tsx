@@ -85,15 +85,15 @@ function GuideCard({
   return (
     <Link
       href={`/guides/${guide.slug}`}
-      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-900"
+      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)]"
     >
       <div className="flex items-start gap-3">
-        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-50 bg-brand-50 dark:border-brand-950/40 dark:bg-brand-950/40">
+        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-100 bg-brand-100 shadow-sm dark:border-brand-700/70 dark:bg-brand-950/80">
           {guide.profileImageUrl ? (
             <img
               src={guide.profileImageUrl}
               alt={`${name} portrait`}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-center"
             />
           ) : (
             <span className="flex h-full items-center justify-center text-2xl font-extrabold text-brand-800 dark:text-brand-200">
@@ -119,7 +119,7 @@ function GuideCard({
               className="mt-1 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
             />
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
             <span className="inline-flex items-center gap-1">
               <MapPinIcon
                 aria-hidden
@@ -132,7 +132,7 @@ function GuideCard({
             </span>
             <span className="inline-flex items-center gap-1">
               <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
-              <span className="font-semibold text-slate-900 dark:text-slate-50">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {guide.rating.toFixed(1)} ({guide.reviewCount})
               </span>
             </span>
@@ -142,7 +142,7 @@ function GuideCard({
               {languages.map((language) => (
                 <span
                   key={language}
-                  className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:bg-brand-950/40 dark:text-slate-100"
+                  className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:border-brand-700/50 dark:bg-brand-900/70 dark:text-slate-100"
                 >
                   {language}
                 </span>

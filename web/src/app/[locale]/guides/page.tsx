@@ -132,18 +132,18 @@ export default async function GuidesPage({
           visibleGuides.map((guide) => (
             <article
               key={guide.id}
-              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-[0_8px_24px_rgba(0,0,0,0.22)] sm:p-5"
             >
               <div className="flex items-center gap-3">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-emerald-500 bg-brand-100 dark:bg-brand-950">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-emerald-500 bg-brand-100 shadow-sm dark:bg-brand-950/80">
                   {guide.profileImageUrl ? (
                     <img
                       src={guide.profileImageUrl}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover object-center"
                     />
                   ) : (
-                    <span className="flex h-full items-center justify-center text-2xl font-bold text-brand-800">
+                    <span className="flex h-full items-center justify-center text-2xl font-bold text-brand-800 dark:text-brand-200">
                       {guide.slug.charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -157,18 +157,20 @@ export default async function GuidesPage({
                       <CheckBadgeIcon className="h-3.5 w-3.5" /> Verified
                     </span>
                   </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
                     {label(guide.guideType)}
                   </p>
-                  <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                    <MapPinIcon className="mr-1 inline h-4 w-4 text-brand-700" />
-                    {guide.city}
-                    {guide.county?.name ? `, ${guide.county.name}` : ""}
+                  <p className="mt-1 flex min-w-0 items-center text-sm text-slate-600 dark:text-slate-300">
+                    <MapPinIcon className="mr-1 h-4 w-4 shrink-0 text-brand-700 dark:text-brand-300" />
+                    <span className="truncate">
+                      {guide.city}
+                      {guide.county?.name ? `, ${guide.county.name}` : ""}
+                    </span>
                   </p>
-                  <p className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-200">
+                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                     <StarIcon className="mr-1 inline h-4 w-4 text-amber-400" />
                     {guide.rating.toFixed(1)}{" "}
-                    <span className="font-normal text-slate-500">
+                    <span className="font-normal text-slate-600 dark:text-slate-300">
                       ({guide.reviewCount} reviews)
                     </span>
                   </p>
@@ -182,7 +184,7 @@ export default async function GuidesPage({
                 <Link
                   href={`/guides/${guide.slug}`}
                   aria-label={`View ${guide.slug}`}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-cyan-200 text-brand-700 sm:hidden"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-300 text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-500/70 dark:text-brand-200 dark:hover:bg-brand-900/70 sm:hidden"
                 >
                   <ChevronRightIcon className="h-5 w-5" />
                 </Link>
