@@ -203,6 +203,21 @@
     "planTripWithPlace": "Planifier un voyage avec ce lieu"
   },
   "trips": {
+    "planner": {
+      "detailsHeading": "Détails du voyage",
+      "datesHeading": "Dates et budget",
+      "peopleHeading": "Voyageurs et confidentialité",
+      "summaryHeading": "Votre voyage en bref",
+      "destinationHelp": "Choisissez une destination maintenant ou ajoutez des lieux plus tard.",
+      "datesHelp": "Choisissez vos dates, pour un séjour de 14 jours maximum.",
+      "privacyHelp": "Choisissez qui peut voir votre voyage avant de le créer.",
+      "destinationOptional": "Destination (facultatif)",
+      "chooseLater": "Choisir plus tard",
+      "namePlaceholder": "Nommez votre voyage",
+      "datesPlaceholder": "Choisissez vos dates",
+      "partyError": "Saisissez un nombre entier entre 1 et 50.",
+      "nextStepHelp": "Planifiez à votre rythme. Ajoutez des étapes et des activités après la création du voyage."
+    },
     "myTrips": "Mes voyages",
     "communityTrips": "Voyages communautaires",
     "planATripCta": "+ Planifier un voyage",

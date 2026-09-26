@@ -1265,3 +1265,12 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
 @media (min-width: 640px) {
   .detail-page > section { padding: 1.5rem; }
 }
+
+/* Comfortable touch targets and readable fields in the trip planner. */
+.trip-planner input, .trip-planner select { min-height: 3rem; min-width: 0; border-radius: .75rem; padding: .75rem; font-size: 1rem; background: white; color: #0f172a; }
+.dark .trip-planner input, .dark .trip-planner select { background: #0f172a; color: #f1f5f9; }
+.trip-planner input[aria-invalid="true"] { border-color: #e11d48; }
+.trip-planner fieldset { min-width: 0; }
+.trip-planner fieldset > div > label { min-width: 0; }
+.trip-planner button:focus-visible { outline: 2px solid #0d9488; outline-offset: 3px; }
+@media (max-width: 359px) { .trip-planner fieldset > div { flex-direction: column; } }

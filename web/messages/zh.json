@@ -203,6 +203,21 @@
     "planTripWithPlace": "为此地规划行程"
   },
   "trips": {
+    "planner": {
+      "detailsHeading": "行程详情",
+      "datesHeading": "日期与预算",
+      "peopleHeading": "同行人数与隐私",
+      "summaryHeading": "行程概览",
+      "destinationHelp": "现在选择目的地，或稍后添加地点。",
+      "datesHelp": "选择日期，行程最长可达14天。",
+      "privacyHelp": "创建行程前，选择谁可以查看。",
+      "destinationOptional": "目的地（可选）",
+      "chooseLater": "稍后选择",
+      "namePlaceholder": "输入行程名称",
+      "datesPlaceholder": "选择日期",
+      "partyError": "请输入1到50之间的整数。",
+      "nextStepHelp": "按自己的节奏规划。创建行程后再添加停留地点和活动。"
+    },
     "myTrips": "我的行程",
     "communityTrips": "社区行程",
     "planATripCta": "+ 规划行程",

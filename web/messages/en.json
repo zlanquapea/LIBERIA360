@@ -203,6 +203,21 @@
     "planTripWithPlace": "Plan a trip with this place"
   },
   "trips": {
+    "planner": {
+      "detailsHeading": "Trip details",
+      "datesHeading": "Dates & budget",
+      "peopleHeading": "People & privacy",
+      "summaryHeading": "Your trip at a glance",
+      "destinationHelp": "Choose a destination now or add places later.",
+      "datesHelp": "Pick your dates. You can plan up to 14 days.",
+      "privacyHelp": "Choose who can see your trip before you create it.",
+      "destinationOptional": "Destination (optional)",
+      "chooseLater": "Choose later",
+      "namePlaceholder": "Add your trip name",
+      "datesPlaceholder": "Choose your dates",
+      "partyError": "Use a whole number between 1 and 50.",
+      "nextStepHelp": "Your plan, your pace. Add stops and activities after creating your trip."
+    },
     "myTrips": "My Trips",
     "communityTrips": "Community Trips",
     "planATripCta": "+ Plan a trip",

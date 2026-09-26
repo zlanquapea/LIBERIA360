@@ -367,7 +367,7 @@ export function Liberia360Assistant() {
     }
   }
 
-  if (pathname.startsWith("/admin") || /^\/(?:[a-z]{2}\/)?messages(?:\/|$)/.test(pathname)) return null;
+  if (/^\/(?:[a-z]{2}\/)?trips\/new\/?$/.test(pathname) || pathname.startsWith("/admin") || /^\/(?:[a-z]{2}\/)?messages(?:\/|$)/.test(pathname)) return null;
 
   // Once dragged, the launcher's position is a literal pixel left/top (set
   // by handlePointerMove/finishDrag above) — no responsive variants needed

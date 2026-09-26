@@ -256,4 +256,20 @@ describe('TripPlannerForm', () => {
     expect(JSON.parse(init.body)).not.toHaveProperty('durationDays');
     expect(JSON.parse(init.body)).not.toHaveProperty('startLat');
   });
+  it('focuses invalid party sizes and prevents submitting them', async () => {
+    mockFetchOnce(201, { id: 'unused' });
+    renderWithMessages(<TripPlannerForm />);
+    await userEvent.type(screen.getByLabelText(/trip name/i), 'Weekend away');
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-12-01' } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-03' } });
+    const travelers = screen.getByLabelText(/how many travelers/i);
+    fireEvent.change(travelers, { target: { value: '2.5' } });
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent('whole number between 1 and 50');
+    expect(travelers).toHaveFocus();
+    expect(travelers).toHaveAttribute('aria-invalid', 'true');
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/destination.*optional/i)).not.toBeRequired();
+  });
+
 });
