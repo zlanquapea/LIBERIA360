@@ -7,7 +7,6 @@ import {
   ChatBubbleLeftRightIcon,
   ClockIcon,
   GlobeAltIcon,
-  MapPinIcon,
   PaperAirplaneIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
@@ -20,9 +19,7 @@ import { iconForAmenity } from '@/lib/amenities';
 import { ContactLink } from './ContactLink';
 import { SaveButton } from './SaveButton';
 import { ReportButton } from './ReportButton';
-import { BookingRequestSection } from './BookingRequestSection';
 import { StickyBookingBar } from './StickyBookingBar';
-import { ShareMenu } from './ShareMenu';
 import { VerificationBadge } from './VerificationBadge';
 import { VerificationTrustInfo } from './VerificationTrustInfo';
 import type { Business, Place } from '@/lib/types';
@@ -70,38 +67,25 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
       ? isOpenAt(place.structuredHours, new Date())
       : null;
 
-  // Redesign (Sep 3, 2026): Call and WhatsApp used to be solid red/emerald
-  // blocks — two more saturated colors next to Directions (navy) and Book
-  // (gold) in the same row. Directions and Book are this row's only two
-  // intentional accents (primary navigation, primary conversion); every
-  // other action — Call, WhatsApp, Share, Save — now shares the muted
-  // bordered-white treatment, with a small colored icon for at-a-glance
-  // recognition instead of a full-color button competing for attention.
+  // Keep directions primary and contact and booking actions compact.
   const actionClass =
-    'inline-flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
+    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
   const mutedActionClass =
     `${actionClass} border border-slate-200 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30`;
 
   return (
     <>
     <section className="flex flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">Plan your visit</p>
-          <h2 className="mt-1 font-display text-xl font-bold text-slate-900 dark:text-slate-50">Helpful actions</h2>
-        </div>
-        <MapPinIcon aria-hidden className="h-7 w-7 text-sky-500" />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      <h2 className="sr-only">Plan your visit</h2>
+        <div className="detail-actions grid grid-cols-3 gap-2">
         <a
           href={directionsLink(place.latitude, place.longitude)}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${actionClass} bg-brand-700 text-white hover:bg-brand-800`}
+          className={`${actionClass} col-span-3 bg-teal-800 text-white hover:bg-teal-900`}
         >
           <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
-          Directions
+          Get directions
         </a>
 
         {phone ? (
@@ -139,17 +123,13 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         )}
 
         {effectiveBusiness ? (
-          <div className="min-w-0">
-            <BookingRequestSection
-              business={effectiveBusiness}
-              mode="link"
-              href={`/businesses/${effectiveBusiness.slug}/book`}
-            />
-          </div>
+          <Link href={`/businesses/${effectiveBusiness.slug}/book`} className={mutedActionClass}>
+            Book
+          </Link>
         ) : (
           <Link
             href="#claim"
-            className={`${actionClass} bg-gold-400 text-brand-950 hover:bg-gold-500`}
+            className={mutedActionClass}
             title="Booking requests become available when a business claims this listing."
           >
             <CalendarDaysIcon aria-hidden className="h-5 w-5" />
@@ -157,12 +137,12 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           </Link>
         )}
 
-        <ShareMenu placeName={place.name} variant="action" />
+
 
         <SaveButton
           slug={place.slug}
           placeId={place.id}
-          className="min-h-16 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
+          className="min-h-11 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
         />
       </div>
 

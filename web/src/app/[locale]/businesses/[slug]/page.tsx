@@ -25,7 +25,6 @@ import { ReviewsSection } from '@/components/ReviewsSection';
 import { ReportButton } from '@/components/ReportButton';
 import { ShareMenu } from '@/components/ShareMenu';
 import { SaveButton } from '@/components/SaveButton';
-import { BookingRequestSection } from '@/components/BookingRequestSection';
 import { StickyBookingBar } from '@/components/StickyBookingBar';
 import { MenuPreviewSection } from '@/components/MenuPreviewSection';
 import { JsonLd } from '@/components/JsonLd';
@@ -147,18 +146,14 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
     ? `${formatCost(business.priceRangeMin)}${business.priceRangeMax != null ? ` – ${formatCost(business.priceRangeMax)}` : ''}`
     : null;
 
-  // Redesign (Sep 3, 2026): Call and WhatsApp used to be solid red/emerald
-  // blocks — same fix as PlaceKeyFacts.tsx. Directions (navy) and Book
-  // (gold) stay this row's only two intentional accents; every other
-  // action shares the muted bordered-white treatment with a small colored
-  // icon instead of a full-color button competing for attention.
+  // Keep directions primary and contact and booking actions compact.
   const actionClass =
-    'inline-flex min-h-16 w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
+    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
   const mutedActionClass =
     `${actionClass} border border-slate-200 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30`;
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
+    <main className="detail-page mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
       <JsonLd data={businessJsonLd(business)} />
 
       <PlaceGallery
@@ -169,10 +164,10 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
       />
 
       <header className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{formatBusinessType(business.type)}</p>
-            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">
+            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 sm:text-3xl">
               <span>{business.name}</span>
               <VerificationBadge status={business.verificationStatus} />
             </h1>
@@ -205,23 +200,16 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
       </header>
 
       <section className="flex flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">Plan your visit</p>
-            <h2 className="mt-1 font-display text-xl font-bold text-slate-950 dark:text-slate-50">Helpful actions</h2>
-          </div>
-          <MapPinIcon aria-hidden className="h-7 w-7 text-sky-500" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      <h2 className="sr-only">Plan your visit</h2>
+        <div className="detail-actions grid grid-cols-3 gap-2">
           <a
             href={directionsLink(linkedPlace.latitude, linkedPlace.longitude)}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${actionClass} bg-brand-700 text-white hover:bg-brand-800`}
+            className={`${actionClass} col-span-3 bg-teal-800 text-white hover:bg-teal-900`}
           >
             <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
-            Directions
+            Get directions
           </a>
           {business.phone ? (
             <a href={`tel:${business.phone}`} className={mutedActionClass}>
@@ -250,18 +238,14 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
               WhatsApp
             </span>
           )}
-          <div className="min-w-0">
-            <BookingRequestSection
-              business={business}
-              mode="link"
-              href={`/businesses/${business.slug}/book`}
-            />
-          </div>
-          <ShareMenu placeName={business.name} variant="action" />
+          <Link href={`/businesses/${business.slug}/book`} className={mutedActionClass}>
+            Book
+          </Link>
+
           <SaveButton
             slug={linkedPlace.slug}
             placeId={linkedPlace.id}
-            className="min-h-16 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
+            className="min-h-11 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
           />
         </div>
 

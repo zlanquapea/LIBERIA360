@@ -1239,3 +1239,16 @@ html[data-splash-seen='1'] .splash-screen {
     animation-duration: 1.6s;
   }
 }
+
+/* Compact place and business profiles: one primary action, quiet content sections. */
+.detail-page { background: transparent; gap: 1.25rem; max-width: 64rem; }
+.detail-page > header { padding: 0; gap: .625rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.detail-page > section { padding: 1.25rem 0; border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; background: transparent; box-shadow: none; gap: 1rem; }
+.dark .detail-page > section { border-color: #334155; }
+.detail-page > section h2 { font-size: 1.125rem; line-height: 1.5; }
+.detail-page > div:first-of-type > div:first-child { border-radius: 1rem; box-shadow: none; }
+.detail-page > div:first-of-type > div:first-child img { height: clamp(13rem, 50vw, 24rem); }
+.detail-actions > a:first-child { min-height: 3rem; }
+.detail-actions > button { grid-column: 1 / -1; width: auto; justify-self: start; box-shadow: none; }
+.detail-actions svg { flex-shrink: 0; width: 1rem; height: 1rem; }
+@media (max-width: 360px) { .detail-actions { grid-template-columns: repeat(2,minmax(0,1fr)); } .detail-actions > a:first-child { grid-column: 1 / -1; } }

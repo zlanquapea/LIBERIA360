@@ -378,7 +378,8 @@ export function Liberia360Assistant() {
   // comment) — a plain inline `bottom` value can't vary by breakpoint the
   // way a `lg:` Tailwind class can, so the undragged rest position is
   // expressed as classes on the button below instead of here.
-  const launcherStyle = position ? { left: position.x, top: position.y } : undefined;
+  const detailPage = /^\/(?:[a-z]{2}\/)?(?:places|businesses)\/[^/]+\/?$/.test(pathname);
+  const launcherStyle = !detailPage && position ? { left: position.x, top: position.y } : undefined;
 
   return (
     <>
@@ -573,17 +574,17 @@ export function Liberia360Assistant() {
         type="button"
         data-testid="assistant-launcher"
         onClick={handleLauncherClick}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
+        onPointerDown={detailPage ? undefined : handlePointerDown}
+        onPointerMove={detailPage ? undefined : handlePointerMove}
+        onPointerUp={detailPage ? undefined : finishDrag}
+        onPointerCancel={detailPage ? undefined : finishDrag}
         aria-label={open ? "Close LIBERIA360 Assistant" : "Open LIBERIA360 Assistant"}
         aria-expanded={open}
         aria-controls="liberia360-assistant-panel"
-        title="LIBERIA360 Assistant — drag to move"
+        title={detailPage ? "LIBERIA360 Assistant" : "LIBERIA360 Assistant — drag to move"}
         tabIndex={open ? -1 : 0}
-        className={`fixed z-[80] flex h-[58px] w-[58px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-[0_10px_30px_rgba(0,47,59,0.35)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
-          position
+        className={`${detailPage ? "relative mx-auto mb-28 mt-6" : "fixed"} z-[80] flex h-[58px] w-[58px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-[0_10px_30px_rgba(0,47,59,0.35)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
+          detailPage || position
             ? ""
             : "right-4 bottom-[calc(8.75rem+env(safe-area-inset-bottom))] lg:bottom-[calc(5.6rem+env(safe-area-inset-bottom))]"
         } ${
@@ -604,7 +605,7 @@ export function Liberia360Assistant() {
             />
           </span>
         )}
-        <span className="sr-only">Drag this button to move it around the screen.</span>
+        {!detailPage && <span className="sr-only">Drag this button to move it around the screen.</span>}
       </button>
     </>
   );
