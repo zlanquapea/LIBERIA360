@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   FaceSmileIcon,
@@ -40,6 +40,7 @@ export function ConversationScreen({
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<ConversationAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -342,13 +343,13 @@ export function ConversationScreen({
       </div>
     );
   return (
-    <main className="flex min-h-[calc(100dvh-4rem)] w-full flex-col px-0 pb-0">
-      <section className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col overflow-hidden border-y border-slate-200 bg-[#efeae2] shadow-xl dark:border-slate-800 dark:bg-slate-900">
-        <header className="flex items-center gap-3 bg-brand-950 px-4 py-3 text-white">
+    <main className="messaging-chat fixed inset-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col bg-white dark:bg-slate-950">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-x border-slate-100 dark:border-slate-800">
+        <header className="flex shrink-0 items-center gap-3 border-b border-slate-100 bg-white px-4 py-3 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
           <Link
             href="/messages"
             aria-label="Back to messages"
-            className="rounded-full p-2 hover:bg-white/10"
+            className="rounded-full p-3 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <ArrowLeftIcon className="h-5 w-5" />
           </Link>
@@ -369,12 +370,12 @@ export function ConversationScreen({
             <strong className="block truncate capitalize">
               {other?.name ?? conversation?.title ?? "Conversation"}
             </strong>
-            <small className="text-teal-200">
+            <small className="text-slate-500 dark:text-slate-400">
               {typingUserId
                 ? "typing…"
                 : conversation?.contextType === "direct"
                   ? "Active conversation"
-                  : `${conversation?.contextType} chat`}
+                  : `${conversation?.contextType ?? "Private"} chat`}
             </small>
           </span>
           <a
@@ -386,7 +387,7 @@ export function ConversationScreen({
             title={
               other?.phone ? `Call ${other.name}` : "No phone number available"
             }
-            className={`rounded-full p-2 ${other?.phone ? "hover:bg-white/10" : "cursor-not-allowed opacity-40"}`}
+            className={`rounded-full p-3 ${other?.phone ? "hover:bg-slate-100 dark:hover:bg-slate-800" : "cursor-not-allowed opacity-40"}`}
             onClick={(event) => {
               if (!other?.phone) event.preventDefault();
             }}
@@ -394,107 +395,151 @@ export function ConversationScreen({
             <PhoneIcon className="h-5 w-5" />
           </a>
         </header>
-        <div className="flex-1 space-y-2 overflow-y-auto bg-[radial-gradient(#d6ccc2_1px,transparent_1px)] bg-[size:16px_16px] p-4 dark:bg-[radial-gradient(#334155_1px,transparent_1px)] sm:p-6">
+        {conversation?.contextId && (
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs dark:border-slate-800 dark:bg-slate-900">
+            <div className="min-w-0">
+              <p className="truncate font-semibold capitalize">
+                {conversation.title ??
+                  `${conversation.contextType} conversation`}
+              </p>
+              <p className="mt-1 text-slate-500">
+                Reference · {conversation.contextId.slice(0, 8)}
+              </p>
+            </div>
+            {conversation.contextType === "booking" && (
+              <Link
+                href="/account/bookings"
+                className="shrink-0 font-semibold text-brand-700 dark:text-brand-200"
+              >
+                My bookings →
+              </Link>
+            )}
+          </div>
+        )}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-white p-4 dark:bg-slate-950 sm:p-6">
           {messages.length === 0 && (
-            <div className="mx-auto mt-12 max-w-sm rounded-2xl bg-amber-100/90 p-4 text-center text-xs leading-5 text-amber-900 shadow-sm">
+            <div className="mx-auto mt-12 max-w-sm rounded-2xl bg-slate-100 dark:bg-slate-800 p-4 text-center text-xs leading-5 text-slate-600 dark:text-slate-300 shadow-sm">
               Messages are private to this conversation. Say hello and make the
               first move.
             </div>
           )}
-          {messages.map((message) => {
+          {messages.map((message, index) => {
             const own = message.senderId === user?.id;
             return (
-              <div
-                key={message.id}
-                className={`group flex ${own ? "justify-end" : "justify-start"}`}
-              >
+              <Fragment key={message.id}>
+                {(index === 0 ||
+                  new Date(message.createdAt).toDateString() !==
+                    new Date(messages[index - 1].createdAt).toDateString()) && (
+                  <p className="py-3 text-center text-[11px] text-slate-500">
+                    {new Date(message.createdAt).toLocaleDateString([], {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                )}
                 <div
-                  className={`relative max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${own ? "rounded-br-md bg-[#d9fdd3] text-slate-900" : "rounded-bl-md bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100"}`}
+                  className={`group flex ${own ? "justify-end" : "justify-start"}`}
                 >
-                  {message.attachments?.map((attachment) => (
-                    <div
-                      key={attachment.url}
-                      className="mb-2 overflow-hidden rounded-xl"
-                    >
-                      {attachment.kind === "image" ? (
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <img
+                  <div
+                    className={`relative max-w-[85%] break-words [overflow-wrap:anywhere] rounded-2xl px-3 py-2 text-sm shadow-sm ${own ? "rounded-br-md bg-brand-800 text-white" : "rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"}`}
+                  >
+                    {message.attachments?.map((attachment) => (
+                      <div
+                        key={attachment.url}
+                        className="mb-2 overflow-hidden rounded-xl"
+                      >
+                        {attachment.kind === "image" ? (
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <img
+                              src={attachment.url}
+                              alt={attachment.name ?? "Shared image"}
+                              className="max-h-72 max-w-full object-cover"
+                            />
+                          </a>
+                        ) : attachment.kind === "video" ? (
+                          <video
+                            controls
+                            preload="metadata"
+                            poster={attachment.thumbnailUrl ?? undefined}
                             src={attachment.url}
-                            alt={attachment.name ?? "Shared image"}
-                            className="max-h-72 max-w-full object-cover"
+                            className="max-h-72 max-w-full"
                           />
-                        </a>
-                      ) : attachment.kind === "video" ? (
-                        <video
-                          controls
-                          preload="metadata"
-                          poster={attachment.thumbnailUrl ?? undefined}
-                          src={attachment.url}
-                          className="max-h-72 max-w-full"
-                        />
-                      ) : attachment.kind === "audio" ? (
-                        <audio
-                          controls
-                          preload="metadata"
-                          src={attachment.url}
-                          className="max-w-full"
-                        />
-                      ) : (
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block px-3 py-2 text-xs font-semibold underline"
+                        ) : attachment.kind === "audio" ? (
+                          <audio
+                            controls
+                            preload="metadata"
+                            src={attachment.url}
+                            className="max-w-full"
+                          />
+                        ) : (
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block px-3 py-2 text-xs font-semibold underline"
+                          >
+                            {attachment.name ?? "Download attachment"}
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                    {message.body && (
+                      <p className="whitespace-pre-wrap">{message.body}</p>
+                    )}
+                    <div
+                      className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${own ? "text-brand-100" : "text-slate-500 dark:text-slate-400"}`}
+                    >
+                      <span>
+                        {new Date(message.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {own && (
+                        <span
+                          aria-label={
+                            message.readAt
+                              ? "Read"
+                              : message.deliveredAt
+                                ? "Delivered"
+                                : "Sent"
+                          }
+                          className="font-bold"
                         >
-                          {attachment.name ?? "Download attachment"}
-                        </a>
+                          {message.readAt
+                            ? "✓✓"
+                            : message.deliveredAt
+                              ? "✓✓"
+                              : "✓"}
+                        </span>
                       )}
                     </div>
-                  ))}
-                  {message.body && (
-                    <p className="whitespace-pre-wrap">{message.body}</p>
-                  )}
-                  <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-500">
-                    <span>
-                      {new Date(message.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                    {own && (
-                      <span className="font-bold text-brand-700">
-                        {message.readAt
-                          ? "✓✓"
-                          : message.deliveredAt
-                            ? "✓✓"
-                            : "✓"}
-                      </span>
-                    )}
+                    {Object.entries(message.reactions ?? {})
+                      .filter(([, users]) => users.length)
+                      .map(([emoji, users]) => (
+                        <button
+                          key={emoji}
+                          onClick={() => void react(message.id, emoji)}
+                          className="absolute -bottom-3 left-2 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-xs shadow"
+                        >
+                          {emoji} {users.length}
+                        </button>
+                      ))}
+                    <button
+                      onClick={() => void react(message.id, "❤️")}
+                      aria-label="React with heart"
+                      className="absolute -top-3 right-2 hidden rounded-full bg-white px-1.5 py-0.5 text-xs shadow group-hover:block"
+                    >
+                      ❤️
+                    </button>
                   </div>
-                  {Object.entries(message.reactions ?? {})
-                    .filter(([, users]) => users.length)
-                    .map(([emoji, users]) => (
-                      <button
-                        key={emoji}
-                        onClick={() => void react(message.id, emoji)}
-                        className="absolute -bottom-3 left-2 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-xs shadow"
-                      >
-                        {emoji} {users.length}
-                      </button>
-                    ))}
-                  <button
-                    onClick={() => void react(message.id, "❤️")}
-                    aria-label="React with heart"
-                    className="absolute -top-3 right-2 hidden rounded-full bg-white px-1.5 py-0.5 text-xs shadow group-hover:block"
-                  >
-                    ❤️
-                  </button>
                 </div>
-              </div>
+              </Fragment>
             );
           })}
           <div ref={bottomRef} />
@@ -507,7 +552,7 @@ export function ConversationScreen({
             {error}
           </p>
         )}
-        <div className="border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+        <div className="shrink-0 border-t border-slate-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950">
           <input
             ref={fileInputRef}
             type="file"
@@ -562,72 +607,91 @@ export function ConversationScreen({
               Uploading media…
             </p>
           )}
-          <div className="mb-2 flex gap-2 overflow-x-auto">
+          {messages.length === 0 && (
+            <div className="mb-2 flex gap-2 overflow-x-auto">
+              <button
+                onClick={() =>
+                  setDraft("Hi, I’m interested and would love to learn more.")
+                }
+                className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Ask a question
+              </button>
+              <button
+                onClick={() => setDraft("Are you available this week?")}
+                className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Check availability
+              </button>
+              <button
+                onClick={() => setDraft("Thanks for getting back to me!")}
+                className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Say thanks
+              </button>
+            </div>
+          )}
+          <div className="relative flex items-end gap-2">
             <button
-              onClick={() =>
-                setDraft("Hi, I’m interested and would love to learn more.")
-              }
-              className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
-            >
-              Ask a question
-            </button>
-            <button
-              onClick={() => setDraft("Are you available this week?")}
-              className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
-            >
-              Check availability
-            </button>
-            <button
-              onClick={() => setDraft("Thanks for getting back to me!")}
-              className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600"
-            >
-              Say thanks
-            </button>
-          </div>
-          <div className="flex items-end gap-2">
-            <button
-              aria-label="Add attachment"
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+              aria-label="Message tools"
+              aria-expanded={toolsOpen}
+              onClick={() => setToolsOpen(!toolsOpen)}
+              className="h-11 w-11 shrink-0 rounded-full bg-slate-100 text-xl text-slate-600 dark:bg-slate-800 dark:text-slate-200"
             >
-              <PaperClipIcon className="h-5 w-5" />
+              {toolsOpen ? "×" : "+"}
             </button>
-            <button
-              aria-label="Add emoji"
-              type="button"
-              onClick={() => setDraft((current) => `${current} 😊`)}
-              className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+            <div
+              className={`${toolsOpen ? "flex" : "hidden"} absolute bottom-full left-3 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900`}
             >
-              <FaceSmileIcon className="h-5 w-5" />
-            </button>
-            <button
-              aria-label={
-                recording ? "Stop voice note recording" : "Record voice note"
-              }
-              type="button"
-              onClick={() => void toggleRecording()}
-              className={`rounded-full p-2 ${recording ? "bg-rose-100 text-rose-700" : "text-slate-500 hover:bg-slate-100"}`}
-            >
-              {recording ? (
-                <StopIcon className="h-5 w-5" />
-              ) : (
-                <MicrophoneIcon className="h-5 w-5" />
-              )}
-            </button>
+              <button
+                aria-label="Add attachment"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-full p-3 text-slate-500 hover:bg-slate-100"
+              >
+                <PaperClipIcon className="h-5 w-5" />
+              </button>
+              <button
+                aria-label="Add emoji"
+                type="button"
+                onClick={() => setDraft((current) => `${current} 😊`)}
+                className="rounded-full p-3 text-slate-500 hover:bg-slate-100"
+              >
+                <FaceSmileIcon className="h-5 w-5" />
+              </button>
+              <button
+                aria-label={
+                  recording ? "Stop voice note recording" : "Record voice note"
+                }
+                type="button"
+                onClick={() => void toggleRecording()}
+                className={`rounded-full p-3 ${recording ? "bg-rose-100 text-rose-700" : "text-slate-500 hover:bg-slate-100"}`}
+              >
+                {recording ? (
+                  <StopIcon className="h-5 w-5" />
+                ) : (
+                  <MicrophoneIcon className="h-5 w-5" />
+                )}
+              </button>
+            </div>
             <textarea
               aria-label="Message"
               value={draft}
               onChange={(event) => handleDraftChange(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing
+                ) {
                   event.preventDefault();
                   void send();
                 }
               }}
-              placeholder="Type a message"
+              placeholder="Write a message…"
               rows={1}
-              className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-500 dark:bg-slate-800"
+              className="max-h-28 min-h-11 min-w-0 flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-base outline-none sm:text-sm focus:ring-2 focus:ring-brand-500 dark:bg-slate-800"
             />
             <button
               onClick={() => void send()}

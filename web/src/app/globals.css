@@ -1252,3 +1252,12 @@ html[data-splash-seen='1'] .splash-screen {
 .detail-actions > button { grid-column: 1 / -1; width: auto; justify-self: start; box-shadow: none; }
 .detail-actions svg { flex-shrink: 0; width: 1rem; height: 1rem; }
 @media (max-width: 360px) { .detail-actions { grid-template-columns: repeat(2,minmax(0,1fr)); } .detail-actions > a:first-child { grid-column: 1 / -1; } }
+
+/* Give active messaging threads the full viewport without competing navigation. */
+body:has(.messaging-chat) { overflow: hidden; }
+body:has(.messaging-chat) > header,
+body:has(.messaging-chat) > nav,
+body:has(.messaging-chat) #main-content > footer { display: none; }
+.messaging-chat { padding-top: env(safe-area-inset-top); }
+.messaging-chat button:focus-visible,
+.messaging-chat a:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
