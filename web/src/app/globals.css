@@ -10,6 +10,9 @@
  * tool; these tokens also cover native controls and one-off feature modules.
  */
 :root {
+  /* A network-independent display stack keeps production builds deterministic.
+     Device-native faces also avoid an extra font download on limited data. */
+  --font-display: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", sans-serif;
   --surface-canvas: #f6f8fc;
   --surface-raised: #ffffff;
   --surface-subtle: #eef2f8;

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import "../globals.css";
@@ -74,13 +73,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const displayFont = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-display",
-  display: "swap",
-});
-
 const themeInitScript = `(function(){try{var t=localStorage.getItem('liberia360:theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
 
 const splashInitScript = `(function(){try{if(sessionStorage.getItem('liberia360:splash-seen')==='1')document.documentElement.dataset.splashSeen='1';}catch(e){}})();`;
@@ -114,7 +106,6 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       dir={dir}
-      className={displayFont.variable}
       suppressHydrationWarning
     >
       <head>
