@@ -195,7 +195,7 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // "quick actions" Plan a Trip card (home.planATrip, further down this
 // page) is untouched — this just gives it a second, higher-visibility
 // entry point.
-import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPlatformStats, getPublicTrips } from '@/lib/api';
+import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getUpcomingEvents, getPlaces, getPlatformStats, getPublicTrips } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { CountyGrid } from '@/components/CountyGrid';
@@ -230,7 +230,7 @@ export default async function Home() {
     // trailing 7 days, see PLACE_TRENDING_WINDOW_DAYS in places.service.ts)
     // rather than a fixed CTA to a feature most visitors never opened.
     getPlaces({ sort: 'popular', limit: DISCOVER_THIS_WEEK_LIMIT }),
-    getEvents({ dateFrom: new Date().toISOString(), limit: UPCOMING_EVENTS_LIMIT }),
+    getUpcomingEvents({ limit: UPCOMING_EVENTS_LIMIT }),
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
     getBusinesses({ limit: 100 }),

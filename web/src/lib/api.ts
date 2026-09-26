@@ -418,11 +418,33 @@ export interface EventsQuery {
   limit?: number;
 }
 
-export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
+interface GetEventsOptions {
+  fallbackOnBuild?: boolean;
+}
+
+export function getEvents(
+  query: EventsQuery = {},
+  { fallbackOnBuild = true }: GetEventsOptions = {},
+): Promise<PaginatedEvents> {
   return apiFetch<PaginatedEvents>(
     "/events",
     query as Record<string, string | number | boolean | undefined>,
-    emptyPage(query.limit),
+    fallbackOnBuild ? emptyPage(query.limit) : undefined,
+  );
+}
+
+/**
+ * Shared public-event read for Home and /events. The API owns the exact
+ * approved-and-not-ended eligibility rule; this helper only supplies the
+ * current lower bound so both surfaces use one request shape. A failed read
+ * is allowed to surface instead of becoming a false "no events" result.
+ */
+export function getUpcomingEvents(
+  query: Omit<EventsQuery, "includePast"> = {},
+): Promise<PaginatedEvents> {
+  return getEvents(
+    { ...query, dateFrom: query.dateFrom ?? new Date().toISOString() },
+    { fallbackOnBuild: false },
   );
 }
 

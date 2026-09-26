@@ -30,6 +30,7 @@ export function EventFeedCard({ event, index }: { event: Event; index?: number }
 
   return (
     <article
+      data-testid="event-feed-card"
       className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900 ${index != null ? 'animate-fade-in-up' : ''}`}
       style={index != null ? staggerDelay(index) : undefined}
     >

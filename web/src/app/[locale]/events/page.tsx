@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCounties, getEvents } from "@/lib/api";
+import { getCounties, getUpcomingEvents } from "@/lib/api";
 import { EventFilters } from "@/components/EventFilters";
 import { EventFeedCard } from "@/components/EventFeedCard";
 import { EventCarousel } from "@/components/EventCarousel";
@@ -47,12 +47,9 @@ export default async function EventsPage({
 
   const [counties, result, featured] = await Promise.all([
     getCounties(),
-    getEvents({ search, category, county, dateFrom, dateTo, page, limit: 20 }),
+    getUpcomingEvents({ search, category, county, dateFrom, dateTo, page, limit: 20 }),
     showFeatured
-      ? getEvents({
-          dateFrom: new Date().toISOString(),
-          limit: FEATURED_EVENTS_LIMIT,
-        })
+      ? getUpcomingEvents({ limit: FEATURED_EVENTS_LIMIT })
       : Promise.resolve(null),
   ]);
 

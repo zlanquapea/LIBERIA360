@@ -101,6 +101,13 @@ describe('apiFetch build-time fallback', () => {
     await expect(api.getEvents()).rejects.toThrow('failed with 500');
   });
 
+  it('does not turn a build-time event gateway failure into a false empty upcoming result', async () => {
+    mockFetchResolved(false, 502);
+    const api = loadApiModule('phase-production-build');
+
+    await expect(api.getUpcomingEvents()).rejects.toThrow('failed with 502');
+  });
+
   it('keeps falling back on a raw connection failure during the build phase (pre-existing behavior, unchanged)', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
     const api = loadApiModule('phase-production-build');

@@ -95,7 +95,10 @@ export function EventCarousel({
             </Link>
           )}
         </div>
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center dark:border-slate-700 dark:bg-slate-900">
+        <div
+          data-testid="upcoming-events-empty"
+          className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center dark:border-slate-700 dark:bg-slate-900"
+        >
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
             No upcoming events listed yet.
           </p>

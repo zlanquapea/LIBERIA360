@@ -259,7 +259,7 @@ describe("EventsService", () => {
 
     function dateFromBound(): Date {
       const where = queryBuilder.wheres.find((w) =>
-        w.sql.includes("event.startDate >= :dateFrom"),
+        w.sql.includes("COALESCE(event.endDate, event.startDate) >= :dateFrom"),
       );
       return (where!.params as { dateFrom: Date }).dateFrom;
     }
@@ -276,7 +276,7 @@ describe("EventsService", () => {
     it("does not filter by date at all when includePast is set", async () => {
       await service.findAll({ includePast: true } as never);
       const startDateWhere = queryBuilder.wheres.find((w) =>
-        w.sql.includes("event.startDate >="),
+        w.sql.includes("COALESCE(event.endDate, event.startDate) >="),
       );
       expect(startDateWhere).toBeUndefined();
     });
@@ -287,7 +287,7 @@ describe("EventsService", () => {
         dateFrom: "2020-01-01",
       } as never);
       const where = queryBuilder.wheres.find((w) =>
-        w.sql.includes("event.startDate >= :dateFrom"),
+        w.sql.includes("COALESCE(event.endDate, event.startDate) >= :dateFrom"),
       );
       expect((where!.params as { dateFrom: string }).dateFrom).toBe(
         "2020-01-01",
@@ -298,8 +298,8 @@ describe("EventsService", () => {
     // sends a `dateFrom` fixed to midnight of the current calendar day —
     // clicked any time after midnight, that's already in the past. Passing
     // it straight through as the query's lower bound (the old behavior)
-    // let an event that ran earlier the same day keep matching
-    // `startDate >= dateFrom` long after it was over.
+    // let an event that ran earlier the same day keep matching long after it
+    // was over.
     it("clamps a same-day/past dateFrom up to now, so a completed event doesn't resurface", async () => {
       const before = Date.now();
       await service.findAll({ dateFrom: "2020-01-01" } as never);
@@ -318,6 +318,23 @@ describe("EventsService", () => {
       ).toISOString();
       await service.findAll({ dateFrom: future } as never);
       expect(dateFromBound()).toEqual(new Date(future));
+    });
+
+    it("uses an event's end time so an in-progress multi-day event remains public", async () => {
+      await service.findAll({});
+      const where = queryBuilder.wheres.find((w) =>
+        w.sql.includes("COALESCE(event.endDate, event.startDate) >= :dateFrom"),
+      );
+      expect(where?.sql).toContain("event.endDate");
+      expect(where?.sql).toContain("event.startDate");
+    });
+
+    it("keeps moderation visibility separate from date eligibility", async () => {
+      await service.findAll({});
+      expect(queryBuilder.wheres[0]).toEqual({
+        sql: "event.reviewStatus = :approved",
+        params: { approved: EventReviewStatus.APPROVED },
+      });
     });
   });
 

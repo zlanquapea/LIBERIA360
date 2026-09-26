@@ -1,9 +1,9 @@
 // Date-range helpers behind the Events page's "Today / This weekend / This
 // month" quick filters (EventFilters). Each returns dateFrom/dateTo as ISO
-// strings — exactly what GET /events already accepts (EventsService.findAll
-// filters on event.startDate between them), so no backend change was
-// needed to support this. `now` is a parameter (defaulting to the real
-// clock) purely so these are testable with a fixed date.
+// strings — exactly what GET /events accepts. EventsService.findAll treats
+// these as an overlap window, so an event in progress is still included.
+// `now` is a parameter (defaulting to the real clock) purely so these are
+// testable with a fixed date.
 
 function startOfDay(d: Date): Date {
   const r = new Date(d);

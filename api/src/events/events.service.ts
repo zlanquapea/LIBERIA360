@@ -297,26 +297,23 @@ export class EventsService {
       qb.andWhere("county.slug = :countySlug", { countySlug: query.county });
     }
     if (!query.includePast) {
-      // A completed event should never resurface in public browsing,
-      // *including* when a quick-filter (Today/This weekend/This month —
-      // see EventFilters.tsx) is active. Those buttons send a `dateFrom`
-      // fixed to midnight of a calendar day, not "this exact moment" — so
-      // "Today" clicked at 5pm used to pass `dateFrom: <midnight today>`,
-      // and an event that ran at 9am (already over) still satisfied
-      // `startDate >= dateFrom` and kept showing. Clamping the effective
-      // lower bound to `max(dateFrom, now)` closes that gap without
-      // affecting a `dateFrom` that's already in the future (This
-      // weekend/This month almost always are) — only a same-day filter
-      // whose start has already passed gets pulled forward to now. Admin's
-      // events management table passes includePast so a genuinely past
-      // event is still reachable there to edit or remove.
+      // Public upcoming means "not ended", not merely "has not started".
+      // This keeps a multi-day event discoverable while it is in progress.
+      // Quick filters send calendar boundaries, so use the event's end (or
+      // start for one-time events) for overlap with the requested window.
+      // Admin's events management table passes includePast so a genuinely
+      // past event is still reachable there to edit or remove.
       const now = new Date();
       const requestedFrom = query.dateFrom ? new Date(query.dateFrom) : null;
       const effectiveFrom =
         requestedFrom && requestedFrom > now ? requestedFrom : now;
-      qb.andWhere("event.startDate >= :dateFrom", { dateFrom: effectiveFrom });
+      qb.andWhere("COALESCE(event.endDate, event.startDate) >= :dateFrom", {
+        dateFrom: effectiveFrom,
+      });
     } else if (query.dateFrom) {
-      qb.andWhere("event.startDate >= :dateFrom", { dateFrom: query.dateFrom });
+      qb.andWhere("COALESCE(event.endDate, event.startDate) >= :dateFrom", {
+        dateFrom: query.dateFrom,
+      });
     }
     if (query.dateTo) {
       qb.andWhere("event.startDate <= :dateTo", { dateTo: query.dateTo });

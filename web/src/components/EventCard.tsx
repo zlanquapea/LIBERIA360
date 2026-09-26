@@ -32,6 +32,7 @@ export function EventCard({ event, cardRef }: { event: Event; cardRef?: (el: HTM
   return (
     <div
       ref={cardRef}
+      data-testid="upcoming-event-card"
       className="flex w-72 shrink-0 snap-center flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900 sm:w-80"
     >
       <Link href={`/events/${event.id}`} className="block">
