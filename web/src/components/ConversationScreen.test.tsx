@@ -21,3 +21,19 @@ it('keeps booking context, media tools, and text sending usable', async () => {
   expect(await screen.findByText('Thanks')).toBeInTheDocument();
   expect(sendConversationMessage).toHaveBeenCalledWith('token', 'chat', 'Thanks', 'file', []);
 });
+
+it('grows wrapped drafts, scrolls at the limit, and shrinks when cleared', async () => {
+  render(<ConversationScreen conversationId="chat" />);
+  await screen.findByText('Hello');
+  const input = screen.getByRole('textbox', { name: 'Message' });
+  let measuredHeight = 96;
+  Object.defineProperty(input, 'scrollHeight', { configurable: true, get: () => measuredHeight });
+  fireEvent.change(input, { target: { value: 'A draft wrapping across several lines' } });
+  expect(input).toHaveStyle({ height: '96px', overflowY: 'hidden' });
+  measuredHeight = 240;
+  fireEvent.change(input, { target: { value: 'A much longer draft' } });
+  expect(input).toHaveStyle({ height: '144px', overflowY: 'auto' });
+  measuredHeight = 48;
+  fireEvent.change(input, { target: { value: '' } });
+  expect(input).toHaveStyle({ height: '48px', overflowY: 'hidden' });
+});

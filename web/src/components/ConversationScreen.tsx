@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   FaceSmileIcon,
@@ -43,6 +43,22 @@ export function ConversationScreen({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const input = draftRef.current;
+    if (!input) return;
+    const resize = () => {
+      // Reset before measuring so deleting text also shrinks the composer.
+      input.style.height = "auto";
+      const height = input.scrollHeight;
+      input.style.height = `${Math.min(height, 144)}px`;
+      input.style.overflowY = height > 144 ? "auto" : "hidden";
+      if (height <= 144) input.scrollTop = 0;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [draft, ready, token]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
@@ -676,6 +692,7 @@ export function ConversationScreen({
               </button>
             </div>
             <textarea
+              ref={draftRef}
               aria-label="Message"
               value={draft}
               onChange={(event) => handleDraftChange(event.target.value)}
@@ -691,7 +708,7 @@ export function ConversationScreen({
               }}
               placeholder="Write a message…"
               rows={1}
-              className="max-h-28 min-h-11 min-w-0 flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-base outline-none sm:text-sm focus:ring-2 focus:ring-brand-500 dark:bg-slate-800"
+              className="box-border max-h-36 min-h-12 min-w-0 flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-base leading-6 outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-brand-500 dark:bg-slate-800"
             />
             <button
               onClick={() => void send()}
