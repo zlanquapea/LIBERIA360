@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { MOBILE_MENU_NAVIGATION } from "@/lib/site-nav";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { localePath } from "@/lib/locale-path";
+import { Link } from "@/i18n/navigation";
 
 // Facebook-style hamburger drawer (product note, Sep 6, 2026): Header's
 // full section list (Explore, Car Rentals, Saved, Help, ...) only ever
@@ -23,12 +22,8 @@ import { localePath } from "@/lib/locale-path";
 // destination twice on one screen; see that list's own doc comment for
 // what took their place.
 //
-// This component renders in both root layouts, so it keeps plain next/link;
-// localePath preserves a visitor's language in the localized tree while
-// leaving the English-only admin/legal tree untouched.
 export function MobileMenu() {
   const t = useTranslations("nav");
-  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const { user, ready } = useAuth();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -119,7 +114,7 @@ export function MobileMenu() {
             <div ref={drawerRef} className="relative flex h-full w-[82%] max-w-xs flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
               <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4 dark:border-slate-800">
                 {ready && user ? (
-                  <Link href={localePath("/account", locale)} onClick={close} className="flex min-w-0 items-center gap-2.5">
+                  <Link href="/account" onClick={close} className="flex min-w-0 items-center gap-2.5">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white">
                       {user.name.trim().charAt(0).toUpperCase() || "?"}
                     </span>
@@ -131,7 +126,7 @@ export function MobileMenu() {
                     </span>
                   </Link>
                 ) : (
-                  <Link href={localePath("/login", locale)} onClick={close} className="text-sm font-semibold text-brand-700 dark:text-brand-300">
+                  <Link href="/login" onClick={close} className="text-sm font-semibold text-brand-700 dark:text-brand-300">
                     {t("logInSignUp")}
                   </Link>
                 )}
@@ -149,7 +144,7 @@ export function MobileMenu() {
                 {MOBILE_MENU_NAVIGATION.map(({ href, labelKey, icon: Icon }) => (
                   <Link
                     key={href}
-                    href={localePath(href, locale)}
+                    href={href}
                     onClick={close}
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   >

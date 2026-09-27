@@ -8,6 +8,8 @@ const mockPush = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  // next-intl's locale-aware router composes both Next hooks internally.
+  usePathname: () => "/",
 }));
 
 jest.mock("../lib/api", () => ({
