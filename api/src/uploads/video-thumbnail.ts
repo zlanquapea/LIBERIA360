@@ -1,5 +1,4 @@
 import { execFile } from "child_process";
-import ffmpegPath from "ffmpeg-static";
 import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -7,9 +6,14 @@ import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
 
+// Prefer an explicitly configured binary in hosted environments and otherwise
+// use the operating system's ffmpeg. The previous ffmpeg-static package ran a
+// postinstall download from GitHub, which made `npm ci` (and therefore every
+// CI/deploy build) fail whenever that release host was unavailable or blocked.
+const ffmpegPath = process.env.FFMPEG_PATH?.trim() || "ffmpeg";
+
 /** Extract a lightweight poster without making browser clients download the video first. */
 export async function extractVideoThumbnail(input: Buffer): Promise<Buffer> {
-  if (!ffmpegPath) throw new Error("FFmpeg is not available");
   const directory = await mkdtemp(join(tmpdir(), "liberia360-video-"));
   const inputPath = join(directory, "input-video");
   const outputPath = join(directory, "poster.jpg");
