@@ -18,17 +18,33 @@ export function GuideBookingForm({
   const [state, setState] = useState<"idle" | "sending" | "success" | "error">(
     "idle",
   );
+  const [reviewing, setReviewing] = useState(false);
+  const today = new Date();
+  const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (state === "sending" || state === "success") return;
     if (!token) {
       setState("error");
       setMessage("Please sign in before requesting to book.");
       return;
     }
-    if (!requestedDate || groupSize < 1 || groupSize > maxGroupSize) {
+    if (
+      !requestedDate ||
+      requestedDate < minDate ||
+      !Number.isInteger(groupSize) ||
+      groupSize < 1 ||
+      groupSize > maxGroupSize
+    ) {
       setState("error");
       setMessage(`Choose a date and group size from 1 to ${maxGroupSize}.`);
+      return;
+    }
+    if (!reviewing) {
+      setReviewing(true);
+      setState("idle");
+      setMessage("");
       return;
     }
     setState("sending");
@@ -53,47 +69,108 @@ export function GuideBookingForm({
   return (
     <form
       onSubmit={submit}
-      className="rounded-3xl border border-brand-200 bg-brand-50/60 p-5 shadow-sm dark:border-brand-900 dark:bg-brand-950/20"
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6"
     >
-      <h2 className="font-display text-xl font-bold">Request to Book</h2>
+      <h2 className="font-display text-xl font-bold">Request a booking</h2>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
         No payment is required yet. Your request is sent to the guide for
         confirmation.
       </p>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="text-sm font-semibold">
-          Date
-          <input
-            required
-            type="date"
-            value={requestedDate}
-            onChange={(event) => setRequestedDate(event.target.value)}
-            className="mt-1 min-h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
-          />
-        </label>
-        <label className="text-sm font-semibold">
-          Group size
-          <input
-            required
-            type="number"
-            min={1}
-            max={maxGroupSize}
-            value={groupSize}
-            onChange={(event) => setGroupSize(Number(event.target.value))}
-            className="mt-1 min-h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
-          />
-        </label>
-      </div>
-      <label className="mt-3 block text-sm font-semibold">
-        Note (optional)
-        <textarea
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          rows={3}
-          maxLength={2000}
-          className="mt-1 w-full rounded-2xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
-        />
-      </label>
+      <ol
+        aria-label="Booking progress"
+        className="my-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold"
+      >
+        {["Details", "Review", "Send"].map((step, index) => (
+          <li
+            key={step}
+            aria-current={
+              (state === "success" ? 2 : reviewing ? 1 : 0) === index
+                ? "step"
+                : undefined
+            }
+            className={`border-t-2 pt-2 ${(state === "success" ? 2 : reviewing ? 1 : 0) === index ? "border-brand-500 text-brand-700 dark:text-brand-300" : "border-slate-200 text-slate-500 dark:border-slate-700"}`}
+          >
+            {step}
+          </li>
+        ))}
+      </ol>
+      {reviewing ? (
+        <section
+          aria-label="Review your request"
+          className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800"
+        >
+          <h3 className="font-bold">
+            {state === "success" ? "Your request" : "Review your request"}
+          </h3>
+          <dl className="mt-3 space-y-2 text-sm">
+            <div>
+              <dt className="text-slate-500 dark:text-slate-400">Date</dt>
+              <dd>{requestedDate}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500 dark:text-slate-400">Guests</dt>
+              <dd>{groupSize}</dd>
+            </div>
+            {note.trim() && (
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">
+                  Your plans
+                </dt>
+                <dd className="break-words whitespace-pre-wrap">{note}</dd>
+              </div>
+            )}
+          </dl>
+          {state !== "success" && (
+            <button
+              type="button"
+              disabled={state === "sending"}
+              onClick={() => setReviewing(false)}
+              className="mt-3 min-h-11 text-sm font-semibold text-brand-700 dark:text-brand-300"
+            >
+              Edit details
+            </button>
+          )}
+        </section>
+      ) : (
+        <>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-semibold">
+              Date
+              <input
+                required
+                type="date"
+                min={minDate}
+                value={requestedDate}
+                onChange={(event) => setRequestedDate(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
+              />
+            </label>
+            <label className="text-sm font-semibold">
+              Group size
+              <input
+                required
+                type="number"
+                min={1}
+                max={maxGroupSize}
+                value={groupSize}
+                onChange={(event) => setGroupSize(Number(event.target.value))}
+                className="mt-1 min-h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
+              />
+            </label>
+          </div>
+          <label className="mt-3 block text-sm font-semibold">
+            Note (optional)
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              rows={3}
+              placeholder="Tell your guide about your trip…"
+              maxLength={2000}
+              className="mt-1 w-full rounded-2xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+            />
+          </label>
+        </>
+      )}
       <button
         disabled={state === "sending" || state === "success"}
         className="button-primary mt-4 min-h-11 w-full disabled:opacity-60"
@@ -102,7 +179,9 @@ export function GuideBookingForm({
           ? "Sending…"
           : state === "success"
             ? "Request sent"
-            : "Request to Book"}
+            : reviewing
+              ? "Send request"
+              : "Review request"}
       </button>
       {message && (
         <p

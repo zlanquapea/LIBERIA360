@@ -286,6 +286,7 @@ export default async function CreatorsPage({
             </div>
           </div>
 
+          {!isFollowing && <nav aria-label="Browse local experts" className="mt-4 grid grid-cols-2 gap-2"><Link href="/guides?role=guides" className="flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-bold text-white dark:bg-brand-300 dark:text-slate-950">Find a guide</Link><Link href="/guides?role=hosts" className="flex min-h-11 items-center justify-center rounded-xl border border-brand-700 px-4 text-sm font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300">Find a host</Link></nav>}
           {isFollowing ? (
             <CreatorFeed
               initialPosts={[]}
