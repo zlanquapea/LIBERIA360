@@ -157,7 +157,8 @@ export default function TripsPage() {
 
   if (!user) {
     return (
-      <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 pb-28 text-center">
+        <FeatureNavigation />
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
           {t("myTrips")}
         </h1>
@@ -165,7 +166,7 @@ export default function TripsPage() {
           {t("logInToPlan")}
         </p>
         <Link
-          href="/login"
+          href="/login?next=/trips"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
         >
           {tNav("logIn")}

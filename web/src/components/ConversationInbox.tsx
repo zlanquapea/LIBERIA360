@@ -93,7 +93,8 @@ export function ConversationInbox() {
     );
   if (!token)
     return (
-      <main className="mx-auto max-w-lg px-4 py-16 text-center">
+      <main className="mx-auto w-full max-w-3xl px-4 py-6 pb-28 text-center">
+        <FeatureNavigation />
         <ChatBubbleLeftRightIcon className="mx-auto h-10 w-10 text-brand-600" />
         <h1 className="mt-4 text-2xl font-bold">Your messages</h1>
         <p className="mt-2 text-slate-500">
