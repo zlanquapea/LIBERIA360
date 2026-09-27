@@ -368,7 +368,7 @@ export function CreatorFeed({
           </p>
         </div>
       ) : posts.length > 0 ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-2xl gap-3 sm:gap-4">
           {feedItems.map((item, index) =>
             item.kind === "ad" ? (
               <SponsoredCreatorAdCard
