@@ -2,6 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme-aware palette. Light values match the original Tailwind colors exactly. */
+:root {
+  --palette-slate-50: 248 250 252;
+  --palette-slate-100: 241 245 249;
+  --palette-slate-200: 226 232 240;
+  --palette-slate-300: 203 213 225;
+  --palette-slate-400: 148 163 184;
+  --palette-slate-500: 100 116 139;
+  --palette-slate-600: 71 85 105;
+  --palette-slate-700: 51 65 85;
+  --palette-slate-800: 30 41 59;
+  --palette-slate-900: 15 23 42;
+  --palette-slate-950: 2 6 23;
+  --palette-brand-50: 239 248 250;
+  --palette-brand-100: 217 241 247;
+  --palette-brand-200: 163 228 245;
+  --palette-brand-300: 81 213 246;
+  --palette-brand-400: 6 184 229;
+  --palette-brand-500: 0 122 153;
+  --palette-brand-600: 0 100 125;
+  --palette-brand-700: 0 80 99;
+  --palette-brand-800: 0 63 79;
+  --palette-brand-900: 0 47 59;
+  --palette-brand-950: 0 31 38;
+}
+.dark {
+  --palette-slate-50: 241 242 237;
+  --palette-slate-100: 233 236 230;
+  --palette-slate-200: 216 221 216;
+  --palette-slate-300: 193 201 196;
+  --palette-slate-400: 169 178 173;
+  --palette-slate-500: 140 150 145;
+  --palette-slate-600: 104 113 109;
+  --palette-slate-700: 75 84 81;
+  --palette-slate-800: 48 53 52;
+  --palette-slate-900: 32 35 34;
+  --palette-slate-950: 21 23 22;
+  --palette-brand-50: 237 248 243;
+  --palette-brand-100: 215 238 229;
+  --palette-brand-200: 166 221 204;
+  --palette-brand-300: 117 197 179;
+  --palette-brand-400: 91 175 157;
+  --palette-brand-500: 56 121 107;
+  --palette-brand-600: 44 105 92;
+  --palette-brand-700: 35 92 80;
+  --palette-brand-800: 25 74 64;
+  --palette-brand-900: 21 55 47;
+  --palette-brand-950: 18 41 35;
+}
+
+
+
 /*
  * LIBERIA360 design foundations
  * -----------------------------
@@ -26,13 +78,13 @@
 }
 
 .dark {
-  --surface-canvas: #070d1d;
-  --surface-raised: #10192b;
-  --surface-subtle: #182338;
-  --ink-strong: #f8fafc;
-  --ink-muted: #a9b5c8;
-  --border-subtle: #26344b;
-  --focus-ring: #51d5f6;
+  --surface-canvas: #151716;
+  --surface-raised: #202322;
+  --surface-subtle: #292d2b;
+  --ink-strong: #f1f2ed;
+  --ink-muted: #b0bab4;
+  --border-subtle: #3a423e;
+  --focus-ring: #75c5b3;
   --shadow-card: 0 2px 10px rgb(0 0 0 / 0.24), 0 18px 40px -18px rgb(0 0 0 / 0.7);
   --shadow-float: 0 22px 60px -22px rgb(0 0 0 / 0.8);
 }
@@ -762,11 +814,11 @@ html[data-splash-seen='1'] .splash-screen {
 }
 .dark .ticket-page-shell,
 .dark .ticket-page-state {
-  --ticket-paper: #071738;
-  --ticket-warm: #10254b;
-  --ticket-sea: #102d47;
-  --ticket-line: #274261;
-  --ticket-slate: #aec1c9;
+  --ticket-paper: var(--surface-canvas);
+  --ticket-warm: var(--surface-raised);
+  --ticket-sea: var(--surface-subtle);
+  --ticket-line: var(--border-subtle);
+  --ticket-slate: var(--ink-muted);
   color: #eef3f1;
 }
 .ticket-page-shell {
@@ -1043,7 +1095,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-purchase-shell::before, .ticket-purchase-shell::after { background: white; border: 1px solid var(--ticket-line); border-radius: 50%; content: ""; height: 1.5rem; position: absolute; top: 12rem; width: 1.5rem; z-index: 2; }
 .ticket-purchase-shell::before { left: -.8rem; }
 .ticket-purchase-shell::after { right: -.8rem; }
-.dark .ticket-purchase-shell::before, .dark .ticket-purchase-shell::after { background: #071738; }
+.dark .ticket-purchase-shell::before, .dark .ticket-purchase-shell::after { background: var(--surface-canvas); }
 .ticket-purchase-header { align-items: start; background: var(--ticket-ink); color: white; display: flex; gap: 1.5rem; justify-content: space-between; padding: 1.45rem 1.4rem 1.5rem; }
 .ticket-purchase-eyebrow { color: var(--ticket-yellow); margin: 0 0 .7rem; }
 .ticket-purchase-header h2 { color: white; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: -.045em; line-height: 1; margin: 0; }
@@ -1067,7 +1119,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-purchase-form label em { color: var(--ticket-slate); font-style: normal; font-weight: 400; }
 .ticket-purchase-form input, .ticket-purchase-form textarea { background: #f8fbfa; border: 1px solid #8aa4ad; border-radius: .8rem; color: var(--ticket-ink); display: block; font: inherit; font-size: .82rem; font-weight: 400; margin-top: .45rem; min-height: 3.15rem; outline: none; padding: .82rem .9rem; width: 100%; }
 .ticket-purchase-form textarea { min-height: 5rem; resize: vertical; }
-.dark .ticket-purchase-form input, .dark .ticket-purchase-form textarea { background: #102a3b; border-color: #567783; color: #f4f5ed; }
+.dark .ticket-purchase-form input, .dark .ticket-purchase-form textarea { background: var(--surface-raised); border-color: var(--border-subtle); color: var(--ink-strong); }
 .ticket-purchase-form input:focus, .ticket-purchase-form textarea:focus { border-color: #a07311; box-shadow: 0 0 0 3px rgb(255 198 61 / .2); }
 .ticket-purchase-form input::placeholder, .ticket-purchase-form textarea::placeholder { color: #97a6aa; }
 .ticket-note-field { margin-top: 1rem; }
@@ -1244,7 +1296,7 @@ html[data-splash-seen='1'] .splash-screen {
 .detail-page { background: transparent; gap: 1.25rem; max-width: 64rem; }
 .detail-page > header { padding: 0; gap: .625rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .detail-page > section { padding: 1.25rem 1rem; border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; background: transparent; box-shadow: none; gap: 1rem; }
-.dark .detail-page > section { border-color: #334155; }
+.dark .detail-page > section { border-color: var(--border-subtle); }
 .detail-page > section h2 { font-size: 1.125rem; line-height: 1.5; }
 .detail-page > div:first-of-type > div:first-child { border-radius: 1rem; box-shadow: none; }
 .detail-page > div:first-of-type > div:first-child img { height: clamp(13rem, 50vw, 24rem); }
@@ -1268,9 +1320,18 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
 
 /* Comfortable touch targets and readable fields in the trip planner. */
 .trip-planner input, .trip-planner select { min-height: 3rem; min-width: 0; border-radius: .75rem; padding: .75rem; font-size: 1rem; background: white; color: #0f172a; }
-.dark .trip-planner input, .dark .trip-planner select { background: #0f172a; color: #f1f5f9; }
+.dark .trip-planner input, .dark .trip-planner select { background: var(--surface-raised); color: var(--ink-strong); }
 .trip-planner input[aria-invalid="true"] { border-color: #e11d48; }
 .trip-planner fieldset { min-width: 0; }
 .trip-planner fieldset > div > label { min-width: 0; }
 .trip-planner button:focus-visible { outline: 2px solid #0d9488; outline-offset: 3px; }
 @media (max-width: 359px) { .trip-planner fieldset > div { flex-direction: column; } }
+
+/* Neutral dark surfaces with restrained brand accents. All overrides are dark-only. */
+.dark body { background-image: none; color: var(--ink-strong); }
+.dark .site-header, .dark .site-bottom-nav { background: rgb(var(--palette-slate-950) / .97); border-color: var(--border-subtle); box-shadow: 0 4px 20px rgb(0 0 0 / .16); }
+.dark :where(a, button, input, select, textarea, summary):focus-visible { outline-color: var(--focus-ring); }
+.dark :where(input, select, textarea)::placeholder { color: var(--ink-muted); }
+.dark :where(input, select, textarea):hover:not(:disabled) { border-color: var(--focus-ring); }
+.dark .button-primary, .dark .btn-primary { background-color: #75c5b3; color: #12201c; }
+.dark .button-primary:hover, .dark .btn-primary:hover { background-color: #a6ddcc; color: #12201c; }
