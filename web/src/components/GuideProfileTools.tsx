@@ -11,6 +11,11 @@ import {
 } from "@heroicons/react/24/solid";
 import { useAuth } from "@/hooks/useAuth";
 import { HttpError } from "@/lib/http";
+import {
+  normalizePhoneInput,
+  phoneInputError,
+  PHONE_INPUT_HINT,
+} from "@/lib/phone-validation";
 import { uploadImage } from "@/lib/uploads-api";
 import type { ExperienceSummary, GuideSummary } from "@/lib/api";
 import {
@@ -266,12 +271,20 @@ export function GuideProfileTools({
   async function saveProfile(event: FormEvent) {
     event.preventDefault();
     if (!token) return;
+    const whatsappError = phoneInputError(profile.whatsappNumber);
+    if (whatsappError) {
+      setError(whatsappError);
+      return;
+    }
     setSaving(true);
     setError(null);
     setNotice(null);
     try {
       await updateMyGuideProfile(token, {
         ...profile,
+        whatsappNumber: profile.whatsappNumber.trim()
+          ? normalizePhoneInput(profile.whatsappNumber)!
+          : "",
         languages: profile.languages
           .split(",")
           .map((item) => item.trim())
@@ -562,6 +575,14 @@ export function GuideProfileTools({
                   setProfile({ ...profile, whatsappNumber: value })
                 }
               />
+              <p className="-mt-2 text-xs font-normal text-slate-500 sm:col-span-2">
+                {PHONE_INPUT_HINT}
+                {phoneInputError(profile.whatsappNumber) && (
+                  <span className="mt-1 block text-rose-600" role="alert">
+                    {phoneInputError(profile.whatsappNumber)}
+                  </span>
+                )}
+              </p>
               <div className="sm:col-span-2">
                 <Field
                   label="About you"
