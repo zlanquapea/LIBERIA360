@@ -1,3 +1,4 @@
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import {
@@ -185,6 +186,7 @@ export default async function CreatorsPage({
   return (
     <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 pb-28 pt-0 text-slate-900 dark:bg-slate-950 dark:text-slate-50 sm:px-6 sm:pt-6">
       <div className="mx-auto flex w-full max-w-[390px] flex-col">
+        <FeatureNavigation />
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
             href="/creators#creator-feed"

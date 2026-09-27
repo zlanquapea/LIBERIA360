@@ -1,3 +1,4 @@
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
 import { getGuides, getCounties } from "@/lib/api";
 import {
@@ -58,10 +59,32 @@ export default async function GuidesPage({
     if (language) query.set("language", language);
     return `/guides?${query}`;
   };
+  const activeFilters = [
+    { key: "search", value: search, text: search },
+    {
+      key: "county",
+      value: county,
+      text: counties.find((item) => item.id === county)?.name ?? county,
+    },
+    {
+      key: "category",
+      value: category,
+      text: category ? label(category) : undefined,
+    },
+    { key: "language", value: language, text: language },
+  ].filter((item) => Boolean(item.value));
+  function removeFilter(key: string) {
+    const query = new URLSearchParams({ role });
+    activeFilters.forEach((item) => {
+      if (item.key !== key && item.value) query.set(item.key, item.value);
+    });
+    return `/guides?${query}`;
+  }
   const field =
-    "min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900";
+    "min-h-11 w-full min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900";
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6">
+      <FeatureNavigation />
       <header className="mb-6">
         <p className="text-xs font-bold uppercase tracking-widest text-brand-700 dark:text-brand-300">
           Trip Guides &amp; Hosts
@@ -153,6 +176,30 @@ export default async function GuidesPage({
           </button>
         </div>
       </form>
+      {activeFilters.length > 0 && (
+        <nav
+          aria-label="Active search filters"
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          {activeFilters.map((item) => (
+            <Link
+              key={item.key}
+              href={removeFilter(item.key)}
+              aria-label={`Remove ${item.key} filter: ${item.text}`}
+              className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-brand-50 px-3 text-sm text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:bg-brand-950 dark:text-brand-200"
+            >
+              <span className="break-words">{item.text}</span>
+              <span aria-hidden>×</span>
+            </Link>
+          ))}
+          <Link
+            href={`/guides?role=${role}`}
+            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+          >
+            Clear all
+          </Link>
+        </nav>
+      )}
       <div className="mb-4 mt-7 flex items-center justify-between gap-3">
         <h2 className="font-display text-xl font-bold">
           {role === "hosts" ? "Meet local hosts" : "Guides for your next trip"}

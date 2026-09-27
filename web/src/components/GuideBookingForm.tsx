@@ -142,7 +142,7 @@ export function GuideBookingForm({
                 min={minDate}
                 value={requestedDate}
                 onChange={(event) => setRequestedDate(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
+                className="mt-1 min-h-11 w-full min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
               />
             </label>
             <label className="text-sm font-semibold">
@@ -154,7 +154,7 @@ export function GuideBookingForm({
                 max={maxGroupSize}
                 value={groupSize}
                 onChange={(event) => setGroupSize(Number(event.target.value))}
-                className="mt-1 min-h-11 w-full rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
+                className="mt-1 min-h-11 w-full min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-2xl border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
               />
             </label>
           </div>
@@ -166,7 +166,7 @@ export function GuideBookingForm({
               rows={3}
               placeholder="Tell your guide about your trip…"
               maxLength={2000}
-              className="mt-1 w-full rounded-2xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+              className="mt-1 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-2xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
             />
           </label>
         </>
