@@ -43,6 +43,33 @@ export function ConversationScreen({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const chat = chatRef.current;
+    const viewport = window.visualViewport;
+    if (!chat || !viewport) return;
+    const syncViewport = () => {
+      // The iOS keyboard resizes and pans the visual viewport, not 100dvh.
+      // Keep the whole chat in the visible area; only the message list scrolls.
+      // Leave pinch zoom under browser control for accessibility.
+      if (viewport.scale !== 1) {
+        chat.style.removeProperty("height");
+        chat.style.removeProperty("top");
+        return;
+      }
+      chat.style.height = `${viewport.height}px`;
+      chat.style.top = `${viewport.offsetTop}px`;
+    };
+    syncViewport();
+    viewport.addEventListener("resize", syncViewport);
+    viewport.addEventListener("scroll", syncViewport);
+    return () => {
+      viewport.removeEventListener("resize", syncViewport);
+      viewport.removeEventListener("scroll", syncViewport);
+      chat.style.removeProperty("height");
+      chat.style.removeProperty("top");
+    };
+  }, [ready, token]);
   const draftRef = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const input = draftRef.current;
@@ -359,7 +386,7 @@ export function ConversationScreen({
       </div>
     );
   return (
-    <main className="messaging-chat fixed inset-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col bg-white dark:bg-slate-950">
+    <main ref={chatRef} className="messaging-chat fixed inset-x-0 top-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col overflow-hidden bg-white dark:bg-slate-950">
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-x border-slate-100 dark:border-slate-800">
         <header className="flex shrink-0 items-center gap-3 border-b border-slate-100 bg-white px-4 py-3 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
           <Link
