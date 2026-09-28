@@ -97,6 +97,7 @@ body {
 html {
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
+  overscroll-behavior-y: contain;
 }
 
 body {
@@ -109,36 +110,52 @@ body {
    the top of the document, so nested scroll areas and horizontal carousels
    retain their native touch behavior. */
 .global-pull-refresh-indicator {
-  align-items: flex-end;
+  align-items: flex-start;
   color: var(--brand-700);
   display: flex;
   justify-content: center;
   overflow: hidden;
+  padding-top: max(.55rem, env(safe-area-inset-top));
   position: fixed;
   left: 0;
   right: 0;
   top: 0;
   z-index: 3500;
   pointer-events: none;
-  transition: height 180ms ease-out;
+  transition: opacity 180ms ease-out, transform 180ms cubic-bezier(.23, 1, .32, 1);
 }
-.global-pull-refresh-indicator > span {
+.global-pull-refresh-pill {
   align-items: center;
+  background: color-mix(in srgb, var(--surface-card) 92%, var(--brand-100));
+  border: 1px solid color-mix(in srgb, var(--brand-300) 55%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgb(0 42 52 / .13);
   display: inline-flex;
-  font-size: .72rem;
+  font-size: .7rem;
   font-weight: 700;
   gap: .45rem;
   letter-spacing: .02em;
-  padding-bottom: .7rem;
+  min-height: 2.2rem;
+  padding: .38rem .68rem .38rem .52rem;
+  white-space: nowrap;
 }
 .global-pull-refresh-indicator.is-refreshing {
   color: var(--brand-800);
 }
+.global-pull-refresh-indicator.is-ready .global-pull-refresh-pill {
+  background: color-mix(in srgb, var(--brand-100) 80%, var(--surface-card));
+  border-color: var(--brand-500);
+}
 .global-pull-refresh-icon {
-  height: 1.05rem;
+  height: 1rem;
   transform-origin: center;
   transition: transform 120ms ease-out;
   width: 1.05rem;
+}
+.global-pull-refresh-progress {
+  color: var(--brand-600);
+  font-variant-numeric: tabular-nums;
+  opacity: .78;
 }
 .global-pull-refresh-icon.is-spinning {
   animation: global-pull-refresh-spin .8s linear infinite;
@@ -146,6 +163,16 @@ body {
 @keyframes global-pull-refresh-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-pull-refresh-indicator,
+  .global-pull-refresh-icon {
+    transition: none;
+  }
+  .global-pull-refresh-icon.is-spinning {
+    animation-duration: 1.6s;
+  }
 }
 
 /* A quiet entrance gives route changes continuity without making the
