@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddTravelerInfoExplorerFeaturedTrips1791200000000
-  implements MigrationInterface
-{
+export class AddTravelerInfoExplorerFeaturedTrips1791200000000 implements MigrationInterface {
   name = "AddTravelerInfoExplorerFeaturedTrips1791200000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
