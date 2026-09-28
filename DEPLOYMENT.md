@@ -32,6 +32,15 @@ window. Two options, both fine for this:
   (`npm run start --workspace=web -- -p $PORT`), since it's the second app
   in this repo and root auto-detection can only point at one.
 
+  Video thumbnail generation (`api/src/uploads/video-thumbnail.ts`) shells
+  out to `ffmpeg`, which neither Railpack's auto-detected build nor Render's
+  native Node runtime installs by default. Add an explicit build step that
+  installs it (e.g. an `apt.txt`/Nixpacks config listing `ffmpeg`, or a
+  custom build command that runs `apt-get install -y ffmpeg` first — see
+  `render.yaml`'s own `api` service for the exact guarded install this repo
+  uses in CI) before relying on that feature in production; without it,
+  video uploads still succeed, just with no generated poster image.
+
   Railway's free/Hobby tier caps a project at 5 services, and `api` + `web`
   already use 2 — adding Railway's own one-click Postgres plugin (a 3rd
   service) requires their paid Pro plan. If you don't want to pay just to

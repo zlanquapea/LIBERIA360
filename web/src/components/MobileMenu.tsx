@@ -39,7 +39,9 @@ export function MobileMenu() {
     document.body.style.overflow = "hidden";
     const focusFrame = requestAnimationFrame(() => {
       drawerRef.current
-        ?.querySelector<HTMLElement>("a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])")
+        ?.querySelector<HTMLElement>(
+          "a[href], button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        )
         ?.focus();
     });
     function onKey(event: KeyboardEvent) {
@@ -50,7 +52,7 @@ export function MobileMenu() {
       if (event.key !== "Tab" || !drawerRef.current) return;
       const focusable = Array.from(
         drawerRef.current.querySelectorAll<HTMLElement>(
-          "a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])",
+          "a[href], button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
         ),
       );
       if (focusable.length === 0) return;

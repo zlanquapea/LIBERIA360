@@ -37,7 +37,15 @@ services:
     # DEPLOYMENT.md's note on why that matters if this ever scales past
     # one instance. `migration:run` only applies pending migrations, so
     # re-running it on every deploy is safe.
-    buildCommand: npm ci && npm run build --workspace=api && npm run migration:run --workspace=api
+    #
+    # ffmpeg (video thumbnail generation, uploads/video-thumbnail.ts):
+    # Render's native Node runtime doesn't ship it, and the build image
+    # has no ffmpeg-static postinstall to fall back on anymore (that
+    # package's own GitHub-hosted download was the flaky dependency this
+    # setup removed — see that file's own doc comment). Same guarded
+    # install as this repo's own CI workflow (.github/workflows/ci.yml)
+    # uses for the same reason.
+    buildCommand: npm ci && (command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)) && npm run build --workspace=api && npm run migration:run --workspace=api
     startCommand: npm run start:prod --workspace=api
     healthCheckPath: /health
     envVars:

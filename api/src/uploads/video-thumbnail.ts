@@ -10,7 +10,15 @@ const execFileAsync = promisify(execFile);
 // use the operating system's ffmpeg. The previous ffmpeg-static package ran a
 // postinstall download from GitHub, which made `npm ci` (and therefore every
 // CI/deploy build) fail whenever that release host was unavailable or blocked.
-const ffmpegPath = process.env.FFMPEG_PATH?.trim() || "ffmpeg";
+//
+// Read at call time, not module load: this file (via UploadsModule) is
+// imported before AppModule's ConfigModule.forRoot() call actually runs (JS
+// hoists all of a module's own imports above its body), so a FFMPEG_PATH set
+// only in api/.env — as opposed to already exported by the parent process —
+// would otherwise still be unset when a module-level constant read it.
+function resolveFfmpegPath(): string {
+  return process.env.FFMPEG_PATH?.trim() || "ffmpeg";
+}
 
 /** Extract a lightweight poster without making browser clients download the video first. */
 export async function extractVideoThumbnail(input: Buffer): Promise<Buffer> {
@@ -20,7 +28,7 @@ export async function extractVideoThumbnail(input: Buffer): Promise<Buffer> {
   try {
     await writeFile(inputPath, input);
     await execFileAsync(
-      ffmpegPath,
+      resolveFfmpegPath(),
       [
         "-hide_banner",
         "-loglevel",
