@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const PULL_TRIGGER_PX = 68;
+const PULL_TRIGGER_PX = 52;
 const MAX_PULL_PX = 104;
-const PULL_RESISTANCE = 0.55;
+const PULL_RESISTANCE = 0.75;
 const AXIS_LOCK_PX = 8;
 const RELOAD_DELAY_MS = 260;
 
@@ -20,7 +20,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     target instanceof Element &&
     Boolean(
       target.closest(
-        "a, button, input, select, textarea, summary, [contenteditable='true'], [role='button'], [data-no-pull-refresh]",
+        "button, input, select, textarea, summary, [contenteditable='true'], [role='button'], [data-no-pull-refresh]",
       ),
     )
   );
@@ -45,10 +45,6 @@ function hasScrollableParentAtOffset(target: EventTarget | null): boolean {
 function canStartPull(target: EventTarget | null): boolean {
   if (document.body.classList.contains("messaging-chat")) return false;
   if (isInteractiveTarget(target)) return false;
-  // CreatorFeed owns its own data refresh and indicator.
-  if (target instanceof Element && target.closest(".creator-feed-pull-shell")) {
-    return false;
-  }
   if (hasScrollableParentAtOffset(target)) return false;
   return window.scrollY <= 0 && document.documentElement.scrollTop <= 0;
 }
