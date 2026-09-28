@@ -11,9 +11,9 @@ function setup() {
     createdAt: Date;
   }> = [];
   const places = [
-    { id: "place-1", slug: "ceecee-beach" },
-    { id: "place-2", slug: "sapo-national-park" },
-    { id: "place-3", slug: "providence-island" },
+    { id: "place-1", slug: "ceecee-beach", category: { slug: "beaches" } },
+    { id: "place-2", slug: "sapo-national-park", category: { slug: "nature" } },
+    { id: "place-3", slug: "providence-island", category: { slug: "nature" } },
   ];
 
   const savedPlaceRepo = {
@@ -72,11 +72,13 @@ function setup() {
 }
 
 describe("SavedPlacesService", () => {
-  describe("savePlace / unsavePlace / listSlugsForUser", () => {
+  describe("savePlace / unsavePlace / listForUser", () => {
     it("saves a place and lists it back by slug", async () => {
       const { service } = setup();
       await service.savePlace(USER_ID, "place-1");
-      expect(await service.listSlugsForUser(USER_ID)).toEqual(["ceecee-beach"]);
+      expect((await service.listForUser(USER_ID)).slugs).toEqual([
+        "ceecee-beach",
+      ]);
     });
 
     it("rejects saving an unknown place", async () => {
@@ -97,7 +99,7 @@ describe("SavedPlacesService", () => {
       const { service } = setup();
       await service.savePlace(USER_ID, "place-1");
       await service.unsavePlace(USER_ID, "place-1");
-      expect(await service.listSlugsForUser(USER_ID)).toEqual([]);
+      expect((await service.listForUser(USER_ID)).slugs).toEqual([]);
     });
 
     it("unsaving something never saved is a no-op, not an error", async () => {
@@ -111,7 +113,18 @@ describe("SavedPlacesService", () => {
       const { service } = setup();
       await service.savePlace(USER_ID, "place-1");
       await service.savePlace("someone-else", "place-2");
-      expect(await service.listSlugsForUser(USER_ID)).toEqual(["ceecee-beach"]);
+      expect((await service.listForUser(USER_ID)).slugs).toEqual([
+        "ceecee-beach",
+      ]);
+    });
+
+    it("returns the distinct categories of the saved places — PersonalizedPicksSection's 'smarter For You' signal", async () => {
+      const { service } = setup();
+      await service.savePlace(USER_ID, "place-2"); // nature
+      await service.savePlace(USER_ID, "place-3"); // nature (duplicate category)
+      await service.savePlace(USER_ID, "place-1"); // beaches
+      const { categories } = await service.listForUser(USER_ID);
+      expect(categories.sort()).toEqual(["beaches", "nature"]);
     });
   });
 

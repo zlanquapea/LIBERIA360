@@ -13,12 +13,13 @@ test('a signed-in guest can request a booking with a claimed business through th
   await loginAs(page, guest);
 
   await page.goto(`/places/${place.slug}`);
-  // "Request to book" is a link to a dedicated /businesses/:slug/book page
-  // now (see BookingRequestSection's `mode="link"`), not an inline
-  // expanding form — the multi-field form has nowhere near enough room in
-  // the Directions/Call/WhatsApp/Book action-tile grid it used to expand
-  // into.
-  await page.getByRole('link', { name: 'Request to book' }).click();
+  // The Directions/Call/WhatsApp/Book action-tile grid's "Book" tile is a
+  // link to a dedicated /businesses/:slug/book page (PlaceKeyFacts renders
+  // it as a plain short-label link, distinct from BookingRequestSection's
+  // own "Request to book" copy used elsewhere, e.g. StickyBookingBar) —
+  // not an inline expanding form, which has nowhere near enough room in
+  // that compact tile grid to expand into.
+  await page.getByRole('link', { name: 'Book', exact: true }).click();
   await expect(page).toHaveURL(/\/businesses\/.+\/book$/);
 
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

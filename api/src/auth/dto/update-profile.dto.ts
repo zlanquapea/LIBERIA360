@@ -1,6 +1,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -50,4 +51,9 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(500)
   profileImage?: string | null;
+
+  // Explorer profile opt-in — see User.explorerProfilePublic's doc comment.
+  @IsOptional()
+  @IsBoolean()
+  explorerProfilePublic?: boolean;
 }

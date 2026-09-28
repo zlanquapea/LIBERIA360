@@ -481,6 +481,13 @@ export function getPublicTrips(
   );
 }
 
+// "Trip Ideas" — curated starter itineraries, server-fetched for the
+// homepage teaser rail (same reasoning as getPublicTrips above: a build-
+// time-unreachable API must fall back to an empty list, not fail the page).
+export function getFeaturedItineraries(): Promise<PublicTripSummary[]> {
+  return apiFetch<PublicTripSummary[]>("/itineraries/featured", undefined, []);
+}
+
 export interface CarListingsQuery {
   search?: string;
   category?: CarCategory;

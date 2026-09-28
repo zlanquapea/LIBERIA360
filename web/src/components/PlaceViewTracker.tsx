@@ -13,7 +13,7 @@ import type { Place } from "@/lib/types";
 export function PlaceViewTracker({
   place,
 }: {
-  place: Pick<Place, "id" | "slug" | "name" | "city" | "county" | "images">;
+  place: Pick<Place, "id" | "slug" | "name" | "city" | "county" | "images" | "category">;
 }) {
   useEffect(() => {
     recordAnalyticsEvent(place.id, "view");
@@ -24,6 +24,7 @@ export function PlaceViewTracker({
       title: place.name,
       subtitle: `${place.city}, ${place.county.name}`,
       imageUrl: place.images[0] ? resolveImageUrl(place.images[0]) : null,
+      categorySlug: place.category?.slug,
     });
   }, [place]);
 

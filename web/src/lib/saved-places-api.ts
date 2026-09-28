@@ -40,3 +40,12 @@ export function syncSavedPlaces(token: string, slugs: string[]): Promise<{ slugs
     body: JSON.stringify({ slugs }),
   });
 }
+
+// The account's saved places plus the distinct categories they belong to
+// — PersonalizedPicksSection's "smarter For You" signal (a real,
+// already-collected behavior signal, not new tracking).
+export function getMySavedPlaces(token: string): Promise<{ slugs: string[]; categories: string[] }> {
+  return apiRequest<{ slugs: string[]; categories: string[] }>('/saved-places', {
+    headers: authHeader(token),
+  });
+}
