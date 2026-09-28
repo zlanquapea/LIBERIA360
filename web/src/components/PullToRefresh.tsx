@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 const PULL_TRIGGER_PX = 68;
 const MAX_PULL_PX = 104;
@@ -168,35 +167,25 @@ export function PullToRefresh() {
   }, []);
 
   const visible = refreshing || pullDistance > 0;
-  const progress = Math.min(1, pullDistance / PULL_TRIGGER_PX);
   const ready = pullDistance >= PULL_TRIGGER_PX;
 
   return (
     <div
-      className={`global-pull-refresh-indicator ${visible ? "is-visible" : ""} ${refreshing ? "is-refreshing" : ""} ${ready ? "is-ready" : ""}`}
+      className={`global-pull-refresh-indicator ${visible ? "is-visible" : ""} ${refreshing ? "is-refreshing" : ""}`}
       style={{
         opacity: visible ? 1 : 0,
-        transform: `translate3d(0, ${visible ? Math.min(52, pullDistance * 0.72) : 0}px, 0)`,
+        transform: `translate3d(0, ${visible ? Math.min(74, pullDistance * 0.9) : 0}px, 0)`,
       }}
       aria-live="polite"
       aria-hidden={!visible}
     >
-      <span className="global-pull-refresh-pill">
-        <ArrowPathIcon
-          aria-hidden
-          className={`global-pull-refresh-icon ${refreshing ? "is-spinning" : ""}`}
-          style={
-            !refreshing
-              ? { transform: `rotate(${pullDistance * 3}deg)` }
-              : undefined
-          }
-        />
-        <span>{refreshing ? "Refreshing…" : ready ? "Release to refresh" : "Pull to refresh"}</span>
-        {!refreshing && (
-          <span className="global-pull-refresh-progress" aria-hidden>
-            {Math.round(progress * 100)}%
-          </span>
-        )}
+      <span
+        className={`global-pull-refresh-spinner ${refreshing ? "is-spinning" : ""}`}
+        style={!refreshing ? { transform: `rotate(${pullDistance * 3}deg)` } : undefined}
+        aria-hidden
+      />
+      <span className="sr-only">
+        {refreshing ? "Refreshing" : ready ? "Release to refresh" : "Pull to refresh"}
       </span>
     </div>
   );

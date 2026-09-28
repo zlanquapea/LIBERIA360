@@ -110,55 +110,30 @@ body {
    the top of the document, so nested scroll areas and horizontal carousels
    retain their native touch behavior. */
 .global-pull-refresh-indicator {
-  align-items: flex-start;
-  color: var(--brand-700);
+  align-items: center;
   display: flex;
   justify-content: center;
-  overflow: hidden;
-  padding-top: max(.55rem, env(safe-area-inset-top));
+  height: 2.7rem;
+  padding-top: env(safe-area-inset-top);
   position: fixed;
   left: 0;
   right: 0;
   top: 0;
   z-index: 3500;
   pointer-events: none;
-  transition: opacity 180ms ease-out, transform 180ms cubic-bezier(.23, 1, .32, 1);
+  transition: opacity 160ms ease-out, transform 160ms cubic-bezier(.23, 1, .32, 1);
 }
-.global-pull-refresh-pill {
-  align-items: center;
-  background: color-mix(in srgb, var(--surface-card) 92%, var(--brand-100));
-  border: 1px solid color-mix(in srgb, var(--brand-300) 55%, transparent);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgb(0 42 52 / .13);
-  display: inline-flex;
-  font-size: .7rem;
-  font-weight: 700;
-  gap: .45rem;
-  letter-spacing: .02em;
-  min-height: 2.2rem;
-  padding: .38rem .68rem .38rem .52rem;
-  white-space: nowrap;
-}
-.global-pull-refresh-indicator.is-refreshing {
-  color: var(--brand-800);
-}
-.global-pull-refresh-indicator.is-ready .global-pull-refresh-pill {
-  background: color-mix(in srgb, var(--brand-100) 80%, var(--surface-card));
-  border-color: var(--brand-500);
-}
-.global-pull-refresh-icon {
-  height: 1rem;
+.global-pull-refresh-spinner {
+  border: 4px solid rgb(148 163 184 / .46);
+  border-radius: 50%;
+  height: 1.85rem;
+  width: 1.85rem;
   transform-origin: center;
-  transition: transform 120ms ease-out;
-  width: 1.05rem;
+  transition: transform 100ms linear;
 }
-.global-pull-refresh-progress {
-  color: var(--brand-600);
-  font-variant-numeric: tabular-nums;
-  opacity: .78;
-}
-.global-pull-refresh-icon.is-spinning {
-  animation: global-pull-refresh-spin .8s linear infinite;
+.global-pull-refresh-spinner.is-spinning {
+  border-right-color: rgb(100 116 139 / .9);
+  animation: global-pull-refresh-spin .75s linear infinite;
 }
 @keyframes global-pull-refresh-spin {
   from { transform: rotate(0deg); }
@@ -167,10 +142,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .global-pull-refresh-indicator,
-  .global-pull-refresh-icon {
+  .global-pull-refresh-spinner {
     transition: none;
   }
-  .global-pull-refresh-icon.is-spinning {
+  .global-pull-refresh-spinner.is-spinning {
     animation-duration: 1.6s;
   }
 }
