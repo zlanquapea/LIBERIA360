@@ -39,13 +39,21 @@ services:
     # re-running it on every deploy is safe.
     #
     # ffmpeg (video thumbnail generation, uploads/video-thumbnail.ts):
-    # Render's native Node runtime doesn't ship it, and the build image
-    # has no ffmpeg-static postinstall to fall back on anymore (that
-    # package's own GitHub-hosted download was the flaky dependency this
-    # setup removed — see that file's own doc comment). Same guarded
-    # install as this repo's own CI workflow (.github/workflows/ci.yml)
-    # uses for the same reason.
-    buildCommand: npm ci && (command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)) && npm run build --workspace=api && npm run migration:run --workspace=api
+    # Render's native Node runtime doesn't ship it, has no root access to
+    # apt-get one in (unlike this repo's own CI workflow, which can —
+    # see .github/workflows/ci.yml — a GitHub Actions runner grants
+    # passwordless sudo that Render's native runtime deliberately
+    # doesn't: https://render.com/docs/native-runtimes#native-runtime-limitations),
+    # and the build image has no ffmpeg-static postinstall to fall back
+    # on anymore (that package's own GitHub-hosted download was the
+    # flaky dependency this setup removed — see that file's own doc
+    # comment). A `sudo apt-get install` here would just fail and abort
+    # every deploy. Until this moves to Render's Docker runtime with a
+    # Dockerfile that installs ffmpeg, video uploads still succeed on
+    # this Blueprint — they just come back with `thumbnailUrl: null`
+    # (the controllers already handle a missing binary as a soft
+    # failure, not an upload error).
+    buildCommand: npm ci && npm run build --workspace=api && npm run migration:run --workspace=api
     startCommand: npm run start:prod --workspace=api
     healthCheckPath: /health
     envVars:

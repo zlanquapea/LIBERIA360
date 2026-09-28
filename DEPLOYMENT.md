@@ -34,12 +34,18 @@ window. Two options, both fine for this:
 
   Video thumbnail generation (`api/src/uploads/video-thumbnail.ts`) shells
   out to `ffmpeg`, which neither Railpack's auto-detected build nor Render's
-  native Node runtime installs by default. Add an explicit build step that
-  installs it (e.g. an `apt.txt`/Nixpacks config listing `ffmpeg`, or a
-  custom build command that runs `apt-get install -y ffmpeg` first — see
-  `render.yaml`'s own `api` service for the exact guarded install this repo
-  uses in CI) before relying on that feature in production; without it,
-  video uploads still succeed, just with no generated poster image.
+  native Node runtime installs by default, and neither platform's native
+  runtime grants the root access a plain `apt-get install` needs (unlike
+  this repo's own CI workflow, which runs on a GitHub Actions runner with
+  passwordless sudo — see `.github/workflows/ci.yml`). On Railway, add an
+  `apt.txt` (or equivalent Nixpacks config) listing `ffmpeg` — Nixpacks'
+  own supported mechanism for extra system packages, no root needed. On
+  Render, this means switching the `api` service to Render's Docker
+  runtime with a Dockerfile that installs `ffmpeg` (see `render.yaml`'s
+  own comment on its `api` service for why the native runtime can't do
+  this at all). Without either, video uploads still succeed — the
+  controllers already treat a missing binary as a soft failure — just
+  with no generated poster image (`thumbnailUrl: null`).
 
   Railway's free/Hobby tier caps a project at 5 services, and `api` + `web`
   already use 2 — adding Railway's own one-click Postgres plugin (a 3rd

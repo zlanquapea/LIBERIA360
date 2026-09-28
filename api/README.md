@@ -16,6 +16,8 @@ sudo -u postgres createuser liberia360 --pwprompt   # password: liberia360
 sudo -u postgres createdb liberia360 -O liberia360
 ```
 
+Also install `ffmpeg` on `PATH` (e.g. `apt-get install ffmpeg` / `brew install ffmpeg`) if you'll be testing video uploads — `uploads/video-thumbnail.ts` shells out to it to generate a poster image, and silently returns `thumbnailUrl: null` for a video without it (no error, no video-upload failure) rather than requiring it to run this API at all.
+
 ## Run
 
 ```bash
