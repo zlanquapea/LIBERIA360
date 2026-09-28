@@ -10,6 +10,7 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { MapPinIcon } from '@heroicons/react/20/solid';
 // Product review readout (Aug 25, 2026), "homepage hierarchy": "the
 // homepage currently has too many things competing for attention... I
 // would make search and discovery the primary focus," plus specifically
@@ -195,7 +196,7 @@ import { StarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 // "quick actions" Plan a Trip card (home.planATrip, further down this
 // page) is untouched — this just gives it a second, higher-visibility
 // entry point.
-import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getPlaces, getPlatformStats, getPublicTrips } from '@/lib/api';
+import { getActiveAdvertisements, getActiveSponsoredPlacements, getBusinesses, getCategories, getCounties, getEvents, getFeaturedItineraries, getPlaces, getPlatformStats, getPublicTrips } from '@/lib/api';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { CategoryGrid } from '@/components/CategoryGrid';
 import { CountyGrid } from '@/components/CountyGrid';
@@ -205,12 +206,16 @@ import { FeaturedPlacementsCarousel } from '@/components/FeaturedPlacementsCarou
 import { PublicTripCard } from '@/components/PublicTripCard';
 import { HeroBackground } from '@/components/HeroBackground';
 import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
+import { SafeImage } from '@/components/SafeImage';
+import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
+import { gradientForCategory } from '@/lib/category-colors';
 import { getTranslations } from 'next-intl/server';
 
 const TRENDING_PLACES_LIMIT = 10;
 const DISCOVER_THIS_WEEK_LIMIT = 8;
 const UPCOMING_EVENTS_LIMIT = 8;
 const COMMUNITY_TRIPS_LIMIT = 6;
+const TRIP_IDEAS_LIMIT = 6;
 
 // Home screen: search bar, category shortcuts, trending places, near-you
 // teaser, map entry point — per Tech Spec §4.1 screen inventory.
@@ -221,7 +226,7 @@ const COMMUNITY_TRIPS_LIMIT = 6;
 // page reuses rather than duplicating, e.g. "Near Me" and "View all").
 export default async function Home() {
   const t = await getTranslations();
-  const [categories, counties, trending, discoverThisWeek, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips, platformStats] = await Promise.all([
+  const [categories, counties, trending, discoverThisWeek, upcomingEvents, sponsoredPlacements, ads, businesses, communityTrips, tripIdeas, platformStats] = await Promise.all([
     getCategories(),
     getCounties(),
     getPlaces({ sort: 'featured', limit: TRENDING_PLACES_LIMIT }),
@@ -238,10 +243,16 @@ export default async function Home() {
     // the most recently-created public trips, same source the /trips/community
     // page pulls its full list from.
     getPublicTrips({ limit: COMMUNITY_TRIPS_LIMIT }),
+    // "Trip Ideas" — admin-curated starter itineraries (see
+    // ItinerariesService.setFeaturedTemplate), a teaser rail distinct from
+    // communityTrips above: these are clonable starting points, not trips
+    // to request to join.
+    getFeaturedItineraries(),
     // Hero stats line's "join N travelers" — see the hero rebuild doc
     // comment above for why this replaced the counties-covered count.
     getPlatformStats(),
   ]);
+  const featuredTripIdeas = tripIdeas.slice(0, TRIP_IDEAS_LIMIT);
 
   // Rollout order, not alphabetical — the first tab is the flagship county
   // (Greater Monrovia today) and gets the "active" underline treatment,
@@ -484,6 +495,58 @@ export default async function Home() {
                 <div key={trip.id} className="w-64 shrink-0 sm:w-72">
                   <PublicTripCard trip={trip} />
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {featuredTripIdeas.length > 0 && (
+          <section aria-labelledby="trip-ideas-heading" className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h2 id="trip-ideas-heading" className="font-display text-lg font-semibold text-slate-900 dark:text-slate-50">
+                {t('home.tripIdeas')}
+              </h2>
+              <Link
+                href="/trip-ideas"
+                className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+              >
+                {t('common.seeAll')}
+                <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {featuredTripIdeas.map((trip) => (
+                <Link
+                  key={trip.id}
+                  href="/trip-ideas"
+                  className="group flex w-64 shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover sm:w-72"
+                >
+                  <div className="h-28 overflow-hidden">
+                    <SafeImage
+                      src={trip.coverImage ? resolveImageUrl(trip.coverImage) : null}
+                      thumbSrc={trip.coverImage ? resolveThumbUrl(trip.coverImage) : null}
+                      alt=""
+                      className="h-28 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      fallback={
+                        <div
+                          aria-hidden
+                          className="flex h-28 items-center justify-center text-4xl"
+                          style={{ backgroundImage: gradientForCategory(trip.destination?.category.slug ?? 'default') }}
+                        >
+                          <MapPinIcon className="h-8 w-8 text-white/90" />
+                        </div>
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1 p-3">
+                    <h3 className="font-display font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300">
+                      {trip.title}
+                    </h3>
+                    {trip.featuredCategory && (
+                      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{trip.featuredCategory}</p>
+                    )}
+                  </div>
+                </Link>
               ))}
             </div>
           </section>

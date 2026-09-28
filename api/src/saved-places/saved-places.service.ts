@@ -14,17 +14,32 @@ export class SavedPlacesService {
   ) {}
 
   /** GET /saved-places — the account's saved list, as slugs (same shape
-   * `useSavedPlaces` already keeps in localStorage), newest first. */
-  async listSlugsForUser(userId: string): Promise<string[]> {
+   * `useSavedPlaces` already keeps in localStorage), newest first, plus
+   * the distinct categories those places belong to (PersonalizedPicksSection's
+   * "smarter For You" signal — a real, already-collected behavior signal,
+   * not a new tracking mechanism). */
+  async listForUser(
+    userId: string,
+  ): Promise<{ slugs: string[]; categories: string[] }> {
     const rows = await this.savedPlaceRepo.find({
       where: { userId },
-      relations: { place: true },
+      relations: { place: { category: true } },
       order: { createdAt: "DESC" },
     });
     // A place can be hard-deleted out from under a saved row (cascades the
     // FK, so this filter is just defensive — relations: {place: true}
     // can still come back null mid-transaction on some drivers).
-    return rows.filter((row) => row.place).map((row) => row.place.slug);
+    const places = rows.filter((row) => row.place).map((row) => row.place);
+    return {
+      slugs: places.map((place) => place.slug),
+      categories: Array.from(
+        new Set(
+          places
+            .map((place) => place.category?.slug)
+            .filter((s): s is string => !!s),
+        ),
+      ),
+    };
   }
 
   /** POST /saved-places/:placeId — idempotent via `.upsert()` on the
@@ -69,6 +84,6 @@ export class SavedPlacesService {
         );
       }
     }
-    return this.listSlugsForUser(userId);
+    return (await this.listForUser(userId)).slugs;
   }
 }

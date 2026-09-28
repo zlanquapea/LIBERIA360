@@ -8,6 +8,10 @@ export interface RecentlyViewedItem {
   subtitle: string | null;
   imageUrl: string | null;
   viewedAt: string;
+  // Added for PersonalizedPicksSection's "smarter For You" signal — optional
+  // since items saved before this field existed simply lack it (no
+  // migration needed, see readItems' type guard below).
+  categorySlug?: string;
 }
 
 const STORAGE_KEY = "liberia360:recently-viewed";
@@ -31,7 +35,8 @@ function readItems(): RecentlyViewedItem[] {
         typeof item.title === "string" &&
         (item.subtitle === null || typeof item.subtitle === "string") &&
         (item.imageUrl === null || typeof item.imageUrl === "string") &&
-        typeof item.viewedAt === "string",
+        typeof item.viewedAt === "string" &&
+        (item.categorySlug === undefined || typeof item.categorySlug === "string"),
     );
   } catch {
     return [];

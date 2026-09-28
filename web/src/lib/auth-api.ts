@@ -69,6 +69,9 @@ export interface UpdateProfileInput {
   interests?: string[];
   // A URL from uploadImage(), or null to remove the current photo.
   profileImage?: string | null;
+  // "Explorer" opt-in public profile toggle — see VisitedPlace's doc
+  // comment. False by default; only meaningful once set true.
+  explorerProfilePublic?: boolean;
 }
 
 export function updateProfile(

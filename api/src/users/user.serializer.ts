@@ -12,6 +12,7 @@ export interface PublicUser {
   isSuperAdmin: boolean;
   travelerType: User["travelerType"];
   interests: string[];
+  explorerProfilePublic: boolean;
   twoFactorEnabled: boolean;
   emailVerified: boolean;
   createdAt: Date;
@@ -54,6 +55,7 @@ export function toPublicUser(user: User): PublicUser {
     isSuperAdmin: user.isSuperAdmin,
     travelerType: user.travelerType,
     interests: user.interests,
+    explorerProfilePublic: user.explorerProfilePublic,
     twoFactorEnabled: user.twoFactorEnabled,
     emailVerified: user.emailVerified,
     createdAt: user.createdAt,

@@ -21,8 +21,10 @@ import { UpdatePartySizeDto } from "./dto/update-party-size.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { AdminGuard } from "../auth/guards/admin.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
+import { SetFeaturedTemplateDto } from "./dto/set-featured-template.dto";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 
 // No class-level guard, unlike before — "Trips You Can Join" (Section 5)
@@ -63,6 +65,14 @@ export class ItinerariesController {
   @Get("public/:id")
   findPublicTripById(@Param("id") id: string) {
     return this.itinerariesService.findPublicTripById(id);
+  }
+
+  /** "Trip Ideas" (curated starter itineraries) — public, unauthenticated,
+   * and declared before ":id" for the same routing reason as "public"
+   * above. */
+  @Get("featured")
+  getFeaturedItineraries() {
+    return this.itinerariesService.getFeaturedItineraries();
   }
 
   @Get()
@@ -119,6 +129,28 @@ export class ItinerariesController {
   @UseGuards(JwtAuthGuard)
   duplicateItinerary(@CurrentUser() user: User, @Param("id") id: string) {
     return this.itinerariesService.duplicateItinerary(user.id, id);
+  }
+
+  /** Admin-only, and only on a trip the acting admin themself owns — see
+   * ItinerariesService.setFeaturedTemplate. */
+  @Patch(":id/featured")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  setFeaturedTemplate(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: SetFeaturedTemplateDto,
+  ) {
+    return this.itinerariesService.setFeaturedTemplate(user.id, id, dto);
+  }
+
+  /** Any signed-in traveler — clones a curated starter itinerary into
+   * their own trips. */
+  @Post(":id/use-template")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  useFeaturedItinerary(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.useFeaturedItinerary(user.id, id);
   }
 
   /** Owner-only, permanent — deletes the trip and everyone's access to it. */

@@ -9,6 +9,7 @@ import {
   LifebuoyIcon,
   ViewfinderCircleIcon,
   StarIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 
 export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -33,6 +34,7 @@ export const SITE_NAVIGATION: SiteNavItem[] = [
   { href: "/counties", labelKey: "counties", icon: MapPinIcon },
   { href: "/events", labelKey: "events", icon: CalendarDaysIcon },
   { href: "/car-rentals", labelKey: "carRentals", icon: TruckIcon },
+  { href: "/travel-info", labelKey: "travelInfo", icon: GlobeAltIcon },
   { href: "/creators", labelKey: "creators", icon: UserGroupIcon },
   { href: "/saved", labelKey: "saved", icon: BookmarkIcon },
   { href: "/help", labelKey: "help", icon: LifebuoyIcon },

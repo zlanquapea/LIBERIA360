@@ -95,6 +95,14 @@ export class User {
   @Column({ type: "text", array: true, default: () => "'{}'" })
   interests: string[];
 
+  // Opt-in, private by default — same posture as Itinerary's own
+  // TripVisibility defaulting PRIVATE: an account's Explorer progress
+  // (visited places, badges) is only reachable at GET /explorers/:userId
+  // once the account deliberately flips this, never by omission. Edited
+  // via PATCH /auth/me alongside everything else in UpdateProfileDto.
+  @Column({ name: "explorer_profile_public", type: "boolean", default: false })
+  explorerProfilePublic: boolean;
+
   // AES-256-GCM encrypted (see auth/two-factor-crypto.ts) — never stored
   // or returned as plaintext. Null until the user starts 2FA setup.
   @Column({ name: "two_factor_secret", type: "text", nullable: true })

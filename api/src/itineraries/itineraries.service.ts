@@ -172,6 +172,10 @@ export interface PublicTripSummary {
   // disable itself once requestToJoin would 409 anyway.
   maxParticipants: number | null;
   createdAt: Date;
+  // Set only on a curated "Trip Ideas" template (see
+  // ItinerariesService.setFeaturedTemplate) — null on every ordinary
+  // community trip findPublicTrips returns.
+  featuredCategory: string | null;
 }
 
 export interface PublicTripDetail extends PublicTripSummary {
@@ -1400,6 +1404,7 @@ export class ItinerariesService {
       participantCount: participantCount + 1,
       maxParticipants: itinerary.maxParticipants,
       createdAt: itinerary.createdAt,
+      featuredCategory: itinerary.featuredCategory,
     };
   }
 
@@ -1429,6 +1434,11 @@ export class ItinerariesService {
       .andWhere("(itinerary.endDate IS NULL OR itinerary.endDate >= :now)", {
         now: new Date(),
       })
+      // A curated "Trip Ideas" template lives on a separate surface (see
+      // getFeaturedItineraries) — cloning a template is a different action
+      // than requesting to join *this* trip's own chat/collaborator list,
+      // so it's excluded here even though it's also PUBLIC.
+      .andWhere("itinerary.isFeaturedTemplate = false")
       .orderBy("itinerary.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
@@ -1471,6 +1481,118 @@ export class ItinerariesService {
     const resolvedStops = await this.resolveStopReferences(itinerary.stops);
     const summary = await this.toPublicSummary(itinerary);
     return { ...summary, stops: this.mapStops(itinerary, resolvedStops) };
+  }
+
+  // ---------------------------------------------------------------------
+  // Curated "Trip Ideas" — an admin opts one of their OWN trips into a
+  // public gallery of clonable starter itineraries (restricting this to
+  // an admin's own trips sidesteps consent questions around re-purposing
+  // someone else's private trip content).
+  // ---------------------------------------------------------------------
+
+  /** PATCH /itineraries/:id/featured — admin-only, and only on a trip the
+   * acting admin themself owns (getOwned already 403s a non-owner
+   * admin/404s a stranger). Forces visibility to PUBLIC when turning
+   * featuring on — there'd be no point in an unreachable "public"
+   * template — but never flips it back to PRIVATE when turning featuring
+   * off, since the admin may still want that trip visible on
+   * /trips/community afterward. */
+  async setFeaturedTemplate(
+    actingUserId: string,
+    itineraryId: string,
+    dto: {
+      isFeaturedTemplate: boolean;
+      featuredCategory?: string;
+      featuredOrder?: number;
+    },
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getOwned(actingUserId, itineraryId);
+    itinerary.isFeaturedTemplate = dto.isFeaturedTemplate;
+    if (dto.isFeaturedTemplate) {
+      itinerary.visibility = TripVisibility.PUBLIC;
+      itinerary.featuredCategory = dto.featuredCategory ?? null;
+      itinerary.featuredOrder = dto.featuredOrder ?? null;
+    }
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(actingUserId, itineraryId);
+  }
+
+  /** GET /itineraries/featured — public, unauthenticated. Every curated
+   * starter itinerary, grouped for the /trip-ideas gallery by whichever
+   * featuredCategory an admin gave it. */
+  async getFeaturedItineraries(): Promise<PublicTripSummary[]> {
+    // Same leftJoinAndSelect shape as findPublicTrips — destination is an
+    // eager relation on Itinerary, but its own category/county aren't
+    // eager on Place, so those still need an explicit join here too.
+    const rows = await this.itineraryRepo
+      .createQueryBuilder("itinerary")
+      .leftJoinAndSelect("itinerary.destination", "destination")
+      .leftJoinAndSelect("destination.category", "category")
+      .leftJoinAndSelect("destination.county", "county")
+      .where("itinerary.isFeaturedTemplate = :isFeaturedTemplate", {
+        isFeaturedTemplate: true,
+      })
+      .orderBy("itinerary.featuredCategory", "ASC")
+      .addOrderBy("itinerary.featuredOrder", "ASC")
+      .getMany();
+    return Promise.all(rows.map((r) => this.toPublicSummary(r)));
+  }
+
+  /** The lookup a "clone this starter itinerary" action needs — deliberately
+   * NOT getOwned/getEditable (both check ownership/collaboration with no
+   * visibility check at all, the wrong gate for "anyone can use a public
+   * template"). 404s for a nonexistent id, a real trip that just isn't a
+   * public featured template, or one that's been un-featured since — same
+   * "don't confirm a random id exists to someone with no access" default
+   * as everywhere else in this service. */
+  private async getUsableTemplate(id: string): Promise<Itinerary> {
+    const itinerary = await this.itineraryRepo.findOne({
+      where: {
+        id,
+        visibility: TripVisibility.PUBLIC,
+        isFeaturedTemplate: true,
+      },
+    });
+    if (!itinerary) {
+      throw new NotFoundException(`Trip idea "${id}" not found`);
+    }
+    return itinerary;
+  }
+
+  /** POST /itineraries/:id/use-template — clones a curated starter
+   * itinerary into a fresh trip owned by the caller, same field-copy as
+   * duplicateItinerary. Keeps the source's own title as-is (not "Copy of
+   * X" — this is "start your own copy of a suggested trip," not literally
+   * duplicating someone's personal trip) and, like duplicateItinerary,
+   * always starts PRIVATE with no collaborators, no join-capacity cap,
+   * and never carries isFeaturedTemplate/featuredCategory/featuredOrder
+   * onto the copy — those are curation metadata for the *template*, not
+   * something every clone of it should also carry. */
+  async useFeaturedItinerary(
+    userId: string,
+    templateId: string,
+  ): Promise<ItineraryResponse> {
+    const source = await this.getUsableTemplate(templateId);
+    const copy = await this.itineraryRepo.save(
+      this.itineraryRepo.create({
+        userId,
+        title: source.title,
+        kind: source.kind,
+        durationDays: source.durationDays,
+        budgetBand: source.budgetBand,
+        interests: [...source.interests],
+        stops: source.stops.map((stop) => ({ ...stop })),
+        destinationPlaceId: source.destinationPlaceId,
+        visibility: TripVisibility.PRIVATE,
+        description: source.description,
+        coverImage: source.coverImage,
+        startDate: source.startDate,
+        endDate: source.endDate,
+        partySize: source.partySize,
+        maxParticipants: null,
+      }),
+    );
+    return this.findOne(userId, copy.id);
   }
 
   // ---------------------------------------------------------------------

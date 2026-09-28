@@ -19,6 +19,7 @@ import { isOpenAt } from '@/lib/opening-hours';
 import { iconForAmenity } from '@/lib/amenities';
 import { ContactLink } from './ContactLink';
 import { SaveButton } from './SaveButton';
+import { MarkVisitedButton } from './MarkVisitedButton';
 import { ReportButton } from './ReportButton';
 import { BookingRequestSection } from './BookingRequestSection';
 import { StickyBookingBar } from './StickyBookingBar';
@@ -164,6 +165,8 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           placeId={place.id}
           className="min-h-16 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
         />
+
+        <MarkVisitedButton placeId={place.id} className={mutedActionClass} />
       </div>
 
       {website && (
