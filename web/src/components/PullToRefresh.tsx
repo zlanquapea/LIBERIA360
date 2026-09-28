@@ -35,7 +35,7 @@ function hasScrollableParentAtOffset(target: EventTarget | null): boolean {
       const scrollableY =
         (style.overflowY === "auto" || style.overflowY === "scroll") &&
         element.scrollHeight > element.clientHeight;
-      if (scrollableY) return true;
+      if (scrollableY && element.scrollTop > 0) return true;
     }
     element = element.parentElement;
   }
@@ -149,16 +149,30 @@ export function PullToRefresh() {
       cancelPull();
     }
 
-    window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd, { passive: true });
-    window.addEventListener("touchcancel", handleTouchCancel, { passive: true });
+    // Capture phase is important for standalone iOS PWAs: page-level cards,
+    // maps, and gesture components may stop bubbling touch events.
+    document.addEventListener("touchstart", handleTouchStart, {
+      capture: true,
+      passive: true,
+    });
+    document.addEventListener("touchmove", handleTouchMove, {
+      capture: true,
+      passive: false,
+    });
+    document.addEventListener("touchend", handleTouchEnd, {
+      capture: true,
+      passive: true,
+    });
+    document.addEventListener("touchcancel", handleTouchCancel, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("touchcancel", handleTouchCancel);
+      document.removeEventListener("touchstart", handleTouchStart, true);
+      document.removeEventListener("touchmove", handleTouchMove, true);
+      document.removeEventListener("touchend", handleTouchEnd, true);
+      document.removeEventListener("touchcancel", handleTouchCancel, true);
     };
   }, []);
 
