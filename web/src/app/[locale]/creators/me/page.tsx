@@ -276,448 +276,447 @@ export default function MyCreatorProfilePage() {
           </p>
         </header>
       )}
-      <div
-        hidden={Boolean(creator) && !editingProfile}
-        className="flex flex-col gap-6"
-      >
-        {creator && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingProfile(false);
-              window.scrollTo({ top: 0 });
-            }}
-            className="min-h-11 self-start text-sm font-semibold text-brand-700 dark:text-emerald-300"
-          >
-            ← Back to your studio
-          </button>
-        )}
-        {creator && (
-          <div
-            id="profile-editor"
-            className="flex flex-col gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
-          >
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-200">
-                Profile completion
-              </span>
-              <span className="text-slate-500 dark:text-slate-400">
-                {completionPercent(creator)}%
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              <div
-                className="h-full rounded-full bg-brand-600 transition-all"
-                style={{ width: `${completionPercent(creator)}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-400">
-              {creator.verificationStatus === "verified"
-                ? "Your account is verified — the badge shows on your public profile."
-                : "Fill in photos, contact info, specialties, and add portfolio work to reach 100%."}
-            </p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-            Basic info
-          </h2>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-[auto_1fr] sm:items-end">
-            <CreatorPhotoActionMenu
-              token={token}
-              value={profileImage}
-              onChange={setProfileImage}
-              label="Profile photo"
-            />
-            <CreatorPhotoActionMenu
-              token={token}
-              value={coverImage}
-              onChange={setCoverImage}
-              label="Cover photo"
-              className="h-32 w-full sm:h-28"
-            />
-          </div>
-
-          <label className={LABEL_CLASS}>
-            Name
-            <input
-              type="text"
-              required
-              maxLength={150}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={FIELD_CLASS}
-            />
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Username
-            <input
-              type="text"
-              required
-              maxLength={50}
-              pattern="[a-z0-9_.]+"
-              title="Lowercase letters, numbers, dots, and underscores only"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={FIELD_CLASS}
-            />
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              Lowercase letters, numbers, dots, and underscores only.
-            </span>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Creator category
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as CreatorCategory)}
-              className={FIELD_CLASS}
+      {(!creator || editingProfile) && (
+        <div className="flex flex-col gap-6">
+          {creator && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingProfile(false);
+                window.scrollTo({ top: 0 });
+              }}
+              className="min-h-11 self-start text-sm font-semibold text-brand-700 dark:text-emerald-300"
             >
-              {CREATOR_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {formatCreatorCategory(c)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Home county
-            <CountySelect
-              value={countyId}
-              onChange={setCountyId}
-              counties={counties}
-            />
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Bio
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              maxLength={1000}
-              rows={3}
-              className={FIELD_CLASS}
-            />
-          </label>
-
-          <h2 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-50">
-            Contact &amp; links
-          </h2>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className={LABEL_CLASS}>
-              Contact email
-              <input
-                type="email"
-                maxLength={255}
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                className={FIELD_CLASS}
-              />
-            </label>
-            <label className={LABEL_CLASS}>
-              Contact phone
-              <input
-                type="tel"
-                maxLength={40}
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                aria-invalid={Boolean(phoneInputError(contactPhone))}
-                className={FIELD_CLASS}
-              />
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                {PHONE_INPUT_HINT}
-              </span>
-              {phoneInputError(contactPhone) && (
-                <span
-                  className="text-xs font-normal text-rose-600"
-                  role="alert"
-                >
-                  {phoneInputError(contactPhone)}
-                </span>
-              )}
-            </label>
-            <label className={LABEL_CLASS}>
-              WhatsApp number
-              <input
-                type="tel"
-                maxLength={40}
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                aria-invalid={Boolean(phoneInputError(whatsapp))}
-                className={FIELD_CLASS}
-              />
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                {PHONE_INPUT_HINT}
-              </span>
-              {phoneInputError(whatsapp) && (
-                <span
-                  className="text-xs font-normal text-rose-600"
-                  role="alert"
-                >
-                  {phoneInputError(whatsapp)}
-                </span>
-              )}
-            </label>
-            <label className={LABEL_CLASS}>
-              Website
-              <input
-                type="url"
-                maxLength={300}
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                placeholder="https://…"
-                className={FIELD_CLASS}
-              />
-            </label>
-            <label className={LABEL_CLASS}>
-              Instagram handle
-              <input
-                type="text"
-                maxLength={100}
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                className={FIELD_CLASS}
-              />
-            </label>
-            <label className={LABEL_CLASS}>
-              TikTok handle
-              <input
-                type="text"
-                maxLength={100}
-                value={tiktok}
-                onChange={(e) => setTiktok(e.target.value)}
-                className={FIELD_CLASS}
-              />
-            </label>
-            <label className={LABEL_CLASS}>
-              YouTube handle
-              <input
-                type="text"
-                maxLength={100}
-                value={youtube}
-                onChange={(e) => setYoutube(e.target.value)}
-                className={FIELD_CLASS}
-              />
-            </label>
-          </div>
-
-          <h2 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-50">
-            Skills &amp; experience
-          </h2>
-
-          <label className={LABEL_CLASS}>
-            Skills &amp; specialties
-            <input
-              type="text"
-              placeholder="drone photography, weddings, wildlife"
-              value={specialties}
-              onChange={(e) => setSpecialties(e.target.value)}
-              className={FIELD_CLASS}
-            />
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              Comma-separated.
-            </span>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Languages spoken
-            <input
-              type="text"
-              placeholder="English, Kpelle, Bassa"
-              value={languages}
-              onChange={(e) => setLanguages(e.target.value)}
-              className={FIELD_CLASS}
-            />
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              Comma-separated.
-            </span>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Years of experience
-            <input
-              type="number"
-              min={0}
-              max={80}
-              value={yearsExperience}
-              onChange={(e) => setYearsExperience(e.target.value)}
-              className={FIELD_CLASS}
-            />
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Certifications &amp; credentials
-            <input
-              type="text"
-              placeholder="Certified Drone Pilot, First Aid"
-              value={certifications}
-              onChange={(e) => setCertifications(e.target.value)}
-              className={FIELD_CLASS}
-            />
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              Comma-separated.
-            </span>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Areas served
-            <input
-              type="text"
-              placeholder="Montserrado, Bomi"
-              value={locationsCovered}
-              onChange={(e) => setLocationsCovered(e.target.value)}
-              className={FIELD_CLASS}
-            />
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              Comma-separated.
-            </span>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Availability status
-            <select
-              value={availabilityStatus}
-              onChange={(e) =>
-                setAvailabilityStatus(
-                  e.target.value as CreatorAvailabilityStatus,
-                )
-              }
-              className={FIELD_CLASS}
-            >
-              <option value="accepting_requests">Accepting requests</option>
-              <option value="limited">Limited availability</option>
-              <option value="unavailable">Unavailable</option>
-            </select>
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              This helps travelers decide when to send a request.
-            </span>
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Availability note
-            <textarea
-              value={availabilityNote}
-              onChange={(e) => setAvailabilityNote(e.target.value)}
-              placeholder="e.g. Weekends only, booked through December"
-              maxLength={500}
-              rows={2}
-              className={FIELD_CLASS}
-            />
-          </label>
-
-          <label className={LABEL_CLASS}>
-            Featured content links
-            <input
-              type="text"
-              placeholder="https://…, https://…"
-              value={contentLinks}
-              onChange={(e) => setContentLinks(e.target.value)}
-              className={FIELD_CLASS}
-            />
-            <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
-              Comma-separated links to your best work elsewhere.
-            </span>
-          </label>
-
-          {error && (
-            <p
-              role="alert"
-              className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300"
-            >
-              {error}
-            </p>
+              ← Back to your studio
+            </button>
           )}
-          {saved && !error && (
-            <p className="text-sm text-emerald-700 dark:text-emerald-300">
-              Saved!
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-          >
-            {submitting
-              ? "Saving…"
-              : creator
-                ? "Save changes"
-                : "Create profile"}
-          </button>
-        </form>
-
-        {creator && token && (
-          <>
-            <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-                Portfolio
-              </h2>
-              <CreatorPortfolioManager
-                token={token}
-                items={creator.portfolioItems ?? []}
-                onChange={(items) =>
-                  setCreator({ ...creator, portfolioItems: items })
-                }
-              />
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-                Analytics
-              </h2>
-              {analytics ? (
-                <AnalyticsSummary
-                  analytics={analytics}
-                  metrics={["view", "contact_click"]}
+          {creator && (
+            <div
+              id="profile-editor"
+              className="flex flex-col gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 p-3"
+            >
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  Profile completion
+                </span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {completionPercent(creator)}%
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-brand-600 transition-all"
+                  style={{ width: `${completionPercent(creator)}%` }}
                 />
-              ) : (
+              </div>
+              <p className="text-xs text-slate-400 dark:text-slate-400">
+                {creator.verificationStatus === "verified"
+                  ? "Your account is verified — the badge shows on your public profile."
+                  : "Fill in photos, contact info, specialties, and add portfolio work to reach 100%."}
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+              Basic info
+            </h2>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-[auto_1fr] sm:items-end">
+              <CreatorPhotoActionMenu
+                token={token}
+                value={profileImage}
+                onChange={setProfileImage}
+                label="Profile photo"
+              />
+              <CreatorPhotoActionMenu
+                token={token}
+                value={coverImage}
+                onChange={setCoverImage}
+                label="Cover photo"
+                className="h-32 w-full sm:h-28"
+              />
+            </div>
+
+            <label className={LABEL_CLASS}>
+              Name
+              <input
+                type="text"
+                required
+                maxLength={150}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={FIELD_CLASS}
+              />
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Username
+              <input
+                type="text"
+                required
+                maxLength={50}
+                pattern="[a-z0-9_.]+"
+                title="Lowercase letters, numbers, dots, and underscores only"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={FIELD_CLASS}
+              />
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                Lowercase letters, numbers, dots, and underscores only.
+              </span>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Creator category
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as CreatorCategory)}
+                className={FIELD_CLASS}
+              >
+                {CREATOR_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {formatCreatorCategory(c)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Home county
+              <CountySelect
+                value={countyId}
+                onChange={setCountyId}
+                counties={counties}
+              />
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Bio
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                maxLength={1000}
+                rows={3}
+                className={FIELD_CLASS}
+              />
+            </label>
+
+            <h2 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-50">
+              Contact &amp; links
+            </h2>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className={LABEL_CLASS}>
+                Contact email
+                <input
+                  type="email"
+                  maxLength={255}
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+              <label className={LABEL_CLASS}>
+                Contact phone
+                <input
+                  type="tel"
+                  maxLength={40}
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  aria-invalid={Boolean(phoneInputError(contactPhone))}
+                  className={FIELD_CLASS}
+                />
+                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                  {PHONE_INPUT_HINT}
+                </span>
+                {phoneInputError(contactPhone) && (
+                  <span
+                    className="text-xs font-normal text-rose-600"
+                    role="alert"
+                  >
+                    {phoneInputError(contactPhone)}
+                  </span>
+                )}
+              </label>
+              <label className={LABEL_CLASS}>
+                WhatsApp number
+                <input
+                  type="tel"
+                  maxLength={40}
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  aria-invalid={Boolean(phoneInputError(whatsapp))}
+                  className={FIELD_CLASS}
+                />
+                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                  {PHONE_INPUT_HINT}
+                </span>
+                {phoneInputError(whatsapp) && (
+                  <span
+                    className="text-xs font-normal text-rose-600"
+                    role="alert"
+                  >
+                    {phoneInputError(whatsapp)}
+                  </span>
+                )}
+              </label>
+              <label className={LABEL_CLASS}>
+                Website
+                <input
+                  type="url"
+                  maxLength={300}
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://…"
+                  className={FIELD_CLASS}
+                />
+              </label>
+              <label className={LABEL_CLASS}>
+                Instagram handle
+                <input
+                  type="text"
+                  maxLength={100}
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+              <label className={LABEL_CLASS}>
+                TikTok handle
+                <input
+                  type="text"
+                  maxLength={100}
+                  value={tiktok}
+                  onChange={(e) => setTiktok(e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+              <label className={LABEL_CLASS}>
+                YouTube handle
+                <input
+                  type="text"
+                  maxLength={100}
+                  value={youtube}
+                  onChange={(e) => setYoutube(e.target.value)}
+                  className={FIELD_CLASS}
+                />
+              </label>
+            </div>
+
+            <h2 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-50">
+              Skills &amp; experience
+            </h2>
+
+            <label className={LABEL_CLASS}>
+              Skills &amp; specialties
+              <input
+                type="text"
+                placeholder="drone photography, weddings, wildlife"
+                value={specialties}
+                onChange={(e) => setSpecialties(e.target.value)}
+                className={FIELD_CLASS}
+              />
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                Comma-separated.
+              </span>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Languages spoken
+              <input
+                type="text"
+                placeholder="English, Kpelle, Bassa"
+                value={languages}
+                onChange={(e) => setLanguages(e.target.value)}
+                className={FIELD_CLASS}
+              />
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                Comma-separated.
+              </span>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Years of experience
+              <input
+                type="number"
+                min={0}
+                max={80}
+                value={yearsExperience}
+                onChange={(e) => setYearsExperience(e.target.value)}
+                className={FIELD_CLASS}
+              />
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Certifications &amp; credentials
+              <input
+                type="text"
+                placeholder="Certified Drone Pilot, First Aid"
+                value={certifications}
+                onChange={(e) => setCertifications(e.target.value)}
+                className={FIELD_CLASS}
+              />
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                Comma-separated.
+              </span>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Areas served
+              <input
+                type="text"
+                placeholder="Montserrado, Bomi"
+                value={locationsCovered}
+                onChange={(e) => setLocationsCovered(e.target.value)}
+                className={FIELD_CLASS}
+              />
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                Comma-separated.
+              </span>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Availability status
+              <select
+                value={availabilityStatus}
+                onChange={(e) =>
+                  setAvailabilityStatus(
+                    e.target.value as CreatorAvailabilityStatus,
+                  )
+                }
+                className={FIELD_CLASS}
+              >
+                <option value="accepting_requests">Accepting requests</option>
+                <option value="limited">Limited availability</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                This helps travelers decide when to send a request.
+              </span>
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Availability note
+              <textarea
+                value={availabilityNote}
+                onChange={(e) => setAvailabilityNote(e.target.value)}
+                placeholder="e.g. Weekends only, booked through December"
+                maxLength={500}
+                rows={2}
+                className={FIELD_CLASS}
+              />
+            </label>
+
+            <label className={LABEL_CLASS}>
+              Featured content links
+              <input
+                type="text"
+                placeholder="https://…, https://…"
+                value={contentLinks}
+                onChange={(e) => setContentLinks(e.target.value)}
+                className={FIELD_CLASS}
+              />
+              <span className="text-xs font-normal text-slate-400 dark:text-slate-400">
+                Comma-separated links to your best work elsewhere.
+              </span>
+            </label>
+
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300"
+              >
+                {error}
+              </p>
+            )}
+            {saved && !error && (
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                Saved!
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+            >
+              {submitting
+                ? "Saving…"
+                : creator
+                  ? "Save changes"
+                  : "Create profile"}
+            </button>
+          </form>
+
+          {creator && token && (
+            <>
+              <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                  Portfolio
+                </h2>
+                <CreatorPortfolioManager
+                  token={token}
+                  items={creator.portfolioItems ?? []}
+                  onChange={(items) =>
+                    setCreator({ ...creator, portfolioItems: items })
+                  }
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                  Analytics
+                </h2>
+                {analytics ? (
+                  <AnalyticsSummary
+                    analytics={analytics}
+                    metrics={["view", "contact_click"]}
+                  />
+                ) : (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Analytics unavailable. Please try again later.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                  Reviews
+                </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Analytics unavailable. Please try again later.
+                  {creator.reviewCount > 0
+                    ? `${creator.reviewCount} review${creator.reviewCount === 1 ? "" : "s"} so far.`
+                    : "No reviews yet."}{" "}
+                  <Link
+                    href={`/creators/${creator.username}`}
+                    className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                  >
+                    View on your public profile
+                  </Link>
+                  .
                 </p>
-              )}
-            </div>
+              </div>
 
-            <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-                Reviews
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {creator.reviewCount > 0
-                  ? `${creator.reviewCount} review${creator.reviewCount === 1 ? "" : "s"} so far.`
-                  : "No reviews yet."}{" "}
-                <Link
-                  href={`/creators/${creator.username}`}
-                  className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
-                >
-                  View on your public profile
-                </Link>
-                .
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-                Inquiries &amp; bookings
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Booking requests and messages from travelers show up under{" "}
-                <Link
-                  href="/account/bookings"
-                  className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
-                >
-                  My Bookings
-                </Link>
-                .
-              </p>
-            </div>
-          </>
-        )}
-      </div>
+              <div className="flex flex-col gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                  Inquiries &amp; bookings
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Booking requests and messages from travelers show up under{" "}
+                  <Link
+                    href="/account/bookings"
+                    className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                  >
+                    My Bookings
+                  </Link>
+                  .
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </main>
   );
 }
