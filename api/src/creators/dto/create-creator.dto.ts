@@ -17,6 +17,7 @@ import {
   CreatorAvailabilityStatus,
   CreatorCategory,
 } from "../entities/creator.enums";
+import { IsValidPhoneNumber } from "../../common/phone";
 
 export class CreateCreatorDto {
   @IsString()
@@ -40,8 +41,16 @@ export class CreateCreatorDto {
   @IsOptional() @IsString() @MaxLength(100) tiktok?: string;
   @IsOptional() @IsString() @MaxLength(100) youtube?: string;
   @IsOptional() @IsEmail() @MaxLength(255) contactEmail?: string;
-  @IsOptional() @IsString() @MaxLength(40) contactPhone?: string;
-  @IsOptional() @IsString() @MaxLength(40) whatsapp?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  @IsValidPhoneNumber()
+  contactPhone?: string;
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  @IsValidPhoneNumber()
+  whatsapp?: string;
   @IsOptional() @IsUrl() website?: string;
 
   @IsOptional()

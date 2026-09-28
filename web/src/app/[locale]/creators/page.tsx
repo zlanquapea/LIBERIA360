@@ -1,3 +1,4 @@
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import {
@@ -57,7 +58,9 @@ function QuickAction({
     <Link
       href={href}
       className={`flex min-h-[92px] min-w-0 flex-1 flex-col items-center justify-center gap-2 rounded-2xl px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
-        emphasized ? "bg-gold-100 dark:bg-gold-950/30" : "bg-brand-50 dark:bg-brand-950/40"
+        emphasized
+          ? "bg-gold-100 dark:bg-gold-950/30"
+          : "bg-brand-50 dark:bg-brand-950/40"
       }`}
     >
       <span
@@ -83,15 +86,15 @@ function GuideCard({
   return (
     <Link
       href={`/guides/${guide.slug}`}
-      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-900"
+      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_10px_28px_rgba(0,0,0,0.32)]"
     >
       <div className="flex items-start gap-3">
-        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-50 bg-brand-50 dark:border-brand-950/40 dark:bg-brand-950/40">
+        <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-100 bg-brand-100 shadow-sm dark:border-emerald-400/80 dark:bg-brand-950/80">
           {guide.profileImageUrl ? (
             <img
               src={guide.profileImageUrl}
               alt={`${name} portrait`}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-center"
             />
           ) : (
             <span className="flex h-full items-center justify-center text-2xl font-extrabold text-brand-800 dark:text-brand-200">
@@ -117,9 +120,12 @@ function GuideCard({
               className="mt-1 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300"
             />
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
             <span className="inline-flex items-center gap-1">
-              <MapPinIcon aria-hidden className="h-3.5 w-3.5 text-brand-700 dark:text-brand-300" />
+              <MapPinIcon
+                aria-hidden
+                className="h-3.5 w-3.5 text-brand-700 dark:text-brand-300"
+              />
               {guide.city}
             </span>
             <span aria-hidden className="text-slate-300 dark:text-slate-700">
@@ -127,7 +133,7 @@ function GuideCard({
             </span>
             <span className="inline-flex items-center gap-1">
               <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />
-              <span className="font-semibold text-slate-900 dark:text-slate-50">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
                 {guide.rating.toFixed(1)} ({guide.reviewCount})
               </span>
             </span>
@@ -137,7 +143,7 @@ function GuideCard({
               {languages.map((language) => (
                 <span
                   key={language}
-                  className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:bg-brand-950/40 dark:text-slate-100"
+                  className="rounded-full border border-brand-100 bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-slate-800 dark:border-brand-700/50 dark:bg-brand-900/70 dark:text-slate-100"
                 >
                   {language}
                 </span>
@@ -180,6 +186,7 @@ export default async function CreatorsPage({
   return (
     <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 pb-28 pt-0 text-slate-900 dark:bg-slate-950 dark:text-slate-50 sm:px-6 sm:pt-6">
       <div className="mx-auto flex w-full max-w-[390px] flex-col">
+        <FeatureNavigation />
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
             href="/creators#creator-feed"
@@ -203,8 +210,8 @@ export default async function CreatorsPage({
           aria-labelledby="creators-hero-heading"
           className="relative mt-4 h-[290px] overflow-hidden rounded-[20px] bg-brand-900 shadow-[0_12px_30px_rgba(0,47,59,0.18)]"
           style={{
-            backgroundImage: "url('/onboarding/discover.jpg')",
-            backgroundPosition: "62% center",
+            backgroundImage: "url('/creators/hero-background.jpg')",
+            backgroundPosition: "center",
             backgroundSize: "cover",
           }}
         >
@@ -281,6 +288,7 @@ export default async function CreatorsPage({
             </div>
           </div>
 
+          {!isFollowing && <nav aria-label="Browse local experts" className="mt-4 grid grid-cols-2 gap-2"><Link href="/guides?role=guides" className="flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-bold text-white dark:bg-brand-300 dark:text-slate-950">Find a guide</Link><Link href="/guides?role=hosts" className="flex min-h-11 items-center justify-center rounded-xl border border-brand-700 px-4 text-sm font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300">Find a host</Link></nav>}
           {isFollowing ? (
             <CreatorFeed
               initialPosts={[]}

@@ -1,5 +1,6 @@
 {
   "nav": {
+    "guides": "المرشدون",
     "explore": "استكشاف",
     "counties": "المقاطعات",
     "events": "الفعاليات",
@@ -169,6 +170,10 @@
     "sectionBusinesses": "الأعمال",
     "sectionEvents": "الفعاليات",
     "sectionCreators": "صنّاع المحتوى",
+    "sectionGuides": "المرشدون والمضيفون",
+    "sectionExperiences": "التجارب",
+    "sectionCars": "سيارات للإيجار",
+    "viewAllCategory": "عرض الكل",
     "startTyping": "ابدأ الكتابة للبحث عن الأماكن والأعمال والفعاليات وصنّاع المحتوى.",
     "close": "إغلاق",
     "searching": "جارٍ البحث…"
@@ -201,6 +206,21 @@
     "planTripWithPlace": "خطّط لرحلة إلى هذا المكان"
   },
   "trips": {
+    "planner": {
+      "detailsHeading": "تفاصيل الرحلة",
+      "datesHeading": "التواريخ والميزانية",
+      "peopleHeading": "المسافرون والخصوصية",
+      "summaryHeading": "رحلتك باختصار",
+      "destinationHelp": "اختر وجهة الآن أو أضف أماكن لاحقًا.",
+      "datesHelp": "اختر التواريخ لمدة تصل إلى 14 يومًا.",
+      "privacyHelp": "اختر من يمكنه رؤية رحلتك قبل إنشائها.",
+      "destinationOptional": "الوجهة (اختياري)",
+      "chooseLater": "اختر لاحقًا",
+      "namePlaceholder": "أضف اسم الرحلة",
+      "datesPlaceholder": "اختر التواريخ",
+      "partyError": "أدخل عددًا صحيحًا بين 1 و50.",
+      "nextStepHelp": "خطط بالوتيرة التي تناسبك. أضف المحطات والأنشطة بعد إنشاء الرحلة."
+    },
     "myTrips": "رحلاتي",
     "communityTrips": "رحلات المجتمع",
     "planATripCta": "+ خطّط لرحلة",

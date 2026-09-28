@@ -1,17 +1,23 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { TrashIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/hooks/useAuth';
-import { deleteItinerary, getMyItineraries, getSharedWithMe, removeCollaborator } from '@/lib/itinerary-api';
-import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
-import { formatBudgetBand } from '@/lib/format';
-import { BrandLoader } from '@/components/BrandLoader';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { SuccessBanner } from '@/components/SuccessBanner';
-import type { Itinerary } from '@/lib/types';
+import { FeatureNavigation } from "@/components/FeatureNavigation";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { TrashIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  deleteItinerary,
+  getMyItineraries,
+  getSharedWithMe,
+  removeCollaborator,
+} from "@/lib/itinerary-api";
+import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
+import { formatBudgetBand } from "@/lib/format";
+import { FeatureLoading } from "@/components/FeatureLoading";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { SuccessBanner } from "@/components/SuccessBanner";
+import type { Itinerary } from "@/lib/types";
 
 // A trip with this many saved stops (or more) has real planning work in
 // it — losing it to a stray click deserves an extra safeguard beyond a
@@ -30,14 +36,15 @@ const SUBSTANTIAL_STOPS_THRESHOLD = 5;
 // section rather than mixed into the owned list, so it's always clear
 // whose trip it originally was.
 export default function TripsPage() {
-  const t = useTranslations('trips');
-  const tCommon = useTranslations('common');
-  const tNav = useTranslations('nav');
+  const t = useTranslations("trips");
+  const tCommon = useTranslations("common");
+  const tNav = useTranslations("nav");
   const { user, token, ready } = useAuth();
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [shared, setShared] = useState<Itinerary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [pendingDelete, setPendingDelete] = useState<Itinerary | null>(null);
@@ -50,6 +57,8 @@ export default function TripsPage() {
       if (ready) setLoading(false);
       return;
     }
+    setLoading(true);
+    setLoadError(null);
     let cancelled = false;
     Promise.all([getMyItineraries(token), getSharedWithMe(token)])
       .then(([mine, sharedWithMe]) => {
@@ -59,7 +68,9 @@ export default function TripsPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadError(getFriendlyErrorMessage(err, { context: { action: 'load-trips' } }));
+        setLoadError(
+          getFriendlyErrorMessage(err, { context: { action: "load-trips" } }),
+        );
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -67,7 +78,7 @@ export default function TripsPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, token]);
+  }, [ready, token, reloadToken]);
 
   // Success confirmation is only useful for a moment — clear it so it
   // doesn't linger indefinitely if the user stays on this page.
@@ -93,17 +104,19 @@ export default function TripsPage() {
       await deleteItinerary(token, target.id);
       setItineraries((prev) => prev.filter((it) => it.id !== target.id));
       setPendingDelete(null);
-      setSuccessMessage(t('tripDeletedSuccess', { title: target.title }));
+      setSuccessMessage(t("tripDeletedSuccess", { title: target.title }));
     } catch (err) {
       if (isNotFoundError(err)) {
         // It's already gone — exactly the outcome the user wanted, just
         // not by this click. Treat it as a success rather than an error.
         setItineraries((prev) => prev.filter((it) => it.id !== target.id));
         setPendingDelete(null);
-        setSuccessMessage(t('tripAlreadyDeleted'));
+        setSuccessMessage(t("tripAlreadyDeleted"));
       } else {
         setDialogError(
-          getFriendlyErrorMessage(err, { context: { action: 'delete-itinerary', itineraryId: target.id } }),
+          getFriendlyErrorMessage(err, {
+            context: { action: "delete-itinerary", itineraryId: target.id },
+          }),
         );
       }
     } finally {
@@ -120,15 +133,17 @@ export default function TripsPage() {
       await removeCollaborator(token, target.id, user.id);
       setShared((prev) => prev.filter((it) => it.id !== target.id));
       setPendingLeave(null);
-      setSuccessMessage(t('leftTripSuccess', { title: target.title }));
+      setSuccessMessage(t("leftTripSuccess", { title: target.title }));
     } catch (err) {
       if (isNotFoundError(err)) {
         setShared((prev) => prev.filter((it) => it.id !== target.id));
         setPendingLeave(null);
-        setSuccessMessage(t('tripNoLongerAvailable'));
+        setSuccessMessage(t("tripNoLongerAvailable"));
       } else {
         setDialogError(
-          getFriendlyErrorMessage(err, { context: { action: 'leave-itinerary', itineraryId: target.id } }),
+          getFriendlyErrorMessage(err, {
+            context: { action: "leave-itinerary", itineraryId: target.id },
+          }),
         );
       }
     } finally {
@@ -137,81 +152,109 @@ export default function TripsPage() {
   }
 
   if (!ready || loading) {
-    return (
-      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
-        <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">{tCommon('loading')}</p>
-      </main>
-    );
+    return <FeatureLoading />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('myTrips')}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{t('logInToPlan')}</p>
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 pb-28 text-center">
+        <FeatureNavigation />
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          {t("myTrips")}
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {t("logInToPlan")}
+        </p>
         <Link
-          href="/login"
+          href="/login?next=/trips"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
         >
-          {tNav('logIn')}
+          {tNav("logIn")}
         </Link>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6 pb-28">
+      <FeatureNavigation />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('myTrips')}</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          {t("myTrips")}
+        </h1>
         <div className="flex flex-wrap gap-2">
           <Link
             href="/trips/community"
             className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300"
           >
-            {t('communityTrips')}
+            {t("communityTrips")}
           </Link>
           <Link
             href="/trips/new"
             className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
           >
-            {t('planATripCta')}
+            {t("planATripCta")}
           </Link>
         </div>
       </div>
 
       {successMessage && <SuccessBanner>{successMessage}</SuccessBanner>}
 
-      {loadError && (
-        <p role="alert" className="rounded-lg bg-flag-500/10 px-3 py-2 text-sm text-flag-700 dark:text-flag-300">
-          {loadError}
-        </p>
-      )}
-
-      {itineraries.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-          {t('noTripsYet')}
-        </p>
+      {loadError ? (
+        <div
+          role="alert"
+          className="rounded-lg bg-flag-500/10 px-3 py-3 text-sm text-flag-700 dark:text-flag-300"
+        >
+          <p>{loadError}</p>
+          <button
+            type="button"
+            onClick={() => setReloadToken((value) => value + 1)}
+            className="mt-3 min-h-11 rounded-full border border-flag-300 px-4 font-semibold text-flag-700 hover:bg-flag-500/10 dark:text-flag-300"
+          >
+            {tCommon("tryAgain")}
+          </button>
+        </div>
+      ) : itineraries.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900"><p className="text-slate-500 dark:text-slate-400">{t("noTripsYet")}</p><Link href="/trips/new" className="button-primary mt-5 inline-flex min-h-11 items-center justify-center">{t("planATripCta")}</Link></div>
       ) : (
-        <TripList itineraries={itineraries} actionLabel={t('deleteTrip')} ariaLabelKey="deleteTripAriaLabel" onAction={setPendingDelete} />
+        <TripList
+          itineraries={itineraries}
+          actionLabel={t("deleteTrip")}
+          ariaLabelKey="deleteTripAriaLabel"
+          onAction={setPendingDelete}
+        />
       )}
 
       {shared.length > 0 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{t('sharedWithMe')}</h2>
-          <TripList itineraries={shared} actionLabel={t('leaveTrip')} ariaLabelKey="leaveTripAriaLabel" onAction={setPendingLeave} />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            {t("sharedWithMe")}
+          </h2>
+          <TripList
+            itineraries={shared}
+            actionLabel={t("leaveTrip")}
+            ariaLabelKey="leaveTripAriaLabel"
+            onAction={setPendingLeave}
+          />
         </div>
       )}
 
       <ConfirmDialog
         open={pendingDelete != null}
-        title={pendingDelete ? t('deleteTripTitle', { title: pendingDelete.title }) : t('deleteTripTitleGeneric')}
-        description={t('deleteTripDescription')}
-        confirmationPhrase={
-          pendingDelete && pendingDelete.stops.length >= SUBSTANTIAL_STOPS_THRESHOLD ? pendingDelete.title : undefined
+        title={
+          pendingDelete
+            ? t("deleteTripTitle", { title: pendingDelete.title })
+            : t("deleteTripTitleGeneric")
         }
-        confirmLabel={t('deleteTripConfirm')}
-        loadingLabel={t('deletingTrip')}
+        description={t("deleteTripDescription")}
+        confirmationPhrase={
+          pendingDelete &&
+          pendingDelete.stops.length >= SUBSTANTIAL_STOPS_THRESHOLD
+            ? pendingDelete.title
+            : undefined
+        }
+        confirmLabel={t("deleteTripConfirm")}
+        loadingLabel={t("deletingTrip")}
         isLoading={actionLoading}
         error={dialogError}
         onConfirm={confirmDelete}
@@ -220,10 +263,14 @@ export default function TripsPage() {
 
       <ConfirmDialog
         open={pendingLeave != null}
-        title={pendingLeave ? t('leaveTripTitle', { title: pendingLeave.title }) : t('leaveTripTitleGeneric')}
-        description={t('leaveTripDescription')}
-        confirmLabel={t('leaveTripConfirm')}
-        loadingLabel={t('leavingTrip')}
+        title={
+          pendingLeave
+            ? t("leaveTripTitle", { title: pendingLeave.title })
+            : t("leaveTripTitleGeneric")
+        }
+        description={t("leaveTripDescription")}
+        confirmLabel={t("leaveTripConfirm")}
+        loadingLabel={t("leavingTrip")}
         isLoading={actionLoading}
         error={dialogError}
         onConfirm={confirmLeave}
@@ -241,10 +288,10 @@ function TripList({
 }: {
   itineraries: Itinerary[];
   actionLabel: string;
-  ariaLabelKey: 'deleteTripAriaLabel' | 'leaveTripAriaLabel';
+  ariaLabelKey: "deleteTripAriaLabel" | "leaveTripAriaLabel";
   onAction: (itinerary: Itinerary) => void;
 }) {
-  const t = useTranslations('trips');
+  const t = useTranslations("trips");
   return (
     <ul className="flex flex-col gap-3">
       {itineraries.map((itinerary) => (
@@ -252,15 +299,21 @@ function TripList({
           key={itinerary.id}
           className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-brand-500"
         >
-          <Link href={`/trips/${itinerary.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3 p-3">
+          <Link
+            href={`/trips/${itinerary.id}`}
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 p-3"
+          >
             <div className="min-w-0">
-              <p className="truncate font-medium text-slate-900 dark:text-slate-50">{itinerary.title}</p>
+              <p className="truncate font-medium text-slate-900 dark:text-slate-50">
+                {itinerary.title}
+              </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {t('days', { count: itinerary.durationDays })} · {formatBudgetBand(itinerary.budgetBand)}
+                {t("days", { count: itinerary.durationDays })} ·{" "}
+                {formatBudgetBand(itinerary.budgetBand)}
               </p>
             </div>
             <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              {itinerary.kind === 'weekend' ? t('weekendExplorer') : t('trip')}
+              {itinerary.kind === "weekend" ? t("weekendExplorer") : t("trip")}
             </span>
           </Link>
           <button

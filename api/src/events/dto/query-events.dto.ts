@@ -33,10 +33,10 @@ export class QueryEventsDto {
   dateTo?: string;
 
   // Public browsing (the /events page) always wants "what's upcoming" —
-  // findAll defaults to hiding anything whose startDate has already
-  // passed unless this is set or dateFrom is given explicitly. Admin's
-  // events management table sets this so a past event is still there to
-  // edit or remove, not just newly-created ones.
+  // findAll defaults to hiding anything whose endDate (or startDate for a
+  // one-time event) has already passed unless this is set. Admin's events
+  // management table sets this so a past event is still there to edit or
+  // remove, not just newly-created ones.
   //
   // A plain `@Type(() => Boolean)` would coerce the *string* "false" to
   // `true` (any non-empty string is truthy) since query params always

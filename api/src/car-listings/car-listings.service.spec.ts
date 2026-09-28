@@ -418,6 +418,16 @@ describe("CarListingsService", () => {
   });
 
   describe("findAllApproved", () => {
+    it("searches pickup location and county for available cars", async () => {
+      await service.findAllApproved({ search: "Robertsport" });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "listing.pickupLocation ILIKE :search OR county.name ILIKE :search",
+        ),
+        { search: "%Robertsport%" },
+      );
+    });
+
     it("queries approved AND active listings only, newest first", async () => {
       await service.findAllApproved();
       expect(queryBuilder.where).toHaveBeenCalledWith(

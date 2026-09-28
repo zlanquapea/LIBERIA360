@@ -21,6 +21,7 @@ import {
   GuideType,
   GuideVerificationStatus,
 } from "./entities/guide.enums";
+import { IsValidPhoneNumber } from "../common/phone";
 
 export class ApplyGuideDto {
   @IsEnum(GuideType)
@@ -51,6 +52,7 @@ export class ApplyGuideDto {
   @IsOptional()
   @IsString()
   @MaxLength(40)
+  @IsValidPhoneNumber()
   whatsappNumber?: string;
 
   @IsString()
@@ -247,6 +249,7 @@ export class UpdateGuideProfileDto {
   @IsOptional()
   @IsString()
   @MaxLength(40)
+  @IsValidPhoneNumber()
   whatsappNumber?: string | null;
 
   @IsString()

@@ -34,7 +34,7 @@ export default async function GuidePage({
   );
   const name = guide.slug.replaceAll("-", " ");
   return (
-    <main className="mx-auto max-w-5xl px-4 py-5 pb-12 sm:px-6 lg:px-10">
+    <main className="mx-auto max-w-5xl px-4 py-5 pb-24 sm:px-6 lg:px-10">
       <div className="mb-5 flex items-center justify-between">
         <Link href="/guides" className="text-sm font-bold text-brand-700">
           ← All guides
@@ -43,8 +43,23 @@ export default async function GuidePage({
           LIBERIA360 community
         </p>
       </div>
-      <GuideProfileHero guide={guide} name={name} />
-      <section className="mt-7">
+      <GuideProfileHero
+        guide={guide}
+        name={name}
+        coverImageUrl={
+          experiences[0]?.imageUrls?.[0] ?? experiences[0]?.coverImageUrl
+        }
+      />
+      <nav
+        aria-label="Profile sections"
+        className="mt-5 flex gap-6 border-b border-slate-200 py-3 text-sm font-semibold dark:border-slate-700"
+      >
+        <a href="#about" className="text-brand-700 dark:text-brand-300">
+          About
+        </a>
+        <a href="#experiences">Experiences &amp; booking</a>
+      </nav>
+      <section id="about" className="mt-7 scroll-mt-24">
         <h2 className="font-display text-2xl font-extrabold">
           About {name.split(" ")[0]}
         </h2>
@@ -52,12 +67,12 @@ export default async function GuidePage({
           {guide.bio}
         </p>
       </section>
-      <section id="experiences" className="mt-8">
+      <section id="experiences" className="mt-8 scroll-mt-24">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700">
           Featured experiences
         </p>
         <h2 className="mt-1 font-display text-2xl font-extrabold">
-          Featured Experiences
+          Explore & book an experience
         </h2>
         {experiences.length === 0 ? (
           <p className="mt-4 rounded-2xl border border-dashed border-slate-300 p-6 text-slate-500">
@@ -82,7 +97,7 @@ export default async function GuidePage({
                     className="h-44 w-full object-cover transition group-hover:scale-[1.02]"
                   />
                 ) : (
-                  <div className="h-44 bg-gradient-to-br from-brand-800 to-cyan-400" />
+                  <div className="h-44 bg-brand-50 dark:bg-slate-800" />
                 )}
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">

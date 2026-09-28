@@ -249,6 +249,18 @@ export function estimateTravelTime(km: number | null): string | null {
   return `~${hours}h${rem > 0 ? ` ${rem}m` : ''} drive (estimated)`;
 }
 
+export function formatExperienceDuration(minutes: number): string {
+  const safeMinutes = Math.max(0, Math.floor(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const remainingMinutes = safeMinutes % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  if (remainingMinutes > 0 || hours === 0) {
+    parts.push(`${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}`);
+  }
+  return parts.join(' ');
+}
+
 // `amount` is typed `number | null`, but a field the backend omitted from
 // a JSON response (rather than sending an explicit `null`) comes through
 // as `undefined` at runtime — treat that the same as "not listed" rather

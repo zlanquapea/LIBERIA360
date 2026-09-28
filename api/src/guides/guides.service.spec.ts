@@ -1,5 +1,11 @@
 import { GuidesService } from "./guides.service";
 import { GuideMessage } from "./entities/guide-message.entity";
+import {
+  ExperienceCategory,
+  ExperienceGroupType,
+  ExperienceStatus,
+  GuideVerificationStatus,
+} from "./entities/guide.enums";
 
 const GUIDE_ID = "guide-1";
 const GUIDE_OWNER_ID = "guide-owner-1";
@@ -72,5 +78,85 @@ describe("GuidesService guide messaging", () => {
     expect(updateQuery.andWhere).toHaveBeenCalledWith("sender_id != :userId", {
       userId: GUIDE_OWNER_ID,
     });
+  });
+});
+
+describe("GuidesService experience publishing", () => {
+  it("saves exactly once and returns a serialized published experience", async () => {
+    const guide = {
+      id: GUIDE_ID,
+      userId: GUIDE_OWNER_ID,
+      slug: "sam-gboyah",
+      guideType: "tour_guide",
+      bio: "A verified local guide.",
+      city: "Monrovia",
+      county: null,
+      languages: ["English"],
+      verificationStatus: GuideVerificationStatus.VERIFIED,
+      whatsappNumber: null,
+      profileImageUrl: null,
+    };
+    const draft = {
+      title: "Monrovia Waterside Walk",
+      description: "A guided walk through the historic waterside district.",
+      category: ExperienceCategory.CITY,
+      county: "Montserrado",
+      durationMinutes: 90,
+      groupType: ExperienceGroupType.SMALL_GROUP,
+      maxGroupSize: 8,
+      priceUsd: 25,
+      priceLrd: null,
+      meetingPointText: "Waterside Market",
+      meetingLat: null,
+      meetingLng: null,
+      includes: ["Local guide"],
+      cancellationPolicy: "Free cancellation up to 24 hours before.",
+      imageUrls: ["https://example.com/walk.jpg"],
+      coverImageUrl: "https://example.com/walk.jpg",
+      isFeatured: false,
+      status: ExperienceStatus.PUBLISHED,
+      guideId: GUIDE_ID,
+    };
+    const saved = { id: "experience-1", ...draft };
+    const guideRepo = {
+      findOne: jest.fn().mockResolvedValue(guide),
+    };
+    const experienceRepo = {
+      create: jest.fn().mockReturnValue(saved),
+      save: jest.fn().mockResolvedValue(saved),
+    };
+    const reviewRepo = {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest
+          .fn()
+          .mockResolvedValue({ rating: "0", reviewCount: "0" }),
+      }),
+    };
+    const service = new GuidesService(
+      guideRepo as never,
+      experienceRepo as never,
+      {} as never,
+      reviewRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.createExperience(GUIDE_OWNER_ID, draft as never),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: "experience-1",
+        title: draft.title,
+        durationMinutes: 90,
+        status: ExperienceStatus.PUBLISHED,
+        guide: expect.objectContaining({ id: GUIDE_ID, slug: guide.slug }),
+      }),
+    );
+    expect(experienceRepo.save).toHaveBeenCalledTimes(1);
   });
 });

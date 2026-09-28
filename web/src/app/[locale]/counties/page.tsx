@@ -1,10 +1,10 @@
-import Link from 'next/link';
-import { CountyIcon } from '@/lib/icons';
-import { colorForCounty } from '@/lib/category-colors';
-import { getCounties } from '@/lib/api';
-import { PageHeader } from '@/components/PageHeader';
+import Link from "next/link";
+import { CountyIcon } from "@/lib/icons";
+import { colorForCounty } from "@/lib/category-colors";
+import { getCounties } from "@/lib/api";
+import { PageHeader } from "@/components/PageHeader";
 
-export const metadata = { title: 'Counties — LIBERIA360' };
+export const metadata = { title: "Counties — LIBERIA360" };
 
 // County Browse screen (Tech Spec §4.1) — a 15-county grid, one per
 // Liberian county (Business Plan §9.1). Every county is a real, equally
@@ -19,32 +19,44 @@ export default async function CountiesPage() {
 
   return (
     <main className="page-shell">
-      <PageHeader eyebrow="Explore Liberia" title="Browse by county" description="All 15 counties of Liberia, one tap away." />
+      <PageHeader
+        eyebrow="Explore Liberia"
+        title="Browse by county"
+        description="All 15 counties of Liberia, one tap away."
+      />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {counties.map((county) => {
-          const placeCount = county.placeCount ?? 0;
-          return (
-            <Link
-              key={county.id}
-              href={`/counties/${county.slug}`}
-              className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900"
-            >
-              <span
-                aria-hidden
-                className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm transition-transform group-hover:scale-105"
-                style={{ backgroundColor: colorForCounty(county.slug) }}
+      {counties.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 px-4 py-12 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          No counties are available yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {counties.map((county) => {
+            const placeCount = county.placeCount ?? 0;
+            return (
+              <Link
+                key={county.id}
+                href={`/counties/${county.slug}`}
+                className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-5 text-center shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover dark:border-slate-800 dark:bg-slate-900"
               >
-                <CountyIcon county={county} className="h-7 w-7 text-white" />
-              </span>
-              <span className="font-semibold text-slate-900 dark:text-slate-50">{county.name}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {placeCount} place{placeCount === 1 ? '' : 's'}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
+                <span
+                  aria-hidden
+                  className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-sm transition-transform group-hover:scale-105"
+                  style={{ backgroundColor: colorForCounty(county.slug) }}
+                >
+                  <CountyIcon county={county} className="h-7 w-7 text-white" />
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-slate-50">
+                  {county.name}
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {placeCount} place{placeCount === 1 ? "" : "s"}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }

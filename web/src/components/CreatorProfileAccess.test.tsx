@@ -1,0 +1,22 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import Page from '../app/[locale]/creators/me/page';
+jest.mock('../hooks/useAuth', () => { const auth = { ready:true, token:'token', user:{id:'me',name:'Wonders'} }; return { useAuth: () => auth }; });
+jest.mock('../lib/creator-api', () => ({ getMyCreatorProfile: jest.fn().mockResolvedValue({ id:'creator', name:'Wonders', username:'wonders', category:'other', languages:[], specialties:[], certifications:[], locationsCovered:[], contentLinks:[], yearsExperience:null, offerings:[], portfolioItems:[] }) }));
+jest.mock('../lib/api', () => ({ getCounties: jest.fn().mockResolvedValue([]) }));
+jest.mock('../lib/analytics-api', () => ({ getCreatorAnalytics: jest.fn().mockResolvedValue(null) }));
+jest.mock('./CreatorStudio', () => ({ CreatorStudio: ({ onEditProfile }: {onEditProfile: () => void}) => <button onClick={onEditProfile}>Edit creator profile</button> }));
+jest.mock('./CreatorPhotoActionMenu', () => ({ CreatorPhotoActionMenu: () => null }));
+jest.mock('./CreatorPortfolioManager', () => ({ CreatorPortfolioManager: () => null }));
+jest.mock('./BrandLoader', () => ({ BrandLoader: () => null }));
+beforeAll(() => { window.scrollTo = jest.fn(); });
+it('only mounts the profile form after Edit creator profile, and removes it on return', async () => {
+  render(<Page />);
+  const edit = await screen.findByRole('button', {name:'Edit creator profile'});
+  expect(screen.queryByText('Basic info')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Save changes'})).not.toBeInTheDocument();
+  fireEvent.click(edit);
+  expect(screen.getByText('Basic info')).toBeVisible();
+  expect(screen.getByRole('button',{name:'Save changes'})).toBeVisible();
+  fireEvent.click(screen.getByRole('button',{name:/Back to your studio/}));
+  expect(screen.queryByText('Basic info')).not.toBeInTheDocument();
+});

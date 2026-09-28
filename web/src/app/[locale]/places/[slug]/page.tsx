@@ -146,7 +146,7 @@ export default async function PlaceProfilePage({
   const visitLength = formatVisitLength(place.recommendedVisitLength);
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
+    <main className="detail-page mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
       <JsonLd data={placeJsonLd(place)} />
       <PlaceViewTracker place={place} />
 
@@ -158,12 +158,12 @@ export default async function PlaceProfilePage({
       />
 
       <header className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
               {formatPlaceType(place.type)}
             </p>
-            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">
+            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 sm:text-3xl">
               <span>{place.name}</span>
               <VerificationBadge
                 status={

@@ -307,7 +307,7 @@ export class BusinessesService {
 
     if (params.search) {
       qb.andWhere(
-        "(business.name ILIKE :search OR business.description ILIKE :search)",
+        "(business.name ILIKE :search OR business.description ILIKE :search OR linkedPlace.name ILIKE :search OR linkedPlace.city ILIKE :search OR county.name ILIKE :search)",
         { search: `%${params.search}%` },
       );
     }

@@ -12,6 +12,7 @@ import {
   formatDistance,
   formatEventCategory,
   formatEventDateRange,
+  formatExperienceDuration,
   formatPlaceType,
   formatPriceFrom,
   formatRating,
@@ -86,6 +87,20 @@ describe('estimateTravelTime', () => {
 
   it('omits the minutes part when the remainder is exactly 0', () => {
     expect(estimateTravelTime(70)).not.toMatch(/0m/);
+  });
+});
+
+describe('formatExperienceDuration', () => {
+  it.each([
+    [1, '1 minute'],
+    [45, '45 minutes'],
+    [60, '1 hour'],
+    [61, '1 hour 1 minute'],
+    [90, '1 hour 30 minutes'],
+    [120, '2 hours'],
+    [135, '2 hours 15 minutes'],
+  ])('formats %i minutes without rounding hours', (minutes, expected) => {
+    expect(formatExperienceDuration(minutes)).toBe(expected);
   });
 });
 

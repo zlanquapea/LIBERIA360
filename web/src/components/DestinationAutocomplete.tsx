@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { MapPinIcon } from '@heroicons/react/24/outline';
-import { getPlaces } from '@/lib/api';
-import type { Place } from '@/lib/types';
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { MapPinIcon } from "@heroicons/react/24/outline";
+import { getPlaces } from "@/lib/api";
+import type { Place } from "@/lib/types";
 
 // "Choose a LIBERIA360 destination" (Section 2 of the Aug 2026 social-trip
 // spec) — a debounced type-ahead against the real catalog instead of a
@@ -15,18 +15,20 @@ import type { Place } from '@/lib/types';
 export function DestinationAutocomplete({
   value,
   onChange,
+  label = "Destination (optional)",
 }: {
   value: Place | null;
-  onChange: (place: Place) => void;
+  onChange: (place: Place | null) => void;
+  label?: string;
 }) {
-  const [query, setQuery] = useState(value?.name ?? '');
+  const [query, setQuery] = useState(value?.name ?? "");
   const [results, setResults] = useState<Place[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setQuery(value?.name ?? '');
+    setQuery(value?.name ?? "");
   }, [value]);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export function DestinationAutocomplete({
     // Typing away from the selected destination's name un-selects it —
     // the caller shouldn't keep a stale Place once the text no longer
     // matches what's actually chosen.
-    if (value && next !== value.name) onChange(null as unknown as Place);
+    if (value && next !== value.name) onChange(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (next.trim().length < 2) {
       setResults(null);
@@ -69,10 +71,10 @@ export function DestinationAutocomplete({
 
   return (
     <div className="relative flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-      Destination
+      <label htmlFor="trip-destination">{label}</label>
       <input
         type="text"
-        required
+        id="trip-destination"
         placeholder="e.g. Robertsport"
         value={query}
         onChange={(e) => handleInput(e.target.value)}
@@ -95,9 +97,14 @@ export function DestinationAutocomplete({
                   onClick={() => pick(place)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  <MapPinIcon aria-hidden className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300" />
+                  <MapPinIcon
+                    aria-hidden
+                    className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-300"
+                  />
                   <span className="min-w-0">
-                    <span className="block truncate font-medium text-slate-900 dark:text-slate-50">{place.name}</span>
+                    <span className="block truncate font-medium text-slate-900 dark:text-slate-50">
+                      {place.name}
+                    </span>
                     <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                       {place.city}, {place.county.name}
                     </span>
@@ -107,15 +114,22 @@ export function DestinationAutocomplete({
             ))}
         </ul>
       )}
-      {!searching && open && results && results.length === 0 && query.trim().length >= 2 && (
-        <p className="absolute top-full z-[100] mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          No matching places. Try a different spelling, or{' '}
-          <Link href="/places/submit" className="font-medium text-brand-700 hover:underline dark:text-brand-300">
-            add it to the catalog
-          </Link>
-          .
-        </p>
-      )}
+      {!searching &&
+        open &&
+        results &&
+        results.length === 0 &&
+        query.trim().length >= 2 && (
+          <p className="absolute top-full z-[100] mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+            No matching places. Try a different spelling, or{" "}
+            <Link
+              href="/places/submit"
+              className="font-medium text-brand-700 hover:underline dark:text-brand-300"
+            >
+              add it to the catalog
+            </Link>
+            .
+          </p>
+        )}
     </div>
   );
 }

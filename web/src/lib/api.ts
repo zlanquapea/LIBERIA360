@@ -418,11 +418,33 @@ export interface EventsQuery {
   limit?: number;
 }
 
-export function getEvents(query: EventsQuery = {}): Promise<PaginatedEvents> {
+interface GetEventsOptions {
+  fallbackOnBuild?: boolean;
+}
+
+export function getEvents(
+  query: EventsQuery = {},
+  { fallbackOnBuild = true }: GetEventsOptions = {},
+): Promise<PaginatedEvents> {
   return apiFetch<PaginatedEvents>(
     "/events",
     query as Record<string, string | number | boolean | undefined>,
-    emptyPage(query.limit),
+    fallbackOnBuild ? emptyPage(query.limit) : undefined,
+  );
+}
+
+/**
+ * Shared public-event read for Home and /events. The API owns the exact
+ * approved-and-not-ended eligibility rule; this helper only supplies the
+ * current lower bound so both surfaces use one request shape. A failed read
+ * is allowed to surface instead of becoming a false "no events" result.
+ */
+export function getUpcomingEvents(
+  query: Omit<EventsQuery, "includePast"> = {},
+): Promise<PaginatedEvents> {
+  return getEvents(
+    { ...query, dateFrom: query.dateFrom ?? new Date().toISOString() },
+    { fallbackOnBuild: false },
   );
 }
 
@@ -604,11 +626,7 @@ export interface ExperienceSummary {
 export async function getGuides(
   query: { search?: string; county?: string; language?: string } = {},
 ): Promise<GuideSummary[]> {
-  try {
-    return await apiFetch<GuideSummary[]>("/guides", query, []);
-  } catch {
-    return [];
-  }
+  return apiFetch<GuideSummary[]>("/guides", query, []);
 }
 
 export function getGuide(slug: string): Promise<GuideSummary> {
@@ -618,11 +636,7 @@ export function getGuide(slug: string): Promise<GuideSummary> {
 export async function getExperiences(
   query: { search?: string; category?: string; county?: string } = {},
 ): Promise<ExperienceSummary[]> {
-  try {
-    return await apiFetch<ExperienceSummary[]>("/experiences", query, []);
-  } catch {
-    return [];
-  }
+  return apiFetch<ExperienceSummary[]>("/experiences", query, []);
 }
 
 export function getExperience(id: string): Promise<ExperienceSummary> {
