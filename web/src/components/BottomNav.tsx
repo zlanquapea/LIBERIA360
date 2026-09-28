@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ComponentType, SVGProps } from "react";
+import { Link, usePathname } from "@/i18n/navigation";
 import {
   HomeIcon,
   MapPinIcon,
@@ -81,9 +80,8 @@ const TABS: {
   },
 ];
 
-// Plain next/link, not @/i18n/navigation's locale-aware Link — see
-// Header.tsx's doc comment for why (this renders in both root layouts,
-// only one of which has real i18n behind its provider).
+// The locale-aware pathname is already normalized (no /fr, /zh, /ar prefix),
+// so active-state matching uses the same route names as the tab definitions.
 export function BottomNav() {
   const t = useTranslations("nav");
   const pathname = usePathname();

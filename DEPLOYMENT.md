@@ -32,6 +32,21 @@ window. Two options, both fine for this:
   (`npm run start --workspace=web -- -p $PORT`), since it's the second app
   in this repo and root auto-detection can only point at one.
 
+  Video thumbnail generation (`api/src/uploads/video-thumbnail.ts`) shells
+  out to `ffmpeg`, which neither Railpack's auto-detected build nor Render's
+  native Node runtime installs by default, and neither platform's native
+  runtime grants the root access a plain `apt-get install` needs (unlike
+  this repo's own CI workflow, which runs on a GitHub Actions runner with
+  passwordless sudo — see `.github/workflows/ci.yml`). On Railway, add an
+  `apt.txt` (or equivalent Nixpacks config) listing `ffmpeg` — Nixpacks'
+  own supported mechanism for extra system packages, no root needed. On
+  Render, this means switching the `api` service to Render's Docker
+  runtime with a Dockerfile that installs `ffmpeg` (see `render.yaml`'s
+  own comment on its `api` service for why the native runtime can't do
+  this at all). Without either, video uploads still succeed — the
+  controllers already treat a missing binary as a soft failure — just
+  with no generated poster image (`thumbnailUrl: null`).
+
   Railway's free/Hobby tier caps a project at 5 services, and `api` + `web`
   already use 2 — adding Railway's own one-click Postgres plugin (a 3rd
   service) requires their paid Pro plan. If you don't want to pay just to

@@ -162,12 +162,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        // Headings only — a distinct display face so the app reads as a
-        // considered tourism product rather than default system chrome.
-        // Loaded via next/font/google in layout.tsx, which self-hosts the
-        // font file at build time (no runtime request to Google, no
-        // layout-shift flash) — worth caring about on the mobile data
-        // budgets this app is built for.
+        // Headings use a strong native display stack defined in globals.css.
+        // Keeping it local avoids build-time and runtime network dependency.
         display: ['var(--font-display)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       boxShadow: {

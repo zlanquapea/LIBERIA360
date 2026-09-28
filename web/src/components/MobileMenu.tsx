@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { MOBILE_MENU_NAVIGATION } from "@/lib/site-nav";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Link } from "@/i18n/navigation";
 
 // Facebook-style hamburger drawer (product note, Sep 6, 2026): Header's
 // full section list (Explore, Car Rentals, Saved, Help, ...) only ever
@@ -22,13 +22,12 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 // destination twice on one screen; see that list's own doc comment for
 // what took their place.
 //
-// Plain next/link, not @/i18n/navigation's locale-aware Link — see
-// Header.tsx's doc comment for why (this renders in both root layouts,
-// only one of which has real i18n behind its provider).
 export function MobileMenu() {
   const t = useTranslations("nav");
   const [open, setOpen] = useState(false);
   const { user, ready } = useAuth();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   // Same lock-scroll + Escape-to-close pattern as the other full-screen
   // overlays in this app (see CreatorPostViewer) — kept independent of
@@ -38,23 +37,52 @@ export function MobileMenu() {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const focusFrame = requestAnimationFrame(() => {
+      drawerRef.current
+        ?.querySelector<HTMLElement>(
+          "a[href], button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        )
+        ?.focus();
+    });
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+      if (event.key !== "Tab" || !drawerRef.current) return;
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        ),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previousOverflow;
+      cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
   function close() {
     setOpen(false);
+    requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t("openMenu")}
@@ -85,7 +113,7 @@ export function MobileMenu() {
           // MobileFilterSheet's own z-[9999] for the same reason.
           <div role="dialog" aria-modal="true" aria-label={t("siteMenu")} className="fixed inset-0 z-[9999] lg:hidden">
             <div aria-hidden className="absolute inset-0 bg-black/50" onClick={close} />
-            <div className="relative flex h-full w-[82%] max-w-xs flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
+            <div ref={drawerRef} className="relative flex h-full w-[82%] max-w-xs flex-col overflow-y-auto bg-white shadow-2xl dark:bg-slate-900">
               <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4 dark:border-slate-800">
                 {ready && user ? (
                   <Link href="/account" onClick={close} className="flex min-w-0 items-center gap-2.5">

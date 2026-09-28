@@ -1,16 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import NextLink from "next/link";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 // Sits at the bottom of the scrollable content area, above BottomNav's
 // sticky tab bar (see app/layout.tsx) — the one place in this mobile-first
 // app a visitor can reliably find the legal pages, since there's no
 // traditional desktop-style footer elsewhere in the design.
 //
-// 'use client' + plain next/link (i18n, Sep 2026): see Header.tsx's doc
-// comment — this renders in both root layouts, only one of which has real
-// i18n behind its NextIntlClientProvider.
+// Public destinations use the locale-aware Link. Legal pages intentionally
+// use next/link because they live in the English-only root route group.
 export function Footer() {
   const t = useTranslations("footer");
 
@@ -37,18 +37,18 @@ export function Footer() {
           >
             {t("addPlace")}
           </Link>
-          <Link
+          <NextLink
             href="/privacy"
             className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
           >
             {t("privacy")}
-          </Link>
-          <Link
+          </NextLink>
+          <NextLink
             href="/terms"
             className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
           >
             {t("terms")}
-          </Link>
+          </NextLink>
         </nav>
       </div>
       <div className="mx-auto mt-6 max-w-7xl border-t border-slate-200 pt-5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:px-2">

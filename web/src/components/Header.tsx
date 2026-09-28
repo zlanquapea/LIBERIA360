@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,19 +11,14 @@ import { GlobalSearch } from "./GlobalSearch";
 import { MobileMenu } from "./MobileMenu";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { Link } from "@/i18n/navigation";
 
 // 'use client' (i18n, Sep 2026): useTranslations() needs to read from
 // whichever NextIntlClientProvider is above it in the tree — the [locale]
 // layout's real one, or the (no-locale) layout's English-pinned one (see
 // that layout's own doc comment) — and Server Components can't consume a
-// context a Client Component provides. Plain <Link>/<a> below are
-// intentional too: this renders in BOTH root layouts, and @/i18n/navigation's
-// locale-aware Link requires the same provider context that (no-locale)
-// deliberately never has real i18n behind. An unprefixed Link still
-// resolves correctly for every locale (next-intl's own middleware redirects
-// to the locale-prefixed URL using the visitor's cookie) — it just costs an
-// extra hop instead of an instant client-side transition for non-English
-// locales. See I18N_PLAN.md if that hop needs closing later.
+// context a Client Component provides. The app's navigation wrapper handles
+// locale prefixes consistently, including the English-pinned shared shell.
 export function Header() {
   const t = useTranslations("nav");
   const { user, ready } = useAuth();

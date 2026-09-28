@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   BuildingStorefrontIcon,
@@ -24,6 +23,7 @@ import {
 } from "@/lib/format";
 import { SafeImage } from "./SafeImage";
 import type { SearchSuggestResponse, SearchSuggestion } from "@/lib/types";
+import { useRouter } from "@/i18n/navigation";
 
 const RECENT_SEARCHES_KEY = "liberia360:recent-searches";
 const MAX_RECENT = 6;

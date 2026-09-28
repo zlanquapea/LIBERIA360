@@ -46,6 +46,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      # Video-poster extraction uses the OS binary rather than a package whose
+      # postinstall downloads an executable from GitHub. Ubuntu runners include
+      # ffmpeg today; this guard keeps the workflow explicit and future-proof.
+      - name: Ensure FFmpeg is available
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+
       - run: npm ci
 
       - name: Lint

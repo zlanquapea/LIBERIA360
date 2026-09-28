@@ -1,11 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { SafeImage } from './SafeImage';
+import { Link } from '@/i18n/navigation';
 
 // Header account affordance — signed out shows "Log in", signed in shows
 // the user's initial as a small avatar pill. Used to also carry its own
@@ -17,8 +17,6 @@ import { SafeImage } from './SafeImage';
 // /account, which itself decides whether to show the profile or redirect
 // to /login.
 //
-// Plain next/link, not @/i18n/navigation's locale-aware Link — see
-// Header.tsx's doc comment for why (renders in both root layouts).
 export function AccountLink() {
   const t = useTranslations('nav');
   const { user, ready } = useAuth();
