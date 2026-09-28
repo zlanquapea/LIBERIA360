@@ -97,7 +97,6 @@ body {
 html {
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
-  overscroll-behavior-y: contain;
 }
 
 body {

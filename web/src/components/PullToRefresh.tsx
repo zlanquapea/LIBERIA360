@@ -53,6 +53,13 @@ function getTrackedTouch(event: globalThis.TouchEvent, identifier: number) {
   return Array.from(event.touches).find((touch) => touch.identifier === identifier) ?? null;
 }
 
+function isStandaloneApp() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+  );
+}
+
 export function PullToRefresh() {
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -114,7 +121,11 @@ export function PullToRefresh() {
       // Take ownership only after the finger is clearly moving vertically.
       // This preserves native horizontal swipes and prevents browser overscroll.
       if (deltaY < AXIS_LOCK_PX) return;
-      event.preventDefault();
+      // In regular Safari/Chrome, keep the browser-native pull-to-refresh
+      // behavior (the spinner shown in Safari). Only prevent the browser
+      // gesture inside a Home Screen standalone app where native refresh is
+      // unavailable and our fallback owns the interaction.
+      if (isStandaloneApp()) event.preventDefault();
       const nextDistance = Math.min(
         MAX_PULL_PX,
         Math.round(deltaY * PULL_RESISTANCE),
