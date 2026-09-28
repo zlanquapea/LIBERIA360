@@ -1,4 +1,5 @@
 "use client";
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -92,7 +93,8 @@ export function ConversationInbox() {
     );
   if (!token)
     return (
-      <main className="mx-auto max-w-lg px-4 py-16 text-center">
+      <main className="mx-auto w-full max-w-3xl px-4 py-6 pb-28 text-center">
+        <FeatureNavigation />
         <ChatBubbleLeftRightIcon className="mx-auto h-10 w-10 text-brand-600" />
         <h1 className="mt-4 text-2xl font-bold">Your messages</h1>
         <p className="mt-2 text-slate-500">
@@ -108,6 +110,7 @@ export function ConversationInbox() {
     );
   return (
     <main className="messaging-inbox mx-auto w-full max-w-3xl bg-white pb-24 dark:bg-slate-950 sm:my-6 sm:rounded-2xl sm:border sm:border-slate-200 dark:sm:border-slate-800">
+      <div className="px-4 pt-4"><FeatureNavigation /></div>
       <header className="flex items-center justify-between px-5 pb-3 pt-5">
         <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
           Messages
@@ -224,6 +227,7 @@ export function ConversationInbox() {
               ? "Try another search or filter."
               : "Use the compose button to find someone to message."}
           </p>
+          <button type="button" onClick={() => { if (query || category !== "All") { setQuery(""); setCategory("All"); } else { setCompose(true); } }} className="button-primary mt-5 min-h-11">{query || category !== "All" ? "Clear search & filters" : "Start a conversation"}</button>
         </div>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">

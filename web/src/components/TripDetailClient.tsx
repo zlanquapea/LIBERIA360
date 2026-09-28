@@ -9,6 +9,7 @@ import {
   PencilIcon,
   TrashIcon,
   MapPinIcon,
+  StarIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +22,7 @@ import {
   removeItineraryStop,
   renameItinerary,
   requestToJoinTrip,
+  setFeaturedTemplate,
   updateItineraryStop,
   updatePartySize,
 } from "@/lib/itinerary-api";
@@ -440,7 +442,7 @@ function MemberTripView({
   setCancelError,
 }: {
   itinerary: ItineraryDetail;
-  user: { id: string } | null;
+  user: { id: string; isAdmin: boolean } | null;
   token: string | null;
   router: ReturnType<typeof useRouter>;
   reload: () => void;
@@ -466,6 +468,38 @@ function MemberTripView({
   const isCollaborator = itinerary.collaborators.some((c) => c.id === user?.id);
   const canEdit = isOwner || isCollaborator;
   const [duplicating, setDuplicating] = useState(false);
+  const canFeature = isOwner && Boolean(user?.isAdmin);
+  const [showFeatureForm, setShowFeatureForm] = useState(false);
+  const [featuredCategoryInput, setFeaturedCategoryInput] = useState(
+    itinerary.featuredCategory ?? "",
+  );
+  const [featuring, setFeaturing] = useState(false);
+  const [featureError, setFeatureError] = useState<string | null>(null);
+
+  // Admin-only, and only on a trip the acting admin themself owns (see
+  // ItinerariesService.setFeaturedTemplate) — curates this trip as a
+  // clonable "Trip Ideas" starting point.
+  async function handleSetFeatured(next: boolean) {
+    if (!token) return;
+    setFeaturing(true);
+    setFeatureError(null);
+    try {
+      await setFeaturedTemplate(token, itinerary.id, {
+        isFeaturedTemplate: next,
+        featuredCategory: next ? featuredCategoryInput.trim() || undefined : undefined,
+      });
+      setShowFeatureForm(false);
+      reload();
+    } catch (err) {
+      setFeatureError(
+        getFriendlyErrorMessage(err, {
+          context: { action: "set-featured-template", itineraryId: itinerary.id },
+        }),
+      );
+    } finally {
+      setFeaturing(false);
+    }
+  }
 
   // Owner or any collaborator, same tier as renameTrip — the copy always
   // belongs to whoever clicks this, not the original owner (see the API's
@@ -606,8 +640,60 @@ function MemberTripView({
                 {t("deleteTrip")}
               </button>
             )}
+            {canFeature &&
+              (itinerary.isFeaturedTemplate ? (
+                <button
+                  type="button"
+                  disabled={featuring}
+                  onClick={() => handleSetFeatured(false)}
+                  className="flex items-center gap-1 rounded-full border border-gold-400 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800 hover:bg-gold-100 disabled:opacity-60 dark:border-gold-700 dark:bg-gold-900/20 dark:text-gold-300"
+                >
+                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                  {featuring ? t("savingFeatured") : t("unfeatureStarterItinerary")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowFeatureForm((v) => !v)}
+                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-gold-400 hover:text-gold-700 dark:border-slate-700 dark:text-slate-300"
+                >
+                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                  {t("featureAsStarterItinerary")}
+                </button>
+              ))}
           </div>
         </div>
+
+        {canFeature && featureError && !showFeatureForm && (
+          <p role="alert" className="mt-2 text-xs text-flag-700 dark:text-flag-300">
+            {featureError}
+          </p>
+        )}
+
+        {canFeature && showFeatureForm && !itinerary.isFeaturedTemplate && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-gold-200 bg-gold-50/60 p-3 dark:border-gold-800 dark:bg-gold-900/10">
+            <input
+              value={featuredCategoryInput}
+              onChange={(e) => setFeaturedCategoryInput(e.target.value)}
+              placeholder={t("featuredCategoryLabel")}
+              maxLength={60}
+              className="input flex-1"
+            />
+            <button
+              type="button"
+              disabled={featuring}
+              onClick={() => handleSetFeatured(true)}
+              className="rounded-full bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
+            >
+              {featuring ? t("savingFeatured") : t("featureAsStarterItinerary")}
+            </button>
+            {featureError && (
+              <p role="alert" className="w-full text-xs text-flag-700 dark:text-flag-300">
+                {featureError}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <TripTitle

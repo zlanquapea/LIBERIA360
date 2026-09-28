@@ -36,18 +36,7 @@ import { ShareMenu } from "./ShareMenu";
 import { CreatorFollowButton } from "./CreatorFollowButton";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-// Feed card redesign (product ask: "full Facebook UI and UX for the
-// creator feed... adjust for our situation"): a recognizable social-feed
-// card shape — caption before media, a timestamp + reach indicator in the
-// header, an engagement summary line, avatars on comments — reassembled
-// from this app's own primitives (heart-based Like, an existing
-// ShareMenu, a bookmark-based Save that this platform treats as a first-
-// class feature) rather than reproducing Facebook's exact iconography
-// (its dual thumbs-up/heart reaction stack, its blue palette, its
-// "Facebook" wordmark) — recognizable as the genre, not a copy of the
-// brand. Save moves out of the primary action row into a corner icon
-// next to the header, Instagram-style, since a 4th button crowded the
-// Like/Comment/Share row this platform's own comment convention expects.
+// Keep the primary action row focused; bookmarking lives in the header.
 function timeAgo(value: string): string {
   const date = new Date(value);
   const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
@@ -58,7 +47,10 @@ function timeAgo(value: string): string {
   if (hours < 24) return `${hours}h`;
   const days = Math.round(hours / 24);
   if (days < 7) return `${days}d`;
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
 function displayName(comment: CreatorPostComment): string {
@@ -86,7 +78,7 @@ function PostCaption({ text }: { text: string | null }) {
   return (
     <div>
       <p
-        className={`whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200 ${expanded ? "" : "line-clamp-3"}`}
+        className={`break-words whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-200 ${expanded ? "" : "line-clamp-3"}`}
       >
         {text}
       </p>
@@ -137,7 +129,9 @@ export function CreatorPostCard({
   const [busy, setBusy] = useState<"like" | "save" | null>(null);
   const [commentLikeBusy, setCommentLikeBusy] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPlacement, setMenuPlacement] = useState<"above" | "below">("below");
+  const [menuPlacement, setMenuPlacement] = useState<"above" | "below">(
+    "below",
+  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -145,6 +139,37 @@ export function CreatorPostCard({
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const articleRef = useRef<HTMLElement>(null);
+  const [previewComment, setPreviewComment] =
+    useState<CreatorPostComment | null>(null);
+
+  useEffect(() => {
+    if (
+      !post.commentCount ||
+      !articleRef.current ||
+      typeof IntersectionObserver === "undefined"
+    )
+      return;
+    let cancelled = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      observer.disconnect();
+      getCreatorPostComments(post.id, token ?? undefined)
+        .then((items) => {
+          if (!cancelled)
+            setPreviewComment(items.find((item) => !item.parentId) ?? null);
+        })
+        .catch(() => {
+          /* The full comments panel offers retry on demand. */
+        });
+    });
+    observer.observe(articleRef.current);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [post.id, post.commentCount, token]);
 
   const shareUrl =
     typeof window !== "undefined"
@@ -294,7 +319,10 @@ export function CreatorPostCard({
     }
   }
 
-  async function submitComment(body = commentBody, parentId = replyingTo ?? undefined) {
+  async function submitComment(
+    body = commentBody,
+    parentId = replyingTo ?? undefined,
+  ) {
     if (!token || !body.trim()) return;
     setSubmittingComment(true);
     setError(null);
@@ -332,7 +360,11 @@ export function CreatorPostCard({
       setComments((current) =>
         current.map((comment) =>
           comment.id === commentId
-            ? { ...comment, likeCount: result.likeCount, viewerLiked: result.liked }
+            ? {
+                ...comment,
+                likeCount: result.likeCount,
+                viewerLiked: result.liked,
+              }
             : comment,
         ),
       );
@@ -351,9 +383,13 @@ export function CreatorPostCard({
     if (!token) return;
     try {
       await removeCreatorPostComment(token, post.id, commentId);
+      setPreviewComment((current) =>
+        current?.id === commentId ? null : current,
+      );
       setComments((current) =>
         current.filter(
-          (comment) => comment.id !== commentId && comment.parentId !== commentId,
+          (comment) =>
+            comment.id !== commentId && comment.parentId !== commentId,
         ),
       );
       setCommentCount((current) => Math.max(0, current - 1));
@@ -366,10 +402,7 @@ export function CreatorPostCard({
     }
   }
 
-  const renderComment = (
-    comment: CreatorPostComment,
-    depth = 0,
-  ): ReactNode => {
+  const renderComment = (comment: CreatorPostComment, depth = 0): ReactNode => {
     const replies = comments.filter((item) => item.parentId === comment.id);
     const liked = Boolean(comment.viewerLiked);
     return (
@@ -394,7 +427,7 @@ export function CreatorPostCard({
                   {timeAgo(comment.createdAt)}
                 </time>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
+              <p className="mt-1 break-words whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">
                 {comment.body}
               </p>
             </div>
@@ -406,12 +439,19 @@ export function CreatorPostCard({
                   disabled={commentLikeBusy === comment.id}
                   aria-pressed={liked}
                   aria-label={liked ? "Unlike comment" : "Like comment"}
-                  className={liked ? "text-rose-600 dark:text-rose-400" : "hover:text-rose-600 dark:hover:text-rose-400"}
+                  className={
+                    liked
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "hover:text-rose-600 dark:hover:text-rose-400"
+                  }
                 >
                   {liked ? "Liked" : "Like"} · {comment.likeCount}
                 </button>
               ) : (
-                <Link href="/login" className="hover:text-rose-600 dark:hover:text-rose-400">
+                <Link
+                  href="/login"
+                  className="hover:text-rose-600 dark:hover:text-rose-400"
+                >
                   Like · {comment.likeCount}
                 </Link>
               )}
@@ -448,6 +488,9 @@ export function CreatorPostCard({
     );
   };
 
+  const visiblePreview =
+    comments.find((comment) => !comment.parentId) ?? previewComment;
+
   const hasEngagement = likeCount > 0 || commentCount > 0 || shareCount > 0;
 
   if (deleted) return null;
@@ -455,316 +498,348 @@ export function CreatorPostCard({
   return (
     <>
       <article
-      id={`post-${post.id}`}
-      className="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-    >
-      <div className="flex items-start gap-3 px-4 pt-4 sm:px-5">
-        <Link
-          href={`/creators/${post.creator.username}`}
-          className="shrink-0"
-          aria-label={`View ${post.creator.name}'s profile`}
-        >
-          {post.creator.profileImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={post.creator.profileImage}
-              alt=""
-              className="h-12 w-12 rounded-full object-cover ring-2 ring-sky-100 dark:ring-sky-950"
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
-            >
-              {post.creator.name.slice(0, 1).toUpperCase()}
-            </span>
-          )}
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <Link
-                  href={`/creators/${post.creator.username}`}
-                  className="min-w-0 truncate font-display text-sm font-bold text-slate-950 hover:text-brand-700 dark:text-white dark:hover:text-brand-300 sm:text-base"
-                >
-                  {post.creator.name}
-                </Link>
-                <VerificationBadge
-                  compact
-                  status={
-                    post.creator.verificationStatus === "verified"
-                      ? "verified"
-                      : "unverified"
-                  }
-                />
-              </div>
-              <div className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                <time dateTime={post.createdAt}>{timeAgo(post.createdAt)}</time>
-                <span aria-hidden>·</span>
-                <GlobeAltIcon
-                  aria-hidden
-                  className="h-3.5 w-3.5 shrink-0"
-                  title="Public"
-                />
-                <span className="sr-only">Public</span>
-                {post.creator.county && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span className="truncate">{post.creator.county.name}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div ref={overflowMenuRef} className="relative shrink-0">
-              <button
-                ref={overflowButtonRef}
-                type="button"
-                onClick={togglePostActions}
-                aria-label="More post actions"
-                aria-expanded={menuOpen}
-                aria-haspopup="menu"
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-500 outline-none hover:bg-slate-50 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-              >
-                <EllipsisHorizontalIcon aria-hidden className="h-6 w-6" />
-              </button>
-              {menuOpen && (
-                <div
-                  role="menu"
-                  aria-label="Post actions"
-                  className={`absolute right-0 z-30 w-40 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ${menuPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"}`}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={handleEdit}
-                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
-                  >
-                    <PencilIcon aria-hidden className="h-4 w-4" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={openDeleteDialog}
-                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-rose-600 outline-none hover:bg-rose-50 focus-visible:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:focus-visible:bg-rose-950/40"
-                  >
-                    <TrashIcon aria-hidden className="h-4 w-4" />
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mt-2">
-            <CreatorFollowButton
-              creatorId={post.creator.id}
-              compact
-              hideWhenFollowing
-            />
-          </div>
-        </div>
-      </div>
-
-      {post.mediaType !== "text" && (
-        <div className="px-4 pb-3 pt-3 sm:px-5">
-          <PostCaption text={post.caption} />
-        </div>
-      )}
-
-      <CreatorPostMedia
-        post={post}
-        videoPosts={videoPosts}
-        liked={liked}
-        saved={saved}
-        likeCount={likeCount}
-        commentCount={commentCount}
-        shareCount={shareCount}
-        onLike={() => void handleLike()}
-        onComment={() => void toggleComments()}
-        onCommentSubmit={(body, parentId) => submitComment(body, parentId)}
-        onCommentLike={(commentId) => toggleCommentLike(commentId)}
-        onCommentReply={(commentId) => setReplyingTo(commentId)}
-        comments={comments}
-        onSave={() => void handleSave()}
-        onShare={() => void handleShare()}
-      />
-
-      <div className="px-4 pb-4 pt-3 sm:px-5">
-        {hasEngagement && (
-          <div className="flex items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-1.5">
-              {likeCount > 0 && (
-                <>
-                  <span
-                    aria-hidden
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white"
-                  >
-                    <HeartSolidIcon aria-hidden className="h-3 w-3" />
-                  </span>
-                  <span>{likeCount}</span>
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-2 truncate">
-              {commentCount > 0 && (
-                <span>
-                  {commentCount} comment{commentCount === 1 ? "" : "s"}
-                </span>
-              )}
-              {shareCount > 0 && (
-                <span>
-                  {shareCount} share{shareCount === 1 ? "" : "s"}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div
-          className={`grid grid-cols-4 gap-1 py-1 ${hasEngagement ? "mt-2 border-y border-slate-100 dark:border-slate-800" : "border-b border-slate-100 pb-2 dark:border-slate-800"}`}
-        >
-          {token ? (
-            <button
-              type="button"
-              onClick={handleLike}
-              disabled={busy === "like"}
-              aria-pressed={liked}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-transform active:scale-95 hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${liked ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"}`}
-            >
-              {liked ? (
-                <HeartSolidIcon aria-hidden className="h-5 w-5 animate-pop" />
-              ) : (
-                <HeartIcon aria-hidden className="h-5 w-5" />
-              )}
-              <span className="truncate">Like</span>
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <HeartIcon aria-hidden className="h-5 w-5" />
-              <span className="truncate">Like</span>
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={toggleComments}
-            aria-expanded={commentsOpen}
-            className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+        ref={articleRef}
+        id={`post-${post.id}`}
+        className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      >
+        <div className="flex items-start gap-2.5 px-4 pt-3 sm:px-5">
+          <Link
+            href={`/creators/${post.creator.username}`}
+            className="shrink-0"
+            aria-label={`View ${post.creator.name}'s profile`}
           >
-            <ChatBubbleOvalLeftIcon aria-hidden className="h-5 w-5" />
-            <span className="truncate">Comment</span>
-          </button>
-          <ShareMenu
-            placeName={post.creator.name}
-            shareUrl={shareUrl}
-            contentType="post"
-            variant="feed"
-            onShare={handleShare}
-          />
-          {token ? (
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={busy === "save"}
-              aria-pressed={saved}
-              aria-label={saved ? "Unsave post" : "Save post"}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${saved ? "text-brand-700 dark:text-brand-300" : "text-slate-600 dark:text-slate-300"}`}
-            >
-              {saved ? (
-                <BookmarkSolidIcon aria-hidden className="h-5 w-5" />
-              ) : (
-                <BookmarkIcon aria-hidden className="h-5 w-5" />
-              )}
-              <span className="truncate">Save</span>
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              aria-label="Save post"
-              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <BookmarkIcon aria-hidden className="h-5 w-5" />
-              <span className="truncate">Save</span>
-            </Link>
-          )}
-        </div>
-
-        {commentsOpen && (
-          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-            {loadingComments ? (
-              <p className="text-sm text-slate-500">Loading comments…</p>
-            ) : comments.length > 0 ? (
-              <div className="space-y-3">
-                {comments
-                  .filter((comment) => !comment.parentId)
-                  .map((comment) => renderComment(comment))}
-              </div>
+            {post.creator.profileImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={post.creator.profileImage}
+                alt=""
+                className="h-10 w-10 rounded-full object-cover ring-2 ring-slate-100 dark:ring-slate-800"
+              />
             ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No comments yet. Start the conversation.
-              </p>
+              <span
+                aria-hidden
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+              >
+                {post.creator.name.slice(0, 1).toUpperCase()}
+              </span>
             )}
-            <div className="mt-3 flex items-start gap-2">
-              {token ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+          </Link>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Link
+                    href={`/creators/${post.creator.username}`}
+                    className="min-w-0 truncate font-display text-sm font-bold text-slate-950 hover:text-brand-700 dark:text-white dark:hover:text-brand-300 sm:text-base"
                   >
-                    {(user?.name?.trim().charAt(0) || "?").toUpperCase()}
-                  </span>
-                  <textarea
-                    value={commentBody}
-                    onChange={(event) => setCommentBody(event.target.value)}
-                    rows={1}
-                    maxLength={1000}
-                    placeholder={replyingTo ? "Write a reply…" : "Write a comment…"}
-                    className="min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-brand-950"
+                    {post.creator.name}
+                  </Link>
+                  <VerificationBadge
+                    compact
+                    status={
+                      post.creator.verificationStatus === "verified"
+                        ? "verified"
+                        : "unverified"
+                    }
                   />
-                  <div className="flex shrink-0 flex-col gap-1">
-                    <button
-                      type="button"
-                      onClick={() => void submitComment()}
-                      disabled={submittingComment || !commentBody.trim()}
-                      className="min-h-11 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      {submittingComment ? "Posting…" : replyingTo ? "Reply" : "Post"}
-                    </button>
-                    {replyingTo && (
-                      <button
-                        type="button"
-                        onClick={() => setReplyingTo(null)}
-                        className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                      >
-                        Cancel reply
-                      </button>
-                    )}
-                  </div>
-                </>
+                </div>
+                <div className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  <time dateTime={post.createdAt}>
+                    {timeAgo(post.createdAt)}
+                  </time>
+                  <span aria-hidden>·</span>
+                  <GlobeAltIcon
+                    aria-hidden
+                    className="h-3.5 w-3.5 shrink-0"
+                    title="Public"
+                  />
+                  <span className="sr-only">Public</span>
+                  {post.creator.county && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span className="truncate">
+                        {post.creator.county.name}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {token ? (
+                <button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={busy === "save"}
+                  aria-pressed={saved}
+                  aria-label={saved ? "Unsave post" : "Save post"}
+                  className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${saved ? "text-brand-700 dark:text-brand-300" : "text-slate-600 dark:text-slate-300"}`}
+                >
+                  {saved ? (
+                    <BookmarkSolidIcon aria-hidden className="h-5 w-5" />
+                  ) : (
+                    <BookmarkIcon aria-hidden className="h-5 w-5" />
+                  )}
+                </button>
               ) : (
                 <Link
                   href="/login"
-                  className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                  aria-label="Save post"
+                  className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
-                  Log in to comment
+                  <BookmarkIcon aria-hidden className="h-5 w-5" />
                 </Link>
               )}
+              <div ref={overflowMenuRef} className="relative shrink-0">
+                <button
+                  ref={overflowButtonRef}
+                  type="button"
+                  onClick={togglePostActions}
+                  aria-label="More post actions"
+                  aria-expanded={menuOpen}
+                  aria-haspopup="menu"
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-500 outline-none hover:bg-slate-50 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                >
+                  <EllipsisHorizontalIcon aria-hidden className="h-6 w-6" />
+                </button>
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Post actions"
+                    className={`absolute right-0 z-30 w-40 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ${menuPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"}`}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleEdit}
+                      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+                    >
+                      <PencilIcon aria-hidden className="h-4 w-4" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={openDeleteDialog}
+                      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-rose-600 outline-none hover:bg-rose-50 focus-visible:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:focus-visible:bg-rose-950/40"
+                    >
+                      <TrashIcon aria-hidden className="h-4 w-4" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+            <div className="mt-1">
+              <CreatorFollowButton
+                creatorId={post.creator.id}
+                compact
+                hideWhenFollowing
+              />
+            </div>
+          </div>
+        </div>
+
+        {post.mediaType !== "text" && (
+          <div className="px-4 pb-3 pt-3 sm:px-5">
+            <PostCaption text={post.caption} />
           </div>
         )}
 
-        {error && (
-          <p
-            role="alert"
-            className="mt-3 text-xs text-rose-700 dark:text-rose-300"
+        <CreatorPostMedia
+          post={post}
+          videoPosts={videoPosts}
+          liked={liked}
+          saved={saved}
+          likeCount={likeCount}
+          commentCount={commentCount}
+          shareCount={shareCount}
+          onLike={() => void handleLike()}
+          onComment={() => void toggleComments()}
+          onCommentSubmit={(body, parentId) => submitComment(body, parentId)}
+          onCommentLike={(commentId) => toggleCommentLike(commentId)}
+          onCommentReply={(commentId) => setReplyingTo(commentId)}
+          comments={comments}
+          onSave={() => void handleSave()}
+          onShare={() => void handleShare()}
+        />
+
+        <div className="px-4 pb-2 pt-2 sm:px-5">
+          {hasEngagement && (
+            <div className="flex items-center justify-between gap-3 text-sm text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5">
+                {likeCount > 0 && (
+                  <>
+                    <span
+                      aria-hidden
+                      className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white"
+                    >
+                      <HeartSolidIcon aria-hidden className="h-3 w-3" />
+                    </span>
+                    <span>{likeCount}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 truncate">
+                {commentCount > 0 && (
+                  <span>
+                    {commentCount} comment{commentCount === 1 ? "" : "s"}
+                  </span>
+                )}
+                {shareCount > 0 && (
+                  <span>
+                    {shareCount} share{shareCount === 1 ? "" : "s"}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`grid grid-cols-3 gap-1 py-1 ${hasEngagement ? "mt-2 border-y border-slate-100 dark:border-slate-800" : "border-b border-slate-100 pb-2 dark:border-slate-800"}`}
           >
-            {error}
-          </p>
-        )}
+            {token ? (
+              <button
+                type="button"
+                onClick={handleLike}
+                disabled={busy === "like"}
+                aria-pressed={liked}
+                className={`flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-transform active:scale-95 hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800 ${liked ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"}`}
+              >
+                {liked ? (
+                  <HeartSolidIcon aria-hidden className="h-5 w-5 animate-pop" />
+                ) : (
+                  <HeartIcon aria-hidden className="h-5 w-5" />
+                )}
+                <span>Like</span>
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <HeartIcon aria-hidden className="h-5 w-5" />
+                <span>Like</span>
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={toggleComments}
+              aria-expanded={commentsOpen}
+              className="flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <ChatBubbleOvalLeftIcon aria-hidden className="h-5 w-5" />
+              <span>Comment</span>
+            </button>
+            <ShareMenu
+              placeName={post.creator.name}
+              shareUrl={shareUrl}
+              contentType="post"
+              variant="feed"
+              onShare={handleShare}
+            />
+          </div>
+
+          {!commentsOpen && commentCount > 0 && (
+            <div className="pt-2">
+              {visiblePreview && (
+                <p className="line-clamp-2 break-words text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {displayName(visiblePreview)}:{" "}
+                  </span>
+                  {visiblePreview.body}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={toggleComments}
+                className="min-h-11 text-sm font-semibold text-slate-500 hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300"
+              >
+                View{" "}
+                {commentCount === 1
+                  ? "comment"
+                  : `all ${commentCount} comments`}
+              </button>
+            </div>
+          )}
+
+          {commentsOpen && (
+            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+              {loadingComments ? (
+                <p className="text-sm text-slate-500">Loading comments…</p>
+              ) : comments.length > 0 ? (
+                <div className="space-y-3">
+                  {comments
+                    .filter((comment) => !comment.parentId)
+                    .map((comment) => renderComment(comment))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  No comments yet. Start the conversation.
+                </p>
+              )}
+              <div className="mt-3 flex items-start gap-2">
+                {token ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                    >
+                      {(user?.name?.trim().charAt(0) || "?").toUpperCase()}
+                    </span>
+                    <textarea
+                      value={commentBody}
+                      onChange={(event) => setCommentBody(event.target.value)}
+                      rows={1}
+                      maxLength={1000}
+                      placeholder={
+                        replyingTo ? "Write a reply…" : "Write a comment…"
+                      }
+                      className="min-h-11 min-w-0 flex-1 resize-none rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-brand-950"
+                    />
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void submitComment()}
+                        disabled={submittingComment || !commentBody.trim()}
+                        className="min-h-11 rounded-2xl bg-brand-700 px-3 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {submittingComment
+                          ? "Posting…"
+                          : replyingTo
+                            ? "Reply"
+                            : "Post"}
+                      </button>
+                      {replyingTo && (
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo(null)}
+                          className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        >
+                          Cancel reply
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                  >
+                    Log in to comment
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <p
+              role="alert"
+              className="mt-3 text-xs text-rose-700 dark:text-rose-300"
+            >
+              {error}
+            </p>
+          )}
         </div>
       </article>
       <ConfirmDialog

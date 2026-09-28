@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { renderWithMessages } from '@/test/render-with-messages';
+import { renderWithMessages } from "@/test/render-with-messages";
 import userEvent from "@testing-library/user-event";
 import { CreatorPostCard } from "./CreatorPostCard";
 import type { CreatorPost } from "../lib/types";
@@ -16,8 +16,12 @@ jest.mock("../hooks/useAuth", () => ({
 jest.mock("../lib/creator-feed-api", () => ({
   recordCreatorPostShare: jest.fn().mockResolvedValue({ shareCount: 1 }),
   removeCreatorPost: jest.fn().mockResolvedValue(undefined),
-  toggleCreatorPostLike: jest.fn().mockResolvedValue({ liked: true, likeCount: 1 }),
-  toggleCreatorPostSave: jest.fn().mockResolvedValue({ saved: true, saveCount: 1 }),
+  toggleCreatorPostLike: jest
+    .fn()
+    .mockResolvedValue({ liked: true, likeCount: 1 }),
+  toggleCreatorPostSave: jest
+    .fn()
+    .mockResolvedValue({ saved: true, saveCount: 1 }),
   getCreatorPostComments: jest.fn().mockResolvedValue([]),
   addCreatorPostComment: jest.fn(),
   removeCreatorPostComment: jest.fn(),
@@ -81,7 +85,9 @@ describe("CreatorPostCard actions", () => {
     expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);
     expect(screen.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Delete" }),
+    ).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -116,23 +122,62 @@ describe("CreatorPostCard actions", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(post.id));
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+    );
   });
 
-  it("calls onSave and onUnsave from the bottom action row", async () => {
+  it("calls onSave and onUnsave from the header bookmark", async () => {
     const user = userEvent.setup();
     const onSave = jest.fn().mockResolvedValue(undefined);
     const onUnsave = jest.fn().mockResolvedValue(undefined);
-    renderWithMessages(<CreatorPostCard post={post} onSave={onSave} onUnsave={onUnsave} />);
+    renderWithMessages(
+      <CreatorPostCard post={post} onSave={onSave} onUnsave={onUnsave} />,
+    );
 
     const saveButton = screen.getByRole("button", { name: "Save post" });
-    expect(saveButton).toHaveTextContent("Save");
+    expect(saveButton).not.toHaveTextContent("Save");
     await user.click(saveButton);
     expect(onSave).toHaveBeenCalledWith(post.id);
 
-    const unsaveButton = await screen.findByRole("button", { name: "Unsave post" });
+    const unsaveButton = await screen.findByRole("button", {
+      name: "Unsave post",
+    });
     await user.click(unsaveButton);
     expect(onUnsave).toHaveBeenCalledWith(post.id);
-    expect(screen.getByRole("button", { name: "Save post" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save post" }),
+    ).toBeInTheDocument();
   });
+});
+
+it("loads real comment previews when a post enters view", async () => {
+  const { getCreatorPostComments } = jest.requireMock(
+    "../lib/creator-feed-api",
+  );
+  getCreatorPostComments.mockResolvedValueOnce([
+    {
+      id: "comment-1",
+      body: "Beautiful work",
+      user: { name: "Mombo" },
+      parentId: null,
+    },
+  ]);
+  let intersect: (entries: { isIntersecting: boolean }[]) => void = () => {};
+  const original = global.IntersectionObserver;
+  global.IntersectionObserver = jest.fn().mockImplementation((callback) => {
+    intersect = callback;
+    return { observe: jest.fn(), disconnect: jest.fn() };
+  });
+  try {
+    renderWithMessages(<CreatorPostCard post={{ ...post, commentCount: 1 }} />);
+    expect(getCreatorPostComments).not.toHaveBeenCalled();
+    intersect([{ isIntersecting: true }]);
+    expect(await screen.findByText(/Beautiful work/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "View comment" }),
+    ).toBeInTheDocument();
+  } finally {
+    global.IntersectionObserver = original;
+  }
 });

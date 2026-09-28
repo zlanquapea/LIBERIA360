@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   FaceSmileIcon,
@@ -43,6 +43,49 @@ export function ConversationScreen({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const chat = chatRef.current;
+    const viewport = window.visualViewport;
+    if (!chat || !viewport) return;
+    const syncViewport = () => {
+      // The iOS keyboard resizes and pans the visual viewport, not 100dvh.
+      // Keep the whole chat in the visible area; only the message list scrolls.
+      // Leave pinch zoom under browser control for accessibility.
+      if (viewport.scale !== 1) {
+        chat.style.removeProperty("height");
+        chat.style.removeProperty("top");
+        return;
+      }
+      chat.style.height = `${viewport.height}px`;
+      chat.style.top = `${viewport.offsetTop}px`;
+    };
+    syncViewport();
+    viewport.addEventListener("resize", syncViewport);
+    viewport.addEventListener("scroll", syncViewport);
+    return () => {
+      viewport.removeEventListener("resize", syncViewport);
+      viewport.removeEventListener("scroll", syncViewport);
+      chat.style.removeProperty("height");
+      chat.style.removeProperty("top");
+    };
+  }, [ready, token]);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const input = draftRef.current;
+    if (!input) return;
+    const resize = () => {
+      // Reset before measuring so deleting text also shrinks the composer.
+      input.style.height = "auto";
+      const height = input.scrollHeight;
+      input.style.height = `${Math.min(height, 144)}px`;
+      input.style.overflowY = height > 144 ? "auto" : "hidden";
+      if (height <= 144) input.scrollTop = 0;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [draft, ready, token]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
@@ -343,7 +386,7 @@ export function ConversationScreen({
       </div>
     );
   return (
-    <main className="messaging-chat fixed inset-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col bg-white dark:bg-slate-950">
+    <main ref={chatRef} className="messaging-chat fixed inset-x-0 top-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col overflow-hidden bg-white dark:bg-slate-950">
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-x border-slate-100 dark:border-slate-800">
         <header className="flex shrink-0 items-center gap-3 border-b border-slate-100 bg-white px-4 py-3 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
           <Link
@@ -676,6 +719,7 @@ export function ConversationScreen({
               </button>
             </div>
             <textarea
+              ref={draftRef}
               aria-label="Message"
               value={draft}
               onChange={(event) => handleDraftChange(event.target.value)}
@@ -691,7 +735,7 @@ export function ConversationScreen({
               }}
               placeholder="Write a message…"
               rows={1}
-              className="max-h-28 min-h-11 min-w-0 flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-base outline-none sm:text-sm focus:ring-2 focus:ring-brand-500 dark:bg-slate-800"
+              className="box-border max-h-36 min-h-12 min-w-0 flex-1 resize-none rounded-2xl bg-slate-100 px-4 py-3 text-base leading-6 outline-none sm:text-sm sm:leading-6 focus:ring-2 focus:ring-brand-500 dark:bg-slate-800"
             />
             <button
               onClick={() => void send()}

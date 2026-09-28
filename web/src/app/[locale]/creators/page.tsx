@@ -1,3 +1,4 @@
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import {
@@ -85,7 +86,7 @@ function GuideCard({
   return (
     <Link
       href={`/guides/${guide.slug}`}
-      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-cyan-400/35 dark:bg-[#111d3a] dark:shadow-[0_10px_28px_rgba(0,0,0,0.32)]"
+      className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_10px_28px_rgba(0,0,0,0.32)]"
     >
       <div className="flex items-start gap-3">
         <div className="h-[90px] w-[90px] shrink-0 overflow-hidden rounded-full border-4 border-brand-100 bg-brand-100 shadow-sm dark:border-emerald-400/80 dark:bg-brand-950/80">
@@ -185,6 +186,7 @@ export default async function CreatorsPage({
   return (
     <main className="min-h-screen overflow-x-hidden bg-slate-50 px-4 pb-28 pt-0 text-slate-900 dark:bg-slate-950 dark:text-slate-50 sm:px-6 sm:pt-6">
       <div className="mx-auto flex w-full max-w-[390px] flex-col">
+        <FeatureNavigation />
         <section aria-label="Creator quick actions" className="flex gap-2">
           <QuickAction
             href="/creators#creator-feed"
@@ -286,6 +288,7 @@ export default async function CreatorsPage({
             </div>
           </div>
 
+          {!isFollowing && <nav aria-label="Browse local experts" className="mt-4 grid grid-cols-2 gap-2"><Link href="/guides?role=guides" className="flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-bold text-white dark:bg-brand-300 dark:text-slate-950">Find a guide</Link><Link href="/guides?role=hosts" className="flex min-h-11 items-center justify-center rounded-xl border border-brand-700 px-4 text-sm font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300">Find a host</Link></nav>}
           {isFollowing ? (
             <CreatorFeed
               initialPosts={[]}

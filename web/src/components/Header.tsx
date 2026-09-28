@@ -25,7 +25,7 @@ export function Header() {
   const unreadCount = useGuideUnreadCount();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-brand-900/95 text-white shadow-[0_8px_24px_rgba(0,47,59,0.16)] backdrop-blur-xl supports-[backdrop-filter]:bg-brand-900/90">
+    <header className="site-header sticky top-0 z-20 border-b border-white/10 bg-brand-900/95 text-white shadow-[0_8px_24px_rgba(0,47,59,0.16)] backdrop-blur-xl supports-[backdrop-filter]:bg-brand-900/90">
       <div className="mx-auto flex min-h-[4.5rem] max-w-[90rem] items-center justify-between gap-3 px-3 py-1.5 sm:px-6 lg:px-10">
         <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
           {/* Below lg, this is the only way to reach SITE_NAVIGATION at

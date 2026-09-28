@@ -5,6 +5,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import "../globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { AuthRefresher } from "@/components/AuthRefresher";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { ErrorReportingInit } from "@/components/ErrorReportingInit";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -133,6 +134,7 @@ export default async function LocaleLayout({
           <ServiceWorkerRegister />
           <AuthRefresher />
           <ErrorReportingInit />
+          <PullToRefresh />
         </NextIntlClientProvider>
       </body>
     </html>

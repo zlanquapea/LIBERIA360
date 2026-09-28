@@ -101,9 +101,11 @@ describe("ItinerariesService (collaboration)", () => {
     where: jest.Mock;
     andWhere: jest.Mock;
     orderBy: jest.Mock;
+    addOrderBy: jest.Mock;
     skip: jest.Mock;
     take: jest.Mock;
     getManyAndCount: jest.Mock;
+    getMany: jest.Mock;
   };
   let collaboratorRepo: {
     find: jest.Mock;
@@ -157,9 +159,11 @@ describe("ItinerariesService (collaboration)", () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      getMany: jest.fn().mockResolvedValue([]),
     };
     itineraryRepo = {
       findOne: jest.fn().mockResolvedValue(makeItinerary()),
@@ -1160,6 +1164,145 @@ describe("ItinerariesService (collaboration)", () => {
       placeRepo.find.mockResolvedValue([{ id: "place-1", name: "Spot" }]);
       const result = await service.findPublicTripById(ITINERARY_ID);
       expect("stops" in result && result.stops).toHaveLength(1);
+    });
+
+    it("excludes curated 'Trip Ideas' templates from the community-trips query", async () => {
+      await service.findPublicTrips({});
+      expect(publicTripsQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "itinerary.isFeaturedTemplate = false",
+      );
+    });
+  });
+
+  describe("curated starter itineraries ('Trip Ideas')", () => {
+    it("lets the owning admin feature their own trip, forcing it PUBLIC", async () => {
+      const owned = makeItinerary({
+        userId: OWNER_ID,
+        visibility: TripVisibility.PRIVATE,
+      });
+      itineraryRepo.findOne.mockResolvedValue(owned);
+      await service.setFeaturedTemplate(OWNER_ID, ITINERARY_ID, {
+        isFeaturedTemplate: true,
+        featuredCategory: "Weekend Getaway",
+        featuredOrder: 1,
+      });
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isFeaturedTemplate: true,
+          visibility: TripVisibility.PUBLIC,
+          featuredCategory: "Weekend Getaway",
+          featuredOrder: 1,
+        }),
+      );
+    });
+
+    it("rejects an admin trying to feature someone else's trip (with no access to it at all)", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ userId: STRANGER_ID }),
+      );
+      // Same "don't confirm a random id exists to someone with no access"
+      // 404 getOwned uses everywhere else (see deleteTrip/duplicateItinerary's
+      // own "404s a stranger with no view access" tests) — a collaborator
+      // trying this instead gets a 403, tested below.
+      await expect(
+        service.setFeaturedTemplate(OWNER_ID, ITINERARY_ID, {
+          isFeaturedTemplate: true,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects an admin who's merely a collaborator, not the owner", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ userId: STRANGER_ID }),
+      );
+      collaboratorRepo.find.mockResolvedValue([
+        { userId: OWNER_ID, user: { id: OWNER_ID, name: "Admin" } },
+      ]);
+      await expect(
+        service.setFeaturedTemplate(OWNER_ID, ITINERARY_ID, {
+          isFeaturedTemplate: true,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("un-features without forcing visibility back to private", async () => {
+      const owned = makeItinerary({
+        userId: OWNER_ID,
+        visibility: TripVisibility.PUBLIC,
+        isFeaturedTemplate: true,
+      });
+      itineraryRepo.findOne.mockResolvedValue(owned);
+      await service.setFeaturedTemplate(OWNER_ID, ITINERARY_ID, {
+        isFeaturedTemplate: false,
+      });
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isFeaturedTemplate: false,
+          visibility: TripVisibility.PUBLIC,
+        }),
+      );
+    });
+
+    it("orders the featured-itineraries query by category then manual order", async () => {
+      await service.getFeaturedItineraries();
+      expect(publicTripsQueryBuilder.where).toHaveBeenCalledWith(
+        "itinerary.isFeaturedTemplate = :isFeaturedTemplate",
+        { isFeaturedTemplate: true },
+      );
+      expect(publicTripsQueryBuilder.orderBy).toHaveBeenCalledWith(
+        "itinerary.featuredCategory",
+        "ASC",
+      );
+      expect(publicTripsQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        "itinerary.featuredOrder",
+        "ASC",
+      );
+    });
+
+    it("404s using a template that isn't public and featured", async () => {
+      itineraryRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.useFeaturedItinerary(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(itineraryRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: ITINERARY_ID,
+          visibility: TripVisibility.PUBLIC,
+          isFeaturedTemplate: true,
+        },
+      });
+    });
+
+    it("clones a featured template into a fresh private trip, dropping curation metadata", async () => {
+      const template = makeItinerary({
+        userId: OWNER_ID,
+        title: "3 Days in Monrovia",
+        visibility: TripVisibility.PUBLIC,
+        isFeaturedTemplate: true,
+        featuredCategory: "City Break",
+        featuredOrder: 2,
+      });
+      itineraryRepo.findOne.mockResolvedValue(template);
+      // findOne's re-fetch after the clone reuses this same mocked
+      // itinerary object (the mock isn't id-aware) — same workaround the
+      // existing duplicateItinerary test above uses, so the post-clone
+      // assertCanView membership check passes for whoever's "using" it.
+      collaboratorRepo.find.mockResolvedValue([
+        { userId: STRANGER_ID, user: { id: STRANGER_ID, name: "Someone" } },
+      ]);
+      await service.useFeaturedItinerary(STRANGER_ID, ITINERARY_ID);
+      expect(itineraryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: STRANGER_ID,
+          title: "3 Days in Monrovia",
+          visibility: TripVisibility.PRIVATE,
+          maxParticipants: null,
+        }),
+      );
+      const created = itineraryRepo.create.mock.calls[0][0];
+      expect(created).not.toHaveProperty("isFeaturedTemplate");
+      expect(created).not.toHaveProperty("featuredCategory");
+      expect(created).not.toHaveProperty("featuredOrder");
     });
   });
 

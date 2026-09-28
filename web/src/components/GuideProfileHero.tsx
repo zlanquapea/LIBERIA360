@@ -20,9 +20,11 @@ import { StartConversationButton } from "./StartConversationButton";
 export function GuideProfileHero({
   guide,
   name,
+  coverImageUrl,
 }: {
   guide: GuideSummary;
   name: string;
+  coverImageUrl?: string | null;
 }) {
   const { token, ready } = useAuth();
   const [isOwner, setIsOwner] = useState(false);
@@ -60,7 +62,14 @@ export function GuideProfileHero({
   }
 
   return (
-    <section className="rounded-3xl bg-white p-4 shadow-sm dark:bg-slate-900 sm:p-7">
+    <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white p-5 shadow-sm dark:bg-slate-900 sm:p-7">
+      {coverImageUrl && (
+        <img
+          src={coverImageUrl}
+          alt="An experience offered by this local expert"
+          className="mb-5 h-44 w-full rounded-xl object-cover sm:h-60"
+        />
+      )}
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
         {isOwner ? (
           <CreatorPhotoActionMenu
@@ -70,10 +79,10 @@ export function GuideProfileHero({
               void saveImage(url);
             }}
             label="Guide profile photo"
-            className="h-32 w-32 shrink-0 sm:h-44 sm:w-44"
+            className="h-24 w-24 shrink-0 sm:h-28 sm:w-28"
           />
         ) : (
-          <div className="h-32 w-32 shrink-0 overflow-hidden rounded-full border-8 border-amber-300 bg-brand-100 dark:bg-brand-950 sm:h-44 sm:w-44">
+          <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-4 border-white dark:border-slate-800 bg-brand-100 dark:bg-brand-950 sm:h-28 sm:w-28">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -98,20 +107,24 @@ export function GuideProfileHero({
               </span>
             )}
           </div>
-          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-sm font-bold text-slate-950">
-            <CheckBadgeIcon className="h-5 w-5" /> Verified Guide
-          </span>
+          {guide.verificationStatus === "verified" && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+              <CheckBadgeIcon className="h-5 w-5" /> Verified
+            </span>
+          )}
           <p className="mt-3 text-base text-slate-600 dark:text-slate-300">
             <MapPinIcon className="mr-1 inline h-5 w-5 text-brand-700" />
             {guide.city}, Liberia
           </p>
-          <p className="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">
-            <StarIcon className="mr-1 inline h-5 w-5 text-amber-400" />
-            {guide.rating.toFixed(1)}{" "}
-            <span className="font-normal text-slate-500">
-              ({guide.reviewCount} reviews)
-            </span>
-          </p>
+          {guide.reviewCount > 0 && (
+            <p className="mt-2 text-base font-bold text-slate-800 dark:text-slate-200">
+              <StarIcon className="mr-1 inline h-5 w-5 text-amber-400" />
+              {guide.rating.toFixed(1)}{" "}
+              <span className="font-normal text-slate-500">
+                ({guide.reviewCount} reviews)
+              </span>
+            </p>
+          )}
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
             Languages: {guide.languages.join(" · ")}
           </p>
@@ -140,7 +153,7 @@ export function GuideProfileHero({
           <StartConversationButton
             type="guide"
             targetId={guide.id}
-            label="Message in app"
+            label="Message"
           />
         )}
         {!isOwner && guide.whatsappNumber && (
@@ -155,7 +168,7 @@ export function GuideProfileHero({
         )}
         <a
           href="#experiences"
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-brand-700 px-5 font-bold text-brand-700"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-brand-700 px-5 font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300"
         >
           <CalendarDaysIcon className="h-5 w-5" /> View Experiences
         </a>

@@ -1,9 +1,11 @@
 {
   "nav": {
+    "guides": "المرشدون",
     "explore": "استكشاف",
     "counties": "المقاطعات",
     "events": "الفعاليات",
     "carRentals": "تأجير السيارات",
+    "travelInfo": "معلومات السفر",
     "creators": "المبدعون",
     "saved": "المحفوظات",
     "help": "المساعدة",
@@ -86,6 +88,7 @@
     "featuredPlaces": "أماكن مميزة",
     "trendingPlaces": "أماكن رائجة",
     "tripsYouCanJoin": "رحلات يمكنك الانضمام إليها",
+    "tripIdeas": "أفكار الرحلات",
     "discoverThisWeek": "اكتشف هذا الأسبوع",
     "addPlace": "إضافة مكان",
     "addPlaceDescription": "ساعد الآخرين على اكتشاف أماكن رائعة في ليبيريا.",
@@ -324,6 +327,17 @@
     "buildYourOwn": "أنشئ رحلتك الخاصة",
     "myTripsLink": "رحلاتي",
     "noPublicTrips": "لا توجد رحلات عامة بعد — كن أول من ينشئ واحدة ويدعو الآخرين للانضمام.",
+
+    "tripIdeas": "أفكار الرحلات",
+    "tripIdeasSubtitle": "خطط رحلات مُختارة — انسخ إحداها واجعلها خاصة بك.",
+    "noTripIdeas": "لا توجد أفكار رحلات بعد — تحقق لاحقًا.",
+    "moreTripIdeas": "المزيد من الأفكار",
+    "useThisItinerary": "استخدم هذه الخطة",
+    "usingTemplate": "جارٍ الإضافة إلى رحلاتك…",
+    "featureAsStarterItinerary": "تمييزها كخطة رحلة مبدئية",
+    "featuredCategoryLabel": "الفئة (مثال: عطلة على الشاطئ)",
+    "unfeatureStarterItinerary": "إزالة من أفكار الرحلات",
+    "savingFeatured": "جارٍ الحفظ…",
 
     "privateTripTitle": "هذه رحلة خاصة",
     "privateTripDescription": "لا يمكن لغير الأشخاص الذين دعاهم منظّم الرحلة مشاهدتها. إذا كنت تعتقد أنه يجب أن تحصل على صلاحية الوصول، فاطلب منهم إرسال دعوة إليك.",

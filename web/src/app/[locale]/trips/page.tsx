@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -13,7 +14,7 @@ import {
 } from "@/lib/itinerary-api";
 import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
 import { formatBudgetBand } from "@/lib/format";
-import { BrandLoader } from "@/components/BrandLoader";
+import { FeatureLoading } from "@/components/FeatureLoading";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SuccessBanner } from "@/components/SuccessBanner";
 import type { Itinerary } from "@/lib/types";
@@ -151,19 +152,13 @@ export default function TripsPage() {
   }
 
   if (!ready || loading) {
-    return (
-      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
-        <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
-          {tCommon("loading")}
-        </p>
-      </main>
-    );
+    return <FeatureLoading />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 pb-28 text-center">
+        <FeatureNavigation />
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
           {t("myTrips")}
         </h1>
@@ -171,7 +166,7 @@ export default function TripsPage() {
           {t("logInToPlan")}
         </p>
         <Link
-          href="/login"
+          href="/login?next=/trips"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
         >
           {tNav("logIn")}
@@ -181,7 +176,8 @@ export default function TripsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6 pb-28">
+      <FeatureNavigation />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
           {t("myTrips")}
@@ -219,9 +215,7 @@ export default function TripsPage() {
           </button>
         </div>
       ) : itineraries.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-          {t("noTripsYet")}
-        </p>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900"><p className="text-slate-500 dark:text-slate-400">{t("noTripsYet")}</p><Link href="/trips/new" className="button-primary mt-5 inline-flex min-h-11 items-center justify-center">{t("planATripCta")}</Link></div>
       ) : (
         <TripList
           itineraries={itineraries}

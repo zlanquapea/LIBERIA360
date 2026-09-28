@@ -77,6 +77,8 @@ import { EventNotificationDelivery } from "./event-notifications/entities/event-
 import { EventNotificationsModule } from "./event-notifications/event-notifications.module";
 import { TripNotificationDelivery } from "./trip-notifications/entities/trip-notification-delivery.entity";
 import { TripNotificationsModule } from "./trip-notifications/trip-notifications.module";
+import { VisitedPlacesModule } from "./visited-places/visited-places.module";
+import { TravelerInfoModule } from "./traveler-info/traveler-info.module";
 import { GuideProfile } from "./guides/entities/guide-profile.entity";
 import { Experience } from "./guides/entities/experience.entity";
 import { GuideBooking } from "./guides/entities/guide-booking.entity";
@@ -207,6 +209,8 @@ import { ConversationsModule } from "./conversations/conversations.module";
     SearchModule,
     EventNotificationsModule,
     TripNotificationsModule,
+    VisitedPlacesModule,
+    TravelerInfoModule,
     GuidesModule,
     ConversationsModule,
   ],

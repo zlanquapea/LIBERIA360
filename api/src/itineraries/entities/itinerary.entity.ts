@@ -124,6 +124,32 @@ export class Itinerary {
   @Column({ name: "cancelled_at", type: "timestamptz", nullable: true })
   cancelledAt: Date | null;
 
+  // Curated "Trip Ideas" (an admin's own trip, opted into the public
+  // /trip-ideas gallery — see ItinerariesService.setFeaturedTemplate).
+  // Forces visibility PUBLIC when true, but is otherwise a completely
+  // separate concept from "Trips You Can Join": findPublicTrips excludes
+  // these rows explicitly, since cloning a starter template (see
+  // useFeaturedItinerary) is a different action than requesting to join
+  // this specific trip's own chat/collaborator list.
+  @Column({ name: "is_featured_template", type: "boolean", default: false })
+  isFeaturedTemplate: boolean;
+
+  // A loose grouping label for the /trip-ideas gallery (e.g. "Weekend
+  // Getaway", "Family Trip") — plain admin-typed text, not validated
+  // against the Category table: this is a curation grouping, not the
+  // per-place category taxonomy.
+  @Column({
+    name: "featured_category",
+    type: "varchar",
+    length: 60,
+    nullable: true,
+  })
+  featuredCategory: string | null;
+
+  // Manual sort order within a featuredCategory group — null sorts last.
+  @Column({ name: "featured_order", type: "smallint", nullable: true })
+  featuredOrder: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

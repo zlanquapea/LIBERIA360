@@ -5,6 +5,7 @@ jest.mock("../hooks/useAuth", () => ({
   useAuth: () => ({ token: "token", ready: true }),
 }));
 jest.mock("../lib/conversations-api", () => ({ listInbox: jest.fn() }));
+jest.mock("./FeatureNavigation", () => ({ FeatureNavigation: () => null }));
 const list = listInbox as jest.Mock;
 const item = {
   kind: "conversation",
@@ -43,6 +44,8 @@ it("preserves separate threads and filters unread messages", async () => {
     target: { value: "missing" },
   });
   expect(screen.getByText("No matching conversations")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Clear search & filters" }));
+  expect(screen.getAllByText("Emmanuel")).toHaveLength(2);
 });
 it("offers a working compose path and retry after failure", async () => {
   list.mockRejectedValueOnce(new Error("offline")).mockResolvedValue([]);

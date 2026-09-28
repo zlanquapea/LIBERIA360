@@ -46,18 +46,32 @@ const config: Config = {
         // codebase, not just the nav's own prior contrast checks (still
         // true here too: white on 900 14.3:1, blended white/65%-on-900
         // 6.8:1, gold-400 on 900 9.1:1).
+        // CSS variables preserve the light palette and scope dark overrides to .dark.
+        slate: {
+          50: 'rgb(var(--palette-slate-50) / <alpha-value>)',
+          100: 'rgb(var(--palette-slate-100) / <alpha-value>)',
+          200: 'rgb(var(--palette-slate-200) / <alpha-value>)',
+          300: 'rgb(var(--palette-slate-300) / <alpha-value>)',
+          400: 'rgb(var(--palette-slate-400) / <alpha-value>)',
+          500: 'rgb(var(--palette-slate-500) / <alpha-value>)',
+          600: 'rgb(var(--palette-slate-600) / <alpha-value>)',
+          700: 'rgb(var(--palette-slate-700) / <alpha-value>)',
+          800: 'rgb(var(--palette-slate-800) / <alpha-value>)',
+          900: 'rgb(var(--palette-slate-900) / <alpha-value>)',
+          950: 'rgb(var(--palette-slate-950) / <alpha-value>)',
+        },
         brand: {
-          50: '#eff8fa',
-          100: '#d9f1f7',
-          200: '#a3e4f5',
-          300: '#51d5f6',
-          400: '#06b8e5',
-          500: '#007a99',
-          600: '#00647d',
-          700: '#005063',
-          800: '#003f4f',
-          900: '#002f3b',
-          950: '#001f26',
+          50: 'rgb(var(--palette-brand-50) / <alpha-value>)',
+          100: 'rgb(var(--palette-brand-100) / <alpha-value>)',
+          200: 'rgb(var(--palette-brand-200) / <alpha-value>)',
+          300: 'rgb(var(--palette-brand-300) / <alpha-value>)',
+          400: 'rgb(var(--palette-brand-400) / <alpha-value>)',
+          500: 'rgb(var(--palette-brand-500) / <alpha-value>)',
+          600: 'rgb(var(--palette-brand-600) / <alpha-value>)',
+          700: 'rgb(var(--palette-brand-700) / <alpha-value>)',
+          800: 'rgb(var(--palette-brand-800) / <alpha-value>)',
+          900: 'rgb(var(--palette-brand-900) / <alpha-value>)',
+          950: 'rgb(var(--palette-brand-950) / <alpha-value>)',
         },
         accent: {
           50: '#f1faed',

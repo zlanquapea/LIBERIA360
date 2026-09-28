@@ -4,7 +4,11 @@ import { EventFilters } from "@/components/EventFilters";
 import { EventFeedCard } from "@/components/EventFeedCard";
 import { EventCarousel } from "@/components/EventCarousel";
 import type { EventCategory } from "@/lib/types";
-import { PageHeader } from "@/components/PageHeader";
+import {
+  CalendarDaysIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
 
 // How many events the "Featured events" shelf shows — same shelf-size
 // reasoning as Home's own carousel (UPCOMING_EVENTS_LIMIT in page.tsx):
@@ -76,17 +80,59 @@ export default async function EventsPage({
   }
 
   return (
-    <main className="page-shell max-w-4xl">
-      <PageHeader
-        eyebrow="What's happening"
-        title="Events"
-        description="Find festivals, gatherings, and experiences across Liberia."
-        action={
-          <Link href="/events/new" className="button-secondary">
-            + Post an event
-          </Link>
-        }
-      />
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-6 pb-28 sm:px-6 sm:py-8">
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
+            Events
+          </h1>
+          <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Discover what’s happening across Liberia.
+          </p>
+        </div>
+        <Link
+          href="/events/new"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-brand-800 hover:bg-brand-50 focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-brand-200"
+        >
+          <PlusIcon aria-hidden className="h-4 w-4" /> Post an event
+        </Link>
+      </header>
+
+      <section
+        aria-label="Find events"
+        className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-5"
+      >
+        <form action="/events" method="GET" className="flex gap-2">
+          {Object.entries({ category, county, dateFrom, dateTo }).map(
+            ([name, value]) =>
+              value ? (
+                <input key={name} type="hidden" name={name} value={value} />
+              ) : null,
+          )}
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-slate-100 px-3 focus-within:ring-2 focus-within:ring-brand-500 dark:bg-slate-950">
+            <MagnifyingGlassIcon
+              aria-hidden
+              className="h-4 w-4 shrink-0 text-slate-400"
+            />
+            <input
+              name="search"
+              type="search"
+              defaultValue={search}
+              placeholder="Search events or places"
+              aria-label="Search events or locations"
+              className="min-h-12 min-w-0 w-full bg-transparent text-base outline-none sm:text-sm"
+            />
+          </label>
+          <button
+            type="submit"
+            className="min-h-12 shrink-0 rounded-xl bg-brand-800 px-4 text-sm font-semibold text-white hover:bg-brand-900 focus-visible:ring-2 focus-visible:ring-brand-500"
+          >
+            Search
+          </button>
+        </form>
+
+        <EventFilters counties={counties} />
+      </section>
 
       {featured && featured.data.length > 0 && (
         <EventCarousel
@@ -96,41 +142,45 @@ export default async function EventsPage({
         />
       )}
 
-      <form action="/events" method="GET" className="flex gap-2">
-        <input
-          name="search"
-          type="search"
-          defaultValue={search}
-          placeholder="Search events or locations"
-          aria-label="Search events or locations"
-          className="min-w-0 flex-1 rounded-full border border-slate-300 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Search
-        </button>
-      </form>
-
-      <EventFilters counties={counties} />
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          {hasFilters ? "Search results" : "Upcoming events"}
+        </h2>
+        {hasFilters && (
+          <Link
+            href="/events"
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 underline-offset-4 hover:underline dark:text-brand-300"
+          >
+            Reset filters
+          </Link>
+        )}
+      </div>
 
       {result.data.length === 0 ? (
-        <div className="empty-state text-center">
-          <p>
+        <section
+          className="rounded-2xl border border-slate-200 bg-white px-6 py-9 text-center dark:border-slate-800 dark:bg-slate-900"
+          aria-label="No events"
+        >
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-200">
+            <CalendarDaysIcon aria-hidden className="h-6 w-6" />
+          </span>
+          <h3 className="mt-4 text-base font-semibold text-slate-900 dark:text-white">
             {hasFilters
-              ? "No upcoming events match your filters."
-              : "No upcoming events are available yet."}
+              ? "No events match your search"
+              : "More events are on the way"}
+          </h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {hasFilters
+              ? "Try another date, category, or county to see what’s happening."
+              : "There are no upcoming events listed right now. Hosting something? Share it with the community."}
           </p>
-          {hasFilters && (
-            <Link
-              href="/events"
-              className="mt-3 inline-flex min-h-11 items-center rounded-full border border-brand-300 px-4 py-2 text-sm font-bold text-brand-700 dark:text-brand-300"
-            >
-              Clear filters
-            </Link>
-          )}
-        </div>
+          <Link
+            href={hasFilters ? "/events" : "/events/new"}
+            className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-800 px-5 text-sm font-semibold text-white hover:bg-brand-900"
+          >
+            {hasFilters ? "Clear filters" : "Post an event"}
+          </Link>
+        </section>
       ) : (
         <div className="flex flex-col gap-4">
           {result.data.map((event, i) => (

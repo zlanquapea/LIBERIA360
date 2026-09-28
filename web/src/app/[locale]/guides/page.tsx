@@ -1,28 +1,21 @@
+import { FeatureNavigation } from "@/components/FeatureNavigation";
 import Link from "next/link";
-import { getGuides } from "@/lib/api";
+import { getGuides, getCounties } from "@/lib/api";
 import {
-  MagnifyingGlassIcon,
   MapPinIcon,
-  StarIcon,
   CheckBadgeIcon,
-  ChevronRightIcon,
+  StarIcon,
 } from "@heroicons/react/24/solid";
 
 export const metadata = {
   title: "Trip Guides & Hosts — LIBERIA360",
-  description:
-    "Find verified local guides and hosts for memorable Liberia experiences.",
+  description: "Explore Liberia with local guides and hosts.",
 };
-
-type SearchParams = { [key: string]: string | string[] | undefined };
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-function label(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
+type SearchParams = Record<string, string | string[] | undefined>;
+const first = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+const label = (value: string) =>
+  value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export default async function GuidesPage({
   searchParams,
@@ -31,176 +24,280 @@ export default async function GuidesPage({
 }) {
   const params = await searchParams;
   const search = first(params.search);
-  const category = first(params.category);
   const county = first(params.county);
   const language = first(params.language);
-  const hasFilters = Boolean(search || category || county || language);
-  const guides = await getGuides({ search, county, language });
-  const categoryTypes: Record<string, string[]> = {
-    city: ["tour_guide"],
-    culture: ["cultural_host"],
-    nature: ["nature_guide", "adventure_guide"],
-    food: ["food_host"],
-  };
-  const visibleGuides = category
-    ? guides.filter((guide) =>
-        categoryTypes[category]?.includes(guide.guideType),
-      )
-    : guides;
-  function href(nextCategory?: string) {
-    const query = new URLSearchParams();
+  const rawCategory = first(params.category);
+  const category =
+    (
+      {
+        city: "tour_guide",
+        culture: "cultural_host",
+        nature: "nature_guide",
+        food: "food_host",
+      } as Record<string, string>
+    )[rawCategory ?? ""] ?? rawCategory;
+  const role =
+    first(params.role) === "hosts" ||
+    (!first(params.role) && category?.endsWith("host"))
+      ? "hosts"
+      : "guides";
+  const [guides, counties] = await Promise.all([
+    getGuides({ search, county, language }),
+    getCounties(),
+  ]);
+  const visible = guides.filter(
+    (guide) =>
+      (role === "hosts"
+        ? guide.guideType.endsWith("host")
+        : !guide.guideType.endsWith("host")) &&
+      (!category || guide.guideType === category),
+  );
+  const tabHref = (next: string) => {
+    const query = new URLSearchParams({ role: next });
     if (search) query.set("search", search);
-    if (nextCategory) query.set("category", nextCategory);
     if (county) query.set("county", county);
     if (language) query.set("language", language);
-    return query.toString() ? `/guides?${query}` : "/guides";
+    return `/guides?${query}`;
+  };
+  const activeFilters = [
+    { key: "search", value: search, text: search },
+    {
+      key: "county",
+      value: county,
+      text: counties.find((item) => item.id === county)?.name ?? county,
+    },
+    {
+      key: "category",
+      value: category,
+      text: category ? label(category) : undefined,
+    },
+    { key: "language", value: language, text: language },
+  ].filter((item) => Boolean(item.value));
+  function removeFilter(key: string) {
+    const query = new URLSearchParams({ role });
+    activeFilters.forEach((item) => {
+      if (item.key !== key && item.value) query.set(item.key, item.value);
+    });
+    return `/guides?${query}`;
   }
-
+  const field =
+    "min-h-11 w-full min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900";
   return (
-    <main className="mx-auto max-w-5xl px-4 py-5 pb-12 sm:px-6 lg:px-10">
-      <header className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-700 dark:text-brand-300">
-          LIBERIA360 community
+    <main className="mx-auto max-w-5xl px-4 py-6 pb-24 sm:px-6">
+      <FeatureNavigation />
+      <header className="mb-6">
+        <p className="text-xs font-bold uppercase tracking-widest text-brand-700 dark:text-brand-300">
+          Trip Guides &amp; Hosts
         </p>
-        <div className="mt-1 flex items-end justify-between gap-3">
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50 sm:text-4xl">
-            Trip Guides &amp; Hosts
-          </h1>
-          <Link
-            href="/guides/apply"
-            className="hidden rounded-full border border-brand-300 px-4 py-2 text-sm font-bold text-brand-700 sm:inline-flex"
-          >
-            Become a guide
-          </Link>
-        </div>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">
+          Find your local expert
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          Explore Liberia with people who know it.
+        </p>
       </header>
-
-      <form className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <nav
+        aria-label="Find a guide or host"
+        className="mb-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800"
+      >
+        {(["guides", "hosts"] as const).map((item) => (
+          <Link
+            key={item}
+            href={tabHref(item)}
+            aria-current={role === item ? "page" : undefined}
+            className={`flex min-h-11 items-center justify-center rounded-xl text-sm font-bold ${role === item ? "bg-brand-700 text-white dark:bg-brand-300 dark:text-slate-950" : "text-slate-600 dark:text-slate-300"}`}
+          >
+            {label(item)}
+          </Link>
+        ))}
+      </nav>
+      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+        {role === "hosts"
+          ? "Meet local hosts for food and cultural experiences."
+          : "Find a guide for city walks, nature and adventure."}
+      </p>
+      <form className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+        <input type="hidden" name="role" value={role} />
         <label htmlFor="guide-search" className="sr-only">
-          Search guides or places
+          Search people or destinations
         </label>
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 px-3 dark:border-slate-700">
-          <MagnifyingGlassIcon className="h-5 w-5 shrink-0 text-brand-700" />
-          <input
-            id="guide-search"
-            name="search"
-            defaultValue={search}
-            placeholder="Search guides or places"
-            className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"
-          />
-        </div>
-        <div
-          className="mt-3 flex gap-2 overflow-x-auto pb-1"
-          aria-label="Guide categories"
-        >
-          {([undefined, "city", "culture", "nature", "food"] as const).map(
-            (item) => (
-              <Link
-                key={item ?? "all"}
-                href={href(item)}
-                className={`whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-bold ${category === item || (!category && !item) ? "border-accent-500 bg-brand-700 text-white" : "border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"}`}
-              >
-                {item ? label(item) : "All"}
-              </Link>
-            ),
-          )}
-        </div>
-        <div className="sr-only">
-          <input name="county" defaultValue={county} />
-          <input name="language" defaultValue={language} />
+        <input
+          id="guide-search"
+          name="search"
+          defaultValue={search}
+          placeholder="Where are you going?"
+          className={field}
+        />
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <label className="text-xs font-semibold">
+            County
+            <select
+              name="county"
+              defaultValue={county ?? ""}
+              className={`${field} mt-1`}
+            >
+              <option value="">All counties</option>
+              {counties.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold">
+            Activity
+            <select
+              name="category"
+              defaultValue={category ?? ""}
+              className={`${field} mt-1`}
+            >
+              <option value="">All activities</option>
+              {(role === "hosts"
+                ? ["cultural_host", "food_host"]
+                : ["tour_guide", "nature_guide", "adventure_guide"]
+              ).map((item) => (
+                <option key={item} value={item}>
+                  {label(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-semibold">
+            Language
+            <input
+              name="language"
+              defaultValue={language}
+              placeholder="e.g. English"
+              className={`${field} mt-1`}
+            />
+          </label>
+          <button className="button-primary mt-auto min-h-11">
+            Find {role}
+          </button>
         </div>
       </form>
-
-      <section className="mt-5 space-y-3" aria-label="Verified trip guides">
-        {visibleGuides.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 px-4 py-12 text-center text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            <p>
-              {hasFilters
-                ? "No guides match your filters."
-                : "No approved guides are available yet."}
-            </p>
-            {hasFilters && (
-              <Link
-                href="/guides"
-                className="mt-3 inline-flex min-h-11 items-center rounded-full border border-brand-300 px-4 py-2 text-sm font-bold text-brand-700 dark:text-brand-300"
-              >
-                Clear filters
-              </Link>
-            )}
-          </div>
-        ) : (
-          visibleGuides.map((guide) => (
-            <article
-              key={guide.id}
-              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-cyan-400/35 dark:bg-[#111d3a] dark:shadow-[0_10px_28px_rgba(0,0,0,0.32)] sm:p-5"
+      {activeFilters.length > 0 && (
+        <nav
+          aria-label="Active search filters"
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          {activeFilters.map((item) => (
+            <Link
+              key={item.key}
+              href={removeFilter(item.key)}
+              aria-label={`Remove ${item.key} filter: ${item.text}`}
+              className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-brand-50 px-3 text-sm text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:bg-brand-950 dark:text-brand-200"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-emerald-500 bg-brand-100 shadow-sm dark:bg-brand-950/80">
-                  {guide.profileImageUrl ? (
-                    <img
-                      src={guide.profileImageUrl}
-                      alt=""
-                      className="h-full w-full object-cover object-center"
-                    />
+              <span className="break-words">{item.text}</span>
+              <span aria-hidden>×</span>
+            </Link>
+          ))}
+          <Link
+            href={`/guides?role=${role}`}
+            className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-brand-700 underline dark:text-brand-300"
+          >
+            Clear all
+          </Link>
+        </nav>
+      )}
+      <div className="mb-4 mt-7 flex items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-bold">
+          {role === "hosts" ? "Meet local hosts" : "Guides for your next trip"}
+        </h2>
+        <span className="text-sm text-slate-500">{visible.length} found</span>
+      </div>
+      <section
+        className="grid gap-4 sm:grid-cols-2"
+        aria-label="Search results"
+      >
+        {visible.map((guide) => (
+          <article
+            key={guide.id}
+            className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+          >
+            <div className="flex items-center gap-3 p-4 pb-0">
+              {guide.profileImageUrl ? (
+                <img
+                  src={guide.profileImageUrl}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-2xl object-cover"
+                />
+              ) : (
+                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-2xl font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+                  {guide.slug.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0">
+                <h3 className="break-words font-display text-lg font-bold capitalize">
+                  {guide.slug.replaceAll("-", " ")}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {label(guide.guideType)}
+                </p>
+                {guide.verificationStatus === "verified" && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 dark:text-brand-300">
+                    <CheckBadgeIcon className="h-4 w-4" />
+                    Verified
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-1 flex-col p-4">
+              <p className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
+                <MapPinIcon className="h-4 w-4 shrink-0" />
+                {[guide.city, guide.county?.name].filter(Boolean).join(", ")}
+              </p>
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {guide.bio}
+              </p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                {guide.languages.join(" · ")}
+              </p>
+              <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {guide.reviewCount > 0 ? (
+                    <>
+                      <StarIcon className="mr-1 inline h-4 w-4 text-amber-500" />
+                      {guide.rating.toFixed(1)} ({guide.reviewCount} reviews)
+                    </>
                   ) : (
-                    <span className="flex h-full items-center justify-center text-2xl font-bold text-brand-800 dark:text-brand-200">
-                      {guide.slug.charAt(0).toUpperCase()}
-                    </span>
+                    "Meet your local expert"
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate font-display text-lg font-extrabold text-slate-950 dark:text-slate-50">
-                      {guide.slug.replaceAll("-", " ")}
-                    </h2>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-900">
-                      <CheckBadgeIcon className="h-3.5 w-3.5" /> Verified
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">
-                    {label(guide.guideType)}
-                  </p>
-                  <p className="mt-1 flex min-w-0 items-center text-sm text-slate-600 dark:text-slate-300">
-                    <MapPinIcon className="mr-1 h-4 w-4 shrink-0 text-brand-700 dark:text-brand-300" />
-                    <span className="truncate">
-                      {guide.city}
-                      {guide.county?.name ? `, ${guide.county.name}` : ""}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
-                    <StarIcon className="mr-1 inline h-4 w-4 text-amber-400" />
-                    {guide.rating.toFixed(1)}{" "}
-                    <span className="font-normal text-slate-600 dark:text-slate-300">
-                      ({guide.reviewCount} reviews)
-                    </span>
-                  </p>
-                </div>
+                </span>
                 <Link
                   href={`/guides/${guide.slug}`}
-                  className="hidden min-h-11 shrink-0 items-center gap-1 rounded-full bg-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 sm:inline-flex"
+                  className="flex min-h-11 items-center rounded-xl border border-brand-700 px-4 text-sm font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300"
                 >
-                  View Guide <ChevronRightIcon className="h-4 w-4" />
-                </Link>
-                <Link
-                  href={`/guides/${guide.slug}`}
-                  aria-label={`View ${guide.slug}`}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-300 text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-500/70 dark:text-brand-200 dark:hover:bg-brand-900/70 sm:hidden"
-                >
-                  <ChevronRightIcon className="h-5 w-5" />
+                  View profile
                 </Link>
               </div>
-            </article>
-          ))
+            </div>
+          </article>
+        ))}
+        {!visible.length && (
+          <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center sm:col-span-2">
+            <p>No {role} match this search.</p>
+            <Link
+              href={`/guides?role=${role}`}
+              className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-brand-700 dark:text-brand-300"
+            >
+              Clear filters
+            </Link>
+          </div>
         )}
       </section>
-      <div className="mt-6 text-center sm:hidden">
+      <aside className="mt-8 rounded-2xl bg-brand-50 p-5 dark:bg-slate-900">
+        <h2 className="font-bold">Know Liberia by heart?</h2>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          Share your local knowledge with travelers.
+        </p>
         <Link
           href="/guides/apply"
-          className="inline-flex min-h-11 items-center rounded-full border border-brand-300 px-5 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-cyan-300/70 dark:bg-brand-800 dark:text-white dark:hover:bg-brand-700"
+          className="mt-3 inline-flex min-h-11 items-center font-semibold text-brand-700 dark:text-brand-300"
         >
-          Become a guide
+          Become a guide or host →
         </Link>
-      </div>
+      </aside>
     </main>
   );
 }

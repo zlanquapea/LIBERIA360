@@ -27,8 +27,10 @@ export class SavedPlacesController {
   constructor(private readonly savedPlacesService: SavedPlacesService) {}
 
   @Get()
-  async list(@CurrentUser() user: User): Promise<{ slugs: string[] }> {
-    return { slugs: await this.savedPlacesService.listSlugsForUser(user.id) };
+  list(
+    @CurrentUser() user: User,
+  ): Promise<{ slugs: string[]; categories: string[] }> {
+    return this.savedPlacesService.listForUser(user.id);
   }
 
   // Registered before the ":placeId" routes below — Nest matches routes

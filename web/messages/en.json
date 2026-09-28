@@ -1,9 +1,11 @@
 {
   "nav": {
+    "guides": "Guides",
     "explore": "Explore",
     "counties": "Counties",
     "events": "Events",
     "carRentals": "Car Rentals",
+    "travelInfo": "Travel Info",
     "creators": "Creators",
     "saved": "Saved",
     "help": "Help",
@@ -86,6 +88,7 @@
     "featuredPlaces": "Featured Places",
     "trendingPlaces": "Trending places",
     "tripsYouCanJoin": "Trips you can join",
+    "tripIdeas": "Trip ideas",
     "discoverThisWeek": "Discover this week",
     "addPlace": "Add a place",
     "addPlaceDescription": "Help others discover great places in Liberia.",
@@ -324,6 +327,17 @@
     "buildYourOwn": "build your own",
     "myTripsLink": "My Trips",
     "noPublicTrips": "No public trips yet — be the first to make one and invite others to join.",
+
+    "tripIdeas": "Trip Ideas",
+    "tripIdeasSubtitle": "Curated starter itineraries — clone one and make it your own.",
+    "noTripIdeas": "No trip ideas yet — check back soon.",
+    "moreTripIdeas": "More ideas",
+    "useThisItinerary": "Use this itinerary",
+    "usingTemplate": "Adding to your trips…",
+    "featureAsStarterItinerary": "Feature as starter itinerary",
+    "featuredCategoryLabel": "Category (e.g. Beach getaway)",
+    "unfeatureStarterItinerary": "Remove from Trip Ideas",
+    "savingFeatured": "Saving…",
 
     "privateTripTitle": "This is a private trip",
     "privateTripDescription": "Only people invited by the trip admin can view it. If you think you should have access, ask them to send you an invite.",

@@ -6,6 +6,8 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/hooks/useAuth';
 import { getPlaces } from '@/lib/api';
+import { getMySavedPlaces } from '@/lib/saved-places-api';
+import { getRecentlyViewed } from '@/lib/recently-viewed';
 import type { Place, VerificationStatus } from '@/lib/types';
 import { PlaceCardCompact } from './PlaceCardCompact';
 
@@ -33,8 +35,19 @@ import { PlaceCardCompact } from './PlaceCardCompact';
 // nothing; the only remaining `null` case is a signed-in visitor who
 // *does* have interests but genuinely has no catalog results for them
 // (nothing to prompt them to do differently).
+//
+// "Smarter For You" pass: signup interests used to be the only signal.
+// Two more real, already-collected signals are blended in now — saved
+// places' categories (GET /saved-places' categories field) and recently
+// viewed places' categories (recently-viewed.ts, local to this device) —
+// frequency-weighted together rather than picked from interests alone.
+// Nothing here is fabricated: every signal is something this visitor
+// actually did.
 const PICKS_LIMIT = 8;
 const MAX_INTERESTS_QUERIED = 3;
+const INTEREST_WEIGHT = 3;
+const SAVED_CATEGORY_WEIGHT = 2;
+const RECENTLY_VIEWED_CATEGORY_WEIGHT = 1;
 
 type PicksState =
   | { kind: 'loading' }
@@ -48,7 +61,7 @@ export function PersonalizedPicksSection({
 }: {
   businessVerificationByPlaceId: Map<string, VerificationStatus | undefined>;
 }) {
-  const { user, ready } = useAuth();
+  const { user, token, ready } = useAuth();
   const [state, setState] = useState<PicksState>({ kind: 'loading' });
 
   useEffect(() => {
@@ -57,24 +70,48 @@ export function PersonalizedPicksSection({
       setState({ kind: 'signed-out' });
       return;
     }
-    const interests = user.interests ?? [];
-    if (interests.length === 0) {
-      setState({ kind: 'no-interests' });
-      return;
-    }
 
     let cancelled = false;
-    const queried = interests.slice(0, MAX_INTERESTS_QUERIED);
-    const perCategory = Math.max(2, Math.ceil(PICKS_LIMIT / queried.length));
 
-    Promise.all(
-      queried.map((slug) =>
-        getPlaces({ category: slug, sort: 'featured', limit: perCategory }).catch(
-          () => ({ data: [], meta: { total: 0, page: 1, limit: perCategory, totalPages: 1 } }),
-        ),
-      ),
-    ).then((pages) => {
+    async function run() {
+      const weights = new Map<string, number>();
+      const bump = (slug: string | null | undefined, amount: number) => {
+        if (!slug) return;
+        weights.set(slug, (weights.get(slug) ?? 0) + amount);
+      };
+
+      for (const slug of user!.interests ?? []) bump(slug, INTEREST_WEIGHT);
+      for (const item of getRecentlyViewed(20)) bump(item.categorySlug, RECENTLY_VIEWED_CATEGORY_WEIGHT);
+      if (token) {
+        try {
+          const { categories } = await getMySavedPlaces(token);
+          for (const slug of categories) bump(slug, SAVED_CATEGORY_WEIGHT);
+        } catch {
+          // Saved-place categories are a bonus signal, not required — the
+          // section still works off interests/recently-viewed alone.
+        }
+      }
       if (cancelled) return;
+
+      const rankedSlugs = Array.from(weights.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([slug]) => slug);
+      if (rankedSlugs.length === 0) {
+        setState({ kind: 'no-interests' });
+        return;
+      }
+
+      const queried = rankedSlugs.slice(0, MAX_INTERESTS_QUERIED);
+      const perCategory = Math.max(2, Math.ceil(PICKS_LIMIT / queried.length));
+      const pages = await Promise.all(
+        queried.map((slug) =>
+          getPlaces({ category: slug, sort: 'featured', limit: perCategory }).catch(
+            () => ({ data: [], meta: { total: 0, page: 1, limit: perCategory, totalPages: 1 } }),
+          ),
+        ),
+      );
+      if (cancelled) return;
+
       const seen = new Set<string>();
       const merged: Place[] = [];
       outer: for (const page of pages) {
@@ -86,12 +123,14 @@ export function PersonalizedPicksSection({
         }
       }
       setState(merged.length > 0 ? { kind: 'ready', places: merged } : { kind: 'empty' });
-    });
+    }
+
+    run();
 
     return () => {
       cancelled = true;
     };
-  }, [ready, user]);
+  }, [ready, user, token]);
 
   if (state.kind === 'loading' || state.kind === 'empty') return null;
 

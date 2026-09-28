@@ -164,6 +164,10 @@ export interface AuthUser {
    * yet. See PublicUser's doc comment — not sensitive, just an activation
    * state. */
   pendingActivation: boolean;
+  // Opt-in "Explorer" public profile (see VisitedPlace's doc comment) —
+  // false by default, same private-until-opted-in posture as
+  // TripVisibility defaulting PRIVATE.
+  explorerProfilePublic: boolean;
 }
 
 // api/src/users/user.serializer.ts's PublicProfile — the shape any
@@ -888,6 +892,12 @@ export interface Itinerary {
   // before this shipped just has them unset.
   partySize: number | null;
   maxParticipants: number | null;
+  // Curated starter itineraries ("Trip Ideas") — set only via
+  // ItinerariesService.setFeaturedTemplate by an admin on their own trip.
+  // null/false on every ordinary trip.
+  isFeaturedTemplate: boolean;
+  featuredCategory: string | null;
+  featuredOrder: number | null;
   cancelledAt: string | null;
   createdAt: string;
 }
@@ -957,6 +967,10 @@ export interface PublicTripSummary {
   // Lets a stranger's "Request to Join" button show remaining spots and
   // disable itself once the trip is full.
   maxParticipants: number | null;
+  // Set only for a curated starter itinerary — groups /trip-ideas cards
+  // (e.g. "Beach getaway", "Culture & heritage"). Null on a regular
+  // community trip.
+  featuredCategory: string | null;
   createdAt: string;
 }
 
@@ -2078,4 +2092,42 @@ export interface SearchSuggestResponse {
   businesses: BusinessSearchSuggestion[];
   events: EventSearchSuggestion[];
   creators: CreatorSearchSuggestion[];
+}
+
+// GET/PATCH /traveler-info — api/src/traveler-info/entities/
+// traveler-info-settings.entity.ts's singleton row. Every field is null
+// until an admin sets it; the frontend renders nothing for an unset
+// field rather than a guessed value.
+export interface TravelerInfoSettings {
+  id: number;
+  usdToLrdRate: number | null;
+  visaInfo: string | null;
+  entryRequirements: string | null;
+  currentSeasonNote: string | null;
+  updatedByUserId: string | null;
+  updatedAt: string;
+}
+
+// "Explorer" gamification — api/src/visited-places/visited-places.service.ts.
+// Badges are computed at read time from visitedPlacesCount/countiesVisited,
+// never stored, so they can't drift out of sync.
+export interface ExplorerBadge {
+  id: string;
+  label: string;
+  achieved: boolean;
+}
+
+export interface ExplorerProgress {
+  visitedPlacesCount: number;
+  countiesVisited: County[];
+  totalCounties: number;
+  badges: ExplorerBadge[];
+}
+
+// GET /explorers/:userId — 404 unless that account opted in via
+// AuthUser.explorerProfilePublic.
+export interface PublicExplorerProfile {
+  name: string;
+  profileImage: string | null;
+  progress: ExplorerProgress;
 }

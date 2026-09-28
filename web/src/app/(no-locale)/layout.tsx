@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import "../globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { AuthRefresher } from "@/components/AuthRefresher";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { ErrorReportingInit } from "@/components/ErrorReportingInit";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -153,6 +154,7 @@ export default function RootLayout({
           <ServiceWorkerRegister />
           <AuthRefresher />
           <ErrorReportingInit />
+          <PullToRefresh />
         </NextIntlClientProvider>
       </body>
     </html>

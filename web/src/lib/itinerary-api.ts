@@ -234,3 +234,40 @@ export function removeItineraryStop(token: string, itineraryId: string, itemId: 
     headers: authHeader(token),
   });
 }
+
+// "Trip Ideas" — curated starter itineraries. Public, unauthenticated.
+export function getFeaturedItineraries(): Promise<PublicTripSummary[]> {
+  return apiRequest<PublicTripSummary[]>('/itineraries/featured');
+}
+
+export interface SetFeaturedTemplateInput {
+  isFeaturedTemplate: boolean;
+  featuredCategory?: string;
+  featuredOrder?: number;
+}
+
+// Admin-only, and only on a trip the acting admin themself owns — see the
+// API's setFeaturedTemplate doc comment.
+export function setFeaturedTemplate(
+  token: string,
+  itineraryId: string,
+  input: SetFeaturedTemplateInput,
+): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/featured`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+// Any signed-in traveler — clones a curated starter itinerary into their
+// own trips (private, fresh id, no collaborators). Named cloneFeaturedItinerary
+// rather than mirroring the API's own useFeaturedItinerary name verbatim —
+// a plain function starting with "use" trips react-hooks/rules-of-hooks at
+// every call site since ESLint can't tell it isn't a hook.
+export function cloneFeaturedItinerary(token: string, itineraryId: string): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/use-template`, {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
