@@ -105,6 +105,49 @@ body {
   background-image: radial-gradient(circle at 12% -8%, rgb(0 180 224 / 0.07), transparent 28rem);
 }
 
+/* Global PWA pull-to-refresh feedback. The gesture handler only activates at
+   the top of the document, so nested scroll areas and horizontal carousels
+   retain their native touch behavior. */
+.global-pull-refresh-indicator {
+  align-items: flex-end;
+  color: var(--brand-700);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 3500;
+  pointer-events: none;
+  transition: height 180ms ease-out;
+}
+.global-pull-refresh-indicator > span {
+  align-items: center;
+  display: inline-flex;
+  font-size: .72rem;
+  font-weight: 700;
+  gap: .45rem;
+  letter-spacing: .02em;
+  padding-bottom: .7rem;
+}
+.global-pull-refresh-indicator.is-refreshing {
+  color: var(--brand-800);
+}
+.global-pull-refresh-icon {
+  height: 1.05rem;
+  transform-origin: center;
+  transition: transform 120ms ease-out;
+  width: 1.05rem;
+}
+.global-pull-refresh-icon.is-spinning {
+  animation: global-pull-refresh-spin .8s linear infinite;
+}
+@keyframes global-pull-refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* A quiet entrance gives route changes continuity without making the
    interface feel animated for animation's sake. */
 #main-content > main {
