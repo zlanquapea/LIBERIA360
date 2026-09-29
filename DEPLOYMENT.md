@@ -68,7 +68,10 @@ Either way: everything else in this checklist (real payments, S3 storage,
 SMTP, Sentry) is optional for a quick test and safe to leave unset — just
 know that uploaded photos won't survive a redeploy on either platform's free
 tier, and password-reset/verification emails log instead of sending unless
-you add real `SMTP_*` vars.
+you add real `SMTP_*` vars. **Maps (section 6) is the one exception** — set
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` even for a quick friends-and-family test,
+or every map in the app (Explore, trip maps, place/event pages) just shows a
+plain "map unavailable" message instead of an actual map.
 
 ## 1. Secrets
 
@@ -176,7 +179,42 @@ MAIL_FROM=LIBERIA360 <no-reply@yourdomain.com>
 `validateProductionConfig` warns (doesn't block boot) if `SMTP_HOST` is
 still unset in production.
 
-## 6. Push notifications (optional)
+## 6. Maps (required)
+
+Every map in the app (Explore, trip maps, the pharmacy map, place/event
+mini-maps, the admin location picker) runs on Google Maps — unlike the
+optional integrations elsewhere in this checklist, there's no "unset is
+safe" fallback here beyond a plain "map unavailable" message, since a map
+is core to the product rather than an add-on.
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → create a
+   project (or reuse an existing one) → **Billing** → link a payment
+   method. Google includes roughly $200/month of Maps credit, which
+   comfortably covers a site this size.
+2. **APIs & Services → Library** → enable **"Maps JavaScript API"** and
+   **"Places API"** (the second one powers the admin location picker's
+   address-search box).
+3. **APIs & Services → Credentials → Create Credentials → API Key.** Click
+   the new key → **Application restrictions → HTTP referrers** → add your
+   domains (`localhost:3000/*` for local dev, `*.netlify.app/*` for preview
+   deploys, your real production domain) so a copied key can't be abused
+   from somewhere else.
+4. **Google Maps Platform → Map Management → Create Map ID** (no
+   additional cost) — required for the custom-styled "Advanced Marker"
+   pins every map here uses. Skipping this falls back to Google's own
+   `DEMO_MAP_ID` placeholder, which renders a visible "for development
+   purposes only" watermark — fine for local dev, not for a real launch.
+
+```bash
+# web/.env.local
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=...
+```
+
+Both are `NEXT_PUBLIC_*` — inlined into the client bundle at build time, so
+changing either one needs a rebuild to take effect, not just a restart.
+
+## 7. Push notifications (optional)
 
 ```bash
 npx web-push generate-vapid-keys
@@ -185,7 +223,7 @@ npx web-push generate-vapid-keys
 Unset is safe — `PushService` no-ops and the rest of the app works exactly
 the same either way, just without this one feature.
 
-## 7. Crash reporting (optional)
+## 8. Crash reporting (optional)
 
 Unset is safe — both sides just log locally instead of reporting anywhere,
 same "no-op unless configured" shape as everything else optional in this
@@ -206,7 +244,7 @@ client-side JS errors (via the two React error boundaries and the global
 rendering errors. `validateProductionConfig` warns (doesn't block boot) if
 `SENTRY_DSN` is unset in production.
 
-## 8. Health checks
+## 9. Health checks
 
 - `GET /health` — liveness. Doesn't touch the database on purpose (a DB
   blip shouldn't get an orchestrator to kill and restart an otherwise
@@ -219,7 +257,7 @@ rendering errors. `validateProductionConfig` warns (doesn't block boot) if
 Both are unprefixed (not under `/api/v1`) so a probe config doesn't need to
 know the API's route prefix.
 
-## 9. Seed data
+## 10. Seed data
 
 `npm run seed --workspace=api` loads **Stage 1 sample/demo data** — fine for
 a fresh local checkout or a demo environment, not something to run against
@@ -228,7 +266,7 @@ admin dashboard's content management (`POST`/`PATCH /admin/places`, etc. —
 see `api/README.md`'s Phase 3 section) plus outreach-driven business
 self-claiming, not the seed script.
 
-## 10. Admin access
+## 11. Admin access
 
 No self-service admin signup by design. Promote the first real admin
 directly in the database once you have a real account to promote:
@@ -240,7 +278,7 @@ psql -U liberia360 -d liberia360 -c "UPDATE users SET is_admin = true WHERE emai
 Takes effect on that user's very next request — no re-login needed (see
 `api/README.md`).
 
-## 11. Known limitations, honestly listed
+## 12. Known limitations, honestly listed
 
 - **Rate limiting is per-instance, in-memory** (`@nestjs/throttler`'s
   default storage). Scale to N instances behind a load balancer and the
@@ -266,7 +304,7 @@ Takes effect on that user's very next request — no re-login needed (see
   are request-to-book only today. Wiring up real capture needs an actual
   MTN merchant relationship this environment can't create.
 - **Crash reporting only covers client-side frontend errors and API-side
-  exceptions** — see section 7 above for the frontend-specific caveat.
+  exceptions** — see section 8 above for the frontend-specific caveat.
 - **Public catalog pages (map, place/business/category/county pages,
   search, home) fetch the API fresh on every request** — `web/src/lib/api.ts`
   used to cache these for 60s (Next.js ISR) but that window was reported as
