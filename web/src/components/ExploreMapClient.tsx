@@ -17,6 +17,7 @@ import {
 import { MapPinIcon as ResultPinIcon, StarIcon } from '@heroicons/react/20/solid';
 import 'leaflet/dist/leaflet.css';
 import type { Category, County, Place } from '@/lib/types';
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from '@/lib/map-tiles';
 import { colorForCategory, gradientForCategory } from '@/lib/category-colors';
 import { formatRating } from '@/lib/format';
 import { distanceKm, type Coordinates } from '@/lib/geo';
@@ -533,17 +534,9 @@ export function ExploreMapClient({
 
       <div className="relative min-h-[220px] flex-1">
         <MapContainer center={MONROVIA_CENTER} zoom={11} scrollWheelZoom className="h-full w-full">
-          {/* CARTO's basemap tiles, not tile.openstreetmap.org directly —
-              OSM's own tile servers are explicitly not meant for production
-              traffic (see their tile usage policy) and can silently rate-limit
-              or block requests; CARTO's free basemap tiles are the same map
-              data (still OSM-sourced, hence the dual attribution below) served
-              from infrastructure meant to be used this way. No API key. */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-            subdomains="abcd"
-          />
+          {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's
+              or tile.openstreetmap.org directly. */}
+          <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
           <LocateControl located={userLocation !== null} onLocated={setUserLocation} />
           {userLocation && (
             <Marker position={[userLocation.lat, userLocation.lng]} icon={USER_LOCATION_ICON} zIndexOffset={1000} />

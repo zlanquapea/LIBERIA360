@@ -4,6 +4,7 @@ import { MapContainer, Marker, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { iconSvgMarkup } from '@/lib/icons';
+import { BASEMAP_TILE_URL } from '@/lib/map-tiles';
 
 function pinIcon(color: string, icon: string | null, categorySlug: string) {
   return L.divIcon({
@@ -40,9 +41,8 @@ export function PlaceMiniMapClient({
       attributionControl={false}
       className="h-full w-full"
     >
-      {/* CARTO's basemap tiles, not raw tile.openstreetmap.org — see
-          ExploreMapClient.tsx's comment on why. */}
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains="abcd" />
+      {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's. */}
+      <TileLayer url={BASEMAP_TILE_URL} />
       <Marker position={[latitude, longitude]} icon={pinIcon(color, icon, categorySlug)} />
     </MapContainer>
   );

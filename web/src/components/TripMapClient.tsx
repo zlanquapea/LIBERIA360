@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import 'leaflet/dist/leaflet.css';
 import type { ItineraryStopDetail } from '@/lib/types';
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from '@/lib/map-tiles';
 import { stopCoords } from '@/lib/trip-map';
 
 // Cycles by day number rather than by stop kind (contrast ExploreMapClient's
@@ -64,14 +65,8 @@ export function TripMapClient({ stops }: { stops: ItineraryStopDetail[] }) {
       scrollWheelZoom
       className="h-full w-full"
     >
-      {/* Same CARTO basemap tiles as ExploreMapClient — see that
-          component's own comment on why not tile.openstreetmap.org
-          directly. */}
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-        subdomains="abcd"
-      />
+      {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's. */}
+      <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
       {pins.map(({ stop, coords }) => {
         const itemId = stop.place?.id ?? stop.event?.id;
         return (

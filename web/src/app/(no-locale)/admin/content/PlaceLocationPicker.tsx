@@ -13,6 +13,7 @@ import {
   LOCATION_MAX_AGE_MS,
   LOCATION_TIMEOUT_MS,
 } from '@/lib/geolocation';
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from '@/lib/map-tiles';
 import { inputClass } from './content-shared';
 
 const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
@@ -331,13 +332,8 @@ export function PlaceLocationPicker({
 
       <div className="h-64 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
         <MapContainer center={position ?? MONROVIA_CENTER} zoom={position ? 14 : 8} className="h-full w-full">
-          {/* CARTO's basemap tiles, not raw tile.openstreetmap.org — see
-              ExploreMapClient.tsx's comment on why. */}
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-            subdomains="abcd"
-          />
+          {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's. */}
+          <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
           <ClickToPlace onPick={onChange} />
           {flyTarget && <FlyTo position={flyTarget} />}
           {position && (
