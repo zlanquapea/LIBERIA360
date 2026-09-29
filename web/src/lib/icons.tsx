@@ -384,3 +384,23 @@ export function CategoryIcon({
   const Icon = getIcon((categorySlug && CATEGORY_ICON_KEYS[categorySlug]) || iconKey);
   return <Icon aria-hidden className={className} />;
 }
+
+// Leaflet's divIcon (ExploreMapClient, PlaceMiniMapClient) renders a raw
+// HTML string, not JSX, so a <CategoryIcon /> can't be dropped in directly
+// there the way it is everywhere else — this serializes the same Heroicon
+// to static markup once, at marker-build time. `react-dom/server.browser`
+// is required lazily, inside the function, rather than imported at module
+// scope: it references browser globals (MessageChannel, TextEncoder) that
+// every real browser and `next build` have but Jest's jsdom test
+// environment doesn't, and every other export from this file (CategoryIcon
+// itself, used throughout the app) has to stay usable in a unit test
+// without pulling that in.
+export function iconSvgMarkup(
+  key: string | null | undefined,
+  className = 'h-4 w-4',
+  categorySlug?: string | null,
+): string {
+  const Icon = getIcon((categorySlug && CATEGORY_ICON_KEYS[categorySlug]) || key);
+  const { renderToStaticMarkup } = require('react-dom/server.browser');
+  return renderToStaticMarkup(<Icon className={className} />);
+}

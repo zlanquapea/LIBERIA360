@@ -18,9 +18,8 @@ function TripMapLoading() {
   );
 }
 
-// The Google Maps JavaScript API loader touches `window` at import time, so
-// the map must never render on the server — see ExploreMapLoader's own
-// comment on the same pattern.
+// Leaflet touches `window` at import time, so the map must never render on
+// the server — see ExploreMapLoader's own comment on the same pattern.
 const TripMapClient = dynamic(() => import('./TripMapClient').then((mod) => mod.TripMapClient), {
   ssr: false,
   loading: TripMapLoading,

@@ -2,9 +2,8 @@
 
 import dynamic from 'next/dynamic';
 
-// The Google Maps JavaScript API loader touches `window` at import time —
-// same reason ExploreMapLoader/PlaceMiniMapLoader exist — so this must
-// never render on the server.
+// Leaflet touches `window` at import time — same reason ExploreMapLoader/
+// PlaceMiniMapLoader exist — so this must never render on the server.
 const PlaceLocationPicker = dynamic(
   () => import('./PlaceLocationPicker').then((mod) => mod.PlaceLocationPicker),
   {
