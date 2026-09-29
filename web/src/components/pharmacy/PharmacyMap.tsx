@@ -1,6 +1,7 @@
 "use client";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import type { Pharmacy } from "@/lib/pharmacy-api";
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from "@/lib/map-tiles";
 import "leaflet/dist/leaflet.css";
 export function PharmacyMap({ pharmacies }: { pharmacies: Pharmacy[] }) {
   const pins = pharmacies.filter(
@@ -16,10 +17,7 @@ export function PharmacyMap({ pharmacies }: { pharmacies: Pharmacy[] }) {
         zoom={12}
         className="h-full w-full"
       >
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
         {pins.map((p) => (
           <Marker
             key={p.id}
