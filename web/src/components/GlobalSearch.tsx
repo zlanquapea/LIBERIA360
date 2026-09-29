@@ -316,9 +316,10 @@ export function GlobalSearch() {
         // viewport. Same bug, same fix, as MobileMenu's own drawer.
         createPortal(
         // z-[9999], not a lower "modal" value — this can open on top of
-        // ExploreMapClient/CountyPlacesExplorer's Leaflet map, whose own
-        // panes/controls carry z-index up to 1000 (see FilterPopover's and
-        // MobileFilterSheet's own doc comments for the exact same lesson).
+        // ExploreMapClient/CountyPlacesExplorer's map, whose own
+        // panes/controls carry a meaningful z-index of their own (see
+        // FilterPopover's and MobileFilterSheet's own doc comments for the
+        // exact same lesson).
         <div
           className="fixed inset-0 z-[9999] flex flex-col bg-black/50 backdrop-blur-sm sm:items-center sm:pt-16"
           onClick={close}

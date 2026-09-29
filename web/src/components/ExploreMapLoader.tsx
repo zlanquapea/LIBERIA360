@@ -19,10 +19,11 @@ function ExploreMapLoading() {
   );
 }
 
-// Leaflet touches `window` at import time, so the map must never render on
-// the server. `dynamic(..., { ssr: false })` is only valid from inside a
-// Client Component in the App Router — this wrapper exists so the server
-// component page can stay a plain server component.
+// The Google Maps JavaScript API loader touches `window` at import time, so
+// the map must never render on the server. `dynamic(..., { ssr: false })`
+// is only valid from inside a Client Component in the App Router — this
+// wrapper exists so the server component page can stay a plain server
+// component.
 const ExploreMapClient = dynamic(() => import('./ExploreMapClient').then((mod) => mod.ExploreMapClient), {
   ssr: false,
   loading: ExploreMapLoading,

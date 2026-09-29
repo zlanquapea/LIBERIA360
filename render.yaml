@@ -164,3 +164,23 @@ services:
           property: port
       - key: NEXT_PUBLIC_SITE_URL
         value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com
+      # Required for every map in the app (Explore, trip maps, the pharmacy
+      # map, place/event mini-maps, the admin location picker) — a Google
+      # Cloud project with billing enabled and the "Maps JavaScript API" +
+      # "Places API" enabled. `sync: false` for the same reason as the S3
+      # keys below: Render still provisions the slot so it shows up in the
+      # dashboard, but won't reset it to blank on a Blueprint sync. Fill in
+      # the real values in the dashboard once (Environment tab on the
+      # liberia360-web service) — `NEXT_PUBLIC_*` vars are inlined into the
+      # client bundle at build time, so a change here needs a rebuild to
+      # take effect, same as any other `NEXT_PUBLIC_*` var.
+      - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        sync: false
+      # Map ID for the custom-styled "Advanced Marker" pins every map uses —
+      # same Cloud project → Google Maps Platform → Map Management → Create
+      # Map ID (no additional cost). Left unset, every map falls back to
+      # Google's own DEMO_MAP_ID placeholder, which renders a visible
+      # "for development purposes only" watermark — fine to ship with
+      # temporarily, not for a real launch.
+      - key: NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+        sync: false
