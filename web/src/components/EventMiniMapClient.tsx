@@ -3,7 +3,7 @@
 import { MapContainer, Marker, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { BASEMAP_TILE_URL } from '@/lib/map-tiles';
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from '@/lib/map-tiles';
 
 // Same plain brand-colored pin PlaceLocationPicker uses while placing a
 // location — events have no category→color/icon system the way Places do
@@ -25,11 +25,12 @@ export function EventMiniMapClient({ latitude, longitude }: { latitude: number; 
       scrollWheelZoom={false}
       dragging={false}
       zoomControl={false}
-      attributionControl={false}
       className="h-full w-full"
     >
-      {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's. */}
-      <TileLayer url={BASEMAP_TILE_URL} />
+      {/* attributionControl stays enabled (unlike scrollWheelZoom/dragging/
+          zoomControl above) — Esri's tile terms require attribution to stay
+          visible even on a small non-interactive preview map. */}
+      <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
       <Marker position={[latitude, longitude]} icon={pinIcon} />
     </MapContainer>
   );

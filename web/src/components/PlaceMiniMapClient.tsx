@@ -4,7 +4,7 @@ import { MapContainer, Marker, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { iconSvgMarkup } from '@/lib/icons';
-import { BASEMAP_TILE_URL } from '@/lib/map-tiles';
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from '@/lib/map-tiles';
 
 function pinIcon(color: string, icon: string | null, categorySlug: string) {
   return L.divIcon({
@@ -38,11 +38,12 @@ export function PlaceMiniMapClient({
       scrollWheelZoom={false}
       dragging={false}
       zoomControl={false}
-      attributionControl={false}
       className="h-full w-full"
     >
-      {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's. */}
-      <TileLayer url={BASEMAP_TILE_URL} />
+      {/* attributionControl stays enabled (unlike scrollWheelZoom/dragging/
+          zoomControl above) — Esri's tile terms require attribution to stay
+          visible even on a small non-interactive preview map. */}
+      <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
       <Marker position={[latitude, longitude]} icon={pinIcon(color, icon, categorySlug)} />
     </MapContainer>
   );
