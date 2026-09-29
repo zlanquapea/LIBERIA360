@@ -132,8 +132,8 @@ export function MobileFilterSheet({
 
   return (
     // z-[9999] (bug fix, Sep 2026), not the z-[150] this shipped with:
-    // this sheet's whole job is to cover the map behind it, but the map's
-    // own panes/controls carry a meaningful z-index of their own (see
+    // this sheet's whole job is to cover the Leaflet map behind it, but
+    // Leaflet's own panes/controls carry z-index values up to 1000 (see
     // FilterPopover's doc comment in ExploreMapClient.tsx, which already
     // learned this lesson for the desktop dropdowns) — at z-150 the map's
     // zoom buttons, "Use my location" pill, and marker pins all rendered

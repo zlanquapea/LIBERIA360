@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { AdvancedMarker, InfoWindow, Map, useAdvancedMarkerRef, useMap } from '@vis.gl/react-google-maps';
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
@@ -14,20 +15,21 @@ import {
   TagIcon,
 } from '@heroicons/react/24/outline';
 import { MapPinIcon as ResultPinIcon, StarIcon } from '@heroicons/react/20/solid';
+import 'leaflet/dist/leaflet.css';
 import type { Category, County, Place } from '@/lib/types';
+import { BASEMAP_ATTRIBUTION, BASEMAP_TILE_URL } from '@/lib/map-tiles';
 import { colorForCategory, gradientForCategory } from '@/lib/category-colors';
 import { formatRating } from '@/lib/format';
 import { distanceKm, type Coordinates } from '@/lib/geo';
 import { isOpenAt } from '@/lib/opening-hours';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
-import { CategoryIcon } from '@/lib/icons';
+import { CategoryIcon, iconSvgMarkup } from '@/lib/icons';
 import { LOCATION_MAX_AGE_MS, LOCATION_TIMEOUT_MS } from '@/lib/geolocation';
-import { GOOGLE_MAPS_MAP_ID, MONROVIA_CENTER } from '@/lib/google-maps';
-import { GoogleMapsProvider } from './GoogleMapsProvider';
-import { CENTERED_MARKER_ANCHOR, CategoryMapPin, UserLocationDot } from './MapMarkerContent';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
 import { DropdownOption, MobileFilterSheet, PRICE_BUCKETS, priceBucketLabelKey } from './MobileFilterSheet';
+
+const MONROVIA_CENTER: [number, number] = [6.3106, -10.8047];
 
 // Product feedback (Aug 27, 2026): once located, Explore should behave like
 // a real "near me" — only what's actually close, not the whole catalog with
@@ -36,10 +38,40 @@ import { DropdownOption, MobileFilterSheet, PRICE_BUCKETS, priceBucketLabelKey }
 // picker.
 const NEARBY_RADIUS_KM = 5;
 
+// "You are here" — a pulsing blue dot, the same convention as every map
+// app, distinct from every category pin so it's never mistaken for a place.
+const USER_LOCATION_ICON = L.divIcon({
+  className: '',
+  html: '<div class="relative flex h-5 w-5 items-center justify-center"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-60"></span><span class="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-white bg-sky-500 shadow-md"></span></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
+function pinIcon(color: string, icon: string | null, categorySlug: string, selected: boolean) {
+  return L.divIcon({
+    className: '',
+    // Leaflet's divIcon renders a raw HTML string, not JSX, so the
+    // category's icon has to be serialized to markup up front — see
+    // iconSvgMarkup's doc comment.
+    html: `<div style="background:${color}" class="flex ${selected ? 'h-10 w-10' : 'h-8 w-8'} -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white shadow-md ${selected ? 'ring-2 ring-offset-1 ring-slate-900' : ''}">${iconSvgMarkup(icon, 'h-4 w-4 text-white', categorySlug)}</div>`,
+    iconSize: selected ? [40, 40] : [32, 32],
+    iconAnchor: selected ? [20, 20] : [16, 16],
+    popupAnchor: [0, -16],
+  });
+}
+
+// Leaflet's built-in geolocation ("locate me") — must live inside
+// <MapContainer> to reach the map instance via useMap(). Recentering +
+// zooming is Leaflet's own map.locate({ setView: true }), not raw
+// navigator.geolocation, so permission prompts/accuracy circle/etc. all
+// come for free. `onLocated` hands the found coordinates up to the parent —
+// drives both the "you are here" marker and the within-5km filter.
 // A location fix can genuinely take minutes indoors or with a weak
-// signal — this narrates that it's still honestly working rather than
-// looking frozen. See lib/geolocation.ts for the shared long-timeout fix
-// applied everywhere else "use my current location" appears.
+// signal — `map.locate()`'s own default `timeout` is a plain 10s (this
+// is the literal "fails after 5-10 seconds" report), which was firing
+// "couldn't find you" while the browser was still honestly working on
+// it. See lib/geolocation.ts for the shared long-timeout fix applied
+// everywhere else "use my current location" appears.
 const TAKING_LONG_DELAY_MS = 8000;
 
 function LocateControl({ located, onLocated }: { located: boolean; onLocated: (coords: Coordinates) => void }) {
@@ -49,10 +81,10 @@ function LocateControl({ located, onLocated }: { located: boolean; onLocated: (c
   const [locating, setLocating] = useState(false);
   const [takingLong, setTakingLong] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // getCurrentPosition has no built-in cancel — this flag lets a stale
-  // success/error callback (from a lookup the user gave up on) know to
-  // no-op instead of overwriting state, same pattern as PlaceLocationPicker's
-  // own Cancel.
+  // Leaflet's locate() has no real cancel for a one-shot fix (only for
+  // `watch: true`) — this flag lets a stale locationfound/locationerror
+  // (from a lookup the user gave up on) know to no-op instead of
+  // overwriting state, same pattern as NearMeClient's own Cancel.
   const cancelledRef = useRef(false);
   const takingLongTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,48 +94,29 @@ function LocateControl({ located, onLocated }: { located: boolean; onLocated: (c
     };
   }, []);
 
+  useMapEvents({
+    locationfound: (e) => {
+      if (cancelledRef.current) return;
+      setLocating(false);
+      setTakingLong(false);
+      if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
+      onLocated({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
+    locationerror: () => {
+      if (cancelledRef.current) return;
+      setLocating(false);
+      setTakingLong(false);
+      if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
+      setError(t('locationError'));
+    },
+  });
+
   function cancelLocating() {
     cancelledRef.current = true;
     setLocating(false);
     setTakingLong(false);
     if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
-  }
-
-  function startLocating() {
-    if (!navigator.geolocation) {
-      setError(t('locationError'));
-      return;
-    }
-    cancelledRef.current = false;
-    setLocating(true);
-    setTakingLong(false);
-    setError(null);
-    if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
-    takingLongTimeout.current = setTimeout(() => setTakingLong(true), TAKING_LONG_DELAY_MS);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (cancelledRef.current) return;
-        setLocating(false);
-        setTakingLong(false);
-        if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
-        const coords: Coordinates = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        onLocated(coords);
-        if (map) {
-          map.panTo(coords);
-          // Zoom in to at least 14 — but never zoom back out if the visitor
-          // was already closer than that.
-          map.setZoom(Math.max(map.getZoom() ?? 0, 14));
-        }
-      },
-      () => {
-        if (cancelledRef.current) return;
-        setLocating(false);
-        setTakingLong(false);
-        if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
-        setError(t('locationError'));
-      },
-      { enableHighAccuracy: false, timeout: LOCATION_TIMEOUT_MS, maximumAge: LOCATION_MAX_AGE_MS },
-    );
+    map.stopLocate();
   }
 
   return (
@@ -121,7 +134,21 @@ function LocateControl({ located, onLocated }: { located: boolean; onLocated: (c
       <div className="pointer-events-none flex items-center gap-2">
         <button
           type="button"
-          onClick={startLocating}
+          onClick={() => {
+            cancelledRef.current = false;
+            setLocating(true);
+            setTakingLong(false);
+            setError(null);
+            if (takingLongTimeout.current) clearTimeout(takingLongTimeout.current);
+            takingLongTimeout.current = setTimeout(() => setTakingLong(true), TAKING_LONG_DELAY_MS);
+            map.locate({
+              setView: true,
+              maxZoom: 14,
+              enableHighAccuracy: false,
+              timeout: LOCATION_TIMEOUT_MS,
+              maximumAge: LOCATION_MAX_AGE_MS,
+            });
+          }}
           disabled={locating}
           className="pointer-events-auto flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-md transition-colors hover:text-brand-700 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:text-brand-300"
         >
@@ -142,58 +169,6 @@ function LocateControl({ located, onLocated }: { located: boolean; onLocated: (c
   );
 }
 
-// One marker + its own InfoWindow, as its own component rather than inline
-// in a .map() — <AdvancedMarker>'s ref (via useAdvancedMarkerRef) is what an
-// <InfoWindow anchor={...}> needs to attach to, and hooks can't be called
-// per-iteration inside a loop.
-function ExplorePlaceMarker({
-  place,
-  selected,
-  onSelect,
-  onDeselect,
-}: {
-  place: Place;
-  selected: boolean;
-  onSelect: () => void;
-  onDeselect: () => void;
-}) {
-  const t = useTranslations('explore');
-  const [markerRef, marker] = useAdvancedMarkerRef();
-
-  return (
-    <>
-      <AdvancedMarker
-        ref={markerRef}
-        position={{ lat: place.latitude, lng: place.longitude }}
-        onClick={onSelect}
-        {...CENTERED_MARKER_ANCHOR}
-      >
-        <CategoryMapPin
-          color={colorForCategory(place.category.slug)}
-          icon={place.category.icon}
-          categorySlug={place.category.slug}
-          selected={selected}
-        />
-      </AdvancedMarker>
-      {selected && marker && (
-        <InfoWindow anchor={marker} onCloseClick={onDeselect}>
-          <div className="flex flex-col gap-1">
-            <p className="font-semibold text-slate-900 dark:text-slate-50">{place.name}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{place.category.name}</p>
-            <Link
-              href={`/places/${place.slug}`}
-              className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
-            >
-              {t('viewDetails')}
-              <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </InfoWindow>
-      )}
-    </>
-  );
-}
-
 // A filter pill that opens a small dropdown panel below it. `children` is a
 // render prop handed a `close()` — County and Price call it after picking a
 // single option (the dropdown's job is done); Category doesn't, since
@@ -202,9 +177,12 @@ function ExplorePlaceMarker({
 // it's `aria-hidden`/untabbable so it never becomes a real focus stop.
 //
 // The panel and its backdrop use a very high z-index deliberately: this
-// header sits directly above the map, whose own internal panes/controls
-// carry a meaningful z-index of their own — comfortably clearing that
-// avoids a stacking fight entirely rather than chasing it.
+// header sits directly above the Leaflet map, and Leaflet's own panes/
+// controls carry z-index values up to 1000 (and some of Leaflet's own
+// panes establish their own stacking context via the transform they use
+// for pan/zoom, which can make an ordinary z-50 lose to them in ways that
+// don't reproduce consistently in every browser). Comfortably clearing
+// Leaflet's own maximum avoids that fight entirely rather than chasing it.
 function FilterPopover({
   label,
   icon: Icon,
@@ -555,37 +533,37 @@ export function ExploreMapClient({
       />
 
       <div className="relative min-h-[220px] flex-1">
-        <GoogleMapsProvider>
-          <Map
-            mapId={GOOGLE_MAPS_MAP_ID}
-            defaultCenter={MONROVIA_CENTER}
-            defaultZoom={11}
-            // "greedy" so a one-finger/mouse-wheel scroll over the map
-            // always zooms it, matching this screen's previous Leaflet
-            // default (scrollWheelZoom) instead of Google's own default of
-            // requiring ctrl+scroll to avoid trapping page scroll.
-            gestureHandling="greedy"
-            disableDefaultUI
-            zoomControl
-            className="h-full w-full"
-          >
-            <LocateControl located={userLocation !== null} onLocated={setUserLocation} />
-            {userLocation && (
-              <AdvancedMarker position={userLocation} zIndex={1000} {...CENTERED_MARKER_ANCHOR}>
-                <UserLocationDot />
-              </AdvancedMarker>
-            )}
-            {visiblePlaces.map((place) => (
-              <ExplorePlaceMarker
-                key={place.id}
-                place={place}
-                selected={place.id === selectedId}
-                onSelect={() => setSelectedId(place.id)}
-                onDeselect={() => setSelectedId((current) => (current === place.id ? null : current))}
-              />
-            ))}
-          </Map>
-        </GoogleMapsProvider>
+        <MapContainer center={MONROVIA_CENTER} zoom={11} scrollWheelZoom className="h-full w-full">
+          {/* See lib/map-tiles.ts for why this is Esri's tiles, not CARTO's
+              or tile.openstreetmap.org directly. */}
+          <TileLayer attribution={BASEMAP_ATTRIBUTION} url={BASEMAP_TILE_URL} />
+          <LocateControl located={userLocation !== null} onLocated={setUserLocation} />
+          {userLocation && (
+            <Marker position={[userLocation.lat, userLocation.lng]} icon={USER_LOCATION_ICON} zIndexOffset={1000} />
+          )}
+          {visiblePlaces.map((place) => (
+            <Marker
+              key={place.id}
+              position={[place.latitude, place.longitude]}
+              icon={pinIcon(colorForCategory(place.category.slug), place.category.icon, place.category.slug, place.id === selectedId)}
+              eventHandlers={{ click: () => setSelectedId(place.id) }}
+            >
+              <Popup>
+                <div className="flex flex-col gap-1">
+                  <p className="font-semibold text-slate-900 dark:text-slate-50">{place.name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{place.category.name}</p>
+                  <Link
+                    href={`/places/${place.slug}`}
+                    className="flex items-center gap-0.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                  >
+                    {t('viewDetails')}
+                    <ArrowRightIcon aria-hidden className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
       </div>
 
       {/* Results sheet — the same places the map shows, as full cards

@@ -1,5 +1,6 @@
-// Shared tuning for every `navigator.geolocation.getCurrentPosition` call in
-// the app. Extracted from NearMeClient's own fix (Sep 2026 product feedback:
+// Shared tuning for every `navigator.geolocation.getCurrentPosition` (or
+// Leaflet `map.locate()`, which wraps the same browser API) call in the
+// app. Extracted from NearMeClient's own fix (Sep 2026 product feedback:
 // "use my location" was routinely failing around 10s while the browser
 // was still honestly working on the fix — a real GPS/network lookup can
 // take anywhere from a couple of seconds to several minutes indoors or

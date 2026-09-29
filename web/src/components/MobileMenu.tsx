@@ -105,8 +105,8 @@ export function MobileMenu() {
         createPortal(
           // z-[9999] (bug fix, Sep 2026), not the z-[120] this shipped
           // with: rendered globally from Header, this drawer can open over
-          // any page — including /explore, whose map's own panes/controls
-          // carry a meaningful z-index of their own (see FilterPopover's
+          // any page — including /explore, whose Leaflet map's own panes/
+          // controls carry z-index values up to 1000 (see FilterPopover's
           // doc comment in ExploreMapClient.tsx). At z-120 the map's zoom
           // buttons, "Use my location" pill, and marker pins rendered
           // straight through this drawer and its backdrop. Matches
