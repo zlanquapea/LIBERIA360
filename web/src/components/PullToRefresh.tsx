@@ -180,7 +180,7 @@ export function PullToRefresh({
       className={`pointer-events-none fixed inset-x-0 z-[200] flex justify-center px-4 ${visible ? "" : "hidden"}`}
       style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
     >
-      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-brand-800 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
+      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white p-3 text-sm font-semibold text-brand-800 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
         <ArrowPathIcon
           aria-hidden
           className={`h-5 w-5 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
@@ -188,12 +188,17 @@ export function PullToRefresh({
             refreshing ? undefined : { transform: `rotate(${distance * 3}deg)` }
           }
         />
-        {message ||
-          (refreshing
-            ? "Refreshing…"
-            : distance >= TRIGGER
-              ? "Release to refresh"
-              : "Pull down to refresh")}
+        {message ? (
+          <span>{message}</span>
+        ) : (
+          <span className="sr-only">
+            {refreshing
+              ? "Refreshing"
+              : distance >= TRIGGER
+                ? "Release to refresh"
+                : "Pull down to refresh"}
+          </span>
+        )}
       </div>
     </div>
   );

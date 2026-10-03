@@ -12,6 +12,7 @@ import {
   createCreatorFeedAdSession,
   mergeCreatorPostsWithAds,
 } from "@/lib/creator-feed-ads";
+import { shuffleCreatorPosts } from "@/lib/creator-feed-shuffle";
 import type { Ad, CreatorPost } from "@/lib/types";
 import { CreatorPostCard } from "./CreatorPostCard";
 import { SponsoredCreatorAdCard } from "./SponsoredCreatorAdCard";
@@ -50,17 +51,6 @@ function samePostSet(current: CreatorPost[], next: CreatorPost[]) {
   return next.every((post) => currentIds.has(post.id));
 }
 
-function varyRecentPosts(next: CreatorPost[], current: CreatorPost[]) {
-  if (next.length < 2 || !samePostSet(current, next)) return next;
-  const recentCount = Math.min(4, next.length);
-  const offset = 1 + Math.floor(Math.random() * (recentCount - 1));
-  return [
-    ...next.slice(offset, recentCount),
-    ...next.slice(0, offset),
-    ...next.slice(recentCount),
-  ];
-}
-
 function triggerRefreshHaptic() {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
     navigator.vibrate(12);
@@ -90,6 +80,10 @@ export function CreatorFeed({
   const [error, setError] = useState<string | null>(null);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const refreshLockRef = useRef(false);
+
+  useEffect(() => {
+    if (mode === "discover") setPosts(shuffleCreatorPosts(initialPosts, mode));
+  }, [initialPosts, mode]);
 
   const feedItems = useMemo(
     () =>
@@ -132,7 +126,7 @@ export function CreatorFeed({
     getFollowedCreatorFeed(token, { page: 1, limit: FEED_PAGE_SIZE })
       .then((result) => {
         if (cancelled) return;
-        setPosts(result.data);
+        setPosts(shuffleCreatorPosts(result.data, mode));
         setPage(1);
         setHasMore(1 < result.meta.totalPages);
       })
@@ -186,7 +180,11 @@ export function CreatorFeed({
           : Promise.resolve([] as Ad[]),
       ]);
 
-      const nextPosts = varyRecentPosts(postResult.data, posts);
+      const nextPosts = shuffleCreatorPosts(
+        postResult.data,
+        mode,
+        posts[0]?.id,
+      );
       const nextAds = shuffleAds(
         refreshedAds,
         [previousFirstAdId, previousLastAdId].filter((adId): adId is string =>
@@ -203,8 +201,8 @@ export function CreatorFeed({
       setAds(mode === "discover" ? nextAds : []);
       setRefreshMessage(
         samePostSet(posts, postResult.data)
-          ? "No new posts yet — the feed was checked and sponsored rotation was refreshed."
-          : "Feed refreshed with the latest creator posts.",
+          ? "Posts shuffled. You’re all caught up."
+          : "Feed refreshed and posts shuffled.",
       );
     } catch {
       setError("The creator feed could not be refreshed. Please try again.");
@@ -256,7 +254,9 @@ export function CreatorFeed({
           aria-hidden
           className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
         />
-        {refreshing ? "Refreshing creators…" : "Refresh feed"}
+        <span className="sr-only">
+          {refreshing ? "Refreshing feed" : "Refresh feed"}
+        </span>
       </button>
 
       {mode === "discover" && <CreatorStories />}
