@@ -14,7 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { BrandLoader } from "@/components/BrandLoader";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import { cancelFoodOrder, getMyFoodOrders } from "@/lib/food-orders-api";
-import { formatCost, formatFoodOrderStatus } from "@/lib/format";
+import { formatFoodOrderStatus } from "@/lib/format";
+import { FoodOrderLines } from "@/components/menu/FoodOrderLines";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -588,25 +589,7 @@ export default function MyOrdersPage() {
                   </span>
                 </div>
 
-                <ul className="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800">
-                  {order.items.map((item) => (
-                    <li
-                      key={item.menuItemId}
-                      className="flex items-center justify-between py-1.5"
-                    >
-                      <span className="text-slate-700 dark:text-slate-200">
-                        {item.quantity} × {item.name}
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {formatCost(Number(item.unitPrice) * item.quantity)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-2 flex items-center justify-between font-semibold text-slate-900 dark:text-slate-50">
-                  <span>Total</span>
-                  <span>{formatCost(order.totalAmount)}</span>
-                </div>
+                <FoodOrderLines order={order} className="mt-3" />
 
                 {order.notes && (
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">

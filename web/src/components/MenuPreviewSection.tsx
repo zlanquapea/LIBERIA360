@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import { formatCost } from "@/lib/format";
+import { formatMoney } from "@/lib/currency";
+import { MENU_KIND_EMOJI } from "@/lib/menu";
 import { resolveImageUrl } from "@/lib/images";
 import { SafeImage } from "@/components/SafeImage";
-import type { MenuItem } from "@/lib/types";
+import type { MenuCurrency, MenuItem } from "@/lib/types";
 
 // How many dishes to tease inline before pointing to the full menu page.
 const PREVIEW_COUNT = 6;
@@ -26,9 +27,11 @@ const PREVIEW_COUNT = 6;
 export function MenuPreviewSection({
   items,
   menuHref,
+  currency = "USD",
 }: {
   items: MenuItem[];
   menuHref: string;
+  currency?: MenuCurrency;
 }) {
   if (items.length === 0) return null;
 
@@ -43,7 +46,7 @@ export function MenuPreviewSection({
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">What&apos;s on offer</p>
           <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">Menu</h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {items.length} dish{items.length === 1 ? "" : "es"}
+            {items.length} item{items.length === 1 ? "" : "s"}
             {categoryCount > 1 ? ` across ${categoryCount} sections` : ""}
           </p>
         </div>
@@ -72,13 +75,13 @@ export function MenuPreviewSection({
                   aria-hidden
                   className="flex h-24 w-full items-center justify-center rounded-xl bg-slate-100 text-2xl dark:bg-slate-800 sm:h-28"
                 >
-                  🍽️
+                  {MENU_KIND_EMOJI[item.kind] ?? "🍽️"}
                 </div>
               }
             />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">{item.name}</p>
-              <p className="text-sm font-semibold text-brand-700 dark:text-brand-300">{formatCost(item.price)}</p>
+              <p className="text-sm font-semibold text-brand-700 dark:text-brand-300">{formatMoney(item.price, currency)}</p>
             </div>
           </Link>
         ))}

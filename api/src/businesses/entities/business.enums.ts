@@ -23,7 +23,21 @@ export enum BusinessType {
   // inventory) — distinct enough from TRANSPORT to be worth its own value
   // rather than overloading that one.
   CAR_RENTAL = "car_rental",
+  // Bars, lounges, and nightclubs — distinct from RESTAURANT so a
+  // nightlife venue can run a drinks-first menu without misclassifying
+  // itself as a place to eat.
+  BAR = "bar",
   OTHER = "other",
+}
+
+/** Which business types get a menu (and in-platform ordering) at all. */
+export const MENU_BUSINESS_TYPES: readonly BusinessType[] = [
+  BusinessType.RESTAURANT,
+  BusinessType.BAR,
+];
+
+export function businessHasMenu(type: BusinessType): boolean {
+  return MENU_BUSINESS_TYPES.includes(type);
 }
 
 /** Business Plan §8.1 freemium tiers. Phase 2 just needs the field to exist

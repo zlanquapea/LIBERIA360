@@ -1,4 +1,4 @@
-import type { CreateMenuItemInput, MenuItem, UpdateMenuItemInput } from './types';
+import type { CreateMenuItemInput, MenuCurrency, MenuItem, MenuSettings, UpdateMenuItemInput } from './types';
 import { apiRequest, authHeader } from './http';
 
 // The full menu for one business — public (no auth) and identical to what
@@ -30,5 +30,22 @@ export function deleteMenuItem(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/menu-items/${id}`, {
     method: 'DELETE',
     headers: authHeader(token),
+  });
+}
+
+// Public — a business that never saved settings reads back the defaults.
+export function getMenuSettings(businessId: string): Promise<MenuSettings> {
+  return apiRequest<MenuSettings>(`/menu-settings/${businessId}`);
+}
+
+export function updateMenuSettings(
+  token: string,
+  businessId: string,
+  input: { currency?: MenuCurrency },
+): Promise<MenuSettings> {
+  return apiRequest<MenuSettings>(`/menu-settings/${businessId}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
   });
 }

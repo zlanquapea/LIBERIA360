@@ -17,6 +17,7 @@ import type {
   KnowledgeArticleWithRelated,
   KnowledgeCategoryWithCount,
   MenuItem,
+  MenuSettings,
   PaginatedBlogPosts,
   PaginatedBusinessContent,
   PaginatedBusinesses,
@@ -33,6 +34,7 @@ import type {
   PublicTripSummary,
   SearchSuggestResponse,
   SponsoredPlacement,
+  TravelerInfoSettings,
 } from "./types";
 import { serverApiOrigin } from "./server-api-origin";
 
@@ -308,6 +310,21 @@ export function getBusinessContent(
 // comment for why there's no separate approved-only gate here.
 export function getMenuItems(businessId: string): Promise<MenuItem[]> {
   return apiFetch<MenuItem[]>("/menu-items", { businessId }, []);
+}
+
+// Both of these are nice-to-have context for a menu page, never worth
+// failing it over — callers fall back to USD / no conversion.
+export function getMenuSettings(businessId: string): Promise<MenuSettings> {
+  return apiFetch<MenuSettings>(`/menu-settings/${businessId}`).catch(() => ({
+    businessId,
+    currency: "USD" as const,
+  }));
+}
+
+export function getUsdToLrdRate(): Promise<number | null> {
+  return apiFetch<TravelerInfoSettings>("/traveler-info")
+    .then((info) => info.usdToLrdRate)
+    .catch(() => null);
 }
 
 export function getActiveSponsoredPlacements(): Promise<SponsoredPlacement[]> {

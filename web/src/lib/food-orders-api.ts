@@ -4,11 +4,14 @@ import { apiRequest, authHeader } from './http';
 export interface FoodOrderItemInput {
   menuItemId: string;
   quantity: number;
+  selections?: { groupId: string; choiceIds: string[] }[];
 }
 
 export interface CreateFoodOrderInput {
   items: FoodOrderItemInput[];
   notes?: string;
+  // Required when any item contains alcohol.
+  ageConfirmed?: boolean;
 }
 
 export function createFoodOrder(

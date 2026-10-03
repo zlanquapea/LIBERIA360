@@ -16,6 +16,7 @@ import {
 } from "../businesses/entities/business.enums";
 import { MenuItem } from "../menu-items/entities/menu-item.entity";
 import { NotificationsService } from "../notifications/notifications.service";
+import { MenuItemsService } from "../menu-items/menu-items.service";
 
 const BUYER_ID = "buyer-1";
 const OWNER_ID = "owner-1";
@@ -55,6 +56,7 @@ describe("FoodOrdersService", () => {
   let businessRepo: { findOne: jest.Mock };
   let menuItemRepo: { find: jest.Mock };
   let notificationsService: { create: jest.Mock };
+  let menuItemsService: { getSettings: jest.Mock };
 
   beforeEach(async () => {
     let saved: Record<string, unknown> = {};
@@ -77,6 +79,11 @@ describe("FoodOrdersService", () => {
     };
     menuItemRepo = { find: jest.fn().mockResolvedValue([menuItem()]) };
     notificationsService = { create: jest.fn().mockResolvedValue(undefined) };
+    menuItemsService = {
+      getSettings: jest
+        .fn()
+        .mockResolvedValue({ businessId: BUSINESS_ID, currency: "USD" }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -85,6 +92,7 @@ describe("FoodOrdersService", () => {
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(MenuItem), useValue: menuItemRepo },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: MenuItemsService, useValue: menuItemsService },
       ],
     }).compile();
 
@@ -154,9 +162,105 @@ describe("FoodOrdersService", () => {
           name: "Jollof Rice",
           unitPrice: "15.00",
           quantity: 2,
+          options: [],
         },
       ]);
       expect(order.totalAmount).toBe(30);
+    });
+
+    it("lets a bar take orders", async () => {
+      businessRepo.findOne.mockResolvedValue(
+        approvedRestaurant({ type: BusinessType.BAR }),
+      );
+      await expect(
+        service.create(BUYER_ID, BUSINESS_ID, {
+          items: [{ menuItemId: "item-1", quantity: 1 }],
+        }),
+      ).resolves.toEqual(expect.objectContaining({ totalAmount: 10 }));
+    });
+
+    it("prices chosen options from the live menu and snapshots them", async () => {
+      menuItemRepo.find.mockResolvedValue([
+        menuItem({
+          optionGroups: [
+            {
+              id: "size",
+              name: "Size",
+              required: true,
+              maxSelections: 1,
+              choices: [
+                { id: "reg", name: "Regular", priceDelta: 0 },
+                { id: "lg", name: "Large", priceDelta: 2.5 },
+              ],
+            },
+          ],
+        }),
+      ]);
+      const order = await service.create(BUYER_ID, BUSINESS_ID, {
+        items: [
+          {
+            menuItemId: "item-1",
+            quantity: 2,
+            selections: [{ groupId: "size", choiceIds: ["lg"] }],
+          },
+        ],
+      });
+      expect(order.items[0]).toEqual(
+        expect.objectContaining({
+          unitPrice: "12.50",
+          options: [{ group: "Size", choice: "Large", priceDelta: "2.50" }],
+        }),
+      );
+      expect(order.totalAmount).toBe(25);
+    });
+
+    it("rejects an order missing a required option", async () => {
+      menuItemRepo.find.mockResolvedValue([
+        menuItem({
+          optionGroups: [
+            {
+              id: "size",
+              name: "Size",
+              required: true,
+              maxSelections: 1,
+              choices: [{ id: "reg", name: "Regular", priceDelta: 0 }],
+            },
+          ],
+        }),
+      ]);
+      await expect(
+        service.create(BUYER_ID, BUSINESS_ID, {
+          items: [{ menuItemId: "item-1", quantity: 1 }],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("requires an age confirmation when the order includes alcohol", async () => {
+      menuItemRepo.find.mockResolvedValue([
+        menuItem({ name: "Club Beer", containsAlcohol: true }),
+      ]);
+      await expect(
+        service.create(BUYER_ID, BUSINESS_ID, {
+          items: [{ menuItemId: "item-1", quantity: 1 }],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.create(BUYER_ID, BUSINESS_ID, {
+          items: [{ menuItemId: "item-1", quantity: 1 }],
+          ageConfirmed: true,
+        }),
+      ).resolves.toEqual(expect.objectContaining({ totalAmount: 10 }));
+    });
+
+    it("snapshots the restaurant's menu currency on the order", async () => {
+      menuItemsService.getSettings.mockResolvedValue({
+        businessId: BUSINESS_ID,
+        currency: "LRD",
+      });
+      const order = await service.create(BUYER_ID, BUSINESS_ID, {
+        items: [{ menuItemId: "item-1", quantity: 1 }],
+      });
+      expect(order.currency).toBe("LRD");
     });
 
     it("notifies the business owner of a new order", async () => {

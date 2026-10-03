@@ -12,6 +12,11 @@ function makeItem(overrides: Partial<MenuItem> & { id: string }): MenuItem {
     category: "Mains",
     isAvailable: true,
     sortOrder: 0,
+    kind: "food",
+    tags: [],
+    servingSize: null,
+    containsAlcohol: false,
+    optionGroups: [],
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
@@ -28,7 +33,7 @@ describe("MenuPreviewSection", () => {
     const items = [makeItem({ id: "1", name: "Jollof Rice" }), makeItem({ id: "2", name: "Grilled Fish" })];
     render(<MenuPreviewSection items={items} menuHref="/businesses/grill-house/menu" />);
 
-    expect(screen.getByText("2 dishes")).toBeInTheDocument();
+    expect(screen.getByText("2 items")).toBeInTheDocument();
     // Both dish tiles and the "See full menu" CTA point at the same
     // dedicated page — no ordering UI here, just navigation.
     const links = screen.getAllByRole("link", { name: /jollof rice|grilled fish|see full menu/i });
@@ -46,15 +51,28 @@ describe("MenuPreviewSection", () => {
     // 6 previewed + the "+3 more" tile, not all 9 dish names.
     expect(screen.queryByText("Dish 6")).not.toBeInTheDocument();
     expect(screen.getByText("+3 more")).toBeInTheDocument();
-    expect(screen.getByText("9 dishes")).toBeInTheDocument();
+    expect(screen.getByText("9 items")).toBeInTheDocument();
   });
 
   it("mentions the section count only when there's more than one", () => {
     render(<MenuPreviewSection items={[makeItem({ id: "1" })]} menuHref="/x" />);
-    expect(screen.getByText("1 dish")).toBeInTheDocument();
+    expect(screen.getByText("1 item")).toBeInTheDocument();
 
     const twoSections = [makeItem({ id: "1", category: "Mains" }), makeItem({ id: "2", category: "Drinks" })];
     render(<MenuPreviewSection items={twoSections} menuHref="/x" />);
-    expect(screen.getByText("2 dishes across 2 sections")).toBeInTheDocument();
+    expect(screen.getByText("2 items across 2 sections")).toBeInTheDocument();
+  });
+});
+
+describe("MenuPreviewSection currency", () => {
+  it("prices items in the menu's own currency", () => {
+    render(
+      <MenuPreviewSection
+        items={[makeItem({ id: "1", name: "Club Beer", price: 250, kind: "drink" })]}
+        menuHref="/businesses/x/menu"
+        currency="LRD"
+      />,
+    );
+    expect(screen.getByText("L$250")).toBeInTheDocument();
   });
 });

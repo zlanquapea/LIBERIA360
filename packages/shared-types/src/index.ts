@@ -242,6 +242,7 @@ export type BusinessType =
   | "cultural_org"
   | "creative_business"
   | "car_rental"
+  | "bar"
   | "other";
 export type SubscriptionTier = "free" | "premium";
 export type BusinessReviewStatus =
@@ -1331,6 +1332,46 @@ export interface SetBusinessContentReviewStatusInput {
 // goes through admin moderation (see the entity's doc comment), so the
 // shape is display-only fields plus the two owner-editable knobs
 // (isAvailable, sortOrder).
+export type MenuItemKind = "food" | "drink" | "dessert";
+
+// api/src/menu-items/entities/menu-item.enums.ts MENU_ITEM_TAGS
+export type MenuItemTag =
+  | "popular"
+  | "new"
+  | "spicy"
+  | "vegetarian"
+  | "vegan"
+  | "halal"
+  | "gluten_free";
+
+export type MenuCurrency = "USD" | "LRD";
+
+export interface MenuOptionChoice {
+  id: string;
+  name: string;
+  priceDelta: number;
+}
+
+// One customization group on an item ("Size", "Extras"). maxSelections 1
+// means pick-one (radio); higher means pick-up-to-N (checkboxes).
+export interface MenuOptionGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  maxSelections: number;
+  choices: MenuOptionChoice[];
+}
+
+// What the owner's editor sends — ids are omitted on brand-new groups and
+// choices; the API assigns them.
+export interface MenuOptionGroupInput {
+  id?: string;
+  name: string;
+  required: boolean;
+  maxSelections: number;
+  choices: { id?: string; name: string; priceDelta: number }[];
+}
+
 export interface MenuItem {
   id: string;
   businessId: string;
@@ -1341,6 +1382,11 @@ export interface MenuItem {
   category: string | null;
   isAvailable: boolean;
   sortOrder: number;
+  kind: MenuItemKind;
+  tags: MenuItemTag[];
+  servingSize: string | null;
+  containsAlcohol: boolean;
+  optionGroups: MenuOptionGroup[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1354,11 +1400,22 @@ export interface CreateMenuItemInput {
   category?: string;
   isAvailable?: boolean;
   sortOrder?: number;
+  kind?: MenuItemKind;
+  tags?: MenuItemTag[];
+  servingSize?: string;
+  containsAlcohol?: boolean;
+  optionGroups?: MenuOptionGroupInput[];
 }
 
 export type UpdateMenuItemInput = Partial<
   Omit<CreateMenuItemInput, "businessId">
 >;
+
+// api/src/menu-items/entities/menu-settings.entity.ts
+export interface MenuSettings {
+  businessId: string;
+  currency: MenuCurrency;
+}
 
 // api/src/food-orders/entities/food-order.enums.ts
 export type FoodOrderStatus = "pending" | "confirmed" | "declined" | "cancelled";
@@ -1366,11 +1423,20 @@ export type FoodOrderStatus = "pending" | "confirmed" | "declined" | "cancelled"
 // api/src/food-orders/entities/food-order.entity.ts — snapshotted at order
 // time from the live MenuItem catalog, so a later menu price change or a
 // renamed/removed dish never rewrites what a past order actually charged.
+export interface FoodOrderLineOption {
+  group: string;
+  choice: string;
+  priceDelta: string;
+}
+
 export interface FoodOrderLineItem {
   menuItemId: string;
   name: string;
+  // Base price plus every chosen option's priceDelta.
   unitPrice: string;
   quantity: number;
+  // Absent on orders placed before item options existed.
+  options?: FoodOrderLineOption[];
 }
 
 // api/src/food-orders/entities/food-order.entity.ts (sanitized — buyer and
@@ -1387,6 +1453,7 @@ export interface FoodOrder {
   buyerUserId: string;
   items: FoodOrderLineItem[];
   totalAmount: number;
+  currency: MenuCurrency;
   notes: string | null;
   status: FoodOrderStatus;
   businessResponse: string | null;

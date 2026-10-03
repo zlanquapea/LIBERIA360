@@ -46,6 +46,7 @@ const foodOrder: FoodOrder = {
   buyerUserId: "user-1",
   items: [{ menuItemId: "item-1", name: "Jollof Rice", unitPrice: "10.00", quantity: 2 }],
   totalAmount: 20,
+  currency: "USD",
   notes: null,
   status: "confirmed",
   businessResponse: null,

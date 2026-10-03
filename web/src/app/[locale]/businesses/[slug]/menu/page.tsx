@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import { ApiError, getBusinessBySlug, getMenuItems } from "@/lib/api";
+import { ApiError, getBusinessBySlug, getMenuItems, getMenuSettings, getUsdToLrdRate } from "@/lib/api";
+import { businessHasMenu } from "@/lib/menu";
 import { RestaurantMenuOrdering } from "@/components/RestaurantMenuOrdering";
 
 export async function generateMetadata({
@@ -35,14 +36,18 @@ export default async function BusinessMenuPage({
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
   });
-  // Only restaurants have a menu at all — same gate as the preview's own
-  // fetch on the profile pages (see MenuItemsManager's matching gate on
-  // the owner side).
-  if (!business || business.type !== "restaurant") {
+  // Only restaurants and bars have a menu at all — same gate as the
+  // preview's own fetch on the profile pages (see MenuItemsManager's
+  // matching gate on the owner side).
+  if (!business || !businessHasMenu(business.type)) {
     notFound();
   }
 
-  const items = await getMenuItems(business.id);
+  const [items, settings, usdToLrdRate] = await Promise.all([
+    getMenuItems(business.id),
+    getMenuSettings(business.id),
+    getUsdToLrdRate(),
+  ]);
 
   if (items.length === 0) {
     // Reachable only by a direct/stale link — the profile pages never
@@ -60,12 +65,19 @@ export default async function BusinessMenuPage({
         </Link>
         <h1 className="mt-4 font-display text-xl font-bold text-slate-950 dark:text-slate-50">Menu coming soon</h1>
         <p className="max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {business.name} hasn&apos;t added any dishes yet. Check back soon, or contact them directly for what&apos;s
+          {business.name} hasn&apos;t added anything to the menu yet. Check back soon, or contact them directly for what&apos;s
           on offer today.
         </p>
       </main>
     );
   }
 
-  return <RestaurantMenuOrdering business={business} items={items} />;
+  return (
+    <RestaurantMenuOrdering
+      business={business}
+      items={items}
+      currency={settings.currency}
+      usdToLrdRate={usdToLrdRate}
+    />
+  );
 }

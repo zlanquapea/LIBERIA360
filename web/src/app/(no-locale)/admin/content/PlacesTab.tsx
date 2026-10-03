@@ -26,7 +26,7 @@ import { PlaceReviewPanel } from './PlaceReviewPanel';
 import { DataQualityPanel } from './DataQualityPanel';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
-const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'tour_operator', 'transport'];
+const BUSINESS_TYPES: BusinessType[] = ['hotel', 'restaurant', 'bar', 'tour_operator', 'transport'];
 const ACTIVITY_DIFFICULTIES: ActivityDifficulty[] = ['easy', 'moderate', 'challenging'];
 const PAGE_SIZE = 20;
 

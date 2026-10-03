@@ -6,11 +6,13 @@ import { MenuItem } from "../menu-items/entities/menu-item.entity";
 import { FoodOrdersService } from "./food-orders.service";
 import { FoodOrdersController } from "./food-orders.controller";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { MenuItemsModule } from "../menu-items/menu-items.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([FoodOrder, Business, MenuItem]),
     NotificationsModule,
+    MenuItemsModule,
   ],
   controllers: [FoodOrdersController],
   providers: [FoodOrdersService],

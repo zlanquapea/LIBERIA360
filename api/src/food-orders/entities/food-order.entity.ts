@@ -12,6 +12,7 @@ import { Business } from "../../businesses/entities/business.entity";
 import { User } from "../../users/entities/user.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
 import { FoodOrderStatus } from "./food-order.enums";
+import type { MenuCurrency } from "../../menu-items/entities/menu-item.enums";
 
 /** One line item on a food order, snapshotted at order time — `name` and
  * `unitPrice` are copied from the MenuItem at the moment the order was
@@ -22,8 +23,17 @@ import { FoodOrderStatus } from "./food-order.enums";
 export interface FoodOrderLineItem {
   menuItemId: string;
   name: string;
+  /** Base price plus every chosen option's priceDelta. */
   unitPrice: string;
   quantity: number;
+  /** Absent on orders placed before item options existed. */
+  options?: FoodOrderLineOption[];
+}
+
+export interface FoodOrderLineOption {
+  group: string;
+  choice: string;
+  priceDelta: string;
 }
 
 /**
@@ -74,6 +84,11 @@ export class FoodOrder {
     transformer: decimalTransformer,
   })
   totalAmount: number;
+
+  // Snapshotted from the restaurant's MenuSettings at order time — every
+  // price on this order is in this currency.
+  @Column({ type: "varchar", length: 3, default: "USD" })
+  currency: MenuCurrency;
 
   @Column({ type: "text", nullable: true })
   notes: string | null;

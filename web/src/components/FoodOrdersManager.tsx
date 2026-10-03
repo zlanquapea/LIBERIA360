@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import FoodOrderMessageThread from './FoodOrderMessageThread';
 import { getBusinessFoodOrders, respondToFoodOrder } from '@/lib/food-orders-api';
-import { formatCost, formatFoodOrderStatus } from '@/lib/format';
+import { formatFoodOrderStatus } from '@/lib/format';
+import { FoodOrderLines } from './menu/FoodOrderLines';
 import { getFriendlyErrorMessage } from '@/lib/errors';
 import type { FoodOrder } from '@/lib/types';
 
@@ -15,7 +16,7 @@ function statusBadgeClass(status: FoodOrder['status']) {
   return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
 }
 
-// Owner-facing incoming-orders queue (restaurant businesses only) — same
+// Owner-facing incoming-orders queue (restaurants and bars only) — same
 // "self-fetches on mount" shape as MenuItemsManager, sitting right below
 // it in the claim section so managing the menu and managing the orders
 // that come from it are in one place. Confirm/decline mirrors
@@ -80,18 +81,7 @@ export function FoodOrdersManager({ token, businessId }: { token: string; busine
                   </span>
                 </div>
 
-                <ul className="mt-2 divide-y divide-slate-100 text-sm dark:divide-slate-800">
-                  {order.items.map((item) => (
-                    <li key={item.menuItemId} className="flex items-center justify-between py-1">
-                      <span className="text-slate-700 dark:text-slate-200">{item.quantity} × {item.name}</span>
-                      <span className="text-slate-500 dark:text-slate-400">{formatCost(Number(item.unitPrice) * item.quantity)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-1 flex items-center justify-between text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  <span>Total</span>
-                  <span>{formatCost(order.totalAmount)}</span>
-                </div>
+                <FoodOrderLines order={order} className="mt-2" />
                 {order.notes && <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Note: {order.notes}</p>}
 
                 {isPending && respondingId === order.id ? (

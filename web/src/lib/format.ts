@@ -58,6 +58,7 @@ const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   cultural_org: 'Cultural Organization',
   creative_business: 'Creative Business',
   car_rental: 'Car Rental',
+  bar: 'Bar / Lounge / Nightlife',
   other: 'Other',
 };
 
