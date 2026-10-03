@@ -18,7 +18,7 @@ import { CreatorPostCard } from "./CreatorPostCard";
 import { SponsoredCreatorAdCard } from "./SponsoredCreatorAdCard";
 import { CreatorStories } from "./CreatorStories";
 
-type CreatorFeedMode = "discover" | "following";
+type CreatorFeedMode = "discover" | "following" | "latest";
 const FEED_PAGE_SIZE = 20;
 
 function shuffleAds(items: Ad[], avoidFirstIds: string[] = []) {
@@ -43,12 +43,6 @@ function shuffleAds(items: Ad[], avoidFirstIds: string[] = []) {
     }
   }
   return shuffled;
-}
-
-function samePostSet(current: CreatorPost[], next: CreatorPost[]) {
-  if (current.length !== next.length) return false;
-  const currentIds = new Set(current.map((post) => post.id));
-  return next.every((post) => currentIds.has(post.id));
 }
 
 function triggerRefreshHaptic() {
@@ -82,7 +76,12 @@ export function CreatorFeed({
   const refreshLockRef = useRef(false);
 
   useEffect(() => {
-    if (mode === "discover") setPosts(shuffleCreatorPosts(initialPosts, mode));
+    if (mode !== "following")
+      setPosts(
+        mode === "discover"
+          ? shuffleCreatorPosts(initialPosts, mode)
+          : initialPosts,
+      );
   }, [initialPosts, mode]);
 
   const feedItems = useMemo(
@@ -126,7 +125,7 @@ export function CreatorFeed({
     getFollowedCreatorFeed(token, { page: 1, limit: FEED_PAGE_SIZE })
       .then((result) => {
         if (cancelled) return;
-        setPosts(shuffleCreatorPosts(result.data, mode));
+        setPosts(result.data);
         setPage(1);
         setHasMore(1 < result.meta.totalPages);
       })
@@ -180,11 +179,10 @@ export function CreatorFeed({
           : Promise.resolve([] as Ad[]),
       ]);
 
-      const nextPosts = shuffleCreatorPosts(
-        postResult.data,
-        mode,
-        posts[0]?.id,
-      );
+      const nextPosts =
+        mode === "discover"
+          ? shuffleCreatorPosts(postResult.data, mode, posts[0]?.id)
+          : postResult.data;
       const nextAds = shuffleAds(
         refreshedAds,
         [previousFirstAdId, previousLastAdId].filter((adId): adId is string =>
@@ -200,9 +198,9 @@ export function CreatorFeed({
       setHasMore(1 < postResult.meta.totalPages);
       setAds(mode === "discover" ? nextAds : []);
       setRefreshMessage(
-        samePostSet(posts, postResult.data)
-          ? "Posts shuffled. You’re all caught up."
-          : "Feed refreshed and posts shuffled.",
+        mode === "discover"
+          ? "Feed refreshed and posts shuffled."
+          : "Feed refreshed. Newest posts appear first.",
       );
     } catch {
       setError("The creator feed could not be refreshed. Please try again.");
