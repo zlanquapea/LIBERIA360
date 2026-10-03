@@ -939,6 +939,7 @@ export function GuideProfileTools({
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-bold text-slate-900">
                     {review.reviewer?.name ?? "Traveler"}
+                    {review.verifiedBooking && <span className="ml-2 inline-block rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">Completed booking</span>}
                   </p>
                   <Stars value={review.rating} />
                 </div>
@@ -991,3 +992,4 @@ export function GuideProfileTools({
     </div>
   );
 }
+
