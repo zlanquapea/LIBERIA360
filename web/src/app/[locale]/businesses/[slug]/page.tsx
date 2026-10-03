@@ -323,6 +323,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         items={menuItems}
         menuHref={`/businesses/${business.slug}/menu`}
         currency={menuSettings?.currency}
+        settings={menuSettings}
       />
 
       <Section eyebrow="Find your way" title="Location">

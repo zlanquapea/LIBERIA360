@@ -220,6 +220,7 @@ export default async function PlaceProfilePage({
           items={menuItems}
           menuHref={`/businesses/${business.slug}/menu`}
           currency={menuSettings?.currency}
+          settings={menuSettings}
         />
       )}
 

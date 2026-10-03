@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MenuItemsManager } from "./MenuItemsManager";
 import type { MenuItem } from "@/lib/types";
+import { defaultMenuSettings } from "@/lib/food-ordering";
 
 const api = {
   getMenuItems: jest.fn(),
@@ -46,12 +47,12 @@ const beer: MenuItem = {
 beforeEach(() => {
   Object.values(api).forEach((fn) => fn.mockReset());
   api.getMenuItems.mockResolvedValue([beer]);
-  api.getMenuSettings.mockResolvedValue({ businessId: "biz-1", currency: "LRD" });
+  api.getMenuSettings.mockResolvedValue({ ...defaultMenuSettings("biz-1"), currency: "LRD" });
 });
 
 describe("MenuItemsManager", () => {
   it("shows prices in the saved menu currency and switches currency", async () => {
-    api.updateMenuSettings.mockResolvedValue({ businessId: "biz-1", currency: "USD" });
+    api.updateMenuSettings.mockResolvedValue(defaultMenuSettings("biz-1"));
     render(<MenuItemsManager token="tok" businessId="biz-1" businessType="bar" />);
 
     expect(await screen.findByText("L$250")).toBeInTheDocument();

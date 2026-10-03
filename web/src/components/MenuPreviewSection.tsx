@@ -4,7 +4,8 @@ import { formatMoney } from "@/lib/currency";
 import { MENU_KIND_EMOJI } from "@/lib/menu";
 import { resolveImageUrl } from "@/lib/images";
 import { SafeImage } from "@/components/SafeImage";
-import type { MenuCurrency, MenuItem } from "@/lib/types";
+import type { MenuCurrency, MenuItem, MenuSettings } from "@/lib/types";
+import { OrderingInfo } from "@/components/menu/OrderingInfo";
 
 // How many dishes to tease inline before pointing to the full menu page.
 const PREVIEW_COUNT = 6;
@@ -28,10 +29,14 @@ export function MenuPreviewSection({
   items,
   menuHref,
   currency = "USD",
+  settings,
 }: {
   items: MenuItem[];
   menuHref: string;
   currency?: MenuCurrency;
+  // Delivery/payment indicators, so visitors know before opening the menu
+  // whether the place delivers and how they can pay.
+  settings?: MenuSettings | null;
 }) {
   if (items.length === 0) return null;
 
@@ -58,6 +63,8 @@ export function MenuPreviewSection({
           <ArrowRightIcon aria-hidden className="h-4 w-4" />
         </Link>
       </div>
+
+      {settings && <OrderingInfo settings={settings} showAreas={false} />}
 
       <div className="flex gap-3 overflow-x-auto pb-1">
         {preview.map((item) => (
