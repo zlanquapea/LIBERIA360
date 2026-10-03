@@ -10,7 +10,7 @@ import {
   PaperAirplaneIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
-import { ApiError, getBusinessBySlug, getBusinessContent, getMenuItems, getReviews } from '@/lib/api';
+import { ApiError, getBusinessBySlug, getBusinessContent, getMenuItems, getMenuSettings, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
 import { formatBusinessContentType, formatBusinessType, formatCost, formatRating } from '@/lib/format';
 import { absoluteImageUrl, resolveImageUrl } from '@/lib/images';
@@ -27,6 +27,7 @@ import { ShareMenu } from '@/components/ShareMenu';
 import { SaveButton } from '@/components/SaveButton';
 import { StickyBookingBar } from '@/components/StickyBookingBar';
 import { MenuPreviewSection } from '@/components/MenuPreviewSection';
+import { businessHasMenu } from '@/lib/menu';
 import { JsonLd } from '@/components/JsonLd';
 import { businessJsonLd } from '@/lib/structured-data';
 import type { BusinessContent } from '@/lib/types';
@@ -137,7 +138,9 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
   // BusinessClaimSection for the owner-side counterpart. Skipping the
   // fetch entirely for every other business type avoids a pointless
   // network round-trip that would always come back empty.
-  const menuItems = business.type === 'restaurant' ? await getMenuItems(business.id) : [];
+  const [menuItems, menuSettings] = businessHasMenu(business.type)
+    ? await Promise.all([getMenuItems(business.id), getMenuSettings(business.id)])
+    : [[], null];
   const linkedPlace = business.linkedPlace;
   const gallery = (business.images.length > 0 ? business.images : linkedPlace.images).map(resolveImageUrl);
   const location = `${linkedPlace.city}, ${linkedPlace.county.name} County`;
@@ -316,7 +319,11 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
       </Section>
 
-      <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} />
+      <MenuPreviewSection
+        items={menuItems}
+        menuHref={`/businesses/${business.slug}/menu`}
+        currency={menuSettings?.currency}
+      />
 
       <Section eyebrow="Find your way" title="Location">
         <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">

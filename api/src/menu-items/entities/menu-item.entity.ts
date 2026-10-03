@@ -10,15 +10,14 @@ import {
 } from "typeorm";
 import { Business } from "../../businesses/entities/business.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
+import { MenuItemKind, MenuOptionGroup } from "./menu-item.enums";
 
 /**
  * One dish/drink on a business's menu ("Menu" on the public profile) — a
- * restaurant, cafe, bar, or any other food-and-dining business lists what
- * it serves: a photo, the item's name, and its price, same three things a
- * printed menu shows. Deliberately simple, display-only content, not a real
- * ordering/inventory system — a diner sees what's on offer and what it
- * costs, then calls/visits/books the same way they already can; nothing
- * here is a line item on a real transaction.
+ * restaurant or bar lists what it serves: a photo, the item's name, its
+ * price, and any customizations. Orders snapshot an item's name, price,
+ * and chosen options at order time (see FoodOrderLineItem), so editing an
+ * item here never rewrites a past order.
  *
  * Unlike BusinessContent/CarListing/Advertisement, a menu item never goes
  * through admin review — same reasoning as CreatorOffering: a $6 jollof
@@ -70,6 +69,36 @@ export class MenuItem {
   // the item under an "Other" bucket on the public menu.
   @Column({ type: "varchar", length: 60, nullable: true })
   category: string | null;
+
+  // Which top-level tab (Food / Drinks / Desserts) this sits under —
+  // `category` above is the finer-grained section within that tab.
+  @Column({
+    type: "enum",
+    enum: MenuItemKind,
+    enumName: "menu_items_kind_enum",
+    default: MenuItemKind.FOOD,
+  })
+  kind: MenuItemKind;
+
+  // Badges from MENU_ITEM_TAGS ("popular", "spicy", ...).
+  @Column({ type: "text", array: true, default: () => "'{}'" })
+  tags: string[];
+
+  // Free text since drinks are sold in every unit imaginable ("330ml",
+  // "Glass", "Bottle", "Pitcher").
+  @Column({ name: "serving_size", type: "varchar", length: 40, nullable: true })
+  servingSize: string | null;
+
+  // Shows an 18+ badge and makes checkout ask the buyer to confirm their
+  // age (see FoodOrdersService.create).
+  @Column({ name: "contains_alcohol", type: "boolean", default: false })
+  containsAlcohol: boolean;
+
+  // Customizations ("Size", "Extras"). Stored inline as jsonb rather than
+  // as child tables: they're only ever read and written together with
+  // their item, and an order snapshots the chosen ones anyway.
+  @Column({ name: "option_groups", type: "jsonb", default: () => "'[]'" })
+  optionGroups: MenuOptionGroup[];
 
   // Owner's "sold out today" toggle — still shown on the public menu
   // (with a Sold out tag) rather than hidden, so a diner planning a visit

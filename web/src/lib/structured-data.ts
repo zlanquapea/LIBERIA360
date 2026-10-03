@@ -73,6 +73,7 @@ const SCHEMA_TYPE_BY_BUSINESS_TYPE: Record<BusinessType, string> = {
   cultural_org: 'LocalBusiness',
   creative_business: 'LocalBusiness',
   car_rental: 'AutoRental',
+  bar: 'BarOrPub',
   other: 'LocalBusiness',
 };
 

@@ -12,9 +12,11 @@ import { FoodOrderStatus } from "./entities/food-order.enums";
 import { Business } from "../businesses/entities/business.entity";
 import {
   BusinessReviewStatus,
-  BusinessType,
+  businessHasMenu,
 } from "../businesses/entities/business.enums";
 import { MenuItem } from "../menu-items/entities/menu-item.entity";
+import { MenuItemsService } from "../menu-items/menu-items.service";
+import { priceLine } from "./order-pricing";
 import { CreateFoodOrderDto } from "./dto/create-food-order.dto";
 import { RespondFoodOrderDto } from "./dto/respond-food-order.dto";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -33,6 +35,7 @@ export class FoodOrdersService {
     @InjectRepository(MenuItem)
     private readonly menuItemRepo: Repository<MenuItem>,
     private readonly notificationsService: NotificationsService,
+    private readonly menuItemsService: MenuItemsService,
   ) {}
 
   async create(
@@ -49,9 +52,9 @@ export class FoodOrdersService {
     if (business.reviewStatus !== BusinessReviewStatus.APPROVED) {
       throw new BadRequestException("This business isn't accepting orders yet");
     }
-    if (business.type !== BusinessType.RESTAURANT) {
+    if (!businessHasMenu(business.type)) {
       throw new BadRequestException(
-        "Only restaurants accept in-platform orders",
+        "Only restaurants and bars accept in-platform orders",
       );
     }
 
@@ -75,17 +78,35 @@ export class FoodOrdersService {
       if (!menuItem.isAvailable) {
         throw new BadRequestException(`${menuItem.name} is sold out`);
       }
+      const { unitPrice, options } = priceLine(menuItem, line.selections);
       return {
         menuItemId: menuItem.id,
         name: menuItem.name,
-        unitPrice: menuItem.price.toFixed(2),
+        unitPrice: unitPrice.toFixed(2),
         quantity: line.quantity,
+        options,
       };
     });
-    const totalAmount = items.reduce(
-      (sum, item) => sum + Number(item.unitPrice) * item.quantity,
-      0,
-    );
+
+    if (
+      !dto.ageConfirmed &&
+      dto.items.some(
+        (line) => menuItemById.get(line.menuItemId)?.containsAlcohol,
+      )
+    ) {
+      throw new BadRequestException(
+        "Please confirm you're 18 or older to order alcoholic drinks",
+      );
+    }
+
+    const totalAmount =
+      Math.round(
+        items.reduce(
+          (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+          0,
+        ) * 100,
+      ) / 100;
+    const { currency } = await this.menuItemsService.getSettings(businessId);
 
     const order = await this.orderRepo.save(
       this.orderRepo.create({
@@ -93,6 +114,7 @@ export class FoodOrdersService {
         buyerUserId: userId,
         items,
         totalAmount,
+        currency,
         notes: dto.notes?.trim() || null,
       }),
     );

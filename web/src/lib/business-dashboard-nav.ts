@@ -10,6 +10,7 @@ import {
   ShoppingBagIcon,
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
+import { businessHasMenu } from './menu';
 import type { Business } from './types';
 
 export interface BusinessDashboardNavItem {
@@ -38,14 +39,14 @@ export const BUSINESS_DASHBOARD_NAV: BusinessDashboardNavItem[] = [
     label: 'Menu',
     segment: 'menu',
     icon: Squares2X2Icon,
-    show: (b) => b.type === 'restaurant',
+    show: (b) => businessHasMenu(b.type),
   },
   {
     key: 'orders',
     label: 'Orders',
     segment: 'orders',
     icon: ShoppingBagIcon,
-    show: (b) => b.type === 'restaurant',
+    show: (b) => businessHasMenu(b.type),
   },
   { key: 'bookings', label: 'Bookings', segment: 'bookings', icon: CalendarDaysIcon },
   { key: 'content', label: 'Updates', segment: 'content', icon: MegaphoneIcon },

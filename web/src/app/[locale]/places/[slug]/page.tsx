@@ -7,6 +7,7 @@ import {
   getBusinessByPlace,
   getCountyPlaces,
   getMenuItems,
+  getMenuSettings,
   getPlaceBySlug,
   getPublicTrips,
   getReviews,
@@ -29,6 +30,7 @@ import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
 import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
 import { MenuPreviewSection } from "@/components/MenuPreviewSection";
+import { businessHasMenu } from "@/lib/menu";
 import { PharmacyPreviewSection } from "@/components/PharmacyPreviewSection";
 import { ShareMenu } from "@/components/ShareMenu";
 import { AddToTripButton } from "@/components/AddToTripButton";
@@ -132,10 +134,12 @@ export default async function PlaceProfilePage({
     ]);
   // The menu is information about *this place* to a visitor, not about the
   // separate "Business" management entity — it belongs here, not gated
-  // behind a trip to the business page. Only restaurants have one; see
+  // behind a trip to the business page. Only restaurants and bars have one; see
   // MenuItemsManager's matching gate on the owner side.
-  const menuItems =
-    business?.type === "restaurant" ? await getMenuItems(business.id) : [];
+  const [menuItems, menuSettings] =
+    business && businessHasMenu(business.type)
+      ? await Promise.all([getMenuItems(business.id), getMenuSettings(business.id)])
+      : [[], null];
   const nearby = nearbyResult.data.filter(
     (candidate) => candidate.id !== place.id,
   );
@@ -221,7 +225,13 @@ export default async function PlaceProfilePage({
           decided this is the right pharmacy/restaurant is here to order,
           and shouldn't have to scroll past a description to find out
           that's even possible. */}
-      {business && <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} />}
+      {business && (
+        <MenuPreviewSection
+          items={menuItems}
+          menuHref={`/businesses/${business.slug}/menu`}
+          currency={menuSettings?.currency}
+        />
+      )}
 
       {pharmacy && <PharmacyPreviewSection pharmacy={pharmacy} />}
 

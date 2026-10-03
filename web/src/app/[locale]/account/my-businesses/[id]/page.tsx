@@ -15,13 +15,14 @@ import { useBusinessDashboard } from '@/components/BusinessDashboardContext';
 import { getBusinessBookings } from '@/lib/booking-api';
 import { getBusinessFoodOrders } from '@/lib/food-orders-api';
 import { dashboardHref } from '@/lib/business-dashboard-nav';
+import { businessHasMenu } from '@/lib/menu';
 
 // The dashboard's landing tab — an at-a-glance summary (what needs a
 // response right now) plus one-click links into every other section, so
 // an owner never has to guess where something lives.
 export default function BusinessDashboardOverview() {
   const { business, token } = useBusinessDashboard();
-  const isRestaurant = business.type === 'restaurant';
+  const isRestaurant = businessHasMenu(business.type);
   const [pendingBookings, setPendingBookings] = useState<number | null>(null);
   const [pendingOrders, setPendingOrders] = useState<number | null>(null);
 

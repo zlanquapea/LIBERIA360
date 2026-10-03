@@ -15,5 +15,6 @@ export const BUSINESS_TYPES: BusinessType[] = [
   'cultural_org',
   'creative_business',
   'car_rental',
+  'bar',
   'other',
 ];
