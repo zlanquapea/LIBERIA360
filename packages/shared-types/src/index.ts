@@ -656,11 +656,7 @@ export interface EventTicketInstance {
 }
 
 export type EventTicketScanOutcome =
-  | "valid"
-  | "already_used"
-  | "cancelled"
-  | "wrong_event"
-  | "invalid";
+  "valid" | "already_used" | "cancelled" | "wrong_event" | "invalid";
 
 export interface ScannedTicketSummary {
   id: string;
@@ -749,7 +745,12 @@ export interface EventTicketOrder {
   buyer: AuthUser | null;
   buyerUserId: string;
   quantity: number;
-  items?: Array<{ ticketTypeId: string; name: string; quantity: number; unitPrice: string }>;
+  items?: Array<{
+    ticketTypeId: string;
+    name: string;
+    quantity: number;
+    unitPrice: string;
+  }>;
   unitPrice: string;
   currency: string;
   totalAmount: string;
@@ -1412,13 +1413,68 @@ export type UpdateMenuItemInput = Partial<
 >;
 
 // api/src/menu-items/entities/menu-settings.entity.ts
+// A restaurant's delivery and payment setup is public: customers need the
+// mobile money numbers to pay.
 export interface MenuSettings {
   businessId: string;
   currency: MenuCurrency;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+  // 0 means free delivery.
+  deliveryFee: number;
+  // Orders at or above this subtotal get free delivery.
+  freeDeliveryMinimum: number | null;
+  deliveryAreas: string | null;
+  deliveryEstimate: string | null;
+  // Pay in cash on delivery / at pickup.
+  cashEnabled: boolean;
+  // A mobile money method is offered exactly when its number is set.
+  mtnMomoNumber: string | null;
+  orangeMoneyNumber: string | null;
+  mobileMoneyName: string | null;
 }
 
+export type UpdateMenuSettingsInput = Partial<
+  Omit<
+    MenuSettings,
+    | "businessId"
+    | "deliveryAreas"
+    | "deliveryEstimate"
+    | "mtnMomoNumber"
+    | "orangeMoneyNumber"
+    | "mobileMoneyName"
+  >
+> & {
+  // Send "" to clear.
+  deliveryAreas?: string;
+  deliveryEstimate?: string;
+  mtnMomoNumber?: string;
+  orangeMoneyNumber?: string;
+  mobileMoneyName?: string;
+};
+
 // api/src/food-orders/entities/food-order.enums.ts
-export type FoodOrderStatus = "pending" | "confirmed" | "declined" | "cancelled";
+export type FoodOrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "out_for_delivery"
+  | "completed"
+  | "declined"
+  | "cancelled";
+
+export type FoodFulfillment = "pickup" | "delivery";
+
+export type FoodPaymentMethod = "cash" | "mtn_momo" | "orange_money";
+
+export type FoodPaymentStatus =
+  | "pay_on_delivery"
+  | "awaiting_verification"
+  | "paid"
+  | "failed"
+  | "refund_due"
+  | "refunded";
 
 // api/src/food-orders/entities/food-order.entity.ts — snapshotted at order
 // time from the live MenuItem catalog, so a later menu price change or a
@@ -1452,10 +1508,22 @@ export interface FoodOrder {
   buyer: AuthUser | null;
   buyerUserId: string;
   items: FoodOrderLineItem[];
+  subtotal: number;
+  deliveryFee: number;
+  // subtotal + deliveryFee.
   totalAmount: number;
   currency: MenuCurrency;
   notes: string | null;
   status: FoodOrderStatus;
+  fulfillment: FoodFulfillment;
+  deliveryAddress: string | null;
+  contactPhone: string | null;
+  paymentMethod: FoodPaymentMethod;
+  paymentStatus: FoodPaymentStatus;
+  // Mobile money transaction ID.
+  paymentReference: string | null;
+  // The number the customer was asked to pay.
+  paymentAccount: string | null;
   businessResponse: string | null;
   respondedAt: string | null;
   createdAt: string;
@@ -1990,20 +2058,54 @@ export interface CarListingAvailability {
   }[];
 }
 
-export type SupportTicketStatus = "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
+export type SupportTicketStatus =
+  "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
 export type SupportTicketPriority = "low" | "medium" | "high" | "urgent";
-export type SupportTicketCategory = "account" | "booking" | "payment" | "listing" | "technical" | "safety" | "feedback" | "other";
+export type SupportTicketCategory =
+  | "account"
+  | "booking"
+  | "payment"
+  | "listing"
+  | "technical"
+  | "safety"
+  | "feedback"
+  | "other";
 export interface SupportTicket {
-  id: string; reference: string; customer: AuthUser; customerUserId: string;
-  assignedAgent: AuthUser | null; assignedAgentUserId: string | null;
-  category: SupportTicketCategory; subject: string; description: string; attachments: string[];
-  status: SupportTicketStatus; priority: SupportTicketPriority; rating: number | null; ratingComment: string | null;
-  resolvedAt: string | null; closedAt: string | null; createdAt: string; updatedAt: string;
+  id: string;
+  reference: string;
+  customer: AuthUser;
+  customerUserId: string;
+  assignedAgent: AuthUser | null;
+  assignedAgentUserId: string | null;
+  category: SupportTicketCategory;
+  subject: string;
+  description: string;
+  attachments: string[];
+  status: SupportTicketStatus;
+  priority: SupportTicketPriority;
+  rating: number | null;
+  ratingComment: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 // readAt: same read-receipt convention as BookingMessage/FoodOrderMessage
 // — set once the other side of the conversation has opened the thread.
-export interface SupportMessage { id: string; ticketId: string; sender: AuthUser; senderUserId: string; body: string; attachments: string[]; createdAt: string; readAt: string | null; }
-export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+export interface SupportMessage {
+  id: string;
+  ticketId: string;
+  sender: AuthUser;
+  senderUserId: string;
+  body: string;
+  attachments: string[];
+  createdAt: string;
+  readAt: string | null;
+}
+export interface PaginatedSupportTickets {
+  data: SupportTicket[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
 
 // Help Center / FAQ / Blog — a lightweight self-serve layer built *around*
 // the support ticket system above, not a second one: none of these
@@ -2011,37 +2113,86 @@ export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total:
 // to the existing /account/support flow.
 export type ArticleStatus = "draft" | "published";
 export interface KnowledgeCategory {
-  id: string; name: string; slug: string; description: string | null;
-  sortOrder: number; createdAt: string; updatedAt: string;
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
-export interface KnowledgeCategoryWithCount extends KnowledgeCategory { publishedArticleCount: number; }
+export interface KnowledgeCategoryWithCount extends KnowledgeCategory {
+  publishedArticleCount: number;
+}
 export interface KnowledgeArticle {
-  id: string; categoryId: string; category: KnowledgeCategory; title: string; slug: string;
-  content: string; authorUserId: string; author?: AuthUser; status: ArticleStatus;
-  createdAt: string; updatedAt: string;
+  id: string;
+  categoryId: string;
+  category: KnowledgeCategory;
+  title: string;
+  slug: string;
+  content: string;
+  authorUserId: string;
+  author?: AuthUser;
+  status: ArticleStatus;
+  createdAt: string;
+  updatedAt: string;
 }
-export interface PaginatedKnowledgeArticles { data: KnowledgeArticle[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
-export interface KnowledgeArticleWithRelated { article: KnowledgeArticle; related: KnowledgeArticle[]; }
-export interface ArticleFeedbackSummary { yes: number; no: number; }
+export interface PaginatedKnowledgeArticles {
+  data: KnowledgeArticle[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+export interface KnowledgeArticleWithRelated {
+  article: KnowledgeArticle;
+  related: KnowledgeArticle[];
+}
+export interface ArticleFeedbackSummary {
+  yes: number;
+  no: number;
+}
 
 export interface Faq {
-  id: string; question: string; answer: string; category: string | null;
-  sortOrder: number; published: boolean; createdAt: string; updatedAt: string;
+  id: string;
+  question: string;
+  answer: string;
+  category: string | null;
+  sortOrder: number;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type BlogPostStatus = "draft" | "published";
 export interface BlogPost {
-  id: string; title: string; slug: string; coverImage: string | null; content: string;
-  authorUserId: string; author?: AuthUser; status: BlogPostStatus;
-  publishedAt: string | null; createdAt: string; updatedAt: string;
+  id: string;
+  title: string;
+  slug: string;
+  coverImage: string | null;
+  content: string;
+  authorUserId: string;
+  author?: AuthUser;
+  status: BlogPostStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
-export interface PaginatedBlogPosts { data: BlogPost[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+export interface PaginatedBlogPosts {
+  data: BlogPost[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
 
 export type CreatorStoryMediaType = "image" | "video";
-export type CreatorStoryStatus = "pending" | "approved" | "rejected" | "expired" | "deleted";
+export type CreatorStoryStatus =
+  "pending" | "approved" | "rejected" | "expired" | "deleted";
 export type CreatorStoryVisibility = "public" | "followers";
 
-export const STORY_REACTION_EMOJIS = ["❤️", "😂", "😮", "😢", "👏", "🔥"] as const;
+export const STORY_REACTION_EMOJIS = [
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "👏",
+  "🔥",
+] as const;
 export type StoryReactionEmoji = (typeof STORY_REACTION_EMOJIS)[number];
 
 export interface CreatorStory {

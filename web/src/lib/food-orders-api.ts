@@ -1,4 +1,4 @@
-import type { FoodOrder } from './types';
+import type { FoodFulfillment, FoodOrder, FoodPaymentMethod } from './types';
 import { apiRequest, authHeader } from './http';
 
 export interface FoodOrderItemInput {
@@ -12,6 +12,13 @@ export interface CreateFoodOrderInput {
   notes?: string;
   // Required when any item contains alcohol.
   ageConfirmed?: boolean;
+  fulfillment?: FoodFulfillment;
+  // Both required for delivery.
+  deliveryAddress?: string;
+  contactPhone?: string;
+  paymentMethod?: FoodPaymentMethod;
+  // Mobile money transaction ID.
+  paymentReference?: string;
 }
 
 export function createFoodOrder(
@@ -44,11 +51,34 @@ export function respondToFoodOrder(
   orderId: string,
   action: 'confirm' | 'decline',
   message?: string,
+  // Declining a mobile money order because the payment couldn't be found.
+  paymentNotReceived?: boolean,
 ): Promise<FoodOrder> {
   return apiRequest<FoodOrder>(`/food-orders/${orderId}/respond`, {
     method: 'PATCH',
     headers: authHeader(token),
-    body: JSON.stringify({ action, message }),
+    body: JSON.stringify({ action, message, paymentNotReceived }),
+  });
+}
+
+export type FoodOrderProgressStatus = 'preparing' | 'ready' | 'out_for_delivery' | 'completed';
+
+export function updateFoodOrderStatus(
+  token: string,
+  orderId: string,
+  status: FoodOrderProgressStatus,
+): Promise<FoodOrder> {
+  return apiRequest<FoodOrder>(`/food-orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function markFoodOrderRefunded(token: string, orderId: string): Promise<FoodOrder> {
+  return apiRequest<FoodOrder>(`/food-orders/${orderId}/refunded`, {
+    method: 'PATCH',
+    headers: authHeader(token),
   });
 }
 

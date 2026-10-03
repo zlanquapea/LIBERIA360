@@ -15,12 +15,14 @@ import { formatMoney } from '@/lib/currency';
 import { resolveThumbUrl } from '@/lib/images';
 import { MENU_KIND_EMOJI, MENU_KIND_LABELS, groupBySection, menuKindsInOrder } from '@/lib/menu';
 import { draftFromItem, draftToInput, emptyDraft, type MenuItemDraft } from '@/lib/menu-editor';
-import type { BusinessType, MenuCurrency, MenuItem, MenuItemKind } from '@/lib/types';
+import { defaultMenuSettings } from '@/lib/food-ordering';
+import type { BusinessType, MenuCurrency, MenuItem, MenuItemKind, MenuSettings } from '@/lib/types';
 import { SafeImage } from './SafeImage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { BrandLoader } from './BrandLoader';
 import { MenuTagBadges } from './menu/MenuItemCard';
 import { MenuItemEditor } from './menu/MenuItemEditor';
+import { DeliveryPaymentSettings } from './menu/DeliveryPaymentSettings';
 
 const CURRENCIES: { id: MenuCurrency; label: string }[] = [
   { id: 'USD', label: 'US Dollars (US$)' },
@@ -45,7 +47,9 @@ export function MenuItemsManager({
   businessType?: BusinessType;
 }) {
   const [items, setItems] = useState<MenuItem[] | null>(null);
-  const [currency, setCurrency] = useState<MenuCurrency>('USD');
+  const [settings, setSettings] = useState<MenuSettings>(() => defaultMenuSettings(businessId));
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const currency = settings.currency;
   const [error, setError] = useState<string | null>(null);
   const [currencySaving, setCurrencySaving] = useState(false);
   const [filter, setFilter] = useState<MenuItemKind | 'all'>('all');
@@ -60,9 +64,10 @@ export function MenuItemsManager({
 
   useEffect(() => {
     Promise.all([getMenuItems(businessId), getMenuSettings(businessId)])
-      .then(([loaded, settings]) => {
+      .then(([loaded, loadedSettings]) => {
         setItems(loaded);
-        setCurrency(settings.currency);
+        setSettings(loadedSettings);
+        setSettingsLoaded(true);
       })
       .catch((err) => setError(getFriendlyErrorMessage(err, { context: { action: 'load-menu-items', businessId } })));
   }, [businessId]);
@@ -80,15 +85,14 @@ export function MenuItemsManager({
 
   async function changeCurrency(next: MenuCurrency) {
     if (next === currency) return;
-    const previous = currency;
-    setCurrency(next);
+    const previous = settings;
+    setSettings({ ...settings, currency: next });
     setCurrencySaving(true);
     setError(null);
     try {
-      const saved = await updateMenuSettings(token, businessId, { currency: next });
-      setCurrency(saved.currency);
+      setSettings(await updateMenuSettings(token, businessId, { currency: next }));
     } catch (err) {
-      setCurrency(previous);
+      setSettings(previous);
       setError(getFriendlyErrorMessage(err, { context: { action: 'update-menu-settings', businessId } }));
     } finally {
       setCurrencySaving(false);
@@ -213,6 +217,8 @@ export function MenuItemsManager({
           </p>
         </fieldset>
       </section>
+
+      {settingsLoaded && <DeliveryPaymentSettings token={token} settings={settings} onSaved={setSettings} />}
 
       {error && (
         <p role="alert" className="rounded-2xl bg-flag-500/10 p-3 text-sm font-medium text-flag-700 dark:text-flag-300">

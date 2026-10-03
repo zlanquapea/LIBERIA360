@@ -2,6 +2,8 @@ import { BadRequestException } from "@nestjs/common";
 import type { MenuItem } from "../menu-items/entities/menu-item.entity";
 import type { FoodOrderLineOption } from "./entities/food-order.entity";
 import type { FoodOrderSelectionDto } from "./dto/create-food-order.dto";
+import { FoodPaymentMethod } from "./entities/food-order.enums";
+import type { MenuSettingsView } from "../menu-items/menu-items.service";
 
 /** Validates a customer's chosen options against the item's live option
  * groups and returns the snapshot to store plus the resulting unit price.
@@ -69,4 +71,51 @@ export function priceLine(
   }
 
   return { unitPrice: Math.round(unitPrice * 100) / 100, options };
+}
+
+type FulfillmentSettings = Pick<
+  MenuSettingsView,
+  "deliveryFee" | "freeDeliveryMinimum"
+>;
+
+/** What delivery costs for an order with this subtotal: the flat fee,
+ * waived once the subtotal reaches the free-delivery minimum. */
+export function deliveryFeeFor(
+  settings: FulfillmentSettings,
+  subtotal: number,
+): number {
+  if (
+    settings.freeDeliveryMinimum !== null &&
+    subtotal >= settings.freeDeliveryMinimum
+  ) {
+    return 0;
+  }
+  return Number(settings.deliveryFee) || 0;
+}
+
+type PaymentSettings = Pick<
+  MenuSettingsView,
+  "cashEnabled" | "mtnMomoNumber" | "orangeMoneyNumber"
+>;
+
+/** The number a mobile money method pays into, or null when the
+ * restaurant doesn't take it (cash never has one). */
+export function paymentAccountFor(
+  settings: PaymentSettings,
+  method: FoodPaymentMethod,
+): string | null {
+  if (method === FoodPaymentMethod.MTN_MOMO) return settings.mtnMomoNumber;
+  if (method === FoodPaymentMethod.ORANGE_MONEY) {
+    return settings.orangeMoneyNumber;
+  }
+  return null;
+}
+
+export function acceptsPaymentMethod(
+  settings: PaymentSettings,
+  method: FoodPaymentMethod,
+): boolean {
+  return method === FoodPaymentMethod.CASH
+    ? settings.cashEnabled
+    : paymentAccountFor(settings, method) !== null;
 }

@@ -35,9 +35,18 @@ import { VerificationBadge } from "@/components/VerificationBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { createFoodOrder } from "@/lib/food-orders-api";
 import { HttpError } from "@/lib/http";
-import type { Business, FoodOrder, MenuCurrency, MenuItem, MenuItemKind } from "@/lib/types";
+import type { Business, FoodOrder, MenuCurrency, MenuItem, MenuItemKind, MenuSettings } from "@/lib/types";
+import {
+  PAYMENT_METHOD_LABELS,
+  initialCheckout,
+  isMobileMoney,
+  loadSavedContact,
+  saveContact,
+  type CheckoutState,
+} from "@/lib/food-ordering";
 import { MenuItemCard } from "./menu/MenuItemCard";
 import { MenuItemSheet } from "./menu/MenuItemSheet";
+import { OrderingInfo } from "./menu/OrderingInfo";
 import { CartSheet } from "./menu/CartSheet";
 import { MenuPrice } from "./menu/MenuPrice";
 
@@ -104,14 +113,15 @@ function PopularRail({
 export function RestaurantMenuOrdering({
   business,
   items,
-  currency,
+  settings,
   usdToLrdRate,
 }: {
   business: Business;
   items: MenuItem[];
-  currency: MenuCurrency;
+  settings: MenuSettings;
   usdToLrdRate: number | null;
 }) {
+  const currency = settings.currency;
   const { user, token } = useAuth();
   const kinds = useMemo(() => menuKindsInOrder(items, business.type), [items, business.type]);
   const [activeKind, setActiveKind] = useState<MenuItemKind>(kinds[0] ?? "food");
@@ -122,6 +132,7 @@ export function RestaurantMenuOrdering({
   const [cartOpen, setCartOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [checkout, setCheckout] = useState<CheckoutState>(() => initialCheckout(settings));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedOrder, setSubmittedOrder] = useState<FoodOrder | null>(null);
@@ -133,6 +144,17 @@ export function RestaurantMenuOrdering({
     setCart(pruneCart(loadCart(business.id), items));
     setCartLoaded(true);
   }, [business.id, items]);
+
+  // Remembered address/phone only exist in the browser, so fill them in
+  // after mount rather than during render.
+  useEffect(() => {
+    const saved = loadSavedContact();
+    setCheckout((prev) => ({
+      ...prev,
+      deliveryAddress: prev.deliveryAddress || saved.deliveryAddress || "",
+      contactPhone: prev.contactPhone || saved.contactPhone || "",
+    }));
+  }, []);
 
   useEffect(() => {
     if (cartLoaded) saveCart(business.id, cart);
@@ -201,8 +223,15 @@ export function RestaurantMenuOrdering({
         })),
         notes: notes.trim() || undefined,
         ageConfirmed: summary.hasAlcohol ? ageConfirmed : undefined,
+        fulfillment: checkout.fulfillment,
+        deliveryAddress: checkout.fulfillment === "delivery" ? checkout.deliveryAddress.trim() : undefined,
+        contactPhone: checkout.contactPhone.trim() || undefined,
+        paymentMethod: checkout.paymentMethod,
+        paymentReference: isMobileMoney(checkout.paymentMethod) ? checkout.paymentReference.trim() : undefined,
       });
+      saveContact(checkout);
       setSubmittedOrder(order);
+      setCheckout((prev) => ({ ...prev, paymentReference: "" }));
       setCart([]);
       setNotes("");
       setAgeConfirmed(false);
@@ -223,8 +252,13 @@ export function RestaurantMenuOrdering({
         <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-50">Order sent!</h1>
         <p className="max-w-sm text-sm leading-6 text-slate-600 dark:text-slate-300">
           Your order for <strong>{formatMoney(submittedOrder.totalAmount, submittedOrder.currency)}</strong> is with{" "}
-          {business.name}. We&apos;ll notify you the moment they confirm it — you can message them from My Orders in the
-          meantime.
+          {business.name}.{" "}
+          {isMobileMoney(submittedOrder.paymentMethod)
+            ? `They'll check your ${PAYMENT_METHOD_LABELS[submittedOrder.paymentMethod]} payment (transaction ${submittedOrder.paymentReference}) and confirm your order.`
+            : submittedOrder.fulfillment === "delivery"
+              ? "Have cash ready when it arrives."
+              : "Pay when you pick it up."}{" "}
+          We&apos;ll notify you as it moves along, and you can message them from My Orders.
         </p>
         <div className="mt-2 flex w-full max-w-xs flex-col gap-2">
           <Link
@@ -293,6 +327,10 @@ export function RestaurantMenuOrdering({
           </p>
         </div>
       </header>
+
+      <div className="mx-4 mt-4 sm:mx-6">
+        <OrderingInfo settings={settings} />
+      </div>
 
       <div
         ref={contentRef}
@@ -461,7 +499,7 @@ export function RestaurantMenuOrdering({
         businessName={business.name}
         lines={cart}
         items={items}
-        currency={currency}
+        settings={settings}
         rate={usdToLrdRate}
         signedIn={Boolean(user)}
         loginHref={`/login?next=${encodeURIComponent(`/businesses/${business.slug}/menu`)}`}
@@ -470,6 +508,8 @@ export function RestaurantMenuOrdering({
         ageConfirmed={ageConfirmed}
         onAgeConfirmedChange={setAgeConfirmed}
         onQuantityChange={(key, quantity) => setCart((prev) => setLineQuantity(prev, key, quantity))}
+        checkout={checkout}
+        onCheckoutChange={(patch) => setCheckout((prev) => ({ ...prev, ...patch }))}
         onSubmit={submitOrder}
         submitting={submitting}
         error={error}

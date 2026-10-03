@@ -30,6 +30,7 @@ import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
 import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
 import { MenuPreviewSection } from "@/components/MenuPreviewSection";
+import { suggestBusinessType } from "@/lib/business-categories";
 import { businessHasMenu } from "@/lib/menu";
 import { PharmacyPreviewSection } from "@/components/PharmacyPreviewSection";
 import { ShareMenu } from "@/components/ShareMenu";
@@ -41,7 +42,7 @@ import { PlaceFreshnessPrompt } from "@/components/PlaceFreshnessPrompt";
 import { PublicTripCard } from "@/components/PublicTripCard";
 import { JsonLd } from "@/components/JsonLd";
 import { placeJsonLd } from "@/lib/structured-data";
-import type { BusinessType, Place, PlaceType } from "@/lib/types";
+import type { Place, PlaceType } from "@/lib/types";
 
 // Keys into placeDetail.nearby* — see NEARBY_TYPE_LABELS's usage below.
 // lib/format.ts's own formatPlaceType() (used as this map's fallback) is
@@ -53,17 +54,6 @@ const NEARBY_TYPE_LABEL_KEYS: Partial<Record<PlaceType, string>> = {
   activity_provider: "nearbyTourGuides",
 };
 
-// Loose mapping from the catalog's PlaceType to the claim form's
-// BusinessType — just a sensible default for the type dropdown, not a
-// strict correspondence (an attraction's on-site cafe is still a
-// "restaurant" business, for instance).
-const SUGGESTED_BUSINESS_TYPE: Record<PlaceType, BusinessType> = {
-  hotel: "hotel",
-  restaurant: "restaurant",
-  activity_provider: "tour_operator",
-  attraction: "tour_operator",
-  nature_site: "tour_operator",
-};
 
 export async function generateMetadata({
   params,
@@ -230,6 +220,7 @@ export default async function PlaceProfilePage({
           items={menuItems}
           menuHref={`/businesses/${business.slug}/menu`}
           currency={menuSettings?.currency}
+          settings={menuSettings}
         />
       )}
 
@@ -347,7 +338,7 @@ export default async function PlaceProfilePage({
       <section id="claim" className="scroll-mt-4">
         <BusinessClaimSection
           placeId={place.id}
-          suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
+          suggestedType={suggestBusinessType(place)}
           initialBusiness={business}
         />
       </section>

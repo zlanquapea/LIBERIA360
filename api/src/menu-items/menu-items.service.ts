@@ -165,30 +165,117 @@ export class MenuItemsService {
   }
 
   /** Public. A business that never saved settings gets the defaults back
-   * without a row being written. */
-  async getSettings(
-    businessId: string,
-  ): Promise<Pick<MenuSettings, "businessId" | "currency">> {
+   * without a row being written. The mobile money numbers are public on
+   * purpose: customers need them to pay. */
+  async getSettings(businessId: string): Promise<MenuSettingsView> {
     const settings = await this.settingsRepo.findOne({
       where: { businessId },
     });
-    return settings
-      ? { businessId: settings.businessId, currency: settings.currency }
-      : { businessId, currency: "USD" };
+    return settings ? toSettingsView(settings) : defaultSettings(businessId);
   }
 
   async updateSettings(
     userId: string,
     businessId: string,
     dto: UpdateMenuSettingsDto,
-  ): Promise<Pick<MenuSettings, "businessId" | "currency">> {
+  ): Promise<MenuSettingsView> {
     await this.assertOwnsBusiness(userId, businessId);
     const existing = await this.settingsRepo.findOne({
       where: { businessId },
     });
-    const settings = existing ?? this.settingsRepo.create({ businessId });
+    const settings =
+      existing ?? this.settingsRepo.create({ ...defaultSettings(businessId) });
+
+    const text = (value: string) => value.trim() || null;
     if (dto.currency !== undefined) settings.currency = dto.currency;
+    if (dto.pickupEnabled !== undefined) {
+      settings.pickupEnabled = dto.pickupEnabled;
+    }
+    if (dto.deliveryEnabled !== undefined) {
+      settings.deliveryEnabled = dto.deliveryEnabled;
+    }
+    if (dto.deliveryFee !== undefined) {
+      settings.deliveryFee = roundMoney(dto.deliveryFee);
+    }
+    if (dto.freeDeliveryMinimum !== undefined) {
+      settings.freeDeliveryMinimum =
+        dto.freeDeliveryMinimum === null
+          ? null
+          : roundMoney(dto.freeDeliveryMinimum);
+    }
+    if (dto.deliveryAreas !== undefined) {
+      settings.deliveryAreas = text(dto.deliveryAreas);
+    }
+    if (dto.deliveryEstimate !== undefined) {
+      settings.deliveryEstimate = text(dto.deliveryEstimate);
+    }
+    if (dto.cashEnabled !== undefined) settings.cashEnabled = dto.cashEnabled;
+    if (dto.mtnMomoNumber !== undefined) {
+      settings.mtnMomoNumber = text(dto.mtnMomoNumber);
+    }
+    if (dto.orangeMoneyNumber !== undefined) {
+      settings.orangeMoneyNumber = text(dto.orangeMoneyNumber);
+    }
+    if (dto.mobileMoneyName !== undefined) {
+      settings.mobileMoneyName = text(dto.mobileMoneyName);
+    }
+
+    // Checked on the merged result, so a single PATCH can't leave the
+    // restaurant with no way to hand over food or get paid.
+    if (!settings.pickupEnabled && !settings.deliveryEnabled) {
+      throw new BadRequestException("Offer at least one of pickup or delivery");
+    }
+    if (
+      !settings.cashEnabled &&
+      !settings.mtnMomoNumber &&
+      !settings.orangeMoneyNumber
+    ) {
+      throw new BadRequestException(
+        "Accept at least one payment method: cash, MTN MoMo or Orange Money",
+      );
+    }
+
     await this.settingsRepo.save(settings);
     return this.getSettings(businessId);
   }
+}
+
+export type MenuSettingsView = Omit<MenuSettings, "business" | "updatedAt">;
+
+function defaultSettings(businessId: string): MenuSettingsView {
+  return {
+    businessId,
+    currency: "USD",
+    pickupEnabled: true,
+    deliveryEnabled: false,
+    deliveryFee: 0,
+    freeDeliveryMinimum: null,
+    deliveryAreas: null,
+    deliveryEstimate: null,
+    cashEnabled: true,
+    mtnMomoNumber: null,
+    orangeMoneyNumber: null,
+    mobileMoneyName: null,
+  };
+}
+
+function toSettingsView(settings: MenuSettings): MenuSettingsView {
+  return {
+    businessId: settings.businessId,
+    currency: settings.currency,
+    pickupEnabled: settings.pickupEnabled,
+    deliveryEnabled: settings.deliveryEnabled,
+    deliveryFee: settings.deliveryFee,
+    freeDeliveryMinimum: settings.freeDeliveryMinimum,
+    deliveryAreas: settings.deliveryAreas,
+    deliveryEstimate: settings.deliveryEstimate,
+    cashEnabled: settings.cashEnabled,
+    mtnMomoNumber: settings.mtnMomoNumber,
+    orangeMoneyNumber: settings.orangeMoneyNumber,
+    mobileMoneyName: settings.mobileMoneyName,
+  };
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
 }

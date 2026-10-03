@@ -37,6 +37,7 @@ import type {
   TravelerInfoSettings,
 } from "./types";
 import { serverApiOrigin } from "./server-api-origin";
+import { defaultMenuSettings } from "./food-ordering";
 
 export { serverApiOrigin };
 
@@ -313,12 +314,12 @@ export function getMenuItems(businessId: string): Promise<MenuItem[]> {
 }
 
 // Both of these are nice-to-have context for a menu page, never worth
-// failing it over — callers fall back to USD / no conversion.
+// failing it over — callers fall back to the defaults (USD, pickup, cash) /
+// no conversion.
 export function getMenuSettings(businessId: string): Promise<MenuSettings> {
-  return apiFetch<MenuSettings>(`/menu-settings/${businessId}`).catch(() => ({
-    businessId,
-    currency: "USD" as const,
-  }));
+  return apiFetch<MenuSettings>(`/menu-settings/${businessId}`).catch(() =>
+    defaultMenuSettings(businessId),
+  );
 }
 
 export function getUsdToLrdRate(): Promise<number | null> {

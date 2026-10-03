@@ -1,5 +1,11 @@
 import { BadRequestException } from "@nestjs/common";
-import { priceLine } from "./order-pricing";
+import {
+  acceptsPaymentMethod,
+  deliveryFeeFor,
+  paymentAccountFor,
+  priceLine,
+} from "./order-pricing";
+import { FoodPaymentMethod } from "./entities/food-order.enums";
 import type { MenuOptionGroup } from "../menu-items/entities/menu-item.enums";
 
 const SIZE: MenuOptionGroup = {
@@ -93,5 +99,58 @@ describe("priceLine", () => {
         { groupId: "size", choiceIds: ["lg"] },
       ]),
     ).toThrow(BadRequestException);
+  });
+});
+
+describe("deliveryFeeFor", () => {
+  it("charges the flat fee below the free-delivery minimum", () => {
+    expect(
+      deliveryFeeFor({ deliveryFee: 2, freeDeliveryMinimum: 25 }, 24.99),
+    ).toBe(2);
+  });
+
+  it("waives the fee at or above the minimum", () => {
+    expect(
+      deliveryFeeFor({ deliveryFee: 2, freeDeliveryMinimum: 25 }, 25),
+    ).toBe(0);
+  });
+
+  it("always charges the fee when there's no minimum, and 0 means free", () => {
+    expect(
+      deliveryFeeFor({ deliveryFee: 3, freeDeliveryMinimum: null }, 500),
+    ).toBe(3);
+    expect(
+      deliveryFeeFor({ deliveryFee: 0, freeDeliveryMinimum: null }, 5),
+    ).toBe(0);
+  });
+});
+
+describe("acceptsPaymentMethod / paymentAccountFor", () => {
+  const settings = {
+    cashEnabled: false,
+    mtnMomoNumber: null,
+    orangeMoneyNumber: "0777 123 456",
+  };
+
+  it("offers a mobile money method only when its number is set", () => {
+    expect(acceptsPaymentMethod(settings, FoodPaymentMethod.ORANGE_MONEY)).toBe(
+      true,
+    );
+    expect(acceptsPaymentMethod(settings, FoodPaymentMethod.MTN_MOMO)).toBe(
+      false,
+    );
+    expect(paymentAccountFor(settings, FoodPaymentMethod.ORANGE_MONEY)).toBe(
+      "0777 123 456",
+    );
+  });
+
+  it("follows the cash toggle for cash, which has no account", () => {
+    expect(acceptsPaymentMethod(settings, FoodPaymentMethod.CASH)).toBe(false);
+    expect(
+      paymentAccountFor(
+        { ...settings, cashEnabled: true },
+        FoodPaymentMethod.CASH,
+      ),
+    ).toBeNull();
   });
 });

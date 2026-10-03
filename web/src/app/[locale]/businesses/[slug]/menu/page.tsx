@@ -76,7 +76,7 @@ export default async function BusinessMenuPage({
     <RestaurantMenuOrdering
       business={business}
       items={items}
-      currency={settings.currency}
+      settings={settings}
       usdToLrdRate={usdToLrdRate}
     />
   );
