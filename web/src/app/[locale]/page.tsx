@@ -6,6 +6,7 @@ import {
   getActiveAdvertisements,
   getActiveSponsoredPlacements,
   getBusinesses,
+  getCategories,
   getCounties,
   getCreators,
   getFeaturedItineraries,
@@ -13,7 +14,7 @@ import {
   getPublicTrips,
   getUpcomingEvents,
 } from '@/lib/api';
-import { COLLECTIONS, weekendWindow, withoutShown } from '@/lib/home-discovery';
+import { summarizeCollections, weekendWindow, withoutShown } from '@/lib/home-discovery';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { gradientForCategory } from '@/lib/category-colors';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
@@ -23,7 +24,7 @@ import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection'
 import { PublicTripCard } from '@/components/PublicTripCard';
 import { SafeImage } from '@/components/SafeImage';
 import { HomeHero } from '@/components/home/HomeHero';
-import { CollectionsSection, type CollectionSummary } from '@/components/home/CollectionsSection';
+import { CollectionsSection } from '@/components/home/CollectionsSection';
 import { WeekendSection } from '@/components/home/WeekendSection';
 import { CreatorsSection } from '@/components/home/CreatorsSection';
 import { CountyExplorer } from '@/components/home/CountyExplorer';
@@ -34,6 +35,7 @@ const POPULAR_LIMIT = 8;
 const WEEKEND_LIMIT = 8;
 const CREATORS_LIMIT = 6;
 const TRIPS_LIMIT = 6;
+const COVER_POOL_LIMIT = 48;
 
 // Homepage, in the order a visitor decides: the promise and three ways in
 // (near me, this weekend, plan a trip), moods to browse, what's on, then
@@ -42,52 +44,42 @@ const TRIPS_LIMIT = 6;
 export default async function Home() {
   const t = await getTranslations();
   const weekend = weekendWindow();
-  const collectionCategories = [...new Set(COLLECTIONS.flatMap((c) => c.categories))];
 
+  // Kept to a dozen API reads: collection counts come from the category
+  // list, and covers from one featured page rather than a call per category.
   const [
     counties,
+    categories,
     popular,
+    featured,
     weekendEvents,
-    upcomingEvents,
     sponsoredPlacements,
     ads,
     businesses,
     creators,
     tripIdeas,
     communityTrips,
-    ...categoryPages
   ] = await Promise.all([
     getCounties(),
+    getCategories(),
     getPlaces({ sort: 'popular', limit: POPULAR_LIMIT + 8 }),
+    getPlaces({ sort: 'featured', limit: COVER_POOL_LIMIT }),
     getUpcomingEvents({
       dateFrom: weekend.from.toISOString(),
       dateTo: weekend.to.toISOString(),
       limit: WEEKEND_LIMIT,
     }),
-    getUpcomingEvents({ limit: 4 }),
     getActiveSponsoredPlacements(),
     getActiveAdvertisements(),
     getBusinesses({ limit: 100 }),
     getCreators({ limit: CREATORS_LIMIT }),
     getFeaturedItineraries(),
     getPublicTrips({ limit: TRIPS_LIMIT }),
-    ...collectionCategories.map((category) => getPlaces({ category, sort: 'featured', limit: 1 })),
   ]);
+  // Only needed when nothing is on this weekend.
+  const upcomingEvents = weekendEvents.data.length === 0 ? (await getUpcomingEvents({ limit: 4 })).data : [];
 
-  const byCategory = new Map(collectionCategories.map((slug, i) => [slug, categoryPages[i]]));
-  const summaries: CollectionSummary[] = COLLECTIONS.map((collection) => {
-    const pages = collection.categories.map((slug) => byCategory.get(slug)).filter((p) => p !== undefined);
-    const coverPlace = pages
-      .map((p) => p.data[0])
-      .find((place) => place !== undefined && place.images.length > 0);
-    return {
-      collection,
-      count: pages.reduce((sum, p) => sum + p.meta.total, 0),
-      cover: coverPlace?.images[0] ?? null,
-      coverPlaceId: coverPlace?.id ?? null,
-      coverPlaceName: coverPlace?.name ?? null,
-    };
-  });
+  const summaries = summarizeCollections(categories, [...featured.data, ...popular.data]);
 
   // Random rotation so every active sponsor gets a turn at the first card.
   const start = sponsoredPlacements.length > 0 ? Math.floor(Math.random() * sponsoredPlacements.length) : 0;
@@ -121,7 +113,7 @@ export default async function Home() {
 
         <WeekendSection
           events={weekendEvents.data}
-          upcoming={upcomingEvents.data}
+          upcoming={upcomingEvents}
           from={weekend.from}
           to={weekend.to}
           isNow={weekend.isNow}

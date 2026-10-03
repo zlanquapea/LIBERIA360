@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { Repository } from "typeorm";
 import { Category } from "./entities/category.entity";
 
@@ -18,7 +19,17 @@ export class CategoriesService {
   async findAll(): Promise<CategoryWithCount[]> {
     const rows = await this.categoryRepo
       .createQueryBuilder("category")
-      .loadRelationCountAndMap("category.placeCount", "category.places")
+      // Public listings only — the same APPROVED filter GET /places
+      // applies, so this count matches what a visitor can actually open.
+      .loadRelationCountAndMap(
+        "category.placeCount",
+        "category.places",
+        "place",
+        (qb) =>
+          qb.andWhere("place.reviewStatus = :approved", {
+            approved: PlaceReviewStatus.APPROVED,
+          }),
+      )
       .orderBy("category.name", "ASC")
       .getMany();
 

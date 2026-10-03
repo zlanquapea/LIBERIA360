@@ -1,3 +1,5 @@
+import type { Category, Place } from './types';
+
 // Homepage discovery helpers. Kept pure so the page's choices (which
 // weekend, which collections, no repeated listings) are tested directly.
 
@@ -40,4 +42,30 @@ export function withoutShown<T extends { id: string }>(items: T[], shown: Iterab
   const seen = new Set(shown);
   const fresh = items.filter((item) => !seen.has(item.id));
   return limit === undefined ? fresh : fresh.slice(0, limit);
+}
+
+export interface CollectionSummary {
+  collection: Collection;
+  count: number;
+  // A real photo of a real place in this collection, or null.
+  cover: string | null;
+  coverPlaceId: string | null;
+  coverPlaceName: string | null;
+}
+
+/** Counts come from the category list (approved places only); the cover
+ * is the first place in `pool` from the collection that has a photo. */
+export function summarizeCollections(categories: Category[], pool: Place[]): CollectionSummary[] {
+  const counts = new Map(categories.map((c) => [c.slug, c.placeCount ?? 0]));
+  return COLLECTIONS.map((collection) => {
+    const slugs = new Set(collection.categories);
+    const coverPlace = pool.find((place) => slugs.has(place.category.slug) && place.images.length > 0);
+    return {
+      collection,
+      count: collection.categories.reduce((sum, slug) => sum + (counts.get(slug) ?? 0), 0),
+      cover: coverPlace?.images[0] ?? null,
+      coverPlaceId: coverPlace?.id ?? null,
+      coverPlaceName: coverPlace?.name ?? null,
+    };
+  });
 }

@@ -3,17 +3,9 @@ import { getTranslations } from 'next-intl/server';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { SafeImage } from '@/components/SafeImage';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
-import { collectionHref, type Collection } from '@/lib/home-discovery';
+import { collectionHref, type Collection, type CollectionSummary } from '@/lib/home-discovery';
 import { SectionHeading } from './SectionHeading';
 
-export interface CollectionSummary {
-  collection: Collection;
-  count: number;
-  // A real photo of a real place in this collection, or null.
-  cover: string | null;
-  coverPlaceId: string | null;
-  coverPlaceName: string | null;
-}
 
 const FALLBACK_TINT: Record<Collection['id'], string> = {
   beach: 'from-sky-700 via-brand-700 to-brand-950',
