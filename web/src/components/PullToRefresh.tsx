@@ -1,213 +1,200 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
-const PULL_TRIGGER_PX = 52;
-const MAX_PULL_PX = 104;
-const PULL_RESISTANCE = 0.75;
-const AXIS_LOCK_PX = 8;
-const RELOAD_DELAY_MS = 260;
+const TRIGGER = 64;
+const reloadPage = () => window.location.reload();
+const fields = 'input, textarea, select, [contenteditable="true"]';
 
-type TouchOrigin = {
-  identifier: number;
-  x: number;
-  y: number;
-  target: EventTarget | null;
-};
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    Boolean(
-      target.closest(
-        "button, input, select, textarea, summary, [contenteditable='true'], [role='button'], [data-no-pull-refresh]",
-      ),
-    )
-  );
-}
-
-function hasScrollableParentAtOffset(target: EventTarget | null): boolean {
+function canStartPull(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
-  let element: Element | null = target;
-  while (element && element !== document.body) {
-    if (element instanceof HTMLElement) {
-      const style = window.getComputedStyle(element);
-      const scrollableY =
-        (style.overflowY === "auto" || style.overflowY === "scroll") &&
-        element.scrollHeight > element.clientHeight;
-      if (scrollableY && element.scrollTop > 0) return true;
-    }
-    element = element.parentElement;
+  // Safari reports negative offsets while rubber-banding at the top.
+  if (window.scrollY > 1 || document.documentElement.scrollTop > 1)
+    return false;
+  if (
+    target.closest(
+      'input, textarea, select, button, video, audio, [contenteditable="true"], [role="dialog"], [role="slider"], .leaflet-container, [data-no-pull-refresh]',
+    )
+  )
+    return false;
+  if (document.activeElement?.matches(fields)) return false;
+  for (
+    let element: Element | null = target;
+    element;
+    element = element.parentElement
+  ) {
+    if (element.scrollTop > 1) return false;
   }
-  return false;
+  return !window.visualViewport || window.visualViewport.scale === 1;
 }
 
-function canStartPull(target: EventTarget | null): boolean {
-  if (document.body.classList.contains("messaging-chat")) return false;
-  if (isInteractiveTarget(target)) return false;
-  if (hasScrollableParentAtOffset(target)) return false;
-  return window.scrollY <= 0 && document.documentElement.scrollTop <= 0;
-}
-
-function getTrackedTouch(event: globalThis.TouchEvent, identifier: number) {
-  return Array.from(event.touches).find((touch) => touch.identifier === identifier) ?? null;
-}
-
-function isStandaloneApp() {
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
-  );
-}
-
-export function PullToRefresh() {
-  const [pullDistance, setPullDistance] = useState(0);
+export function PullToRefresh({
+  onRefresh = reloadPage,
+}: {
+  onRefresh?: () => void;
+}) {
+  const pathname = usePathname();
+  const [distance, setDistance] = useState(0);
+  const [message, setMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const originRef = useRef<TouchOrigin | null>(null);
-  const pullDistanceRef = useRef(0);
-  const refreshingRef = useRef(false);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    function resetPull() {
-      originRef.current = null;
-      pullDistanceRef.current = 0;
-      setPullDistance(0);
-    }
-
-    function cancelPull() {
-      cancelledRef.current = true;
-      resetPull();
-    }
-
-    function handleTouchStart(event: globalThis.TouchEvent) {
-      if (refreshingRef.current || !canStartPull(event.target)) return;
+    let origin: {
+      x: number;
+      y: number;
+      id: number;
+      target: EventTarget | null;
+    } | null = null;
+    let pulled = 0;
+    let locked = false;
+    let dirty = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setDistance(0);
+    setMessage("");
+    setRefreshing(false);
+    const reset = () => {
+      origin = null;
+      pulled = 0;
+      setDistance(0);
+    };
+    const input = (event: Event) => {
+      if (
+        event.target instanceof Element &&
+        event.target.matches(
+          'input:not([type="search"]), textarea, select, [contenteditable="true"]',
+        )
+      )
+        dirty = true;
+    };
+    const begin = (event: TouchEvent) => {
+      reset();
+      if (locked || event.touches.length !== 1 || !canStartPull(event.target))
+        return;
       const touch = event.touches[0];
-      if (!touch) return;
-      cancelledRef.current = false;
-      originRef.current = {
-        identifier: touch.identifier,
+      origin = {
         x: touch.clientX,
         y: touch.clientY,
+        id: touch.identifier,
         target: event.target,
       };
-    }
-
-    function handleTouchMove(event: globalThis.TouchEvent) {
-      const origin = originRef.current;
-      const touch = origin ? getTrackedTouch(event, origin.identifier) : null;
-      if (!origin || !touch || refreshingRef.current || cancelledRef.current) return;
-
+    };
+    const move = (event: TouchEvent) => {
+      if (!origin) return;
+      const touch = event.touches[0];
       if (
-        window.scrollY > 0 ||
-        document.documentElement.scrollTop > 0 ||
-        hasScrollableParentAtOffset(origin.target)
+        event.touches.length !== 1 ||
+        touch.identifier !== origin.id ||
+        !canStartPull(origin.target)
       ) {
-        cancelPull();
+        reset();
         return;
       }
-
-      const deltaX = touch.clientX - origin.x;
-      const deltaY = touch.clientY - origin.y;
+      const dx = touch.clientX - origin.x;
+      const dy = touch.clientY - origin.y;
+      // Allow natural sideways drift; cancel only a predominantly horizontal swipe.
+      if (dy < 0 || Math.abs(dx) > Math.max(12, dy)) {
+        reset();
+        return;
+      }
+      if (dy < 8) return;
+      if (!event.cancelable) {
+        reset();
+        return;
+      }
+      event.preventDefault();
+      pulled = Math.min(100, dy * 0.6);
+      setMessage("");
+      setDistance(pulled);
+    };
+    const end = (event: TouchEvent) => {
       if (
-        deltaY <= 0 ||
-        Math.abs(deltaX) > Math.abs(deltaY) ||
-        Math.abs(deltaX) > AXIS_LOCK_PX
-      ) {
-        cancelPull();
+        !origin ||
+        !Array.from(event.changedTouches).some(
+          (touch) => touch.identifier === origin?.id,
+        )
+      )
+        return;
+      const ready = pulled >= TRIGGER;
+      reset();
+      if (!ready || locked) return;
+      if (!navigator.onLine) {
+        setMessage("You’re offline. Connect to refresh.");
+        clearTimeout(timer);
+        timer = setTimeout(() => setMessage(""), 4000);
         return;
       }
-
-      // Take ownership only after the finger is clearly moving vertically.
-      // This preserves native horizontal swipes and prevents browser overscroll.
-      if (deltaY < AXIS_LOCK_PX) return;
-      // In regular Safari/Chrome, keep the browser-native pull-to-refresh
-      // behavior (the spinner shown in Safari). Only prevent the browser
-      // gesture inside a Home Screen standalone app where native refresh is
-      // unavailable and our fallback owns the interaction.
-      if (isStandaloneApp()) event.preventDefault();
-      const nextDistance = Math.min(
-        MAX_PULL_PX,
-        Math.round(deltaY * PULL_RESISTANCE),
-      );
-      pullDistanceRef.current = nextDistance;
-      setPullDistance(nextDistance);
-    }
-
-    function handleTouchEnd(event: globalThis.TouchEvent) {
-      const origin = originRef.current;
-      if (!origin || cancelledRef.current) {
-        resetPull();
+      if (
+        dirty &&
+        !window.confirm(
+          "Refresh this page? Unsaved changes or message drafts may be lost.",
+        )
+      )
         return;
-      }
-      const ended = Array.from(event.changedTouches).some(
-        (touch) => touch.identifier === origin.identifier,
-      );
-      if (!ended) return;
-
-      const shouldRefresh = pullDistanceRef.current >= PULL_TRIGGER_PX;
-      resetPull();
-      if (!shouldRefresh || refreshingRef.current) return;
-
-      refreshingRef.current = true;
+      locked = true;
       setRefreshing(true);
-      if ("vibrate" in navigator) navigator.vibrate?.(12);
-      window.setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
-    }
-
-    function handleTouchCancel() {
-      // A cancelled gesture must never trigger a page reload.
-      cancelPull();
-    }
-
-    // Capture phase is important for standalone iOS PWAs: page-level cards,
-    // maps, and gesture components may stop bubbling touch events.
-    document.addEventListener("touchstart", handleTouchStart, {
+      timer = setTimeout(onRefresh, 150);
+    };
+    // Own overscroll consistently in browsers and installed apps, without
+    // depending on iOS standalone detection or competing native refresh.
+    const elements = [document.documentElement, document.body];
+    const previous = elements.map(
+      (element) => element.style.overscrollBehaviorY,
+    );
+    elements.forEach((element) => {
+      element.style.overscrollBehaviorY = "none";
+    });
+    document.addEventListener("input", input, true);
+    document.addEventListener("change", input, true);
+    document.addEventListener("touchstart", begin, {
       capture: true,
       passive: true,
     });
-    document.addEventListener("touchmove", handleTouchMove, {
+    document.addEventListener("touchmove", move, {
       capture: true,
       passive: false,
     });
-    document.addEventListener("touchend", handleTouchEnd, {
-      capture: true,
-      passive: true,
-    });
-    document.addEventListener("touchcancel", handleTouchCancel, {
-      capture: true,
-      passive: true,
-    });
-
+    document.addEventListener("touchend", end, true);
+    document.addEventListener("touchcancel", reset, true);
     return () => {
-      document.removeEventListener("touchstart", handleTouchStart, true);
-      document.removeEventListener("touchmove", handleTouchMove, true);
-      document.removeEventListener("touchend", handleTouchEnd, true);
-      document.removeEventListener("touchcancel", handleTouchCancel, true);
+      clearTimeout(timer);
+      elements.forEach((element, index) => {
+        element.style.overscrollBehaviorY = previous[index];
+      });
+      document.removeEventListener("input", input, true);
+      document.removeEventListener("change", input, true);
+      document.removeEventListener("touchstart", begin, true);
+      document.removeEventListener("touchmove", move, true);
+      document.removeEventListener("touchend", end, true);
+      document.removeEventListener("touchcancel", reset, true);
     };
-  }, []);
+  }, [pathname, onRefresh]);
 
-  const visible = refreshing || pullDistance > 0;
-  const ready = pullDistance >= PULL_TRIGGER_PX;
-
+  const visible = distance > 0 || refreshing || Boolean(message);
   return (
     <div
-      className={`global-pull-refresh-indicator ${visible ? "is-visible" : ""} ${refreshing ? "is-refreshing" : ""}`}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: `translate3d(0, ${visible ? Math.min(74, pullDistance * 0.9) : 0}px, 0)`,
-      }}
+      role="status"
       aria-live="polite"
-      aria-hidden={!visible}
+      aria-atomic="true"
+      className={`pointer-events-none fixed inset-x-0 z-[200] flex justify-center px-4 ${visible ? "" : "hidden"}`}
+      style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
     >
-      <span
-        className={`global-pull-refresh-spinner ${refreshing ? "is-spinning" : ""}`}
-        style={!refreshing ? { transform: `rotate(${pullDistance * 3}deg)` } : undefined}
-        aria-hidden
-      />
-      <span className="sr-only">
-        {refreshing ? "Refreshing" : ready ? "Release to refresh" : "Pull to refresh"}
-      </span>
+      <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-brand-800 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
+        <ArrowPathIcon
+          aria-hidden
+          className={`h-5 w-5 ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+          style={
+            refreshing ? undefined : { transform: `rotate(${distance * 3}deg)` }
+          }
+        />
+        {message ||
+          (refreshing
+            ? "Refreshing…"
+            : distance >= TRIGGER
+              ? "Release to refresh"
+              : "Pull down to refresh")}
+      </div>
     </div>
   );
 }

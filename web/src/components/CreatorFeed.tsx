@@ -19,7 +19,6 @@ import { CreatorStories } from "./CreatorStories";
 
 type CreatorFeedMode = "discover" | "following";
 const FEED_PAGE_SIZE = 20;
-const PULL_TRIGGER_PX = 64;
 
 function shuffleAds(items: Ad[], avoidFirstIds: string[] = []) {
   const shuffled = [...items];
@@ -90,11 +89,7 @@ export function CreatorFeed({
   const [hasMore, setHasMore] = useState(initialPosts.length >= FEED_PAGE_SIZE);
   const [error, setError] = useState<string | null>(null);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
-  const [pullDistance, setPullDistance] = useState(0);
   const refreshLockRef = useRef(false);
-  const refreshFeedRef = useRef<() => Promise<void>>(() => Promise.resolve());
-  const pullDistanceRef = useRef(0);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const feedItems = useMemo(
     () =>
@@ -164,8 +159,6 @@ export function CreatorFeed({
 
     refreshLockRef.current = true;
     setRefreshing(true);
-    pullDistanceRef.current = 0;
-    setPullDistance(0);
     setError(null);
     setRefreshMessage(null);
     triggerRefreshHaptic();
@@ -221,64 +214,6 @@ export function CreatorFeed({
     }
   }
 
-  useEffect(() => {
-    refreshFeedRef.current = refreshFeed;
-  });
-
-  useEffect(() => {
-    function handleWindowTouchStart(event: globalThis.TouchEvent) {
-      if (refreshLockRef.current || window.scrollY > 0) return;
-      const touch = event.touches[0];
-      if (touch) touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    }
-
-    function handleWindowTouchMove(event: globalThis.TouchEvent) {
-      const start = touchStartRef.current;
-      const touch = event.touches[0];
-      if (!start || !touch || refreshLockRef.current) return;
-      if (window.scrollY > 0) {
-        touchStartRef.current = null;
-        pullDistanceRef.current = 0;
-        setPullDistance(0);
-        return;
-      }
-      const deltaX = touch.clientX - start.x;
-      const deltaY = touch.clientY - start.y;
-      if (deltaY <= 0 || Math.abs(deltaX) > Math.abs(deltaY)) {
-        pullDistanceRef.current = 0;
-        setPullDistance(0);
-        return;
-      }
-      event.preventDefault();
-      const nextDistance = Math.min(96, deltaY * 0.55);
-      pullDistanceRef.current = nextDistance;
-      setPullDistance(nextDistance);
-    }
-
-    function handleWindowTouchEnd() {
-      const shouldRefresh = pullDistanceRef.current >= PULL_TRIGGER_PX;
-      touchStartRef.current = null;
-      pullDistanceRef.current = 0;
-      setPullDistance(0);
-      if (shouldRefresh) void refreshFeedRef.current();
-    }
-
-    window.addEventListener("touchstart", handleWindowTouchStart, {
-      passive: true,
-    });
-    window.addEventListener("touchmove", handleWindowTouchMove, {
-      passive: false,
-    });
-    window.addEventListener("touchend", handleWindowTouchEnd);
-    window.addEventListener("touchcancel", handleWindowTouchEnd);
-    return () => {
-      window.removeEventListener("touchstart", handleWindowTouchStart);
-      window.removeEventListener("touchmove", handleWindowTouchMove);
-      window.removeEventListener("touchend", handleWindowTouchEnd);
-      window.removeEventListener("touchcancel", handleWindowTouchEnd);
-    };
-  }, []);
-
   async function loadMore() {
     if (loadingMore || !hasMore || refreshing) return;
     setLoadingMore(true);
@@ -311,32 +246,18 @@ export function CreatorFeed({
       aria-busy={refreshing}
       className={`creator-feed-pull-shell ${showHeader ? "mt-8" : ""}`}
     >
-      <div
-        className={`creator-feed-refresh-indicator ${
-          refreshing || pullDistance > 0 ? "is-visible" : ""
-        } ${refreshing ? "is-refreshing" : ""}`}
-        style={{
-          height: refreshing ? 52 : pullDistance > 0 ? pullDistance : 0,
-        }}
-        aria-live="polite"
+      <button
+        type="button"
+        onClick={() => void refreshFeed()}
+        disabled={refreshing || loadingInitial}
+        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold text-brand-700 dark:text-brand-300"
       >
-        <span>
-          <ArrowPathIcon
-            aria-hidden
-            className={`creator-feed-refresh-icon ${refreshing ? "is-spinning" : ""}`}
-            style={
-              !refreshing && pullDistance > 0
-                ? { transform: `rotate(${pullDistance * 3}deg)` }
-                : undefined
-            }
-          />
-          {refreshing
-            ? "Refreshing creators…"
-            : pullDistance >= PULL_TRIGGER_PX
-              ? "Release to refresh"
-              : "Pull to refresh"}
-        </span>
-      </div>
+        <ArrowPathIcon
+          aria-hidden
+          className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+        />
+        {refreshing ? "Refreshing creators…" : "Refresh feed"}
+      </button>
 
       {mode === "discover" && <CreatorStories />}
 
