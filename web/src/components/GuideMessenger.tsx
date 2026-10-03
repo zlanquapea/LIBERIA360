@@ -190,7 +190,7 @@ export function GuideMessenger({
           <h1 className="mt-3 font-display text-3xl font-black">
             Connect with {guide.slug.replaceAll("-", " ")}
           </h1>
-          <p className="mt-3 text-sm leading-6 text-teal-100">
+          <p className="mt-3 text-sm leading-6 text-brand-100">
             Ask questions, plan your visit, and keep the conversation saved in
             your LIBERIA360 inbox.
           </p>
@@ -318,7 +318,7 @@ export function GuideMessenger({
                       >
                         <p>{item.body}</p>
                         <p
-                          className={`mt-1 text-[10px] ${mine ? "text-teal-100" : "text-slate-400"}`}
+                          className={`mt-1 text-[10px] ${mine ? "text-brand-100" : "text-slate-400"}`}
                         >
                           {new Date(item.createdAt).toLocaleTimeString([], {
                             hour: "numeric",

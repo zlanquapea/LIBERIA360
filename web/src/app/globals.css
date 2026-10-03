@@ -4,28 +4,32 @@
 
 /* Theme-aware palette. Light values match the original Tailwind colors exactly. */
 :root {
-  --palette-slate-50: 248 250 252;
-  --palette-slate-100: 241 245 249;
-  --palette-slate-200: 226 232 240;
-  --palette-slate-300: 203 213 225;
-  --palette-slate-400: 148 163 184;
-  --palette-slate-500: 100 116 139;
-  --palette-slate-600: 71 85 105;
-  --palette-slate-700: 51 65 85;
-  --palette-slate-800: 30 41 59;
-  --palette-slate-900: 15 23 42;
-  --palette-slate-950: 2 6 23;
-  --palette-brand-50: 239 248 250;
-  --palette-brand-100: 217 241 247;
-  --palette-brand-200: 163 228 245;
-  --palette-brand-300: 81 213 246;
-  --palette-brand-400: 6 184 229;
-  --palette-brand-500: 0 122 153;
-  --palette-brand-600: 0 100 125;
-  --palette-brand-700: 0 80 99;
-  --palette-brand-800: 0 63 79;
-  --palette-brand-900: 0 47 59;
-  --palette-brand-950: 0 31 38;
+  /* Light mode: warm "stone" neutrals so charcoal text sits naturally on the
+     ivory canvas, and a deep forest-green brand ramp. Contrast is tuned to
+     the same floors the previous teal ramp met: brand-500 5.7:1 on white
+     (5.1:1 on ivory), 600 7.6:1, 700 9.9:1, white on 900 14.8:1. */
+  --palette-slate-50: 250 250 249;
+  --palette-slate-100: 245 245 244;
+  --palette-slate-200: 231 229 228;
+  --palette-slate-300: 214 211 209;
+  --palette-slate-400: 168 162 158;
+  --palette-slate-500: 120 113 108;
+  --palette-slate-600: 87 83 78;
+  --palette-slate-700: 68 64 60;
+  --palette-slate-800: 41 37 36;
+  --palette-slate-900: 28 25 23;
+  --palette-slate-950: 12 10 9;
+  --palette-brand-50: 240 247 244;
+  --palette-brand-100: 221 238 230;
+  --palette-brand-200: 189 219 204;
+  --palette-brand-300: 136 191 163;
+  --palette-brand-400: 75 160 119;
+  --palette-brand-500: 37 116 80;
+  --palette-brand-600: 25 95 66;
+  --palette-brand-700: 18 76 54;
+  --palette-brand-800: 13 61 43;
+  --palette-brand-900: 8 46 33;
+  --palette-brand-950: 4 31 23;
 }
 .dark {
   --palette-slate-50: 241 242 237;
@@ -65,18 +69,19 @@
   /* A network-independent display stack keeps production builds deterministic.
      Device-native faces also avoid an extra font download on limited data. */
   --font-display: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", sans-serif;
-  --surface-canvas: #f6f8fc;
+  /* Warm ivory canvas, white raised surfaces, charcoal ink. */
+  --surface-canvas: #f7f3ea;
   --surface-raised: #ffffff;
-  --surface-subtle: #eef2f8;
-  --ink-strong: #0f172a;
-  --ink-muted: #526077;
-  --border-subtle: #dce3ed;
-  --focus-ring: #007a99;
+  --surface-subtle: #efe9dc;
+  --ink-strong: #1c1917;
+  --ink-muted: #57534e;
+  --border-subtle: #e4ddcf;
+  --focus-ring: #257450;
   --radius-control: 0.875rem;
   --radius-card: 1.25rem;
   --radius-panel: 1.75rem;
-  --shadow-card: 0 2px 8px -2px rgb(0 47 59 / 0.08), 0 12px 32px -10px rgb(0 47 59 / 0.14);
-  --shadow-float: 0 20px 55px -20px rgb(0 47 59 / 0.3);
+  --shadow-card: 0 2px 8px -2px rgb(8 46 33 / 0.08), 0 12px 32px -10px rgb(8 46 33 / 0.14);
+  --shadow-float: 0 20px 55px -20px rgb(8 46 33 / 0.3);
   --ease-product: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -105,7 +110,7 @@ html {
 body {
   min-width: 320px;
   background-color: var(--surface-canvas);
-  background-image: radial-gradient(circle at 12% -8%, rgb(0 180 224 / 0.07), transparent 28rem);
+  background-image: radial-gradient(circle at 12% -8%, rgb(237 91 18 / 0.06), transparent 28rem);
 }
 
 /* Global PWA pull-to-refresh feedback. The gesture handler only activates at
@@ -164,7 +169,7 @@ body {
 }
 
 ::selection {
-  color: #002f3b;
+  color: #082e21;
   background: #ffdc8a;
 }
 
@@ -176,7 +181,7 @@ body {
   z-index: 4000;
   padding: 0.7rem 1rem;
   border-radius: 0.75rem;
-  color: #002f3b;
+  color: #082e21;
   background: #fff;
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.24);
   font-weight: 800;
@@ -193,7 +198,7 @@ body {
 /* Shared interaction defaults keep every feature usable even when an
    individual screen has not supplied its own focus or disabled styling. */
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid #007a99;
+  outline: 3px solid #257450;
   outline-offset: 2px;
 }
 
@@ -439,7 +444,7 @@ html.dark {
   background:
     radial-gradient(circle at 50% 44%, rgb(0 122 153 / 0.62), transparent 30%),
     radial-gradient(circle at 12% 12%, rgb(255 198 61 / 0.12), transparent 24%),
-    linear-gradient(145deg, #003f4f 0%, #002f3b 48%, #001f26 100%);
+    linear-gradient(145deg, #0d3d2b 0%, #082e21 48%, #041f17 100%);
   animation: splash-screen-in 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 .splash-screen--leaving {
@@ -720,7 +725,7 @@ html[data-splash-seen='1'] .splash-screen {
   inset: 18%;
   border-width: 2.5px;
   border-bottom-color: #5fbb42;
-  border-left-color: #007a99;
+  border-left-color: #257450;
   animation: brand-loader-spin-reverse 1.85s cubic-bezier(0.55, 0.05, 0.35, 0.95) infinite;
 }
 .dark .brand-loader__ring--outer {
@@ -739,7 +744,7 @@ html[data-splash-seen='1'] .splash-screen {
   overflow: hidden;
   border-radius: 999px;
   background: #fff;
-  box-shadow: 0 6px 18px rgb(0 47 59 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.4);
+  box-shadow: 0 6px 18px rgb(8 46 33 / 0.28), 0 0 0 1px rgb(255 255 255 / 0.4);
 }
 .brand-loader--sm {
   width: 1.75rem;
@@ -848,8 +853,8 @@ html[data-splash-seen='1'] .splash-screen {
 /* Atlantic Signal ticketing surface: modern pass cards, warm paper panels, teal framing, and signal-yellow orientation cues. Visual-only refinement; business logic remains in the existing ticket components. */
 .ticket-page-shell,
 .ticket-page-state {
-  --ticket-ink: #002f3b;
-  --ticket-deep: #001f26;
+  --ticket-ink: #082e21;
+  --ticket-deep: #041f17;
   --ticket-paper: #f7f8f4;
   --ticket-warm: #eef0e8;
   --ticket-sea: #e5f1f1;
@@ -1011,7 +1016,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-order-card {
   background: var(--ticket-paper);
   border: 1px solid var(--ticket-line);
-  box-shadow: 0 12px 38px rgb(0 47 59 / .07);
+  box-shadow: 0 12px 38px rgb(8 46 33 / .07);
   overflow: hidden;
   position: relative;
 }
@@ -1056,7 +1061,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-order-total strong { color: var(--ticket-ink); font-size: 1rem; margin-top: .35rem; }
 .dark .ticket-order-total strong { color: #f4f5ed; }
 .issued-pass-grid { border-top: 1px dashed var(--ticket-line); display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); padding: 1.4rem; }
-.issued-pass-card { background: var(--ticket-sea); border: 1px solid rgb(0 47 59 / .08); padding: 1rem; }
+.issued-pass-card { background: var(--ticket-sea); border: 1px solid rgb(8 46 33 / .08); padding: 1rem; }
 .issued-pass-head { align-items: center; color: var(--ticket-ink); display: flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .72rem; font-weight: 700; justify-content: space-between; }
 .issued-pass-head > span:first-child { align-items: center; display: inline-flex; gap: .4rem; }
 .issued-pass-type { color: var(--ticket-ink); font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: .6rem 0 0; }
@@ -1138,7 +1143,7 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-loading-mark { animation: ticket-pulse 1.2s ease-in-out infinite; }
 @keyframes ticket-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(255 198 61 / .25); } 50% { box-shadow: 0 0 0 .75rem rgb(255 198 61 / 0); } }
 
-.ticket-purchase-shell { background: var(--ticket-paper); border: 1px solid var(--ticket-line); box-shadow: 0 16px 38px rgb(0 47 59 / .08); margin-top: 1.5rem; overflow: hidden; position: relative; }
+.ticket-purchase-shell { background: var(--ticket-paper); border: 1px solid var(--ticket-line); box-shadow: 0 16px 38px rgb(8 46 33 / .08); margin-top: 1.5rem; overflow: hidden; position: relative; }
 .ticket-purchase-shell::before, .ticket-purchase-shell::after { background: white; border: 1px solid var(--ticket-line); border-radius: 50%; content: ""; height: 1.5rem; position: absolute; top: 12rem; width: 1.5rem; z-index: 2; }
 .ticket-purchase-shell::before { left: -.8rem; }
 .ticket-purchase-shell::after { right: -.8rem; }
@@ -1174,9 +1179,9 @@ html[data-splash-seen='1'] .splash-screen {
 .ticket-form-error { color: #b42318; }
 .ticket-form-success { color: #28735a; }
 .ticket-form-success a { font-weight: 700; text-decoration: underline; }
-.ticket-submit-button { align-items: center; appearance: none; background: #002f3b; border: 1px solid #ffc63d; border-radius: .9rem; box-shadow: 0 8px 22px rgb(0 47 59 / .16); color: #fff; display: inline-flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .78rem; font-weight: 800; gap: .45rem; justify-content: center; margin-top: 1.2rem; min-height: 3.55rem; padding: 0 1.1rem; text-align: center; transition: background 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease; }
-.ticket-submit-button:hover:not(:disabled) { background: #122b72; box-shadow: 0 11px 26px rgb(0 47 59 / .22); transform: translateY(-1px); }
-.ticket-submit-button:disabled { background: #002f3b; color: #fff; cursor: not-allowed; opacity: .95; }
+.ticket-submit-button { align-items: center; appearance: none; background: #082e21; border: 1px solid #ffc63d; border-radius: .9rem; box-shadow: 0 8px 22px rgb(8 46 33 / .16); color: #fff; display: inline-flex; font-family: var(--font-display), ui-sans-serif, sans-serif; font-size: .78rem; font-weight: 800; gap: .45rem; justify-content: center; margin-top: 1.2rem; min-height: 3.55rem; padding: 0 1.1rem; text-align: center; transition: background 160ms ease, box-shadow 160ms ease, opacity 160ms ease, transform 160ms ease; }
+.ticket-submit-button:hover:not(:disabled) { background: #0d3d2b; box-shadow: 0 11px 26px rgb(8 46 33 / .22); transform: translateY(-1px); }
+.ticket-submit-button:disabled { background: #082e21; color: #fff; cursor: not-allowed; opacity: .95; }
 .ticket-login-prompt { align-items: center; border-top: 1px dashed var(--ticket-line); display: flex; gap: 1rem; justify-content: space-between; padding: 1.35rem 1.4rem; }
 .ticket-login-prompt p { color: var(--ticket-slate); font-size: .8rem; margin: 0; }
 .ticket-action-link { color: var(--ticket-ink); font-size: .74rem; white-space: nowrap; }
@@ -1206,7 +1211,7 @@ html[data-splash-seen='1'] .splash-screen {
   .ticket-purchase-shell { overflow: visible; }
   .ticket-purchase-form { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
   .ticket-submit-button {
-    box-shadow: 0 6px 16px rgb(0 47 59 / .16);
+    box-shadow: 0 6px 16px rgb(8 46 33 / .16);
     justify-content: center;
     margin-top: 1.15rem;
     width: 100%;

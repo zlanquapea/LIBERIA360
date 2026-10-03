@@ -17,6 +17,7 @@ import { HttpError } from "@/lib/http";
 import { formatBudgetBand, formatTripDateRange } from "@/lib/format";
 import { DestinationAutocomplete } from "./DestinationAutocomplete";
 import { BrandLoader } from "./BrandLoader";
+import { recordTripCreated } from "@/lib/analytics-api";
 import type {
   BudgetBand,
   Place,
@@ -120,7 +121,10 @@ export function TripPlannerForm() {
     setResuming(true);
     const { destination: _draftDestination, ...input } = draft;
     generateTrip(token, input)
-      .then((itinerary) => router.push(`/trips/${itinerary.id}`))
+      .then((itinerary) => {
+        recordTripCreated();
+        router.push(`/trips/${itinerary.id}`);
+      })
       .catch((err) => {
         setResuming(false);
         setError(err instanceof HttpError ? err.message : t("savingTripError"));
@@ -192,6 +196,7 @@ export function TripPlannerForm() {
     try {
       if (user && token) {
         const itinerary = await generateTrip(token, input);
+        recordTripCreated();
         router.push(`/trips/${itinerary.id}`);
         return;
       }

@@ -88,7 +88,7 @@ function Field({
   type?: string;
 }) {
   const className =
-    "w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100";
+    "w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100";
   return (
     <label className="block text-sm font-semibold text-slate-700">
       {label}
@@ -497,10 +497,10 @@ export function GuideProfileTools({
       )}
 
       {isOwner ? (
-        <section className="rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-white p-5 shadow-sm">
+        <section className="rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-teal-700">
+              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-700">
                 Guide studio
               </p>
               <h2 className="mt-1 text-2xl font-extrabold text-slate-950">
@@ -511,20 +511,20 @@ export function GuideProfileTools({
                 book.
               </p>
             </div>
-            <PencilSquareIcon className="h-7 w-7 shrink-0 text-teal-700" />
+            <PencilSquareIcon className="h-7 w-7 shrink-0 text-brand-700" />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setEditingProfile((value) => !value)}
-              className="rounded-full bg-teal-700 px-4 py-2 text-sm font-bold text-white hover:bg-teal-800"
+              className="rounded-full bg-brand-700 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800"
             >
               Edit profile
             </button>
             <button
               type="button"
               onClick={() => setShowExperienceForm((value) => !value)}
-              className="inline-flex items-center gap-1 rounded-full border border-teal-700 px-4 py-2 text-sm font-bold text-teal-800"
+              className="inline-flex items-center gap-1 rounded-full border border-brand-700 px-4 py-2 text-sm font-bold text-brand-800"
             >
               <PlusIcon className="h-4 w-4" /> Add experience
             </button>
@@ -532,7 +532,7 @@ export function GuideProfileTools({
           {editingProfile && (
             <form
               onSubmit={saveProfile}
-              className="mt-5 grid gap-3 border-t border-teal-100 pt-5 sm:grid-cols-2"
+              className="mt-5 grid gap-3 border-t border-brand-100 pt-5 sm:grid-cols-2"
             >
               <label className="text-sm font-semibold text-slate-700">
                 Guide type
@@ -593,7 +593,7 @@ export function GuideProfileTools({
               </div>
               <button
                 disabled={saving}
-                className="rounded-full bg-teal-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-60 sm:col-span-2"
+                className="rounded-full bg-brand-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-60 sm:col-span-2"
               >
                 {saving ? "Saving…" : "Save profile details"}
               </button>
@@ -602,7 +602,7 @@ export function GuideProfileTools({
           {showExperienceForm && (
             <form
               onSubmit={publishExperience}
-              className="mt-5 grid gap-3 border-t border-teal-100 pt-5 sm:grid-cols-2"
+              className="mt-5 grid gap-3 border-t border-brand-100 pt-5 sm:grid-cols-2"
             >
               <div className="sm:col-span-2">
                 <Field
@@ -689,7 +689,7 @@ export function GuideProfileTools({
                   }
                 />
               </div>
-              <div className="sm:col-span-2 rounded-2xl border border-dashed border-teal-200 bg-white/70 p-4">
+              <div className="sm:col-span-2 rounded-2xl border border-dashed border-brand-200 bg-white/70 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-slate-800">
@@ -699,7 +699,7 @@ export function GuideProfileTools({
                       Add up to 6 photos. The first photo becomes the cover.
                     </p>
                   </div>
-                  <label className="cursor-pointer rounded-full bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800">
+                  <label className="cursor-pointer rounded-full bg-brand-700 px-3 py-2 text-xs font-bold text-white hover:bg-brand-800">
                     {uploadingExperienceImages ? "Uploading…" : "Upload photos"}
                     <input
                       type="file"
@@ -771,7 +771,7 @@ export function GuideProfileTools({
             </form>
           )}
           {myExperiences.length > 0 && (
-            <div className="mt-5 space-y-2 border-t border-teal-100 pt-5">
+            <div className="mt-5 space-y-2 border-t border-brand-100 pt-5">
               <p className="text-sm font-bold text-slate-800">
                 Your experiences
               </p>
@@ -806,21 +806,21 @@ export function GuideProfileTools({
           )}
         </section>
       ) : (
-        <section className="rounded-3xl bg-gradient-to-br from-teal-800 to-teal-950 p-5 text-white shadow-lg">
+        <section className="rounded-3xl bg-gradient-to-br from-brand-800 to-brand-950 p-5 text-white shadow-lg">
           <div className="flex items-start gap-3">
             <ChatBubbleLeftRightIcon className="h-7 w-7 shrink-0 text-amber-300" />
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-teal-100">
+              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-100">
                 Connect directly
               </p>
               <h2 className="mt-1 text-2xl font-extrabold">
                 Ask {guide.slug.replaceAll("-", " ")} a question
               </h2>
-              <p className="mt-1 text-sm text-teal-100">
+              <p className="mt-1 text-sm text-brand-100">
                 Plan with a local before you book an experience.
               </p>
               {token && (
-                <p className="mt-2 text-xs font-bold text-teal-200">
+                <p className="mt-2 text-xs font-bold text-brand-200">
                   {chatStatus === "connected"
                     ? "Live chat connected"
                     : chatStatus === "reconnecting"
@@ -860,12 +860,12 @@ export function GuideProfileTools({
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-teal-700">
+              <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-700">
                 Inbox
               </p>
               <h2 className="text-xl font-extrabold">Traveler conversations</h2>
             </div>
-            <ChatBubbleLeftRightIcon className="h-6 w-6 text-teal-700" />
+            <ChatBubbleLeftRightIcon className="h-6 w-6 text-brand-700" />
           </div>
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {visitors.map((item) => (
@@ -873,7 +873,7 @@ export function GuideProfileTools({
                 key={item.visitorId}
                 type="button"
                 onClick={() => setActiveVisitorId(item.visitorId)}
-                className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold ${activeVisitorId === item.visitorId ? "bg-teal-700 text-white" : "bg-slate-100 text-slate-700"}`}
+                className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold ${activeVisitorId === item.visitorId ? "bg-brand-700 text-white" : "bg-slate-100 text-slate-700"}`}
               >
                 {item.sender?.name ?? "Traveler"}
               </button>
@@ -883,7 +883,7 @@ export function GuideProfileTools({
             {conversation.map((item) => (
               <div
                 key={item.id}
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${item.senderId === user?.id ? "ml-auto bg-teal-700 text-white" : "bg-white text-slate-800 shadow-sm"}`}
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${item.senderId === user?.id ? "ml-auto bg-brand-700 text-white" : "bg-white text-slate-800 shadow-sm"}`}
               >
                 {item.body}
               </div>
@@ -895,11 +895,11 @@ export function GuideProfileTools({
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder="Reply to traveler…"
-                className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-teal-600"
+                className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-brand-600"
               />
               <button
                 disabled={saving || !message.trim()}
-                className="rounded-full bg-teal-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
               >
                 Reply
               </button>
@@ -911,7 +911,7 @@ export function GuideProfileTools({
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-teal-700">
+            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-700">
               Community voice
             </p>
             <h2 className="text-2xl font-extrabold">Traveler reviews</h2>
@@ -971,18 +971,18 @@ export function GuideProfileTools({
                 rows={3}
                 maxLength={3000}
                 placeholder="What should other travelers know?"
-                className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-teal-600"
+                className="w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-brand-600"
               />
               <button
                 disabled={saving}
-                className="rounded-full bg-teal-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                className="rounded-full bg-brand-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
               >
                 Post review
               </button>
             </form>
           ) : (
             <p className="mt-5 text-sm text-slate-500">
-              <Link href="/login" className="font-bold text-teal-700">
+              <Link href="/login" className="font-bold text-brand-700">
                 Log in
               </Link>{" "}
               to write a review.

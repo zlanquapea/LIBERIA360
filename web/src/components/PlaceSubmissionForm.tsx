@@ -9,7 +9,8 @@ import { formatDailyHours, parseDailyHours } from '@/lib/opening-hours';
 import { PhotoManager } from './PhotoManager';
 import { DailyHoursPicker } from './DailyHoursPicker';
 import { PlaceLocationPickerLoader } from '@/app/(no-locale)/admin/content/PlaceLocationPickerLoader';
-import type { Category, County, Place, PlaceType } from '@/lib/types';
+import { AMENITY_LABELS } from '@/lib/practical-info';
+import { PLACE_AMENITIES, type Category, type County, type Place, type PlaceAmenity, type PlaceType } from '@/lib/types';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
 
@@ -57,6 +58,11 @@ export function PlaceSubmissionForm({
   const [contactPhone, setContactPhone] = useState(place?.contactPhone ?? '');
   const [whatsapp, setWhatsapp] = useState(place?.whatsapp ?? '');
   const [website, setWebsite] = useState(place?.website ?? '');
+  // Edit-only: what's documented about the visit itself. Saving these
+  // credits the owner as the source, as of today (PlacesService.updateMine).
+  const [amenities, setAmenities] = useState<PlaceAmenity[]>(place?.amenities ?? []);
+  const [accessibilityNotes, setAccessibilityNotes] = useState(place?.accessibilityNotes ?? '');
+  const [transportNotes, setTransportNotes] = useState(place?.transportNotes ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,7 +98,9 @@ export function PlaceSubmissionForm({
         whatsapp: whatsapp.trim() || undefined,
         website: website.trim() || undefined,
       };
-      const saved = place ? await updateMyPlace(token, place.id, input) : await submitPlace(token, input);
+      const saved = place
+        ? await updateMyPlace(token, place.id, { ...input, amenities, accessibilityNotes, transportNotes })
+        : await submitPlace(token, input);
       onSaved(saved);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Something went wrong. Please try again.');
@@ -205,6 +213,59 @@ export function PlaceSubmissionForm({
           <input type="url" placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} className={inputClass} />
         </label>
       </div>
+
+      {place && (
+        <fieldset className="flex flex-col gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
+          <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Visitor details</legend>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Only tick what&apos;s really there — visitors plan around this. It&apos;s shown as provided by you, dated today.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PLACE_AMENITIES.map((amenity) => {
+              const on = amenities.includes(amenity);
+              return (
+                <button
+                  key={amenity}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setAmenities((prev) => (on ? prev.filter((a) => a !== amenity) : [...prev, amenity]))
+                  }
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    on
+                      ? 'border-brand-600 bg-brand-700 text-white'
+                      : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {AMENITY_LABELS[amenity]}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Accessibility
+            <textarea
+              rows={2}
+              maxLength={1000}
+              value={accessibilityNotes}
+              onChange={(e) => setAccessibilityNotes(e.target.value)}
+              placeholder="e.g. Step-free entrance, accessible restroom"
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+            Getting here
+            <textarea
+              rows={2}
+              maxLength={1000}
+              value={transportNotes}
+              onChange={(e) => setTransportNotes(e.target.value)}
+              placeholder="e.g. Keke from Red Light to the junction, then 10 minutes on foot"
+              className={inputClass}
+            />
+          </label>
+        </fieldset>
+      )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         {place

@@ -3,11 +3,9 @@ import { ExploreMapLoader } from '@/components/ExploreMapLoader';
 
 export const metadata = { title: 'Explore — LIBERIA360' };
 
-// Explore (Map) screen — full-screen interactive map with search, dropdown
-// filters (Category/County/Open now/Price), and a results sheet
-// (Tech Spec §4.1, §3.1). The header/search/filter/results chrome all
-// lives inside ExploreMapLoader/ExploreMapClient — this page just fetches
-// the data once and hands the full viewport-height box to it.
+// Explore: map and list side by side (a sheet over the map on phones).
+// Filters are read from and written to the URL on the client (see
+// lib/explore-filters.ts); this page just fetches the catalog once.
 export default async function ExplorePage() {
   const [placesResult, categories, counties] = await Promise.all([
     getPlaces({ limit: 100 }),
@@ -16,7 +14,7 @@ export default async function ExplorePage() {
   ]);
 
   return (
-    <div className="h-[calc(100vh-7.5rem)] w-full">
+    <div className="h-[calc(100dvh-7.5rem)] w-full lg:h-[calc(100dvh-4.5rem)]">
       <ExploreMapLoader places={placesResult.data} categories={categories} counties={counties} />
     </div>
   );

@@ -24,6 +24,7 @@ import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from
 import { LoadingState } from '@/components/admin-ui';
 import { PlaceLocationPickerLoader } from './PlaceLocationPickerLoader';
 import { PlaceReviewPanel } from './PlaceReviewPanel';
+import { PracticalInfoEditor } from './PracticalInfoEditor';
 import { DataQualityPanel } from './DataQualityPanel';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
@@ -283,6 +284,14 @@ function PlaceDetail({
           onChanged();
         }}
         onDeleted={onDeleted}
+      />
+      <PracticalInfoEditor
+        token={token}
+        place={place}
+        onSaved={(updated) => {
+          setPlace(updated);
+          onChanged();
+        }}
       />
       <ActivitiesEditor token={token} place={place} isSuperAdmin={isSuperAdmin} onChanged={reload} />
       <BusinessEditor token={token} place={place} business={business} isSuperAdmin={isSuperAdmin} onChanged={reload} />

@@ -214,31 +214,31 @@ export default function BookingsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-28 pt-6 sm:px-6 sm:pt-10">
-      <header className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-teal-950 via-teal-900 to-teal-700 p-6 text-white sm:p-9">
+      <header className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 p-6 text-white sm:p-9">
         <div
           aria-hidden
           className="absolute -right-16 -top-24 h-64 w-64 rounded-full border-[35px] border-white/5"
         />
         <div className="relative flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-teal-200">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-brand-200">
               Your plans, in one place
             </p>
             <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
               Bookings
             </h1>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-teal-100">
+            <p className="mt-3 max-w-sm text-sm leading-6 text-brand-100">
               A little less planning. A lot more exploring.
             </p>
           </div>
           <CalendarDaysIcon
             aria-hidden
-            className="h-10 w-10 shrink-0 text-teal-200"
+            className="h-10 w-10 shrink-0 text-brand-200"
           />
         </div>
         <Link
           href="/explore"
-          className="relative mt-6 inline-flex min-h-11 items-center gap-3 rounded-full bg-white px-5 text-sm font-bold text-teal-950 transition hover:bg-teal-50"
+          className="relative mt-6 inline-flex min-h-11 items-center gap-3 rounded-full bg-white px-5 text-sm font-bold text-brand-950 transition hover:bg-brand-50"
         >
           Discover somewhere new{" "}
           <ArrowUpRightIcon aria-hidden className="h-4 w-4" />
@@ -265,7 +265,7 @@ export default function BookingsPage() {
                 setFilter("all");
                 setQuery("");
               }}
-              className={`min-h-12 flex-1 rounded-xl text-sm font-bold transition ${view === key ? "bg-white text-teal-900 shadow-sm dark:bg-slate-800 dark:text-teal-200" : "text-slate-500 dark:text-slate-400"}`}
+              className={`min-h-12 flex-1 rounded-xl text-sm font-bold transition ${view === key ? "bg-white text-brand-900 shadow-sm dark:bg-slate-800 dark:text-brand-200" : "text-slate-500 dark:text-slate-400"}`}
             >
               {label}
             </button>
@@ -283,7 +283,7 @@ export default function BookingsPage() {
             key={label}
             className="rounded-2xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
           >
-            <p className="text-2xl font-bold tracking-tight text-teal-900 dark:text-teal-200">
+            <p className="text-2xl font-bold tracking-tight text-brand-900 dark:text-brand-200">
               {error ? "—" : count}
             </p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -303,7 +303,7 @@ export default function BookingsPage() {
             placeholder="Search bookings"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="min-h-11 min-w-0 w-full bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+            className="min-h-11 min-w-0 w-full bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           />
         </div>
       </div>
@@ -318,7 +318,7 @@ export default function BookingsPage() {
               type="button"
               aria-pressed={filter === status}
               onClick={() => setFilter(status)}
-              className={`min-h-11 shrink-0 rounded-full px-5 text-sm font-semibold capitalize transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-500 ${filter === status ? "bg-teal-900 text-white dark:bg-teal-300 dark:text-teal-950" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-300"}`}
+              className={`min-h-11 shrink-0 rounded-full px-5 text-sm font-semibold capitalize transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${filter === status ? "bg-brand-900 text-white dark:bg-brand-300 dark:text-brand-950" : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-300"}`}
             >
               {status === "all" ? "All bookings" : status}
             </button>
@@ -343,7 +343,7 @@ export default function BookingsPage() {
         <section className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900">
           <TicketIcon
             aria-hidden
-            className="mx-auto mb-4 h-12 w-12 text-teal-600"
+            className="mx-auto mb-4 h-12 w-12 text-brand-600"
           />
           <h3 className="text-lg font-bold">
             {all.length
@@ -366,7 +366,7 @@ export default function BookingsPage() {
                 setQuery("");
                 setFilter("all");
               }}
-              className="mt-5 min-h-11 px-4 font-semibold text-teal-700 dark:text-teal-300"
+              className="mt-5 min-h-11 px-4 font-semibold text-brand-700 dark:text-brand-300"
             >
               Clear filters
             </button>
@@ -374,7 +374,7 @@ export default function BookingsPage() {
             view === "mine" && (
               <Link
                 href="/explore"
-                className="mt-5 inline-flex min-h-11 items-center rounded-full bg-teal-900 px-6 text-sm font-bold text-white"
+                className="mt-5 inline-flex min-h-11 items-center rounded-full bg-brand-900 px-6 text-sm font-bold text-white"
               >
                 Explore Liberia
               </Link>
@@ -406,10 +406,10 @@ export default function BookingsPage() {
                     },
                   })
                 }
-                className="group flex h-full w-full flex-col rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-teal-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-500 dark:border-slate-800 dark:bg-slate-900"
+                className="group flex h-full w-full flex-col rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-brand-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-slate-800 dark:bg-slate-900"
               >
                 <span className="mb-5 flex w-full items-center justify-between gap-2">
-                  <span className="rounded-xl bg-teal-50 p-3 text-teal-700 dark:bg-teal-950 dark:text-teal-200">
+                  <span className="rounded-xl bg-brand-50 p-3 text-brand-700 dark:bg-brand-950 dark:text-brand-200">
                     <CalendarDaysIcon aria-hidden className="h-6 w-6" />
                   </span>
                   <StatusBadge status={booking.status} />
@@ -440,7 +440,7 @@ export default function BookingsPage() {
                   </span>
                 )}
                 <span className="mt-auto w-full pt-5">
-                  <span className="flex items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-teal-800 dark:border-slate-800 dark:text-teal-200">
+                  <span className="flex items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-brand-800 dark:border-slate-800 dark:text-brand-200">
                     Details & messages{" "}
                     <ArrowUpRightIcon aria-hidden className="h-4 w-4" />
                   </span>
@@ -479,7 +479,7 @@ export default function BookingsPage() {
               <div className="mt-4"><BookingProgress status={booking.status} tracksCompletion /></div>
               <Link
                 href={`/experiences/${booking.experience.id}`}
-                className="mt-5 flex min-h-11 items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-teal-800 dark:border-slate-800 dark:text-teal-200"
+                className="mt-5 flex min-h-11 items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-brand-800 dark:border-slate-800 dark:text-brand-200"
               >
                 View experience{" "}
                 <ArrowUpRightIcon aria-hidden className="h-4 w-4" />

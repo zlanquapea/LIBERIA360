@@ -211,7 +211,7 @@ export default async function CreatorsPage({
 
         <section
           aria-labelledby="creators-hero-heading"
-          className="relative mt-4 h-[290px] overflow-hidden rounded-[20px] bg-brand-900 shadow-[0_12px_30px_rgba(0,47,59,0.18)]"
+          className="relative mt-4 h-[290px] overflow-hidden rounded-[20px] bg-brand-900 shadow-[0_12px_30px_rgba(8,46,33,0.18)]"
           style={{
             backgroundImage: "url('/creators/hero-background.jpg')",
             backgroundPosition: "center",
@@ -220,7 +220,7 @@ export default async function CreatorsPage({
         >
           <div
             aria-hidden
-            className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,47,59,0.98)_0%,rgba(0,47,59,0.82)_38%,rgba(0,47,59,0.2)_100%)]"
+            className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,46,33,0.98)_0%,rgba(8,46,33,0.82)_38%,rgba(8,46,33,0.2)_100%)]"
           />
           <div className="relative flex h-full flex-col justify-center px-5 pb-6 pt-5">
             <p className="text-[11px] font-extrabold uppercase tracking-[1.5px] text-brand-200">

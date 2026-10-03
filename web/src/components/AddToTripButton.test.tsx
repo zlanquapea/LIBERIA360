@@ -16,6 +16,9 @@ jest.mock("../lib/itinerary-api", () => ({
   getMyItineraries: (...args: unknown[]) => mockGetMyItineraries(...args),
   getSharedWithMe: (...args: unknown[]) => mockGetSharedWithMe(...args),
 }));
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/events/event-1",
+}));
 jest.mock("../lib/event-api", () => ({
   setEventRsvp: (...args: unknown[]) => mockSetEventRsvp(...args),
 }));
@@ -57,10 +60,10 @@ describe("AddToTripButton", () => {
     mockSetEventRsvp.mockResolvedValue({});
   });
 
-  it("shows a login link instead of a trip picker when signed out", () => {
+  it("shows a login link that returns to this page when signed out", () => {
     mockUseAuth.mockReturnValue({ token: null });
     render(<AddToTripButton contentType="event" itemId="event-1" itemName="Beach Cleanup" />);
-    expect(screen.getByRole("link", { name: /add to trip/i })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: /add to trip/i })).toHaveAttribute("href", "/login?next=%2Fevents%2Fevent-1");
   });
 
   it("lists the signed-in user's own and shared trips on open", async () => {

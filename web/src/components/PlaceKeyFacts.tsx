@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
@@ -23,6 +24,7 @@ import { ReportButton } from './ReportButton';
 import { StickyBookingBar } from './StickyBookingBar';
 import { VerificationBadge } from './VerificationBadge';
 import { VerificationTrustInfo } from './VerificationTrustInfo';
+import { PlaceProvenance } from './place/PlaceProvenance';
 import type { Business, Place } from '@/lib/types';
 
 // Place-profile actions and trust facts. This component deliberately keeps
@@ -30,6 +32,7 @@ import type { Business, Place } from '@/lib/types';
 // actions appear only when a verified contact exists, and booking is a
 // request-to-book flow for an approved/owner-visible business.
 export function PlaceKeyFacts({ place, business }: { place: Place; business: Business | null }) {
+  const t = useTranslations('placeDetail');
   const { user, token, ready } = useAuth();
   const [ownBusiness, setOwnBusiness] = useState<Business | null>(null);
 
@@ -83,7 +86,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           href={directionsLink(place.latitude, place.longitude)}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${actionClass} col-span-3 bg-teal-800 text-white hover:bg-teal-900`}
+          className={`${actionClass} col-span-3 bg-brand-800 text-white hover:bg-brand-900`}
         >
           <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
           Get directions
@@ -235,15 +238,11 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
 
       <VerificationTrustInfo status={verificationStatus} verifiedAt={verifiedAt} />
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-        <span>See something that needs correcting?</span>
-        {effectiveBusiness ? (
-          <ReportButton targetType="business" targetId={effectiveBusiness.id} label="Report an update" />
-        ) : (
-          <Link href="#claim" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">
-            Tell us about it
-          </Link>
-        )}
+      <PlaceProvenance place={place} verificationStatus={verificationStatus} />
+
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+        <span>{t('somethingWrong')}</span>
+        <ReportButton targetType="place" targetId={place.id} label={t('reportIncorrect')} />
       </div>
     </section>
     {effectiveBusiness && (

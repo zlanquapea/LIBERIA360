@@ -65,6 +65,10 @@ const REASON_LABELS: Record<string, string> = {
   spam: 'spam',
   inappropriate: 'inappropriate',
   fake: 'fake',
+  fraudulent: 'fraudulent',
+  misleading_offer: 'misleading offer',
+  copyright: 'copyright',
+  incorrect_info: 'incorrect details',
   other: 'other',
 };
 
@@ -949,14 +953,50 @@ function FlaggedContentRow({ flagged, onDone }: { flagged: FlaggedContent; onDon
         {flagged.event && (
           <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">{flagged.event.name}</p>
         )}
+        {(flagged.place || flagged.business) && (
+          <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-50">
+            {flagged.place?.name ?? flagged.business?.name}
+          </p>
+        )}
+        {flagged.place && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Check the reported details and correct them in Places. Last checked:{' '}
+            {flagged.place.practicalInfoCheckedAt
+              ? new Date(flagged.place.practicalInfoCheckedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : 'never recorded'}
+            .
+          </p>
+        )}
       </div>
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white"
-      >
-        Remove
-      </button>
+      {/* Reviews and events can be removed outright. A place or business
+          report is about its details, so the action is to go fix them,
+          never to delete the listing from here. */}
+      {flagged.targetType === 'review' || flagged.targetType === 'event' ? (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="shrink-0 rounded-full border border-flag-600 px-3 py-1.5 text-xs font-semibold text-flag-700 dark:text-flag-300 hover:bg-flag-600 hover:text-white"
+        >
+          Remove
+        </button>
+      ) : (
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {flagged.place && (
+            <Link
+              href={`/places/${flagged.place.slug}`}
+              className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-brand-500 dark:border-slate-600 dark:text-slate-200"
+            >
+              View page
+            </Link>
+          )}
+          <Link
+            href={`/admin/content?tab=${flagged.targetType === 'place' ? 'places' : 'businesses'}`}
+            className="rounded-full bg-brand-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-800"
+          >
+            Review details
+          </Link>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirming}

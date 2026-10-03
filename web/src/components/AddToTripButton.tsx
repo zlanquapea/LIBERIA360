@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useRef, useState } from 'react';
 import { BriefcaseIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
 import { addItineraryStop, getMyItineraries, getSharedWithMe } from '@/lib/itinerary-api';
 import { setEventRsvp } from '@/lib/event-api';
 import { HttpError } from '@/lib/http';
 import type { Itinerary } from '@/lib/types';
+import { recordAnalyticsEvent } from '@/lib/analytics-api';
 
 type AddToTripButtonProps = (
   | { contentType: 'event'; itemId: string; itemName: string }
@@ -33,9 +35,12 @@ const TRIGGER_CLASS_FULL =
 const TRIGGER_CLASS_COMPACT =
   'flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm hover:bg-white dark:bg-slate-900/90 dark:text-slate-200 dark:hover:bg-slate-900';
 
+const PANEL_WIDTH_PX = 288;
+
 export function AddToTripButton(props: AddToTripButtonProps) {
   const { contentType, itemId, itemName, compact = false } = props;
   const { token } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [trips, setTrips] = useState<Itinerary[] | null>(null);
@@ -44,12 +49,18 @@ export function AddToTripButton(props: AddToTripButtonProps) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addedTo, setAddedTo] = useState<Itinerary | null>(null);
+  // Opens toward whichever side has room, so the panel never hangs off
+  // the screen when the button sits near the left edge.
+  const [alignStart, setAlignStart] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   async function toggleOpen() {
     if (open) {
       setOpen(false);
       return;
     }
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    setAlignStart(rect ? rect.right < PANEL_WIDTH_PX + 16 : false);
     setOpen(true);
     setError(null);
     setAddedTo(null);
@@ -87,6 +98,7 @@ export function AddToTripButton(props: AddToTripButtonProps) {
             ? { carListingId: itemId, day }
             : { placeId: itemId, day };
       await addItineraryStop(token, selectedTrip.id, input);
+      if (contentType === 'place') recordAnalyticsEvent(itemId, 'add_to_trip');
       if (contentType === 'event') {
         // Best-effort — a planned event should also show up in the
         // traveler's own Interested/Going status. Never blocks the
@@ -109,7 +121,8 @@ export function AddToTripButton(props: AddToTripButtonProps) {
   if (!token) {
     return (
       <Link
-        href="/login"
+        // Back to this page after signing in, so the add can carry on.
+        href={`/login?next=${encodeURIComponent(pathname ?? '/')}`}
         aria-label={compact ? 'Add to trip' : undefined}
         title={compact ? 'Add to trip' : undefined}
         className={compact ? TRIGGER_CLASS_COMPACT : TRIGGER_CLASS_FULL}
@@ -121,7 +134,7 @@ export function AddToTripButton(props: AddToTripButtonProps) {
   }
 
   return (
-    <div className="relative">
+    <div ref={wrapperRef} className="relative">
       <button
         type="button"
         aria-expanded={open}
@@ -139,7 +152,7 @@ export function AddToTripButton(props: AddToTripButtonProps) {
         <div
           role="menu"
           aria-label="Add to trip"
-          className={`absolute right-0 z-[100] w-72 rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white ${compact ? 'top-11' : 'top-[3.25rem]'}`}
+          className={`absolute ${alignStart ? 'left-0' : 'right-0'} z-[100] w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white ${compact ? 'top-11' : 'top-[3.25rem]'}`}
         >
           {addedTo ? (
             <div className="flex flex-col items-center gap-2 py-3 text-center">

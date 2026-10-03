@@ -127,8 +127,8 @@ function drawCard(
   // own brand rather than a generic template.
   const bg = ctx.createLinearGradient(0, 0, w, h);
   bg.addColorStop(0, '#005063');
-  bg.addColorStop(0.55, '#003f4f');
-  bg.addColorStop(1, '#001f26');
+  bg.addColorStop(0.55, '#0d3d2b');
+  bg.addColorStop(1, '#041f17');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
