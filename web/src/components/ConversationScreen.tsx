@@ -1,4 +1,5 @@
 "use client";
+import { ConversationQuickReplies } from "./ConversationQuickReplies";
 import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -674,6 +675,7 @@ export function ConversationScreen({
               </button>
             </div>
           )}
+          {!draft && !sending && !recording && conversation && <ConversationQuickReplies contextType={conversation.contextType} onSelect={text => { handleDraftChange(text); draftRef.current?.focus(); }} />}
           <div className="relative flex items-end gap-2">
             <button
               type="button"
@@ -756,3 +758,4 @@ export function ConversationScreen({
     </main>
   );
 }
+
