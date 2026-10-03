@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Place } from "./entities/place.entity";
-import { PlaceReviewStatus } from "./entities/place.enums";
+import { PlaceReviewStatus, PracticalInfoSource } from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { QueryPlacesDto } from "./dto/query-places.dto";
@@ -20,6 +20,7 @@ import { PharmaciesService } from "../pharmacies/pharmacies.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 import { clearStaleRelation } from "../common/typeorm-relations";
+import { PRACTICAL_FIELDS, normalizePracticalNotes } from "./practical-info";
 
 const MODERATION_QUEUE_LINK = "/admin/content/moderation";
 
@@ -514,6 +515,10 @@ export class PlacesService {
       ownerUserId: userId,
       reviewStatus: PlaceReviewStatus.SUBMITTED_FOR_REVIEW,
       submittedAt: new Date(),
+      // A community submission: its practical details come from the
+      // submitter, as of now. An admin can re-attribute after checking.
+      practicalInfoSource: PracticalInfoSource.COMMUNITY,
+      practicalInfoCheckedAt: new Date(),
     });
     const saved = await this.placeRepo.save(place);
 
@@ -571,8 +576,15 @@ export class PlacesService {
     if (dto.countyId !== undefined) clearStaleRelation(place, "county");
 
     Object.assign(place, dto);
+    normalizePracticalNotes(place, dto);
     if (dto.openingHours !== undefined) {
       place.structuredHours = parseOpeningHoursText(dto.openingHours);
+    }
+    // The owner just restated the practical details, so they're now the
+    // source and they're current as of this edit.
+    if (PRACTICAL_FIELDS.some((field) => dto[field] !== undefined)) {
+      place.practicalInfoSource = PracticalInfoSource.BUSINESS_OWNER;
+      place.practicalInfoCheckedAt = new Date();
     }
     const isResubmission = place.reviewStatus === PlaceReviewStatus.REJECTED;
     if (isResubmission) {

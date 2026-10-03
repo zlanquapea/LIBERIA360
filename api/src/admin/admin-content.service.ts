@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Not, QueryFailedError, Repository } from "typeorm";
 import { Place } from "../places/entities/place.entity";
+import { normalizePracticalNotes } from "../places/practical-info";
 import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
@@ -257,7 +258,12 @@ export class AdminContentService {
       }
     }
 
-    this.placeRepo.merge(place, dto);
+    const { practicalInfoCheckedAt, ...rest } = dto;
+    this.placeRepo.merge(place, rest);
+    normalizePracticalNotes(place, dto);
+    if (practicalInfoCheckedAt !== undefined) {
+      place.practicalInfoCheckedAt = new Date(practicalInfoCheckedAt);
+    }
 
     // A place renamed to fix a data-entry mistake (e.g. "Kpatawee
     // Waterfall" corrected to "Nimba Ecolodge") kept the OLD slug unless

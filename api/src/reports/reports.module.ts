@@ -4,6 +4,7 @@ import { ContentReport } from "./entities/content-report.entity";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { Place } from "../places/entities/place.entity";
 import { ReportsService } from "./reports.service";
 import { ReportsController } from "./reports.controller";
 import { SettingsModule } from "../settings/settings.module";
@@ -14,7 +15,7 @@ import { UsersModule } from "../users/users.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ContentReport, Review, Event, Business]),
+    TypeOrmModule.forFeature([ContentReport, Review, Event, Business, Place]),
     SettingsModule,
     NotificationsModule,
     MailModule,

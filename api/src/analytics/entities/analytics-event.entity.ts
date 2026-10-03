@@ -21,7 +21,8 @@ import { AnalyticsEventType } from "./analytics-event.enums";
  * meant to be aggregate/anonymized, not per-visitor).
  *
  * Targets exactly one of a Place, a Creator, an Advertisement, or an
- * Event, never more than one — same XOR-at-the-service-layer convention as
+ * Event, never more than one (platform-wide SEARCH/TRIP_CREATE rows target
+ * none — see PLATFORM_EVENT_TYPES) — same XOR-at-the-service-layer convention as
  * Review (see its doc comment), and the same "NULL is distinct" reasoning
  * for why one nullable FK per target works. The B2B aggregate tourism
  * analytics queries (admin-analytics.service.ts) are place-specific and
@@ -69,6 +70,10 @@ export class AnalyticsEvent {
   @Index()
   @Column({ name: "event_type", type: "enum", enum: AnalyticsEventType })
   eventType: AnalyticsEventType;
+
+  // SEARCH events only: the trimmed, lowercased search text.
+  @Column({ type: "varchar", length: 100, nullable: true })
+  query: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

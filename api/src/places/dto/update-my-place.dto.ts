@@ -2,6 +2,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsIn,
   IsLatitude,
   IsLongitude,
   IsNumber,
@@ -12,7 +13,12 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
-import { PlaceType, RecommendedVisitLength } from "../entities/place.enums";
+import {
+  PLACE_AMENITIES,
+  PlaceType,
+  RecommendedVisitLength,
+  type PlaceAmenity,
+} from "../entities/place.enums";
 
 // A submitter editing their own place after the fact — same shape as
 // CreatePlaceSubmissionDto but every field optional (a partial edit, not a
@@ -64,4 +70,13 @@ export class UpdateMyPlaceDto {
   @IsOptional() @IsUrl() website?: string;
   @IsOptional() @IsString() @MaxLength(100) instagram?: string;
   @IsOptional() @IsString() @MaxLength(100) facebook?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(PLACE_AMENITIES.length)
+  @IsIn(PLACE_AMENITIES, { each: true })
+  amenities?: PlaceAmenity[];
+
+  @IsOptional() @IsString() @MaxLength(1000) accessibilityNotes?: string;
+  @IsOptional() @IsString() @MaxLength(1000) transportNotes?: string;
 }

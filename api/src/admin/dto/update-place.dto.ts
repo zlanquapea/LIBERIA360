@@ -2,7 +2,9 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEnum,
+  IsIn,
   IsLatitude,
   IsLongitude,
   IsNumber,
@@ -15,8 +17,11 @@ import {
   Min,
 } from "class-validator";
 import {
+  PLACE_AMENITIES,
   PlaceType,
+  PracticalInfoSource,
   RecommendedVisitLength,
+  type PlaceAmenity,
 } from "../../places/entities/place.enums";
 
 export class UpdatePlaceDto {
@@ -73,4 +78,20 @@ export class UpdatePlaceDto {
   @IsOptional() @IsString() @MaxLength(100) instagram?: string;
   @IsOptional() @IsString() @MaxLength(100) facebook?: string;
   @IsOptional() @IsBoolean() featured?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(PLACE_AMENITIES.length)
+  @IsIn(PLACE_AMENITIES, { each: true })
+  amenities?: PlaceAmenity[];
+
+  @IsOptional() @IsString() @MaxLength(1000) accessibilityNotes?: string;
+  @IsOptional() @IsString() @MaxLength(1000) transportNotes?: string;
+
+  // Admin-recorded provenance for the practical details. Owner edits set
+  // these automatically (see PlacesService.updateMine).
+  @IsOptional()
+  @IsEnum(PracticalInfoSource)
+  practicalInfoSource?: PracticalInfoSource;
+  @IsOptional() @IsDateString() practicalInfoCheckedAt?: string;
 }

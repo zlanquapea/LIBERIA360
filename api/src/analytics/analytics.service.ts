@@ -7,7 +7,10 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AnalyticsEvent } from "./entities/analytics-event.entity";
-import { AnalyticsEventType } from "./entities/analytics-event.enums";
+import {
+  AnalyticsEventType,
+  PLATFORM_EVENT_TYPES,
+} from "./entities/analytics-event.enums";
 import { Place } from "../places/entities/place.entity";
 import { Business } from "../businesses/entities/business.entity";
 import { Creator } from "../creators/entities/creator.entity";
@@ -31,6 +34,12 @@ export interface BusinessAnalytics {
 
 function emptyTotals(): AnalyticsTotals {
   return { view: 0, save: 0, contact_click: 0, booking_request: 0 };
+}
+
+/** The owner dashboards report these four; product-usage types like
+ * ADD_TO_TRIP stay out of their totals. */
+function isTotalsKey(type: string): type is keyof AnalyticsTotals {
+  return type in emptyTotals();
 }
 
 @Injectable()
@@ -57,6 +66,26 @@ export class AnalyticsService {
       dto.advertisementId,
       dto.eventId,
     ].filter((id) => id !== undefined).length;
+
+    if (PLATFORM_EVENT_TYPES.includes(dto.eventType)) {
+      if (targetCount !== 0) {
+        throw new BadRequestException(
+          `${dto.eventType} events don't take a placeId, creatorId, advertisementId, or eventId`,
+        );
+      }
+      const query =
+        dto.eventType === AnalyticsEventType.SEARCH
+          ? dto.query?.trim().toLowerCase().slice(0, 100) || null
+          : null;
+      if (dto.eventType === AnalyticsEventType.SEARCH && !query) {
+        throw new BadRequestException("search events need a query");
+      }
+      await this.eventRepo.save(
+        this.eventRepo.create({ eventType: dto.eventType, query }),
+      );
+      return;
+    }
+
     if (targetCount !== 1) {
       throw new BadRequestException(
         "Provide exactly one of placeId, creatorId, advertisementId, or eventId",
@@ -231,7 +260,9 @@ export class AnalyticsService {
 
     const totals = emptyTotals();
     for (const row of totalsRaw) {
-      totals[row.eventType] = parseInt(row.count, 10);
+      if (isTotalsKey(row.eventType)) {
+        totals[row.eventType] = parseInt(row.count, 10);
+      }
     }
 
     const since = new Date();
@@ -255,6 +286,7 @@ export class AnalyticsService {
 
     const byDayMap = new Map<string, AnalyticsTotals & { date: string }>();
     for (const row of byDayRaw) {
+      if (!isTotalsKey(row.eventType)) continue;
       const dateKey = new Date(row.date).toISOString().slice(0, 10);
       if (!byDayMap.has(dateKey)) {
         byDayMap.set(dateKey, { date: dateKey, ...emptyTotals() });

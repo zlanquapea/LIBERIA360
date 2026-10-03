@@ -2,6 +2,9 @@ export enum ReportTargetType {
   REVIEW = "review",
   EVENT = "event",
   BUSINESS = "business",
+  // "Something on this place page is wrong" — hours, prices, contacts,
+  // location. Lands in the same moderation queue as other reports.
+  PLACE = "place",
 }
 
 export enum ReportReason {
@@ -15,5 +18,6 @@ export enum ReportReason {
   FRAUDULENT = "fraudulent",
   MISLEADING_OFFER = "misleading_offer",
   COPYRIGHT = "copyright",
+  INCORRECT_INFO = "incorrect_info",
   OTHER = "other",
 }

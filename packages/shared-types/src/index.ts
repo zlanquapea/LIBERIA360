@@ -84,6 +84,29 @@ export interface OpeningPeriod {
 }
 
 // api/src/places/entities/place.entity.ts
+// api/src/places/entities/place.enums.ts
+export type PracticalInfoSource =
+  "liberia360_team" | "business_owner" | "community" | "official_source";
+
+export const PLACE_AMENITIES = [
+  "parking",
+  "restrooms",
+  "drinking_water",
+  "food_on_site",
+  "wifi",
+  "power_backup",
+  "card_payments",
+  "mobile_money",
+  "guided_tours",
+  "lifeguard",
+  "changing_rooms",
+  "shade_seating",
+  "family_friendly",
+  "pet_friendly",
+] as const;
+
+export type PlaceAmenity = (typeof PLACE_AMENITIES)[number];
+
 export interface Place {
   id: string;
   name: string;
@@ -110,6 +133,14 @@ export interface Place {
   website: string | null;
   instagram: string | null;
   facebook: string | null;
+  // Documented practical details — each shown only when set.
+  amenities: PlaceAmenity[];
+  accessibilityNotes: string | null;
+  transportNotes: string | null;
+  // Who supplied the practical details and when they were last confirmed.
+  // Null on older places: unknown.
+  practicalInfoSource: PracticalInfoSource | null;
+  practicalInfoCheckedAt: string | null;
   rating: number;
   reviewCount: number;
   verificationStatus: VerificationStatus;
@@ -453,7 +484,13 @@ export interface PaginatedCreatorPosts {
 
 // api/src/analytics/entities/analytics-event.enums.ts
 export type AnalyticsEventType =
-  "view" | "save" | "contact_click" | "booking_request";
+  | "view"
+  | "save"
+  | "contact_click"
+  | "booking_request"
+  | "add_to_trip"
+  | "search"
+  | "trip_create";
 
 // api/src/analytics/analytics.service.ts's AnalyticsTotals/BusinessAnalytics.
 export interface AnalyticsTotals {
@@ -1156,7 +1193,15 @@ export interface CreatePlaceInput {
   featured?: boolean;
 }
 
-export type UpdatePlaceInput = Partial<CreatePlaceInput>;
+export type UpdatePlaceInput = Partial<CreatePlaceInput> & {
+  amenities?: PlaceAmenity[];
+  // Send "" to clear.
+  accessibilityNotes?: string;
+  transportNotes?: string;
+  // Admin-only provenance; owner edits set these automatically.
+  practicalInfoSource?: PracticalInfoSource;
+  practicalInfoCheckedAt?: string;
+};
 
 export interface CreateCategoryInput {
   name: string;
@@ -1246,7 +1291,7 @@ export interface PossiblyClosedPlace {
 }
 
 // api/src/reports/entities/content-report.enums.ts
-export type ReportTargetType = "review" | "event" | "business";
+export type ReportTargetType = "review" | "event" | "business" | "place";
 export type ReportReason =
   | "spam"
   | "inappropriate"
@@ -1254,6 +1299,7 @@ export type ReportReason =
   | "fraudulent"
   | "misleading_offer"
   | "copyright"
+  | "incorrect_info"
   | "other";
 
 export interface CreateContentReportInput {
@@ -1274,6 +1320,7 @@ export interface FlaggedContent {
   review: Review | null;
   event: Event | null;
   business: Business | null;
+  place: Place | null;
 }
 
 // api/src/business-content/entities/business-content.enums.ts
@@ -2351,4 +2398,3 @@ export interface PublicExplorerProfile {
   profileImage: string | null;
   progress: ExplorerProgress;
 }
-
