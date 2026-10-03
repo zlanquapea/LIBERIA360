@@ -6,6 +6,7 @@ import {
   PhotoIcon,
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
+import { parsePostListing } from "@/lib/post-listing";
 import { HttpError } from "@/lib/http";
 import { createCreatorPost, updateCreatorPost } from "@/lib/creator-feed-api";
 import type { CreatorPost, CreatorPostMediaType } from "@/lib/types";
@@ -26,14 +27,26 @@ export function CreatorPostComposer({
   onPublished?: () => void;
 }) {
   const isEditing = Boolean(initialPost);
-  const [mediaType, setMediaType] = useState<CreatorPostMediaType>(initialPost?.mediaType ?? "text");
-  const [imageUrl, setImageUrl] = useState<string | null>(initialPost?.mediaType === "image" ? initialPost.mediaUrl : null);
-  const [videoSource, setVideoSource] = useState<VideoSource>(initialPost?.mediaType === "video" ? "link" : "upload");
+  const [mediaType, setMediaType] = useState<CreatorPostMediaType>(
+    initialPost?.mediaType ?? "text",
+  );
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialPost?.mediaType === "image" ? initialPost.mediaUrl : null,
+  );
+  const [videoSource, setVideoSource] = useState<VideoSource>(
+    initialPost?.mediaType === "video" ? "link" : "upload",
+  );
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [videoInputKey, setVideoInputKey] = useState(0);
-  const [videoUrl, setVideoUrl] = useState(initialPost?.mediaType === "video" ? initialPost.mediaUrl : "");
+  const [videoUrl, setVideoUrl] = useState(
+    initialPost?.mediaType === "video" ? initialPost.mediaUrl : "",
+  );
   const [caption, setCaption] = useState(initialPost?.caption ?? "");
+  const [relatedUrl, setRelatedUrl] = useState(initialPost?.relatedPath ?? "");
+  const [relatedLabel, setRelatedLabel] = useState(
+    initialPost?.relatedLabel ?? "",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +107,13 @@ export function CreatorPostComposer({
       return;
     }
 
+    const listing = relatedUrl.trim() ? parsePostListing(relatedUrl) : null;
+    if (relatedUrl.trim() && !listing) {
+      setError(
+        "Use a Liberia360 place, business, guide, or experience page link.",
+      );
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setSuccess(false);
@@ -121,6 +141,8 @@ export function CreatorPostComposer({
         mediaUrl,
         thumbnailUrl: mediaType === "video" ? thumbnailUrl : null,
         caption: trimmedCaption || undefined,
+        relatedPath: listing?.path ?? "",
+        relatedLabel: relatedLabel.trim(),
       };
       if (initialPost) {
         await updateCreatorPost(token, initialPost.id, input);
@@ -131,6 +153,8 @@ export function CreatorPostComposer({
       clearVideoFile();
       setVideoUrl("");
       setCaption("");
+      setRelatedUrl("");
+      setRelatedLabel("");
       setSuccess(true);
       onPublished?.();
     } catch (err) {
@@ -151,9 +175,19 @@ export function CreatorPostComposer({
     hint: string;
     Icon: typeof DocumentTextIcon;
   }> = [
-    { type: "text", label: "Text", hint: "Share an update", Icon: DocumentTextIcon },
+    {
+      type: "text",
+      label: "Text",
+      hint: "Share an update",
+      Icon: DocumentTextIcon,
+    },
     { type: "image", label: "Photo", hint: "Add a photo", Icon: PhotoIcon },
-    { type: "video", label: "Video", hint: "Share a video", Icon: VideoCameraIcon },
+    {
+      type: "video",
+      label: "Video",
+      hint: "Share a video",
+      Icon: VideoCameraIcon,
+    },
   ];
 
   return (
@@ -201,7 +235,9 @@ export function CreatorPostComposer({
             >
               <Icon aria-hidden className="h-6 w-6" />
               <span className="text-sm font-bold">{label}</span>
-              <span className="text-[11px] font-normal leading-4 opacity-75">{hint}</span>
+              <span className="text-[11px] font-normal leading-4 opacity-75">
+                {hint}
+              </span>
             </button>
           ))}
         </div>
@@ -352,6 +388,38 @@ export function CreatorPostComposer({
           </label>
         )}
 
+        <fieldset className="space-y-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+          <legend className="px-2 text-sm font-semibold">
+            Tag a place or experience
+          </legend>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Help people visit what you’re sharing. Attach a Liberia360 place,
+            business, guide, or experience.
+          </p>
+          <label className="block text-sm font-medium">
+            Listing link (optional)
+            <input
+              value={relatedUrl}
+              onChange={(e) => setRelatedUrl(e.target.value)}
+              maxLength={500}
+              placeholder="https://liberia360.net/places/…"
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700"
+            />
+          </label>
+          {relatedUrl && (
+            <label className="block text-sm font-medium">
+              Display name
+              <input
+                value={relatedLabel}
+                onChange={(e) => setRelatedLabel(e.target.value)}
+                maxLength={100}
+                placeholder="Name of the place or experience"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700"
+              />
+            </label>
+          )}
+        </fieldset>
+
         {error && (
           <p
             role="alert"
@@ -365,7 +433,9 @@ export function CreatorPostComposer({
             role="status"
             className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
           >
-            {isEditing ? "Post changes saved." : "Post published to the creator feed."}
+            {isEditing
+              ? "Post changes saved."
+              : "Post published to the creator feed."}
           </p>
         )}
 

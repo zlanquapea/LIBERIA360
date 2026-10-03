@@ -41,6 +41,22 @@ export class CreatorPost {
   @Column({ type: "text", nullable: true })
   caption: string | null;
 
+  @Column({
+    name: "related_path",
+    type: "varchar",
+    length: 240,
+    nullable: true,
+  })
+  relatedPath: string | null;
+
+  @Column({
+    name: "related_label",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
+  relatedLabel: string | null;
+
   @Index()
   @Column({
     type: "enum",

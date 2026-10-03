@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getGuide, getExperiences } from "@/lib/api";
 import { ChevronRightIcon, MapPinIcon } from "@heroicons/react/24/solid";
+import { GuideDecisionCard } from "@/components/GuideDecisionCard";
 import { GuideProfileHero } from "@/components/GuideProfileHero";
 import { GuideProfileTools } from "@/components/GuideProfileTools";
 
@@ -50,6 +51,7 @@ export default async function GuidePage({
           experiences[0]?.imageUrls?.[0] ?? experiences[0]?.coverImageUrl
         }
       />
+      <GuideDecisionCard guide={guide} experiences={experiences} />
       <nav
         aria-label="Profile sections"
         className="mt-5 flex gap-6 border-b border-slate-200 py-3 text-sm font-semibold dark:border-slate-700"
@@ -133,3 +135,4 @@ export default async function GuidePage({
     </main>
   );
 }
+

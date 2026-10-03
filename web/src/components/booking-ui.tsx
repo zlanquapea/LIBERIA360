@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingProgress } from "./BookingProgress";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -225,6 +226,9 @@ export function BookingDetailModal({
             )}
           </div>
 
+          <BookingProgress status={booking.status} />
+          <p className="text-sm text-slate-500 dark:text-slate-400">Cancellation terms vary by provider. Check the listing or confirm the terms in Messages before cancelling; cancellation does not automatically guarantee a refund.</p>
+
           {canRespond && onResponded && (
             <OwnerResponseForm bookingId={booking.id} onDone={onResponded} />
           )}
@@ -392,3 +396,4 @@ export function OwnerResponseForm({
     </div>
   );
 }
+

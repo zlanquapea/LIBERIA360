@@ -419,6 +419,8 @@ export interface CreatorPost {
   mediaUrl: string;
   thumbnailUrl?: string | null;
   caption: string | null;
+  relatedPath?: string | null;
+  relatedLabel?: string | null;
   status: CreatorPostStatus;
   likeCount: number;
   commentCount: number;
@@ -2349,3 +2351,4 @@ export interface PublicExplorerProfile {
   profileImage: string | null;
   progress: ExplorerProgress;
 }
+

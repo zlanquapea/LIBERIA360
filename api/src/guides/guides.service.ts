@@ -210,6 +210,7 @@ export class GuidesService {
     return reviews.map((review) => ({
       id: review.id,
       rating: review.rating,
+      verifiedBooking: Boolean(review.bookingId),
       comment: review.comment,
       createdAt: review.createdAt,
       reviewer: review.traveler
@@ -250,6 +251,7 @@ export class GuidesService {
     return {
       id: review.id,
       rating: review.rating,
+      verifiedBooking: Boolean(review.bookingId),
       comment: review.comment,
       createdAt: review.createdAt,
       reviewer: review.traveler
@@ -749,3 +751,4 @@ function isUuid(value: string) {
     value,
   );
 }
+

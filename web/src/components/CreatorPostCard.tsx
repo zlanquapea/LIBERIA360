@@ -31,6 +31,7 @@ import {
 } from "@/lib/creator-feed-api";
 import type { CreatorPost, CreatorPostComment } from "@/lib/types";
 import { VerificationBadge } from "./VerificationBadge";
+import { PostListingCard } from "./PostListingCard";
 import { CreatorPostMedia } from "./CreatorPostMedia";
 import { ShareMenu } from "./ShareMenu";
 import { CreatorFollowButton } from "./CreatorFollowButton";
@@ -643,6 +644,10 @@ export function CreatorPostCard({
           <div className="px-4 pb-3 pt-3 sm:px-5">
             <PostCaption text={post.caption} />
           </div>
+        )}
+
+        {post.relatedPath && (
+          <PostListingCard path={post.relatedPath} label={post.relatedLabel} />
         )}
 
         <CreatorPostMedia

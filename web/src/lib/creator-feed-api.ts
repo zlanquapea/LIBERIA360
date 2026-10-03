@@ -16,6 +16,8 @@ export interface CreatorPostInput {
   mediaUrl: string;
   thumbnailUrl?: string | null;
   caption?: string;
+  relatedPath?: string;
+  relatedLabel?: string;
 }
 
 export function getCreatorFeed(
@@ -189,6 +191,8 @@ export interface CreatorStoryInput {
   mediaType: CreatorStoryMediaType;
   mediaUrl: string;
   caption?: string;
+  relatedPath?: string;
+  relatedLabel?: string;
   visibility?: CreatorStoryVisibility;
   placeId?: string;
   eventId?: string;
@@ -271,3 +275,4 @@ export function getCreatorStoryEligibility(token: string): Promise<{ eligible: b
     headers: authHeader(token),
   });
 }
+

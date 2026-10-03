@@ -12,6 +12,7 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/solid";
 import { getCreatorFeed, getGuides } from "@/lib/api";
+import { CreatorFeedTabs } from "@/components/CreatorFeedTabs";
 import { CreatorFeed } from "@/components/CreatorFeed";
 
 export const metadata = { title: "Creators — LIBERIA360" };
@@ -176,7 +177,9 @@ export default async function CreatorsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const isFollowing = first(params.view) === "following";
+  const view = first(params.view);
+  const mode = view === "following" || view === "latest" ? view : "discover";
+  const isFollowing = mode === "following";
   const cookieHeader = (await cookies()).toString();
   const [feed, guides] = await Promise.all([
     getCreatorFeed({ page: 1, limit: 20 }, cookieHeader),
@@ -239,25 +242,7 @@ export default async function CreatorsPage({
           </div>
         </section>
 
-        <nav
-          aria-label="Creator sections"
-          className="mt-4 grid h-14 grid-cols-2 rounded-full bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:bg-slate-900"
-        >
-          <Link
-            href="/creators"
-            aria-current={!isFollowing ? "page" : undefined}
-            className={`inline-flex h-12 items-center justify-center rounded-full px-3 text-base font-extrabold transition-colors ${!isFollowing ? "bg-brand-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
-          >
-            Discover
-          </Link>
-          <Link
-            href="/creators?view=following"
-            aria-current={isFollowing ? "page" : undefined}
-            className={`inline-flex h-12 items-center justify-center rounded-full px-3 text-base font-extrabold transition-colors ${isFollowing ? "bg-brand-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"}`}
-          >
-            Following
-          </Link>
-        </nav>
+        <CreatorFeedTabs mode={mode} />
 
         <section
           aria-labelledby="creator-feed-section-heading"
@@ -272,11 +257,13 @@ export default async function CreatorsPage({
                 id="creator-feed-section-heading"
                 className="mt-1 text-[26px] font-extrabold leading-tight tracking-tight text-slate-950 dark:text-slate-50"
               >
-                Trip Guides &amp; Hosts
+                {isFollowing ? "Following" : "Trip Guides & Hosts"}
               </h2>
               <div className="mt-1 flex items-center justify-between gap-3">
                 <p className="text-[15px] text-slate-500 dark:text-slate-400">
-                  Experience Liberia with trusted locals.
+                  {isFollowing
+                    ? "Posts from creators you follow."
+                    : "Experience Liberia with trusted locals."}
                 </p>
                 <Link
                   href="/guides"
@@ -288,7 +275,25 @@ export default async function CreatorsPage({
             </div>
           </div>
 
-          {!isFollowing && <nav aria-label="Browse local experts" className="mt-4 grid grid-cols-2 gap-2"><Link href="/guides?role=guides" className="flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-bold text-white dark:bg-brand-300 dark:text-slate-950">Find a guide</Link><Link href="/guides?role=hosts" className="flex min-h-11 items-center justify-center rounded-xl border border-brand-700 px-4 text-sm font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300">Find a host</Link></nav>}
+          {!isFollowing && (
+            <nav
+              aria-label="Browse local experts"
+              className="mt-4 grid grid-cols-2 gap-2"
+            >
+              <Link
+                href="/guides?role=guides"
+                className="flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-bold text-white dark:bg-brand-300 dark:text-slate-950"
+              >
+                Find a guide
+              </Link>
+              <Link
+                href="/guides?role=hosts"
+                className="flex min-h-11 items-center justify-center rounded-xl border border-brand-700 px-4 text-sm font-bold text-brand-700 dark:border-brand-300 dark:text-brand-300"
+              >
+                Find a host
+              </Link>
+            </nav>
+          )}
           {isFollowing ? (
             <CreatorFeed
               initialPosts={[]}
@@ -316,7 +321,12 @@ export default async function CreatorsPage({
         </section>
 
         {!isFollowing && (
-          <CreatorFeed initialPosts={feed.data} showHeader={false} />
+          <CreatorFeed
+            key={mode}
+            mode={mode}
+            initialPosts={feed.data}
+            showHeader={false}
+          />
         )}
       </div>
     </main>

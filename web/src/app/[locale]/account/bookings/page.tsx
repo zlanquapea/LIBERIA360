@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingProgress } from "@/components/BookingProgress";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -475,6 +476,7 @@ export default function BookingsPage() {
                   · {booking.paymentStatus}
                 </span>
               </p>
+              <div className="mt-4"><BookingProgress status={booking.status} tracksCompletion /></div>
               <Link
                 href={`/experiences/${booking.experience.id}`}
                 className="mt-5 flex min-h-11 items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-teal-800 dark:border-slate-800 dark:text-teal-200"
@@ -496,3 +498,4 @@ export default function BookingsPage() {
     </main>
   );
 }
+

@@ -189,6 +189,8 @@ export class CreatorFeedService {
         thumbnailUrl:
           dto.mediaType === "video" ? dto.thumbnailUrl?.trim() || null : null,
         caption,
+        relatedPath: dto.relatedPath?.trim() || null,
+        relatedLabel: dto.relatedPath ? dto.relatedLabel?.trim() || null : null,
         status: CreatorPostStatus.PUBLISHED,
       }),
     );
@@ -221,6 +223,13 @@ export class CreatorFeedService {
         nextMediaType === "video" ? dto.thumbnailUrl?.trim() || null : null;
     }
     post.caption = nextCaption;
+    if (dto.relatedPath !== undefined) {
+      post.relatedPath = dto.relatedPath?.trim() || null;
+      if (!post.relatedPath) post.relatedLabel = null;
+    }
+    if (dto.relatedLabel !== undefined && post.relatedPath) {
+      post.relatedLabel = dto.relatedLabel?.trim() || null;
+    }
     await this.postRepo.save(post);
     const saved = await this.postRepo.findOneOrFail({
       where: { id: post.id },
@@ -413,6 +422,8 @@ export class CreatorFeedService {
       mediaUrl: post.mediaUrl,
       thumbnailUrl: post.thumbnailUrl,
       caption: post.caption,
+      relatedPath: post.relatedPath ?? null,
+      relatedLabel: post.relatedLabel ?? null,
       status: post.status,
       likeCount: post.likeCount,
       commentCount: post.commentCount,

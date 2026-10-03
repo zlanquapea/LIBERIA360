@@ -141,6 +141,7 @@ export function uploadGuideVerificationDocument(token: string, file: File) {
 }
 
 export interface GuideReviewSummary {
+  verifiedBooking?: boolean;
   id: string;
   rating: number;
   comment: string | null;
@@ -267,3 +268,4 @@ export function updateGuideExperience(
     body: JSON.stringify(input),
   });
 }
+
