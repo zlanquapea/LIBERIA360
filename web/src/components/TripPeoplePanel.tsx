@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
-import { approveJoinRequest, declineJoinRequest, listJoinRequests, removeCollaborator } from '@/lib/itinerary-api';
+import { approveJoinRequest, declineJoinRequest, listJoinRequests, removeCollaborator, setCollaboratorRole } from '@/lib/itinerary-api';
 import { cancelInvitation, listInvitations, resendInvitation } from '@/lib/invitations-api';
 import { getFriendlyErrorMessage, isNotFoundError } from '@/lib/errors';
 import { InvitePeopleModal } from './InvitePeopleModal';
 import { ConfirmDialog } from './ConfirmDialog';
-import type { AuthUser, InvitationDisplayStatus, InvitationSummary, TripJoinRequestSummary } from '@/lib/types';
+import type { AuthUser, CollaboratorRole, InvitationDisplayStatus, InvitationSummary, TripJoinRequestSummary } from '@/lib/types';
 
 const STATUS_STYLES: Record<InvitationDisplayStatus, string> = {
   pending: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
@@ -35,6 +35,7 @@ export function TripPeoplePanel({
   itineraryId,
   admin,
   collaborators,
+  collaboratorRoles = {},
   isOwner,
   onChange,
 }: {
@@ -44,6 +45,8 @@ export function TripPeoplePanel({
   // since ItineraryDetail.collaborators never includes the owner.
   admin: AuthUser | null;
   collaborators: AuthUser[];
+  // Each collaborator's access; missing means editor.
+  collaboratorRoles?: Record<string, CollaboratorRole>;
   isOwner: boolean;
   onChange: () => void;
 }) {
@@ -132,6 +135,20 @@ export function TripPeoplePanel({
     }
   }
 
+  async function handleRoleChange(userId: string, role: CollaboratorRole) {
+    if (!token) return;
+    setBusyId(userId);
+    setError(null);
+    try {
+      await setCollaboratorRole(token, itineraryId, userId, role);
+      onChange();
+    } catch (err) {
+      setError(getFriendlyErrorMessage(err, { context: { action: 'set-collaborator-role', userId } }));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function handleResend(invitationId: string) {
     if (!token) return;
     setBusyId(invitationId);
@@ -215,7 +232,22 @@ export function TripPeoplePanel({
               className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
             >
               {c.name}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES.accepted}`}>{t('accepted')}</span>
+              {isOwner ? (
+                <select
+                  value={collaboratorRoles[c.id] ?? 'editor'}
+                  disabled={busyId === c.id}
+                  onChange={(e) => handleRoleChange(c.id, e.target.value as CollaboratorRole)}
+                  aria-label={t('accessFor', { name: c.name })}
+                  className="rounded-full border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="editor">{t('canEdit')}</option>
+                  <option value="viewer">{t('canView')}</option>
+                </select>
+              ) : (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES.accepted}`}>
+                  {(collaboratorRoles[c.id] ?? 'editor') === 'viewer' ? t('canView') : t('canEdit')}
+                </span>
+              )}
               {(isOwner || c.id === user?.id) && (
                 <button
                   type="button"
@@ -244,6 +276,9 @@ export function TripPeoplePanel({
               <span className="flex shrink-0 items-center gap-1.5">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[invitation.status]}`}>
                   {t(STATUS_LABEL_KEYS[invitation.status])}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                  {invitation.role === 'viewer' ? t('canView') : t('canEdit')}
                 </span>
                 {!invitation.emailDelivered && invitation.status === 'pending' && (
                   <span

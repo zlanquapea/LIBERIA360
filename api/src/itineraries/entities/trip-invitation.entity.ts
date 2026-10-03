@@ -7,6 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { CollaboratorRole } from "./itinerary.enums";
 import { Itinerary } from "./itinerary.entity";
 import { User } from "../../users/entities/user.entity";
 
@@ -90,6 +91,15 @@ export class TripInvitation {
 
   // SHA-256 of the accept/decline link's token — see auth/token-hash.ts.
   @Index({ unique: true })
+  // The access the invitee gets on accepting.
+  @Column({
+    type: "enum",
+    enum: CollaboratorRole,
+    enumName: "collaborator_role_enum",
+    default: CollaboratorRole.EDITOR,
+  })
+  role: CollaboratorRole;
+
   @Column({ name: "token_hash", type: "text" })
   tokenHash: string;
 

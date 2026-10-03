@@ -43,6 +43,12 @@ export function clearStoredAuth(): void {
   navigator.serviceWorker?.controller?.postMessage({
     type: "CLEAR_PRIVATE_CACHES",
   });
+  // Downloaded trips are private: remove them even when no service worker
+  // is controlling this page.
+  window.localStorage.removeItem("liberia360:offline-packs");
+  if (typeof caches !== "undefined") {
+    void caches.delete("liberia360-trip-packs-v1").catch(() => undefined);
+  }
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 

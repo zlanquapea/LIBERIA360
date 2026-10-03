@@ -50,6 +50,7 @@ import { TripCostSummary } from "@/components/TripCostSummary";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
 import { TripShareLink } from "@/components/trips/TripShareLink";
+import { OfflinePackControl } from "@/components/trips/OfflinePackControl";
 import { tripHasMapPins } from "@/lib/trip-map";
 import type {
   ItineraryDetail,
@@ -470,7 +471,8 @@ function MemberTripView({
   const t = useTranslations("trips");
   const isOwner = itinerary.userId === user?.id;
   const isCollaborator = itinerary.collaborators.some((c) => c.id === user?.id);
-  const canEdit = isOwner || isCollaborator;
+  // Viewers see everything but can't change the plan.
+  const canEdit = isOwner || (isCollaborator && itinerary.myRole !== 'viewer');
   const [duplicating, setDuplicating] = useState(false);
   const canFeature = isOwner && Boolean(user?.isAdmin);
   const [showFeatureForm, setShowFeatureForm] = useState(false);
@@ -719,6 +721,12 @@ function MemberTripView({
 
         <TripMeta trip={itinerary} />
 
+        {!isOwner && isCollaborator && itinerary.myRole === "viewer" && (
+          <p className="mb-2 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            {t("viewOnlyNotice", { name: itinerary.admin?.name ?? t("theOrganizer") })}
+          </p>
+        )}
+
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {t("days", { count: itinerary.durationDays })} ·{" "}
           {formatBudgetBand(itinerary.budgetBand)}
@@ -787,6 +795,8 @@ function MemberTripView({
         )}
       </div>
 
+      <OfflinePackControl trip={itinerary} />
+
       <TripShareLink
         itineraryId={itinerary.id}
         shareToken={itinerary.shareToken}
@@ -799,6 +809,7 @@ function MemberTripView({
         itineraryId={itinerary.id}
         admin={itinerary.admin}
         collaborators={itinerary.collaborators}
+        collaboratorRoles={itinerary.collaboratorRoles}
         isOwner={isOwner}
         onChange={reload}
       />

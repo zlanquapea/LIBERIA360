@@ -32,6 +32,7 @@ function pendingInvitation(overrides: Partial<InvitationSummary> = {}): Invitati
     email: 'friend@example.com',
     status: 'pending',
     invitee: null,
+    role: 'editor',
     emailDelivered: true,
     createdAt: '2026-01-02T00:00:00.000Z',
     respondedAt: null,
@@ -137,5 +138,45 @@ describe('TripPeoplePanel', () => {
     expect(screen.queryByText(/cancel the invitation to friend@example\.com/i)).not.toBeInTheDocument();
     expect(screen.getByText(invitation.email)).toBeInTheDocument();
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+  });
+
+  it("lets the owner switch a collaborator to view-only", async () => {
+    setStoredAuth({ token: 'tok', user: OWNER });
+    const calls = mockFetch([
+      { method: 'GET', path: '/invitations', body: [] },
+      { method: 'GET', path: '/join-requests', body: [] },
+      { method: 'PATCH', path: `/collaborators/${COLLABORATOR.id}`, body: {} },
+    ]);
+    const onChange = jest.fn();
+    renderWithMessages(
+      <TripPeoplePanel
+        itineraryId="trip-1"
+        admin={OWNER}
+        collaborators={[COLLABORATOR]}
+        collaboratorRoles={{ [COLLABORATOR.id]: 'editor' }}
+        isOwner
+        onChange={onChange}
+      />,
+    );
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: /access for marcus traveler/i }), 'viewer');
+    await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true));
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("shows other members each person's access without controls", async () => {
+    setStoredAuth({ token: 'tok', user: COLLABORATOR });
+    mockFetch([]);
+    renderWithMessages(
+      <TripPeoplePanel
+        itineraryId="trip-1"
+        admin={OWNER}
+        collaborators={[COLLABORATOR]}
+        collaboratorRoles={{ [COLLABORATOR.id]: 'viewer' }}
+        isOwner={false}
+        onChange={() => undefined}
+      />,
+    );
+    expect(await screen.findByText('Can view')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 });

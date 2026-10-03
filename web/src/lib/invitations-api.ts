@@ -1,4 +1,5 @@
 import type {
+  CollaboratorRole,
   InvitableUser,
   InvitationPreview,
   InvitationSummary,
@@ -32,11 +33,12 @@ export function createInvitations(
   token: string,
   itineraryId: string,
   invitees: InviteeInput[],
+  role: CollaboratorRole = 'editor',
 ): Promise<InvitationSummary[]> {
   return apiRequest<InvitationSummary[]>(`/itineraries/${itineraryId}/invitations`, {
     method: 'POST',
     headers: authHeader(token),
-    body: JSON.stringify({ invitees }),
+    body: JSON.stringify({ invitees, role }),
   });
 }
 

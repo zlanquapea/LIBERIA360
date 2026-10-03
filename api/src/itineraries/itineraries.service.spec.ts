@@ -24,6 +24,7 @@ import { TripChatService } from "../trip-chat/trip-chat.service";
 import { ConfigService } from "@nestjs/config";
 import {
   BudgetBand,
+  CollaboratorRole,
   ItineraryKind,
   TransportMode,
   TripPace,
@@ -446,6 +447,30 @@ describe("ItinerariesService (collaboration)", () => {
           { email: "invitee@example.com" },
         ]),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("lets someone who accepted and was later removed be invited again, with the chosen role", async () => {
+      usersService.findByEmail.mockResolvedValue({
+        id: COLLABORATOR_ID,
+        name: "Collab",
+        email: "invitee@example.com",
+      });
+      collaboratorRepo.findOne.mockResolvedValue(null);
+      invitationRepo.findOne.mockResolvedValue(
+        makeInvitation({ status: TripInvitationStatus.ACCEPTED }),
+      );
+      await service.createInvitations(
+        OWNER_ID,
+        ITINERARY_ID,
+        [{ email: "invitee@example.com" }],
+        CollaboratorRole.VIEWER,
+      );
+      expect(invitationRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: TripInvitationStatus.PENDING,
+          role: CollaboratorRole.VIEWER,
+        }),
+      );
     });
 
     it("creates a pending invitation for a known user and emails them", async () => {
@@ -1062,6 +1087,90 @@ describe("ItinerariesService (collaboration)", () => {
     it("404s a stranger with no view access", async () => {
       await expect(
         service.updatePartySize(STRANGER_ID, ITINERARY_ID, 2),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("collaborator roles", () => {
+    const viewerRow = {
+      userId: COLLABORATOR_ID,
+      role: CollaboratorRole.VIEWER,
+      user: { id: COLLABORATOR_ID, name: "Collab" },
+    };
+
+    it("lets a viewer see the trip and reports their role", async () => {
+      collaboratorRepo.find.mockResolvedValue([viewerRow]);
+      const trip = await service.findOne(COLLABORATOR_ID, ITINERARY_ID);
+      expect(trip.myRole).toBe(CollaboratorRole.VIEWER);
+      expect(trip.collaboratorRoles).toEqual({
+        [COLLABORATOR_ID]: CollaboratorRole.VIEWER,
+      });
+    });
+
+    it("stops a viewer from changing the plan, with a clear 403", async () => {
+      collaboratorRepo.find.mockResolvedValue([viewerRow]);
+      collaboratorRepo.findOne.mockResolvedValue(viewerRow);
+      for (const attempt of [
+        () => service.renameTrip(COLLABORATOR_ID, ITINERARY_ID, "Mine"),
+        () =>
+          service.updateStop(COLLABORATOR_ID, ITINERARY_ID, "place-1", {
+            notes: "x",
+          }),
+        () => service.removeStop(COLLABORATOR_ID, ITINERARY_ID, "place-1"),
+        () =>
+          service.updateDetails(COLLABORATOR_ID, ITINERARY_ID, {
+            pace: TripPace.PACKED,
+          }),
+      ]) {
+        await expect(attempt()).rejects.toThrow(
+          /view this trip but not change/,
+        );
+      }
+      expect(itineraryRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("still lets an editor change the plan", async () => {
+      const editorRow = { ...viewerRow, role: CollaboratorRole.EDITOR };
+      collaboratorRepo.find.mockResolvedValue([editorRow]);
+      collaboratorRepo.findOne.mockResolvedValue(editorRow);
+      await service.updateStop(COLLABORATOR_ID, ITINERARY_ID, "place-1", {
+        notes: "bring water",
+      });
+      expect(itineraryRepo.save).toHaveBeenCalled();
+    });
+
+    it("lets only the owner change someone's role", async () => {
+      collaboratorRepo.find.mockResolvedValue([viewerRow]);
+      collaboratorRepo.findOne.mockResolvedValue({ ...viewerRow });
+      await expect(
+        service.setCollaboratorRole(
+          COLLABORATOR_ID,
+          ITINERARY_ID,
+          COLLABORATOR_ID,
+          CollaboratorRole.EDITOR,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      await service.setCollaboratorRole(
+        OWNER_ID,
+        ITINERARY_ID,
+        COLLABORATOR_ID,
+        CollaboratorRole.EDITOR,
+      );
+      expect(collaboratorRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ role: CollaboratorRole.EDITOR }),
+      );
+    });
+
+    it("404s a role change for someone not on the trip", async () => {
+      collaboratorRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.setCollaboratorRole(
+          OWNER_ID,
+          ITINERARY_ID,
+          STRANGER_ID,
+          CollaboratorRole.VIEWER,
+        ),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });

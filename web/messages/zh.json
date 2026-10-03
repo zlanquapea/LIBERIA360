@@ -549,7 +549,12 @@
     "travelers": "{count} 位旅客",
     "fromPlace": "从 {place} 出发",
     "sharedPlanNotice": "这是计划，不是预订。出发前请向各地点确认营业时间、价格和可用性。",
-    "planYourOwn": "规划你自己的行程"
+    "planYourOwn": "规划你自己的行程",
+    "canEdit": "可编辑",
+    "canView": "可查看",
+    "accessFor": "{name} 的权限",
+    "viewOnlyNotice": "你可以查看此行程，但不能修改计划。请向 {name} 申请编辑权限。",
+    "theOrganizer": "组织者"
   },
   "saved": {
     "yourCollection": "您的收藏",
@@ -734,5 +739,35 @@
     "placeCount": "{count} 个地点",
     "tripTitle": "利比里亚周末",
     "tripTitleIn": "{county} 周末"
+  },
+  "offline": {
+    "useOffline": "离线使用此行程",
+    "availableOffline": "可离线使用",
+    "explain": "将行程、站点信息和照片下载到此设备，无网络时也能打开。只有你选择后才会下载。",
+    "download": "下载以离线使用",
+    "downloading": "下载中…",
+    "downloadFailed": "无法下载行程。请检查网络后重试。",
+    "downloadedAt": "下载于 {date}",
+    "packContents": "{stops} 个站点，{photos} 张照片",
+    "staleHint": "离线副本不会自动更新——修改计划后请手动更新。",
+    "openOffline": "打开离线副本",
+    "update": "更新",
+    "remove": "删除",
+    "needsConnection": "仍需联网的功能",
+    "needEditing": "修改计划、信息或参与者",
+    "needChat": "行程聊天和邀请",
+    "needMaps": "地图和导航（地图瓦片不会离线保存）",
+    "needBooking": "在线预订、点餐或联系地点",
+    "onlineNow": "你已联网——这是保存在此设备上的副本。",
+    "offlineNow": "你已离线——显示保存在此设备上的副本。",
+    "offlineTrips": "离线行程",
+    "packMissing": "此设备上没有下载该行程。",
+    "noPacks": "此设备上还没有下载的行程。打开一个行程并选择“下载以离线使用”。",
+    "offlineCopy": "离线副本",
+    "offlineLimits": "营业时间、价格和联系方式以下载时为准。如可能请提前致电。",
+    "day": "第 {day} 天",
+    "entry": "门票 {price}",
+    "gettingThere": "如何到达：{notes}",
+    "openLive": "打开在线行程"
   }
 }

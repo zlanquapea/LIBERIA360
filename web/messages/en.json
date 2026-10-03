@@ -549,7 +549,12 @@
     "travelers": "{count, plural, one {# traveler} other {# travelers}}",
     "fromPlace": "from {place}",
     "sharedPlanNotice": "This is a plan, not a booking. Confirm hours, prices and availability with each place before you go.",
-    "planYourOwn": "Plan your own trip"
+    "planYourOwn": "Plan your own trip",
+    "canEdit": "Can edit",
+    "canView": "Can view",
+    "accessFor": "Access for {name}",
+    "viewOnlyNotice": "You can view this trip but not change the plan. Ask {name} for edit access.",
+    "theOrganizer": "the organizer"
   },
   "saved": {
     "yourCollection": "Your collection",
@@ -734,5 +739,35 @@
     "placeCount": "{count, plural, one {# place} other {# places}}",
     "tripTitle": "Weekend in Liberia",
     "tripTitleIn": "Weekend in {county}"
+  },
+  "offline": {
+    "useOffline": "Use this trip offline",
+    "availableOffline": "Available offline",
+    "explain": "Download the plan, stop details and photos to this device so they open without a connection. Nothing downloads until you choose to.",
+    "download": "Download for offline",
+    "downloading": "Downloading…",
+    "downloadFailed": "Couldn't download the trip. Check your connection and try again.",
+    "downloadedAt": "Downloaded {date}",
+    "packContents": "{stops, plural, one {# stop} other {# stops}}, {photos, plural, one {# photo} other {# photos}}",
+    "staleHint": "The offline copy doesn't update by itself — update it after changing the plan.",
+    "openOffline": "Open offline copy",
+    "update": "Update",
+    "remove": "Remove",
+    "needsConnection": "What still needs a connection",
+    "needEditing": "Changing the plan, details or who's going",
+    "needChat": "Trip chat and invitations",
+    "needMaps": "Maps and directions (map tiles aren't stored for offline use)",
+    "needBooking": "Booking, ordering or contacting places online",
+    "onlineNow": "You're online — this is the copy saved on this device.",
+    "offlineNow": "You're offline — showing the copy saved on this device.",
+    "offlineTrips": "Offline trips",
+    "packMissing": "That trip isn't downloaded on this device.",
+    "noPacks": "No trips downloaded on this device yet. Open a trip and choose \"Download for offline\".",
+    "offlineCopy": "Offline copy",
+    "offlineLimits": "Hours, prices and contacts are as of the download date. Call ahead when you can.",
+    "day": "Day {day}",
+    "entry": "Entry {price}",
+    "gettingThere": "Getting there: {notes}",
+    "openLive": "Open the live trip"
   }
 }

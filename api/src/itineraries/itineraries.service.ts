@@ -28,6 +28,7 @@ import {
   BudgetBand,
   ItineraryKind,
   TripStatus,
+  CollaboratorRole,
   TransportMode,
   TripPace,
   TripVisibility,
@@ -78,6 +79,7 @@ export interface InvitationSummary {
   email: string;
   status: InvitationDisplayStatus;
   invitee: PublicUser | null;
+  role: CollaboratorRole;
   emailDelivered: boolean;
   createdAt: Date;
   respondedAt: Date | null;
@@ -143,6 +145,9 @@ export interface ItineraryResponse extends Omit<Itinerary, "stops"> {
   // indicated next to the creator's profile").
   admin: PublicUser | null;
   status: TripStatus;
+  // What the caller may do, and each collaborator's access.
+  myRole: "owner" | CollaboratorRole;
+  collaboratorRoles: Record<string, CollaboratorRole>;
 }
 
 /** GET /itineraries/public and GET /itineraries/public/:id — what a
@@ -396,7 +401,14 @@ export class ItinerariesService {
     }
     const collaborators = await this.assertCanView(userId, itinerary);
     const resolvedStops = await this.resolveStopReferences(itinerary.stops);
-    return this.toResponse(itinerary, resolvedStops, collaborators);
+    return this.toResponse(itinerary, resolvedStops, collaborators, userId);
+  }
+
+  private async collaboratorRoles(
+    itineraryId: string,
+  ): Promise<Record<string, CollaboratorRole>> {
+    const rows = await this.collaboratorRepo.find({ where: { itineraryId } });
+    return Object.fromEntries(rows.map((r) => [r.userId, r.role]));
   }
 
   /** Rename a trip — owner or any collaborator, same tier as editing a
@@ -524,7 +536,8 @@ export class ItinerariesService {
     userId: string,
     itineraryId: string,
   ): Promise<ItineraryResponse> {
-    const source = await this.getEditable(userId, itineraryId);
+    // Copying only reads the trip, so viewers may duplicate too.
+    const source = await this.getViewable(userId, itineraryId);
     const copy = await this.itineraryRepo.save(
       this.itineraryRepo.create({
         userId,
@@ -649,10 +662,11 @@ export class ItinerariesService {
     ownerId: string,
     itineraryId: string,
     invitees: InviteeDto[],
+    role: CollaboratorRole = CollaboratorRole.EDITOR,
   ): Promise<InvitationSummary[]> {
     const itinerary = await this.getOwned(ownerId, itineraryId);
     for (const invitee of invitees) {
-      await this.createOrResendInvitation(ownerId, itinerary, invitee);
+      await this.createOrResendInvitation(ownerId, itinerary, invitee, role);
     }
     return this.listInvitations(ownerId, itineraryId);
   }
@@ -661,6 +675,7 @@ export class ItinerariesService {
     ownerId: string,
     itinerary: Itinerary,
     invitee: InviteeDto,
+    role: CollaboratorRole = CollaboratorRole.EDITOR,
   ): Promise<void> {
     if (!invitee.userId && !invitee.email) {
       throw new BadRequestException(
@@ -699,10 +714,11 @@ export class ItinerariesService {
     let invitation = await this.invitationRepo.findOne({
       where: { itineraryId: itinerary.id, email },
     });
-    if (invitation?.status === TripInvitationStatus.ACCEPTED) {
-      throw new ConflictException(
-        `${inviteeUser?.name ?? email} is already part of this trip`,
-      );
+    // An accepted invitation only blocks a new one while that person is
+    // still on the trip; someone who left or was removed can be invited
+    // again (membership for an existing account was checked above).
+    if (invitation?.status === TripInvitationStatus.ACCEPTED && !inviteeUser) {
+      throw new ConflictException(`${email} is already part of this trip`);
     }
 
     const token = generateToken();
@@ -716,6 +732,7 @@ export class ItinerariesService {
       invitation.expiresAt = invitationExpiresAt();
       invitation.inviteeUserId = inviteeUser?.id ?? null;
       invitation.invitedByUserId = ownerId;
+      invitation.role = role;
     } else {
       invitation = this.invitationRepo.create({
         itineraryId: itinerary.id,
@@ -724,6 +741,7 @@ export class ItinerariesService {
         inviteeUserId: inviteeUser?.id ?? null,
         tokenHash: hashToken(token),
         expiresAt: invitationExpiresAt(),
+        role,
       });
     }
     invitation = await this.invitationRepo.save(invitation);
@@ -972,6 +990,7 @@ export class ItinerariesService {
           itineraryId: itinerary.id,
           userId,
           invitedByUserId: row.invitedByUserId,
+          role: row.role ?? CollaboratorRole.EDITOR,
         }),
       );
     }
@@ -1080,6 +1099,7 @@ export class ItinerariesService {
       email: row.email,
       status: this.computeStatus(row),
       invitee: row.invitee ? toPublicUser(row.invitee) : null,
+      role: row.role,
       emailDelivered: row.emailDelivered,
       createdAt: row.createdAt,
       respondedAt: row.respondedAt,
@@ -1173,10 +1193,8 @@ export class ItinerariesService {
     return collaborators;
   }
 
-  /** Owner or collaborator — write access to the stop list. Same
-   * membership check as assertCanView; kept separate since a future
-   * read-only viewer tier would only need to change this one. */
-  private async getEditable(
+  /** Owner or any collaborator, editors and viewers alike. */
+  private async getViewable(
     userId: string,
     itineraryId: string,
   ): Promise<Itinerary> {
@@ -1188,6 +1206,58 @@ export class ItinerariesService {
     }
     await this.assertCanView(userId, itinerary);
     return itinerary;
+  }
+
+  /** Owner or an editor — write access to the plan. A viewer gets a 403
+   * that says so; a stranger still gets the usual 404. */
+  private async getEditable(
+    userId: string,
+    itineraryId: string,
+  ): Promise<Itinerary> {
+    const itinerary = await this.getViewable(userId, itineraryId);
+    if (itinerary.userId === userId) return itinerary;
+    const membership = await this.collaboratorRepo.findOne({
+      where: { itineraryId, userId },
+    });
+    if (membership?.role === CollaboratorRole.VIEWER) {
+      throw new ForbiddenException(
+        "You can view this trip but not change it. Ask the organizer for edit access.",
+      );
+    }
+    return itinerary;
+  }
+
+  /** Owner only: give a collaborator edit or view-only access. */
+  async setCollaboratorRole(
+    ownerId: string,
+    itineraryId: string,
+    collaboratorUserId: string,
+    role: CollaboratorRole,
+  ): Promise<ItineraryResponse> {
+    await this.getOwned(ownerId, itineraryId);
+    const membership = await this.collaboratorRepo.findOne({
+      where: { itineraryId, userId: collaboratorUserId },
+    });
+    if (!membership) {
+      throw new NotFoundException("That person isn't part of this trip");
+    }
+    if (membership.role !== role) {
+      membership.role = role;
+      await this.collaboratorRepo.save(membership);
+      try {
+        await this.tripChatService.postSystemMessage(
+          itineraryId,
+          role === CollaboratorRole.EDITOR
+            ? `${membership.user?.name ?? "Someone"} can now edit the plan.`
+            : `${membership.user?.name ?? "Someone"} can now view the plan.`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Failed to post role change to trip ${itineraryId}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+    return this.findOne(ownerId, itineraryId);
   }
 
   /** Add a stop — owner or any collaborator. Exactly one of
@@ -1392,9 +1462,18 @@ export class ItinerariesService {
     itinerary: Itinerary,
     resolvedStops: StopReferences,
     collaborators: PublicUser[],
+    // Who's asking; defaults to the owner (e.g. right after creating).
+    viewerUserId: string = itinerary.userId,
   ): Promise<ItineraryResponse> {
     const owner = await this.usersService.findById(itinerary.userId);
+    const roles = await this.collaboratorRoles(itinerary.id);
+    const myRole =
+      viewerUserId === itinerary.userId
+        ? ("owner" as const)
+        : (roles[viewerUserId] ?? CollaboratorRole.EDITOR);
     return {
+      myRole,
+      collaboratorRoles: roles,
       ...itinerary,
       coverImage: this.resolveCoverImage(itinerary),
       stops: this.mapStops(itinerary, resolvedStops),

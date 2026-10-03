@@ -1,6 +1,9 @@
 // LIBERIA360 service worker. Push events are handled here, not by React,
 // so Android Chrome can display notifications while every tab is closed.
-const CACHE_NAME = "liberia360-shell-v4";
+const CACHE_NAME = "liberia360-shell-v5";
+// Trips the traveler downloaded for offline use (see web/src/lib/
+// offline-packs.ts). Kept across service worker updates; cleared on logout.
+const PACK_CACHE = "liberia360-trip-packs-v1";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -25,7 +28,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== CACHE_NAME)
+            .filter((key) => key !== CACHE_NAME && key !== PACK_CACHE)
             .map((key) => caches.delete(key)),
         ),
       )
@@ -52,9 +55,17 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() =>
-        caches
-          .match(event.request)
-          .then((cached) => cached ?? caches.match("/")),
+        caches.match(event.request).then(
+          (cached) =>
+            cached ??
+            // A page saved without its query string (e.g. the offline
+            // trip viewer, /trips/offline?id=…) still opens offline.
+            (event.request.mode === "navigate"
+              ? caches
+                  .match(event.request, { ignoreSearch: true })
+                  .then((page) => page ?? caches.match("/"))
+              : undefined),
+        ),
       ),
   );
 });

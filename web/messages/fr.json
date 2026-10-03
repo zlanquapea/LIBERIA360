@@ -549,7 +549,12 @@
     "travelers": "{count, plural, one {# voyageur} other {# voyageurs}}",
     "fromPlace": "depuis {place}",
     "sharedPlanNotice": "Ceci est un plan, pas une réservation. Vérifiez horaires, prix et disponibilités auprès de chaque lieu.",
-    "planYourOwn": "Planifier votre voyage"
+    "planYourOwn": "Planifier votre voyage",
+    "canEdit": "Peut modifier",
+    "canView": "Peut consulter",
+    "accessFor": "Accès de {name}",
+    "viewOnlyNotice": "Vous pouvez consulter ce voyage mais pas modifier le plan. Demandez l'accès en modification à {name}.",
+    "theOrganizer": "l'organisateur"
   },
   "saved": {
     "yourCollection": "Votre collection",
@@ -734,5 +739,35 @@
     "placeCount": "{count, plural, one {# lieu} other {# lieux}}",
     "tripTitle": "Week-end au Liberia",
     "tripTitleIn": "Week-end à {county}"
+  },
+  "offline": {
+    "useOffline": "Utiliser ce voyage hors ligne",
+    "availableOffline": "Disponible hors ligne",
+    "explain": "Téléchargez le plan, les détails des étapes et les photos sur cet appareil pour les consulter sans connexion. Rien n'est téléchargé sans votre accord.",
+    "download": "Télécharger pour hors ligne",
+    "downloading": "Téléchargement…",
+    "downloadFailed": "Impossible de télécharger le voyage. Vérifiez votre connexion.",
+    "downloadedAt": "Téléchargé le {date}",
+    "packContents": "{stops, plural, one {# étape} other {# étapes}}, {photos, plural, one {# photo} other {# photos}}",
+    "staleHint": "La copie hors ligne ne se met pas à jour seule — mettez-la à jour après avoir modifié le plan.",
+    "openOffline": "Ouvrir la copie hors ligne",
+    "update": "Mettre à jour",
+    "remove": "Supprimer",
+    "needsConnection": "Ce qui nécessite une connexion",
+    "needEditing": "Modifier le plan, les détails ou les participants",
+    "needChat": "Discussion et invitations",
+    "needMaps": "Cartes et itinéraires (les fonds de carte ne sont pas enregistrés hors ligne)",
+    "needBooking": "Réserver, commander ou contacter des lieux en ligne",
+    "onlineNow": "Vous êtes en ligne — voici la copie enregistrée sur cet appareil.",
+    "offlineNow": "Vous êtes hors ligne — copie enregistrée sur cet appareil.",
+    "offlineTrips": "Voyages hors ligne",
+    "packMissing": "Ce voyage n'est pas téléchargé sur cet appareil.",
+    "noPacks": "Aucun voyage téléchargé sur cet appareil. Ouvrez un voyage et choisissez « Télécharger pour hors ligne ».",
+    "offlineCopy": "Copie hors ligne",
+    "offlineLimits": "Horaires, prix et contacts datent du téléchargement. Appelez avant si possible.",
+    "day": "Jour {day}",
+    "entry": "Entrée {price}",
+    "gettingThere": "Comment s'y rendre : {notes}",
+    "openLive": "Ouvrir le voyage en ligne"
   }
 }

@@ -4,10 +4,12 @@ import {
   ArrayMinSize,
   IsArray,
   IsEmail,
+  IsEnum,
   IsOptional,
   IsUUID,
   ValidateNested,
 } from "class-validator";
+import { CollaboratorRole } from "../entities/itinerary.enums";
 
 /** Exactly one of the two — a pick from the "people on the platform"
  * search (userId) or a bare address for someone who isn't on the
@@ -33,4 +35,9 @@ export class CreateInvitationsDto {
   @ValidateNested({ each: true })
   @Type(() => InviteeDto)
   invitees: InviteeDto[];
+
+  // Access for everyone in this batch; editors by default.
+  @IsOptional()
+  @IsEnum(CollaboratorRole)
+  role?: CollaboratorRole;
 }

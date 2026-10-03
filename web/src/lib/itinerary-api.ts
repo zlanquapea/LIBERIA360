@@ -1,6 +1,7 @@
 import type {
   AuthUser,
   BudgetBand,
+  CollaboratorRole,
   Itinerary,
   ItineraryDetail,
   PublicTripDetail,
@@ -316,4 +317,18 @@ export function revokeShareLink(token: string, itineraryId: string): Promise<voi
 // Public: the plan behind a view-only share link.
 export function getSharedTrip(shareToken: string): Promise<SharedTripView> {
   return apiRequest<SharedTripView>(`/itineraries/shared/${encodeURIComponent(shareToken)}`);
+}
+
+// Owner only: switch a collaborator between editing and view-only.
+export function setCollaboratorRole(
+  token: string,
+  itineraryId: string,
+  userId: string,
+  role: CollaboratorRole,
+): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/collaborators/${userId}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ role }),
+  });
 }

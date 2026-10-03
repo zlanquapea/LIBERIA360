@@ -891,6 +891,9 @@ export type BudgetBand = "budget" | "moderate" | "premium";
 export type ItineraryKind = "trip" | "weekend";
 export type TripVisibility = "private" | "public";
 
+/** Editors change the plan; viewers can only see it. */
+export type CollaboratorRole = "editor" | "viewer";
+
 export type TransportMode = "own_car" | "taxi" | "public_transport" | "tour_operator" | "mixed";
 export type TripPace = "relaxed" | "balanced" | "packed";
 export type TripStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
@@ -991,6 +994,9 @@ export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
   // The creator — always labeled "Trip Admin" in the UI.
   admin: AuthUser | null;
   status: TripStatus;
+  // What the signed-in viewer may do, and each collaborator's access.
+  myRole: "owner" | CollaboratorRole;
+  collaboratorRoles: Record<string, CollaboratorRole>;
 }
 
 // GET /itineraries/public and GET /itineraries/public/:id — what a
@@ -1124,6 +1130,7 @@ export interface InvitationSummary {
   email: string;
   status: InvitationDisplayStatus;
   invitee: AuthUser | null;
+  role: CollaboratorRole;
   emailDelivered: boolean;
   createdAt: string;
   respondedAt: string | null;

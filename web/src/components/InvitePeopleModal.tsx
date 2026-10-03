@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { createInvitations, searchInvitablePeople } from '@/lib/invitations-api';
+import type { CollaboratorRole } from '@/lib/types';
 import { HttpError } from '@/lib/http';
 import type { InvitableUser } from '@/lib/types';
 
@@ -30,6 +31,7 @@ export function InvitePeopleModal({
   const [emailInput, setEmailInput] = useState('');
   const [emailQueue, setEmailQueue] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+  const [role, setRole] = useState<CollaboratorRole>('editor');
   const [error, setError] = useState<string | null>(null);
 
   // Same 300ms debounce idiom as CreatorFilters/BusinessFilters.
@@ -86,7 +88,7 @@ export function InvitePeopleModal({
       await createInvitations(token, itineraryId, [
         ...Array.from(selectedPeople.keys()).map((userId) => ({ userId })),
         ...emailQueue.map((email) => ({ email })),
-      ]);
+      ], role);
       onInvited();
       onClose();
     } catch (err) {
@@ -247,6 +249,24 @@ export function InvitePeopleModal({
             </ul>
           )}
         </div>
+
+        <fieldset className="flex flex-col gap-1.5">
+          <legend className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-200">What can they do?</legend>
+          {(
+            [
+              ['editor', 'Can edit', 'Add, move and remove stops, and change trip details'],
+              ['viewer', 'Can view', 'See the plan and chat, without changing it'],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <label key={value} className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+              <input type="radio" name="invite-role" value={value} checked={role === value} onChange={() => setRole(value)} className="mt-1 accent-brand-700" />
+              <span>
+                <span className="block font-medium text-slate-900 dark:text-slate-50">{label}</span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400">{hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
         {error && <p role="alert" className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
 

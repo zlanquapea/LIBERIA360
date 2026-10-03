@@ -54,3 +54,11 @@ export enum TripPace {
   BALANCED = "balanced",
   PACKED = "packed",
 }
+
+/** What someone invited to a trip may do. Editors change the plan
+ * (stops, notes, details); viewers can see everything and chat but not
+ * change the plan. The owner can switch either way at any time. */
+export enum CollaboratorRole {
+  EDITOR = "editor",
+  VIEWER = "viewer",
+}
