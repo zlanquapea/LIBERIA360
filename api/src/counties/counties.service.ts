@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { PlaceReviewStatus } from "../places/entities/place.enums";
 import { Repository } from "typeorm";
 import { County } from "./entities/county.entity";
 import { PlacesService, PaginatedPlaces } from "../places/places.service";
@@ -21,7 +22,17 @@ export class CountiesService {
   async findAll(): Promise<CountyWithCount[]> {
     const rows = await this.countyRepo
       .createQueryBuilder("county")
-      .loadRelationCountAndMap("county.placeCount", "county.places")
+      // Public listings only — the same APPROVED filter GET /places
+      // applies, so this count matches what a visitor can actually open.
+      .loadRelationCountAndMap(
+        "county.placeCount",
+        "county.places",
+        "place",
+        (qb) =>
+          qb.andWhere("place.reviewStatus = :approved", {
+            approved: PlaceReviewStatus.APPROVED,
+          }),
+      )
       .orderBy("county.rolloutStage", "ASC")
       .addOrderBy("county.name", "ASC")
       .getMany();

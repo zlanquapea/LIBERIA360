@@ -11,6 +11,7 @@ import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { FoodOrdersService } from "./food-orders.service";
 import { CreateFoodOrderDto } from "./dto/create-food-order.dto";
 import { RespondFoodOrderDto } from "./dto/respond-food-order.dto";
+import { UpdateFoodOrderStatusDto } from "./dto/update-food-order-status.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
@@ -78,6 +79,22 @@ export class FoodOrdersController {
     @Body() dto: RespondFoodOrderDto,
   ) {
     return sanitize(await this.foodOrdersService.respond(user.id, id, dto));
+  }
+
+  @Patch("food-orders/:id/status")
+  async updateStatus(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: UpdateFoodOrderStatusDto,
+  ) {
+    return sanitize(
+      await this.foodOrdersService.updateStatus(user.id, id, dto),
+    );
+  }
+
+  @Patch("food-orders/:id/refunded")
+  async markRefunded(@CurrentUser() user: User, @Param("id") id: string) {
+    return sanitize(await this.foodOrdersService.markRefunded(user.id, id));
   }
 
   @Patch("food-orders/:id/cancel")

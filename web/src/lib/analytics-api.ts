@@ -65,3 +65,26 @@ export function recordEventAnalyticsEvent(eventId: string, eventType: AnalyticsE
 export function getEventAnalytics(token: string, eventId: string): Promise<BusinessAnalytics> {
   return apiRequest<BusinessAnalytics>(`/analytics/event/${eventId}`, { headers: authHeader(token) });
 }
+
+// Platform-wide product signals with no place/creator/ad/event target —
+// what people search for and how often trips get started. Anonymous,
+// fire-and-forget like everything above.
+export function recordSearch(query: string): void {
+  const q = query.trim();
+  if (q.length < 2) return;
+  apiRequest('/analytics/events', {
+    method: 'POST',
+    body: JSON.stringify({ eventType: 'search', query: q.slice(0, 100) }),
+  }).catch(() => {
+    /* best-effort */
+  });
+}
+
+export function recordTripCreated(): void {
+  apiRequest('/analytics/events', {
+    method: 'POST',
+    body: JSON.stringify({ eventType: 'trip_create' }),
+  }).catch(() => {
+    /* best-effort */
+  });
+}

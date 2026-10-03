@@ -19,6 +19,8 @@ import {
   PlaceType,
   RecommendedVisitLength,
   VerificationStatus,
+  PracticalInfoSource,
+  type PlaceAmenity,
 } from "./place.enums";
 import { OpeningPeriod } from "../opening-hours";
 
@@ -166,6 +168,34 @@ export class Place {
 
   @Column({ type: "varchar", length: 100, nullable: true })
   facebook: string | null;
+
+  // Practical details beyond hours/contacts. Each renders only when set;
+  // the UI never fills gaps with guesses. See PLACE_AMENITIES.
+  @Column({ type: "text", array: true, default: () => "'{}'" })
+  amenities: PlaceAmenity[];
+
+  @Column({ name: "accessibility_notes", type: "text", nullable: true })
+  accessibilityNotes: string | null;
+
+  @Column({ name: "transport_notes", type: "text", nullable: true })
+  transportNotes: string | null;
+
+  // Who supplied the practical details above and when they were last
+  // confirmed. Null on older places: unknown, and shown as such.
+  @Column({
+    name: "practical_info_source",
+    type: "enum",
+    enum: PracticalInfoSource,
+    nullable: true,
+  })
+  practicalInfoSource: PracticalInfoSource | null;
+
+  @Column({
+    name: "practical_info_checked_at",
+    type: "timestamptz",
+    nullable: true,
+  })
+  practicalInfoCheckedAt: Date | null;
 
   @Column({
     type: "decimal",

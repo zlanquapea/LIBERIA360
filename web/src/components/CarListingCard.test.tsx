@@ -97,7 +97,7 @@ describe("CarListingCard", () => {
     mockUseAuth.mockReturnValue({ token: null });
     render(<CarListingCard listing={LISTING} />);
     const loginLink = screen.getByRole("link", { name: /add to trip/i });
-    expect(loginLink).toHaveAttribute("href", "/login");
+    expect(loginLink).toHaveAttribute("href", expect.stringMatching(/^\/login\?next=/));
   });
 
   it("shows Instant Book and Delivery available pills when the listing opts in", () => {

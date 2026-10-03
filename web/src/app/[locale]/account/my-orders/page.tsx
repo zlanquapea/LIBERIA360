@@ -16,6 +16,8 @@ import { SuccessCheck } from "@/components/SuccessCheck";
 import { cancelFoodOrder, getMyFoodOrders } from "@/lib/food-orders-api";
 import { formatFoodOrderStatus } from "@/lib/format";
 import { FoodOrderLines } from "@/components/menu/FoodOrderLines";
+import { FoodOrderDetails } from "@/components/menu/FoodOrderDetails";
+import { FoodOrderTracker } from "@/components/menu/FoodOrderTracker";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -28,7 +30,12 @@ import {
 import type { FoodOrder } from "@/lib/types";
 
 function statusBadgeClass(status: FoodOrder["status"]) {
-  if (status === "confirmed")
+  if (
+    status === "confirmed" ||
+    status === "preparing" ||
+    status === "ready" ||
+    status === "out_for_delivery"
+  )
     return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300";
   if (status === "pending")
     return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
@@ -553,8 +560,9 @@ export default function MyOrdersPage() {
               );
             }
             const order = entry.order;
-            const canCancel =
-              order.status === "pending" || order.status === "confirmed";
+            // Once the restaurant confirms, the kitchen may already be
+            // cooking: changes go through a message instead.
+            const canCancel = order.status === "pending";
             return (
               <li
                 key={`food-${order.id}`}
@@ -587,6 +595,31 @@ export default function MyOrdersPage() {
                   >
                     {formatFoodOrderStatus(order.status)}
                   </span>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3">
+                  <FoodOrderTracker order={order} />
+                  <FoodOrderDetails order={order} />
+                  {order.paymentStatus === "awaiting_verification" && (
+                    <p className="rounded-xl bg-amber-50 p-2.5 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                      {order.business?.name ?? "The restaurant"} is checking
+                      your payment and will confirm your order once it
+                      arrives.
+                    </p>
+                  )}
+                  {order.paymentStatus === "failed" && (
+                    <p className="rounded-xl bg-red-50 p-2.5 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+                      The restaurant couldn&apos;t find your payment. If you
+                      did send it, message them with your transaction
+                      confirmation.
+                    </p>
+                  )}
+                  {order.paymentStatus === "refund_due" && (
+                    <p className="rounded-xl bg-orange-50 p-2.5 text-sm text-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
+                      A refund of your payment is due from the restaurant.
+                      Message them if it doesn&apos;t arrive soon.
+                    </p>
+                  )}
                 </div>
 
                 <FoodOrderLines order={order} className="mt-3" />

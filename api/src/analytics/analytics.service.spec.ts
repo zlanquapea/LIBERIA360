@@ -61,6 +61,55 @@ describe("AnalyticsService", () => {
     service = module.get(AnalyticsService);
   });
 
+  describe("record (platform events)", () => {
+    it("records a search with its normalized query and no target", async () => {
+      await service.record({
+        eventType: AnalyticsEventType.SEARCH,
+        query: "  Beaches near ROBERTSPORT ",
+      });
+      expect(eventRepo.save).toHaveBeenCalledWith({
+        eventType: AnalyticsEventType.SEARCH,
+        query: "beaches near robertsport",
+      });
+    });
+
+    it("rejects a search with no query", async () => {
+      await expect(
+        service.record({ eventType: AnalyticsEventType.SEARCH, query: " " }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("records trip creation without a target", async () => {
+      await service.record({ eventType: AnalyticsEventType.TRIP_CREATE });
+      expect(eventRepo.save).toHaveBeenCalledWith({
+        eventType: AnalyticsEventType.TRIP_CREATE,
+        query: null,
+      });
+    });
+
+    it("rejects a platform event that names a target", async () => {
+      await expect(
+        service.record({
+          eventType: AnalyticsEventType.TRIP_CREATE,
+          placeId: "place-1",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("records add-to-trip against a place, like a save", async () => {
+      await service.record({
+        eventType: AnalyticsEventType.ADD_TO_TRIP,
+        placeId: "place-1",
+      });
+      expect(eventRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          placeId: "place-1",
+          eventType: AnalyticsEventType.ADD_TO_TRIP,
+        }),
+      );
+    });
+  });
+
   describe("record", () => {
     it("rejects a request with none of placeId/creatorId/advertisementId", async () => {
       await expect(

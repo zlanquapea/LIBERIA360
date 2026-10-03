@@ -10,6 +10,7 @@ import {
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { Place } from "../places/entities/place.entity";
 import { SettingsService } from "../settings/settings.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { MailService } from "../mail/mail.service";
@@ -47,6 +48,7 @@ describe("ReportsService", () => {
   let reviewRepo: { exists: jest.Mock; findOne: jest.Mock };
   let eventRepo: { exists: jest.Mock; findOne: jest.Mock };
   let businessRepo: { exists: jest.Mock };
+  let placeRepo: { exists: jest.Mock; findOne: jest.Mock };
   let settingsService: {
     getApplicationSettings: jest.Mock;
     getAdminNotificationSettings: jest.Mock;
@@ -75,6 +77,12 @@ describe("ReportsService", () => {
       findOne: jest.fn().mockResolvedValue({ id: "event-1", name: "Fete" }),
     };
     businessRepo = { exists: jest.fn().mockResolvedValue(true) };
+    placeRepo = {
+      exists: jest.fn().mockResolvedValue(true),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "place-1", name: "Ducor Hill" }),
+    };
     settingsService = {
       getApplicationSettings: jest.fn().mockResolvedValue(APPLICATION_SETTINGS),
       getAdminNotificationSettings: jest
@@ -100,6 +108,7 @@ describe("ReportsService", () => {
         { provide: getRepositoryToken(Review), useValue: reviewRepo },
         { provide: getRepositoryToken(Event), useValue: eventRepo },
         { provide: getRepositoryToken(Business), useValue: businessRepo },
+        { provide: getRepositoryToken(Place), useValue: placeRepo },
         { provide: SettingsService, useValue: settingsService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: MailService, useValue: mailService },
@@ -207,6 +216,34 @@ describe("ReportsService", () => {
       expect.stringContaining("/admin/content/moderation"),
     );
     expect(pushService.sendToUsers).not.toHaveBeenCalled();
+  });
+
+  it("rejects reporting a place that doesn't exist", async () => {
+    placeRepo.exists.mockResolvedValue(false);
+    await expect(
+      service.report("user-1", {
+        targetType: ReportTargetType.PLACE,
+        targetId: "place-1",
+        reason: ReportReason.INCORRECT_INFO,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("alerts admins about incorrect place details once they reach the threshold", async () => {
+    reportRepo.count.mockResolvedValue(3);
+    await service.report("user-1", {
+      targetType: ReportTargetType.PLACE,
+      targetId: "place-1",
+      reason: ReportReason.INCORRECT_INFO,
+      details: "Closes at 6pm now, not 9pm",
+    });
+    expect(mailService.sendFlaggedContentAlert).toHaveBeenCalledWith(
+      "admin1@example.com",
+      "Admin One",
+      'Details on "Ducor Hill"',
+      3,
+      expect.any(String),
+    );
   });
 
   it("does not re-notify on a later report past the threshold", async () => {

@@ -6,6 +6,7 @@ import {
   ApiError,
   getBusinessByPlace,
   getCountyPlaces,
+  getCreatorGuides,
   getMenuItems,
   getMenuSettings,
   getPlaceBySlug,
@@ -30,6 +31,7 @@ import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
 import { PlaceKeyFacts } from "@/components/PlaceKeyFacts";
 import { MenuPreviewSection } from "@/components/MenuPreviewSection";
+import { suggestBusinessType } from "@/lib/business-categories";
 import { businessHasMenu } from "@/lib/menu";
 import { PharmacyPreviewSection } from "@/components/PharmacyPreviewSection";
 import { ShareMenu } from "@/components/ShareMenu";
@@ -39,9 +41,13 @@ import { BusinessClaimSection } from "@/components/BusinessClaimSection";
 import { PlaceViewTracker } from "@/components/PlaceViewTracker";
 import { PlaceFreshnessPrompt } from "@/components/PlaceFreshnessPrompt";
 import { PublicTripCard } from "@/components/PublicTripCard";
+import { PlaceGoodToKnow } from "@/components/place/PlaceGoodToKnow";
+import { VisitorPhotos } from "@/components/place/VisitorPhotos";
+import { PlaceInGuides } from "@/components/creator-guides/PlaceInGuides";
+import { distanceKm } from "@/lib/geo";
 import { JsonLd } from "@/components/JsonLd";
 import { placeJsonLd } from "@/lib/structured-data";
-import type { BusinessType, Place, PlaceType } from "@/lib/types";
+import type { Place, PlaceType } from "@/lib/types";
 
 // Keys into placeDetail.nearby* — see NEARBY_TYPE_LABELS's usage below.
 // lib/format.ts's own formatPlaceType() (used as this map's fallback) is
@@ -53,17 +59,6 @@ const NEARBY_TYPE_LABEL_KEYS: Partial<Record<PlaceType, string>> = {
   activity_provider: "nearbyTourGuides",
 };
 
-// Loose mapping from the catalog's PlaceType to the claim form's
-// BusinessType — just a sensible default for the type dropdown, not a
-// strict correspondence (an attraction's on-site cafe is still a
-// "restaurant" business, for instance).
-const SUGGESTED_BUSINESS_TYPE: Record<PlaceType, BusinessType> = {
-  hotel: "hotel",
-  restaurant: "restaurant",
-  activity_provider: "tour_operator",
-  attraction: "tour_operator",
-  nature_site: "tour_operator",
-};
 
 export async function generateMetadata({
   params,
@@ -117,7 +112,7 @@ export default async function PlaceProfilePage({
     notFound();
   }
 
-  const [nearbyResult, reviewsResult, business, pharmacy, publicTripsResult] =
+  const [nearbyResult, reviewsResult, business, pharmacy, publicTripsResult, guidesResult] =
     await Promise.all([
       getCountyPlaces(place.county.slug, { limit: 30 }),
       getReviews(place.id, { limit: 20 }),
@@ -131,6 +126,7 @@ export default async function PlaceProfilePage({
       // whose destination is this exact place, discoverable by anyone
       // browsing it, not just the trip's own creator/roster.
       getPublicTrips({ destinationPlaceId: place.id, limit: 6 }),
+      getCreatorGuides({ placeId: place.id, limit: 3 }),
     ]);
   // The menu is information about *this place* to a visitor, not about the
   // separate "Business" management entity — it belongs here, not gated
@@ -140,9 +136,16 @@ export default async function PlaceProfilePage({
     business && businessHasMenu(business.type)
       ? await Promise.all([getMenuItems(business.id), getMenuSettings(business.id)])
       : [[], null];
-  const nearby = nearbyResult.data.filter(
-    (candidate) => candidate.id !== place.id,
-  );
+  // Closest first, so "nearby" means nearby.
+  const nearby = nearbyResult.data
+    .filter((candidate) => candidate.id !== place.id)
+    .sort(
+      (a, b) =>
+        distanceKm({ lat: place.latitude, lng: place.longitude }, { lat: a.latitude, lng: a.longitude }) -
+        distanceKm({ lat: place.latitude, lng: place.longitude }, { lat: b.latitude, lng: b.longitude }),
+    );
+  const hasAnyCost =
+    place.estimatedCostEntry != null || place.estimatedCostGuide != null || place.estimatedCostTransport != null;
   const nearbyByType = groupByType(nearby);
 
   const travelTime = estimateTravelTime(place.distanceFromMonroviaKm);
@@ -230,6 +233,7 @@ export default async function PlaceProfilePage({
           items={menuItems}
           menuHref={`/businesses/${business.slug}/menu`}
           currency={menuSettings?.currency}
+          settings={menuSettings}
         />
       )}
 
@@ -254,6 +258,8 @@ export default async function PlaceProfilePage({
         </p>
       </section>
 
+      <PlaceGoodToKnow place={place} />
+
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
@@ -272,9 +278,11 @@ export default async function PlaceProfilePage({
             categorySlug={place.category.slug}
           />
         </div>
-        <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          {t("gettingThere")}
-        </p>
+        {!place.transportNotes && (
+          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {t("gettingThere")}
+          </p>
+        )}
       </section>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
@@ -284,6 +292,8 @@ export default async function PlaceProfilePage({
         <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
           {t("estimatedCost")}
         </h2>
+        {hasAnyCost ? (
+          <>
         <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">
           <CostItem
             label={t("costEntry")}
@@ -298,6 +308,11 @@ export default async function PlaceProfilePage({
             value={formatCost(place.estimatedCostTransport)}
           />
         </dl>
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t("pricesNote")}</p>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{t("noPricesListed")}</p>
+        )}
       </section>
 
       {place.activities && place.activities.length > 0 && (
@@ -347,10 +362,14 @@ export default async function PlaceProfilePage({
       <section id="claim" className="scroll-mt-4">
         <BusinessClaimSection
           placeId={place.id}
-          suggestedType={SUGGESTED_BUSINESS_TYPE[place.type]}
+          suggestedType={suggestBusinessType(place)}
           initialBusiness={business}
         />
       </section>
+
+      <PlaceInGuides guides={guidesResult.data} />
+
+      <VisitorPhotos reviews={reviewsResult.data} />
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>

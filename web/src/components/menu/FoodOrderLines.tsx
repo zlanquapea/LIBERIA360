@@ -26,6 +26,18 @@ export function FoodOrderLines({ order, className = '' }: { order: FoodOrder; cl
           </li>
         ))}
       </ul>
+      {order.fulfillment === 'delivery' && (
+        <div className="mt-1.5 flex flex-col gap-0.5 border-t border-slate-100 pt-1.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <span className="flex items-center justify-between">
+            <span>Subtotal</span>
+            <span>{formatMoney(Number(order.subtotal), currency)}</span>
+          </span>
+          <span className="flex items-center justify-between">
+            <span>Delivery</span>
+            <span>{Number(order.deliveryFee) > 0 ? formatMoney(Number(order.deliveryFee), currency) : 'Free'}</span>
+          </span>
+        </div>
+      )}
       <div className="mt-1.5 flex items-center justify-between border-t border-slate-100 pt-1.5 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-50">
         <span>Total</span>
         <span>{formatMoney(Number(order.totalAmount), currency)}</span>

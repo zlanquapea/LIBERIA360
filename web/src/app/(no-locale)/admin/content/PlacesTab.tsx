@@ -15,6 +15,7 @@ import {
   updatePlace,
 } from '@/lib/admin-api';
 import { getBusinessByPlace } from '@/lib/api';
+import { suggestBusinessType } from '@/lib/business-categories';
 import { HttpError } from '@/lib/http';
 import { formatBusinessType, formatPlaceReviewStatus, formatPlaceType } from '@/lib/format';
 import { PhotoManager } from '@/components/PhotoManager';
@@ -23,6 +24,7 @@ import { BackToListLink, DeleteButton, TabListHeader, inputClass, slugify } from
 import { LoadingState } from '@/components/admin-ui';
 import { PlaceLocationPickerLoader } from './PlaceLocationPickerLoader';
 import { PlaceReviewPanel } from './PlaceReviewPanel';
+import { PracticalInfoEditor } from './PracticalInfoEditor';
 import { DataQualityPanel } from './DataQualityPanel';
 
 const PLACE_TYPES: PlaceType[] = ['attraction', 'nature_site', 'hotel', 'restaurant', 'activity_provider'];
@@ -282,6 +284,14 @@ function PlaceDetail({
           onChanged();
         }}
         onDeleted={onDeleted}
+      />
+      <PracticalInfoEditor
+        token={token}
+        place={place}
+        onSaved={(updated) => {
+          setPlace(updated);
+          onChanged();
+        }}
       />
       <ActivitiesEditor token={token} place={place} isSuperAdmin={isSuperAdmin} onChanged={reload} />
       <BusinessEditor token={token} place={place} business={business} isSuperAdmin={isSuperAdmin} onChanged={reload} />
@@ -866,8 +876,9 @@ function BusinessEditor({
   isSuperAdmin: boolean;
   onChanged: () => void;
 }) {
+  const suggestedType = suggestBusinessType(place);
   const [name, setName] = useState(business?.name ?? '');
-  const [type, setType] = useState<BusinessType>(business?.type ?? 'hotel');
+  const [type, setType] = useState<BusinessType>(business?.type ?? suggestedType);
   const [phone, setPhone] = useState(business?.phone ?? '');
   const [ownerUserId, setOwnerUserId] = useState(business?.owner?.id ?? '');
   const [images, setImages] = useState(business?.images ?? []);
@@ -876,11 +887,11 @@ function BusinessEditor({
 
   useEffect(() => {
     setName(business?.name ?? '');
-    setType(business?.type ?? 'hotel');
+    setType(business?.type ?? suggestedType);
     setPhone(business?.phone ?? '');
     setOwnerUserId(business?.owner?.id ?? '');
     setImages(business?.images ?? []);
-  }, [business]);
+  }, [business, suggestedType]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

@@ -22,6 +22,7 @@ import { PlaceCard } from "@/components/PlaceCard";
 import { SearchFilters } from "@/components/SearchFilters";
 import { QuickFilterChips } from "@/components/QuickFilterChips";
 import { AdvertisementBanner } from "@/components/AdvertisementBanner";
+import { SearchTracker } from "@/components/SearchTracker";
 import type { Category, PlaceSort, PlacesQuery, PlaceType } from "@/lib/types";
 
 export const metadata = { title: "Search — LIBERIA360" };
@@ -182,6 +183,7 @@ export default async function SearchPage({
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
+      <SearchTracker query={q} />
       <form
         action="/search"
         method="GET"

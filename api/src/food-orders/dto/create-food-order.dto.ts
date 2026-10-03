@@ -3,15 +3,21 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Max,
+  Matches,
   MaxLength,
   Min,
   ValidateNested,
 } from "class-validator";
+import {
+  FoodFulfillment,
+  FoodPaymentMethod,
+} from "../entities/food-order.enums";
 
 export class FoodOrderSelectionDto {
   @IsString() @MaxLength(64) groupId: string;
@@ -55,4 +61,22 @@ export class CreateFoodOrderDto {
   @IsOptional()
   @IsBoolean()
   ageConfirmed?: boolean;
+
+  // Defaults to pickup / cash so older clients keep working.
+  @IsOptional() @IsEnum(FoodFulfillment) fulfillment?: FoodFulfillment;
+
+  // Required for delivery — see FoodOrdersService.create.
+  @IsOptional() @IsString() @MaxLength(300) deliveryAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+?[0-9][0-9 -]{5,18}[0-9]$/, {
+    message: "Enter a valid phone number",
+  })
+  contactPhone?: string;
+
+  @IsOptional() @IsEnum(FoodPaymentMethod) paymentMethod?: FoodPaymentMethod;
+
+  // The mobile money transaction ID; required for MTN MoMo / Orange Money.
+  @IsOptional() @IsString() @MaxLength(100) paymentReference?: string;
 }

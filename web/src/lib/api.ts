@@ -32,11 +32,15 @@ import type {
   PlacesQuery,
   PlatformStats,
   PublicTripSummary,
+  SharedTripView,
+  CreatorGuide,
+  PaginatedCreatorGuides,
   SearchSuggestResponse,
   SponsoredPlacement,
   TravelerInfoSettings,
 } from "./types";
 import { serverApiOrigin } from "./server-api-origin";
+import { defaultMenuSettings } from "./food-ordering";
 
 export { serverApiOrigin };
 
@@ -313,12 +317,12 @@ export function getMenuItems(businessId: string): Promise<MenuItem[]> {
 }
 
 // Both of these are nice-to-have context for a menu page, never worth
-// failing it over — callers fall back to USD / no conversion.
+// failing it over — callers fall back to the defaults (USD, pickup, cash) /
+// no conversion.
 export function getMenuSettings(businessId: string): Promise<MenuSettings> {
-  return apiFetch<MenuSettings>(`/menu-settings/${businessId}`).catch(() => ({
-    businessId,
-    currency: "USD" as const,
-  }));
+  return apiFetch<MenuSettings>(`/menu-settings/${businessId}`).catch(() =>
+    defaultMenuSettings(businessId),
+  );
 }
 
 export function getUsdToLrdRate(): Promise<number | null> {
@@ -501,6 +505,28 @@ export function getPublicTrips(
 // "Trip Ideas" — curated starter itineraries, server-fetched for the
 // homepage teaser rail (same reasoning as getPublicTrips above: a build-
 // time-unreachable API must fall back to an empty list, not fail the page).
+/** Published creator guides, newest first. */
+export function getCreatorGuides(
+  query: { placeId?: string; creator?: string; limit?: number; page?: number } = {},
+): Promise<PaginatedCreatorGuides> {
+  return apiFetch<PaginatedCreatorGuides>(
+    "/creator-guides",
+    query as Record<string, string | number | undefined>,
+    { data: [], meta: { total: 0, page: 1, limit: query.limit ?? 12 } },
+  );
+}
+
+/** A published guide by slug; ApiError(404) when it isn't published. */
+export function getCreatorGuide(slug: string): Promise<CreatorGuide> {
+  return apiFetch<CreatorGuide>(`/creator-guides/${encodeURIComponent(slug)}`);
+}
+
+/** The plan behind a view-only share link; a revoked or unknown token
+ * throws ApiError(404). */
+export function getSharedTrip(shareToken: string): Promise<SharedTripView> {
+  return apiFetch<SharedTripView>(`/itineraries/shared/${encodeURIComponent(shareToken)}`);
+}
+
 export function getFeaturedItineraries(): Promise<PublicTripSummary[]> {
   return apiFetch<PublicTripSummary[]>("/itineraries/featured", undefined, []);
 }

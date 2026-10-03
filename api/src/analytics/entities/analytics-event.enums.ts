@@ -8,4 +8,15 @@ export enum AnalyticsEventType {
   SAVE = "save",
   CONTACT_CLICK = "contact_click",
   BOOKING_REQUEST = "booking_request",
+  // Product-usage signals. ADD_TO_TRIP targets a place like SAVE does.
+  // SEARCH and TRIP_CREATE are platform-wide and carry no target.
+  ADD_TO_TRIP = "add_to_trip",
+  SEARCH = "search",
+  TRIP_CREATE = "trip_create",
 }
+
+/** Event types recorded without a place/creator/ad/event target. */
+export const PLATFORM_EVENT_TYPES: readonly AnalyticsEventType[] = [
+  AnalyticsEventType.SEARCH,
+  AnalyticsEventType.TRIP_CREATE,
+];

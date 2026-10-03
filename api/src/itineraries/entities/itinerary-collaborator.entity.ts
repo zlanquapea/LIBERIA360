@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { Itinerary } from "./itinerary.entity";
 import { User } from "../../users/entities/user.entity";
+import { CollaboratorRole } from "./itinerary.enums";
 
 /**
  * Grants another user edit access to a trip (Wanderlog/TripIt-style
@@ -18,9 +19,8 @@ import { User } from "../../users/entities/user.entity";
  * alongside the owner. Deliberately no invite/accept handshake: the same
  * "immediate effect" simplification the rest of the app already uses for
  * business self-claim and admin promotion, rather than a second async
- * flow to build and test. One role only (editor) — there's no read-only
- * "viewer" tier, since a trip with no one else able to add/remove/annotate
- * stops isn't meaningfully "collaborative" yet.
+ * flow to build and test. Each collaborator is an editor (changes the
+ * plan) or a viewer (sees it, can't change it) — see CollaboratorRole.
  */
 @Entity("itinerary_collaborators")
 @Unique(["itineraryId", "userId"])
@@ -43,6 +43,14 @@ export class ItineraryCollaborator {
   @Index()
   @Column({ name: "user_id" })
   userId: string;
+
+  @Column({
+    type: "enum",
+    enum: CollaboratorRole,
+    enumName: "collaborator_role_enum",
+    default: CollaboratorRole.EDITOR,
+  })
+  role: CollaboratorRole;
 
   @Column({ name: "invited_by_user_id", type: "uuid" })
   invitedByUserId: string;

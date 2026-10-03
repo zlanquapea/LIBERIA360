@@ -1,4 +1,4 @@
-import type { CreateMenuItemInput, MenuCurrency, MenuItem, MenuSettings, UpdateMenuItemInput } from './types';
+import type { CreateMenuItemInput, MenuItem, MenuSettings, UpdateMenuItemInput, UpdateMenuSettingsInput } from './types';
 import { apiRequest, authHeader } from './http';
 
 // The full menu for one business — public (no auth) and identical to what
@@ -41,7 +41,7 @@ export function getMenuSettings(businessId: string): Promise<MenuSettings> {
 export function updateMenuSettings(
   token: string,
   businessId: string,
-  input: { currency?: MenuCurrency },
+  input: UpdateMenuSettingsInput,
 ): Promise<MenuSettings> {
   return apiRequest<MenuSettings>(`/menu-settings/${businessId}`, {
     method: 'PATCH',

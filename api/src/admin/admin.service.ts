@@ -82,6 +82,7 @@ export interface FlaggedContent {
   review: Review | null;
   event: Event | null;
   business: Business | null;
+  place: Place | null;
 }
 
 export interface ModerationQueue {
@@ -788,30 +789,39 @@ export class AdminService {
     const businessIds = rows
       .filter((r) => r.targetType === ReportTargetType.BUSINESS)
       .map((r) => r.targetId);
+    const placeIds = rows
+      .filter((r) => r.targetType === ReportTargetType.PLACE)
+      .map((r) => r.targetId);
 
-    const [reviews, events, businesses, allReports] = await Promise.all([
-      reviewIds.length
-        ? this.reviewRepo.find({
-            where: reviewIds.map((id) => ({ id })),
-            relations: ["user"],
-          })
-        : Promise.resolve([]),
-      eventIds.length
-        ? this.eventRepo.find({ where: eventIds.map((id) => ({ id })) })
-        : Promise.resolve([]),
-      businessIds.length
-        ? this.businessRepo.find({ where: businessIds.map((id) => ({ id })) })
-        : Promise.resolve([]),
-      this.contentReportRepo.find({
-        where: rows.map((r) => ({
-          targetType: r.targetType,
-          targetId: r.targetId,
-        })),
-      }),
-    ]);
+    const [reviews, events, businesses, places, allReports] = await Promise.all(
+      [
+        reviewIds.length
+          ? this.reviewRepo.find({
+              where: reviewIds.map((id) => ({ id })),
+              relations: ["user"],
+            })
+          : Promise.resolve([]),
+        eventIds.length
+          ? this.eventRepo.find({ where: eventIds.map((id) => ({ id })) })
+          : Promise.resolve([]),
+        businessIds.length
+          ? this.businessRepo.find({ where: businessIds.map((id) => ({ id })) })
+          : Promise.resolve([]),
+        placeIds.length
+          ? this.placeRepo.find({ where: placeIds.map((id) => ({ id })) })
+          : Promise.resolve([]),
+        this.contentReportRepo.find({
+          where: rows.map((r) => ({
+            targetType: r.targetType,
+            targetId: r.targetId,
+          })),
+        }),
+      ],
+    );
     const reviewById = new Map(reviews.map((r) => [r.id, r]));
     const eventById = new Map(events.map((e) => [e.id, e]));
     const businessById = new Map(businesses.map((b) => [b.id, b]));
+    const placeById = new Map(places.map((p) => [p.id, p]));
 
     return rows.map((r) => {
       const reasons: Record<ReportReason, number> = {
@@ -821,6 +831,7 @@ export class AdminService {
         [ReportReason.FRAUDULENT]: 0,
         [ReportReason.MISLEADING_OFFER]: 0,
         [ReportReason.COPYRIGHT]: 0,
+        [ReportReason.INCORRECT_INFO]: 0,
         [ReportReason.OTHER]: 0,
       };
       for (const report of allReports) {
@@ -847,6 +858,10 @@ export class AdminService {
         business:
           r.targetType === ReportTargetType.BUSINESS
             ? (businessById.get(r.targetId) ?? null)
+            : null,
+        place:
+          r.targetType === ReportTargetType.PLACE
+            ? (placeById.get(r.targetId) ?? null)
             : null,
       };
     });

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CalendarDaysIcon, PencilSquareIcon, TruckIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/20/solid';
 import { formatCarCategory, formatCost, formatEventDateRange, formatPlaceType } from '@/lib/format';
 import { CategoryIcon } from '@/lib/icons';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
@@ -99,11 +100,14 @@ export function ItineraryStops({
   durationDays,
   onRemove,
   onMove,
+  onReorder,
 }: {
   stops: ItineraryStopDetail[];
   durationDays?: number;
   onRemove?: (itemId: string) => void;
   onMove?: (itemId: string, day: number) => void;
+  // Moves a stop to a 0-based position within its day.
+  onReorder?: (itemId: string, position: number) => void;
 }) {
   const byDay = new Map<number, ItineraryStopDetail[]>();
   for (const stop of stops) {
@@ -130,7 +134,7 @@ export function ItineraryStops({
             {byDay
               .get(day)!
               .sort((a, b) => a.order - b.order)
-              .map((stop) => {
+              .map((stop, index, dayStops) => {
                 const itemId = stopItemId(stop);
                 if (!itemId) return null;
                 return (
@@ -147,6 +151,28 @@ export function ItineraryStops({
                           </p>
                         </div>
                       </Link>
+                      {onReorder && dayStops.length > 1 && (
+                        <div className="flex shrink-0 flex-col">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => onReorder(itemId, index - 1)}
+                            aria-label={`Move ${stopTitle(stop)} earlier in day ${day}`}
+                            className="rounded p-0.5 text-slate-500 hover:text-brand-700 disabled:opacity-30 dark:text-slate-400"
+                          >
+                            <ChevronUpIcon aria-hidden className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === dayStops.length - 1}
+                            onClick={() => onReorder(itemId, index + 1)}
+                            aria-label={`Move ${stopTitle(stop)} later in day ${day}`}
+                            className="rounded p-0.5 text-slate-500 hover:text-brand-700 disabled:opacity-30 dark:text-slate-400"
+                          >
+                            <ChevronDownIcon aria-hidden className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                       {onRemove && stop.carListing && (
                         <Link
                           href={`/car-rentals/${stop.carListing.id}/book`}

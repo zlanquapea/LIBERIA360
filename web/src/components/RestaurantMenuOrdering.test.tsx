@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { RestaurantMenuOrdering } from "./RestaurantMenuOrdering";
-import type { Business, FoodOrder, MenuItem } from "@/lib/types";
+import type { Business, FoodOrder, MenuItem, MenuSettings } from "@/lib/types";
 
 const mockUseAuth = jest.fn();
 jest.mock("../hooks/useAuth", () => ({
@@ -64,9 +64,29 @@ const mojito = makeItem({
 });
 const wings = makeItem({ id: "wings", name: "Pepper Wings", price: 8 });
 
-function renderMenu() {
+const settings: MenuSettings = {
+  businessId: "biz-1",
+  currency: "USD",
+  pickupEnabled: true,
+  deliveryEnabled: true,
+  deliveryFee: 2,
+  freeDeliveryMinimum: 25,
+  deliveryAreas: "Sinkor, Congo Town",
+  deliveryEstimate: "30–45 min",
+  cashEnabled: true,
+  mtnMomoNumber: null,
+  orangeMoneyNumber: "0777 123 456",
+  mobileMoneyName: "Sunset Lounge Ltd",
+};
+
+function renderMenu(overrides: Partial<MenuSettings> = {}) {
   return render(
-    <RestaurantMenuOrdering business={business} items={[mojito, wings]} currency="USD" usdToLrdRate={190} />,
+    <RestaurantMenuOrdering
+      business={business}
+      items={[mojito, wings]}
+      settings={{ ...settings, ...overrides }}
+      usdToLrdRate={190}
+    />,
   );
 }
 
@@ -89,6 +109,16 @@ describe("RestaurantMenuOrdering", () => {
     expect(screen.getAllByText("≈ L$1,140").length).toBeGreaterThan(0);
   });
 
+  it("shows the delivery fee, delivery time and accepted payments up front", () => {
+    renderMenu();
+    const info = screen.getByRole("list", { name: "Delivery and payment" });
+    expect(within(info).getByText("Delivery US$2.00 · free over US$25.00")).toBeInTheDocument();
+    expect(within(info).getByText("30–45 min")).toBeInTheDocument();
+    expect(within(info).getByText("Orange Money")).toBeInTheDocument();
+    expect(within(info).queryByText("MTN MoMo")).not.toBeInTheDocument();
+    expect(screen.getByText("Delivers to Sinkor, Congo Town")).toBeInTheDocument();
+  });
+
   it("customizes a drink, gates alcohol on the 18+ confirmation, and sends selections", async () => {
     mockCreateFoodOrder.mockResolvedValue({ totalAmount: 8.5, currency: "USD" } as FoodOrder);
     renderMenu();
@@ -103,18 +133,85 @@ describe("RestaurantMenuOrdering", () => {
     fireEvent.click(screen.getByRole("button", { name: /View order/ }));
     const cart = screen.getByRole("dialog", { name: "Your order" });
     expect(within(cart).getByText("Premium rum")).toBeInTheDocument();
-    const placeOrder = within(cart).getByRole("button", { name: /Place order/ });
-    expect(placeOrder).toBeDisabled();
+    fireEvent.click(within(cart).getByRole("button", { name: /Continue to checkout/ }));
 
-    fireEvent.click(within(cart).getByRole("checkbox", { name: /18 or older/ }));
-    expect(placeOrder).toBeEnabled();
-    fireEvent.click(placeOrder);
+    const checkout = screen.getByRole("dialog", { name: "Checkout" });
+    fireEvent.click(within(checkout).getByRole("radio", { name: /Pickup/ }));
+    fireEvent.click(within(checkout).getByRole("button", { name: /Place order/ }));
+    expect(within(checkout).getByRole("alert")).toHaveTextContent("Confirm you’re 18 or older");
+    expect(mockCreateFoodOrder).not.toHaveBeenCalled();
+
+    fireEvent.click(within(checkout).getByRole("checkbox", { name: /18 or older/ }));
+    fireEvent.click(within(checkout).getByRole("button", { name: /Place order\s*US\$8\.50/ }));
 
     expect(await screen.findByText("Order sent!")).toBeInTheDocument();
     expect(mockCreateFoodOrder).toHaveBeenCalledWith("tok", "biz-1", {
       items: [{ menuItemId: "mojito", quantity: 1, selections: [{ groupId: "rum", choiceIds: ["premium"] }] }],
       notes: undefined,
       ageConfirmed: true,
+      fulfillment: "pickup",
+      deliveryAddress: undefined,
+      contactPhone: undefined,
+      paymentMethod: "cash",
+      paymentReference: undefined,
+    });
+  });
+
+  it("checks out a delivery paid by Orange Money, ticket-style", async () => {
+    mockCreateFoodOrder.mockResolvedValue({
+      totalAmount: 10,
+      currency: "USD",
+      paymentMethod: "orange_money",
+      paymentReference: "OM-48213",
+      fulfillment: "delivery",
+    } as FoodOrder);
+    renderMenu();
+    fireEvent.click(screen.getByRole("tab", { name: /Food/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Pepper Wings to order" }));
+    fireEvent.click(screen.getByRole("button", { name: /View order/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue to checkout/ }));
+
+    const sheet = screen.getByRole("dialog", { name: "Checkout" });
+    // Delivery is the default when offered, and adds the fee.
+    expect(within(sheet).getByRole("radio", { name: /Delivery/ })).toBeChecked();
+    expect(within(sheet).getByRole("button", { name: /Place order\s*US\$10\.00/ })).toBeInTheDocument();
+
+    fireEvent.click(within(sheet).getByRole("button", { name: /Place order/ }));
+    expect(within(sheet).getByRole("alert")).toHaveTextContent("Add the address to deliver to");
+
+    fireEvent.change(within(sheet).getByRole("textbox", { name: "Delivery address" }), {
+      target: { value: "12 Tubman Blvd, Sinkor" },
+    });
+    fireEvent.change(within(sheet).getByRole("textbox", { name: /Phone number/ }), {
+      target: { value: "0886 555 000" },
+    });
+    fireEvent.click(within(sheet).getByRole("radio", { name: /Orange Money/ }));
+    // The ticket-style instructions: exact amount and the restaurant's number.
+    expect(within(sheet).getByText("0777 123 456")).toBeInTheDocument();
+    expect(within(sheet).getByText("Sunset Lounge Ltd")).toBeInTheDocument();
+
+    fireEvent.click(within(sheet).getByRole("button", { name: /Submit payment & order/ }));
+    expect(within(sheet).getByRole("alert")).toHaveTextContent("Enter the Orange Money transaction ID");
+
+    fireEvent.change(within(sheet).getByPlaceholderText("Transaction ID"), { target: { value: " OM-48213 " } });
+    fireEvent.click(within(sheet).getByRole("button", { name: /Submit payment & order/ }));
+
+    expect(await screen.findByText(/check your Orange Money payment \(transaction OM-48213\)/)).toBeInTheDocument();
+    expect(mockCreateFoodOrder).toHaveBeenCalledWith(
+      "tok",
+      "biz-1",
+      expect.objectContaining({
+        fulfillment: "delivery",
+        deliveryAddress: "12 Tubman Blvd, Sinkor",
+        contactPhone: "0886 555 000",
+        paymentMethod: "orange_money",
+        paymentReference: "OM-48213",
+      }),
+    );
+    // Address and phone are remembered for next time; payment details aren't.
+    expect(JSON.parse(window.localStorage.getItem("liberia360:delivery-contact") ?? "{}")).toEqual({
+      deliveryAddress: "12 Tubman Blvd, Sinkor",
+      contactPhone: "0886 555 000",
     });
   });
 

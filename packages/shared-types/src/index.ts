@@ -84,6 +84,29 @@ export interface OpeningPeriod {
 }
 
 // api/src/places/entities/place.entity.ts
+// api/src/places/entities/place.enums.ts
+export type PracticalInfoSource =
+  "liberia360_team" | "business_owner" | "community" | "official_source";
+
+export const PLACE_AMENITIES = [
+  "parking",
+  "restrooms",
+  "drinking_water",
+  "food_on_site",
+  "wifi",
+  "power_backup",
+  "card_payments",
+  "mobile_money",
+  "guided_tours",
+  "lifeguard",
+  "changing_rooms",
+  "shade_seating",
+  "family_friendly",
+  "pet_friendly",
+] as const;
+
+export type PlaceAmenity = (typeof PLACE_AMENITIES)[number];
+
 export interface Place {
   id: string;
   name: string;
@@ -110,6 +133,14 @@ export interface Place {
   website: string | null;
   instagram: string | null;
   facebook: string | null;
+  // Documented practical details — each shown only when set.
+  amenities: PlaceAmenity[];
+  accessibilityNotes: string | null;
+  transportNotes: string | null;
+  // Who supplied the practical details and when they were last confirmed.
+  // Null on older places: unknown.
+  practicalInfoSource: PracticalInfoSource | null;
+  practicalInfoCheckedAt: string | null;
   rating: number;
   reviewCount: number;
   verificationStatus: VerificationStatus;
@@ -453,7 +484,13 @@ export interface PaginatedCreatorPosts {
 
 // api/src/analytics/entities/analytics-event.enums.ts
 export type AnalyticsEventType =
-  "view" | "save" | "contact_click" | "booking_request";
+  | "view"
+  | "save"
+  | "contact_click"
+  | "booking_request"
+  | "add_to_trip"
+  | "search"
+  | "trip_create";
 
 // api/src/analytics/analytics.service.ts's AnalyticsTotals/BusinessAnalytics.
 export interface AnalyticsTotals {
@@ -658,11 +695,7 @@ export interface EventTicketInstance {
 }
 
 export type EventTicketScanOutcome =
-  | "valid"
-  | "already_used"
-  | "cancelled"
-  | "wrong_event"
-  | "invalid";
+  "valid" | "already_used" | "cancelled" | "wrong_event" | "invalid";
 
 export interface ScannedTicketSummary {
   id: string;
@@ -751,7 +784,12 @@ export interface EventTicketOrder {
   buyer: AuthUser | null;
   buyerUserId: string;
   quantity: number;
-  items?: Array<{ ticketTypeId: string; name: string; quantity: number; unitPrice: string }>;
+  items?: Array<{
+    ticketTypeId: string;
+    name: string;
+    quantity: number;
+    unitPrice: string;
+  }>;
   unitPrice: string;
   currency: string;
   totalAmount: string;
@@ -852,6 +890,12 @@ export interface PaginatedEvents {
 export type BudgetBand = "budget" | "moderate" | "premium";
 export type ItineraryKind = "trip" | "weekend";
 export type TripVisibility = "private" | "public";
+
+/** Editors change the plan; viewers can only see it. */
+export type CollaboratorRole = "editor" | "viewer";
+
+export type TransportMode = "own_car" | "taxi" | "public_transport" | "tour_operator" | "mixed";
+export type TripPace = "relaxed" | "balanced" | "packed";
 export type TripStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
 // GET /itineraries (list) returns stops as stored — an id only, not
@@ -901,6 +945,12 @@ export interface Itinerary {
   isFeaturedTemplate: boolean;
   featuredCategory: string | null;
   featuredOrder: number | null;
+  // Practical planning details (release 2) — all optional.
+  startingLocation: string | null;
+  transportMode: TransportMode | null;
+  pace: TripPace | null;
+  // View-only share link token; null when sharing is off.
+  shareToken: string | null;
   cancelledAt: string | null;
   createdAt: string;
 }
@@ -944,6 +994,9 @@ export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
   // The creator — always labeled "Trip Admin" in the UI.
   admin: AuthUser | null;
   status: TripStatus;
+  // What the signed-in viewer may do, and each collaborator's access.
+  myRole: "owner" | CollaboratorRole;
+  collaboratorRoles: Record<string, CollaboratorRole>;
 }
 
 // GET /itineraries/public and GET /itineraries/public/:id — what a
@@ -979,6 +1032,17 @@ export interface PublicTripSummary {
 
 export interface PublicTripDetail extends PublicTripSummary {
   stops: ItineraryStopDetail[];
+}
+
+/** GET /itineraries/shared/:token — the plan behind a view-only link. */
+export interface SharedTripView extends PublicTripDetail {
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  partySize: number | null;
+  startingLocation: string | null;
+  transportMode: TransportMode | null;
+  pace: TripPace | null;
 }
 
 // What GET /itineraries/public/:id returns for a real but PRIVATE trip —
@@ -1066,6 +1130,7 @@ export interface InvitationSummary {
   email: string;
   status: InvitationDisplayStatus;
   invitee: AuthUser | null;
+  role: CollaboratorRole;
   emailDelivered: boolean;
   createdAt: string;
   respondedAt: string | null;
@@ -1155,7 +1220,15 @@ export interface CreatePlaceInput {
   featured?: boolean;
 }
 
-export type UpdatePlaceInput = Partial<CreatePlaceInput>;
+export type UpdatePlaceInput = Partial<CreatePlaceInput> & {
+  amenities?: PlaceAmenity[];
+  // Send "" to clear.
+  accessibilityNotes?: string;
+  transportNotes?: string;
+  // Admin-only provenance; owner edits set these automatically.
+  practicalInfoSource?: PracticalInfoSource;
+  practicalInfoCheckedAt?: string;
+};
 
 export interface CreateCategoryInput {
   name: string;
@@ -1245,7 +1318,7 @@ export interface PossiblyClosedPlace {
 }
 
 // api/src/reports/entities/content-report.enums.ts
-export type ReportTargetType = "review" | "event" | "business";
+export type ReportTargetType = "review" | "event" | "business" | "place";
 export type ReportReason =
   | "spam"
   | "inappropriate"
@@ -1253,6 +1326,7 @@ export type ReportReason =
   | "fraudulent"
   | "misleading_offer"
   | "copyright"
+  | "incorrect_info"
   | "other";
 
 export interface CreateContentReportInput {
@@ -1273,6 +1347,7 @@ export interface FlaggedContent {
   review: Review | null;
   event: Event | null;
   business: Business | null;
+  place: Place | null;
 }
 
 // api/src/business-content/entities/business-content.enums.ts
@@ -1414,13 +1489,68 @@ export type UpdateMenuItemInput = Partial<
 >;
 
 // api/src/menu-items/entities/menu-settings.entity.ts
+// A restaurant's delivery and payment setup is public: customers need the
+// mobile money numbers to pay.
 export interface MenuSettings {
   businessId: string;
   currency: MenuCurrency;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+  // 0 means free delivery.
+  deliveryFee: number;
+  // Orders at or above this subtotal get free delivery.
+  freeDeliveryMinimum: number | null;
+  deliveryAreas: string | null;
+  deliveryEstimate: string | null;
+  // Pay in cash on delivery / at pickup.
+  cashEnabled: boolean;
+  // A mobile money method is offered exactly when its number is set.
+  mtnMomoNumber: string | null;
+  orangeMoneyNumber: string | null;
+  mobileMoneyName: string | null;
 }
 
+export type UpdateMenuSettingsInput = Partial<
+  Omit<
+    MenuSettings,
+    | "businessId"
+    | "deliveryAreas"
+    | "deliveryEstimate"
+    | "mtnMomoNumber"
+    | "orangeMoneyNumber"
+    | "mobileMoneyName"
+  >
+> & {
+  // Send "" to clear.
+  deliveryAreas?: string;
+  deliveryEstimate?: string;
+  mtnMomoNumber?: string;
+  orangeMoneyNumber?: string;
+  mobileMoneyName?: string;
+};
+
 // api/src/food-orders/entities/food-order.enums.ts
-export type FoodOrderStatus = "pending" | "confirmed" | "declined" | "cancelled";
+export type FoodOrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "out_for_delivery"
+  | "completed"
+  | "declined"
+  | "cancelled";
+
+export type FoodFulfillment = "pickup" | "delivery";
+
+export type FoodPaymentMethod = "cash" | "mtn_momo" | "orange_money";
+
+export type FoodPaymentStatus =
+  | "pay_on_delivery"
+  | "awaiting_verification"
+  | "paid"
+  | "failed"
+  | "refund_due"
+  | "refunded";
 
 // api/src/food-orders/entities/food-order.entity.ts — snapshotted at order
 // time from the live MenuItem catalog, so a later menu price change or a
@@ -1454,10 +1584,22 @@ export interface FoodOrder {
   buyer: AuthUser | null;
   buyerUserId: string;
   items: FoodOrderLineItem[];
+  subtotal: number;
+  deliveryFee: number;
+  // subtotal + deliveryFee.
   totalAmount: number;
   currency: MenuCurrency;
   notes: string | null;
   status: FoodOrderStatus;
+  fulfillment: FoodFulfillment;
+  deliveryAddress: string | null;
+  contactPhone: string | null;
+  paymentMethod: FoodPaymentMethod;
+  paymentStatus: FoodPaymentStatus;
+  // Mobile money transaction ID.
+  paymentReference: string | null;
+  // The number the customer was asked to pay.
+  paymentAccount: string | null;
   businessResponse: string | null;
   respondedAt: string | null;
   createdAt: string;
@@ -1992,20 +2134,54 @@ export interface CarListingAvailability {
   }[];
 }
 
-export type SupportTicketStatus = "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
+export type SupportTicketStatus =
+  "open" | "in_progress" | "waiting_for_customer" | "resolved" | "closed";
 export type SupportTicketPriority = "low" | "medium" | "high" | "urgent";
-export type SupportTicketCategory = "account" | "booking" | "payment" | "listing" | "technical" | "safety" | "feedback" | "other";
+export type SupportTicketCategory =
+  | "account"
+  | "booking"
+  | "payment"
+  | "listing"
+  | "technical"
+  | "safety"
+  | "feedback"
+  | "other";
 export interface SupportTicket {
-  id: string; reference: string; customer: AuthUser; customerUserId: string;
-  assignedAgent: AuthUser | null; assignedAgentUserId: string | null;
-  category: SupportTicketCategory; subject: string; description: string; attachments: string[];
-  status: SupportTicketStatus; priority: SupportTicketPriority; rating: number | null; ratingComment: string | null;
-  resolvedAt: string | null; closedAt: string | null; createdAt: string; updatedAt: string;
+  id: string;
+  reference: string;
+  customer: AuthUser;
+  customerUserId: string;
+  assignedAgent: AuthUser | null;
+  assignedAgentUserId: string | null;
+  category: SupportTicketCategory;
+  subject: string;
+  description: string;
+  attachments: string[];
+  status: SupportTicketStatus;
+  priority: SupportTicketPriority;
+  rating: number | null;
+  ratingComment: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 // readAt: same read-receipt convention as BookingMessage/FoodOrderMessage
 // — set once the other side of the conversation has opened the thread.
-export interface SupportMessage { id: string; ticketId: string; sender: AuthUser; senderUserId: string; body: string; attachments: string[]; createdAt: string; readAt: string | null; }
-export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+export interface SupportMessage {
+  id: string;
+  ticketId: string;
+  sender: AuthUser;
+  senderUserId: string;
+  body: string;
+  attachments: string[];
+  createdAt: string;
+  readAt: string | null;
+}
+export interface PaginatedSupportTickets {
+  data: SupportTicket[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
 
 // Help Center / FAQ / Blog — a lightweight self-serve layer built *around*
 // the support ticket system above, not a second one: none of these
@@ -2013,37 +2189,86 @@ export interface PaginatedSupportTickets { data: SupportTicket[]; meta: { total:
 // to the existing /account/support flow.
 export type ArticleStatus = "draft" | "published";
 export interface KnowledgeCategory {
-  id: string; name: string; slug: string; description: string | null;
-  sortOrder: number; createdAt: string; updatedAt: string;
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
-export interface KnowledgeCategoryWithCount extends KnowledgeCategory { publishedArticleCount: number; }
+export interface KnowledgeCategoryWithCount extends KnowledgeCategory {
+  publishedArticleCount: number;
+}
 export interface KnowledgeArticle {
-  id: string; categoryId: string; category: KnowledgeCategory; title: string; slug: string;
-  content: string; authorUserId: string; author?: AuthUser; status: ArticleStatus;
-  createdAt: string; updatedAt: string;
+  id: string;
+  categoryId: string;
+  category: KnowledgeCategory;
+  title: string;
+  slug: string;
+  content: string;
+  authorUserId: string;
+  author?: AuthUser;
+  status: ArticleStatus;
+  createdAt: string;
+  updatedAt: string;
 }
-export interface PaginatedKnowledgeArticles { data: KnowledgeArticle[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
-export interface KnowledgeArticleWithRelated { article: KnowledgeArticle; related: KnowledgeArticle[]; }
-export interface ArticleFeedbackSummary { yes: number; no: number; }
+export interface PaginatedKnowledgeArticles {
+  data: KnowledgeArticle[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+export interface KnowledgeArticleWithRelated {
+  article: KnowledgeArticle;
+  related: KnowledgeArticle[];
+}
+export interface ArticleFeedbackSummary {
+  yes: number;
+  no: number;
+}
 
 export interface Faq {
-  id: string; question: string; answer: string; category: string | null;
-  sortOrder: number; published: boolean; createdAt: string; updatedAt: string;
+  id: string;
+  question: string;
+  answer: string;
+  category: string | null;
+  sortOrder: number;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type BlogPostStatus = "draft" | "published";
 export interface BlogPost {
-  id: string; title: string; slug: string; coverImage: string | null; content: string;
-  authorUserId: string; author?: AuthUser; status: BlogPostStatus;
-  publishedAt: string | null; createdAt: string; updatedAt: string;
+  id: string;
+  title: string;
+  slug: string;
+  coverImage: string | null;
+  content: string;
+  authorUserId: string;
+  author?: AuthUser;
+  status: BlogPostStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
-export interface PaginatedBlogPosts { data: BlogPost[]; meta: { total: number; page: number; limit: number; totalPages: number }; }
+export interface PaginatedBlogPosts {
+  data: BlogPost[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
 
 export type CreatorStoryMediaType = "image" | "video";
-export type CreatorStoryStatus = "pending" | "approved" | "rejected" | "expired" | "deleted";
+export type CreatorStoryStatus =
+  "pending" | "approved" | "rejected" | "expired" | "deleted";
 export type CreatorStoryVisibility = "public" | "followers";
 
-export const STORY_REACTION_EMOJIS = ["❤️", "😂", "😮", "😢", "👏", "🔥"] as const;
+export const STORY_REACTION_EMOJIS = [
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "👏",
+  "🔥",
+] as const;
 export type StoryReactionEmoji = (typeof STORY_REACTION_EMOJIS)[number];
 
 export interface CreatorStory {
@@ -2201,3 +2426,60 @@ export interface PublicExplorerProfile {
   progress: ExplorerProgress;
 }
 
+// ---------------------------------------------------------------------------
+// Creator guides (release 2): a local creator's guide to real places.
+
+export type CreatorGuideStatus = "draft" | "pending_review" | "published" | "rejected";
+
+/** Who wrote a guide — public fields only. */
+export interface GuideCreatorSummary {
+  id: string;
+  name: string;
+  username: string;
+  profileImage: string | null;
+  category: CreatorCategory;
+  verificationStatus: CreatorVerificationStatus;
+}
+
+export interface CreatorGuideStopView {
+  day: number;
+  note: string | null;
+  place: Place;
+}
+
+export interface CreatorGuide {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  coverImage: string | null;
+  videoUrl: string | null;
+  status: CreatorGuideStatus;
+  rejectionReason: string | null;
+  mediaPermissionConfirmedAt: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+  creator: GuideCreatorSummary;
+  stops: CreatorGuideStopView[];
+  dayCount: number;
+}
+
+export interface PaginatedCreatorGuides {
+  data: CreatorGuide[];
+  meta: { total: number; page: number; limit: number };
+}
+
+export interface CreatorGuideStopInput {
+  placeId: string;
+  day: number;
+  note?: string | null;
+}
+
+export interface CreatorGuideInput {
+  title: string;
+  summary: string;
+  coverImage?: string | null;
+  videoUrl?: string | null;
+  stops: CreatorGuideStopInput[];
+  mediaPermissionConfirmed?: boolean;
+}

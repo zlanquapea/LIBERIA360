@@ -396,6 +396,10 @@ export function formatBookingStatus(status: BookingStatus): string {
 const FOOD_ORDER_STATUS_LABELS: Record<FoodOrderStatus, string> = {
   pending: 'Awaiting response',
   confirmed: 'Confirmed',
+  preparing: 'Preparing',
+  ready: 'Ready for pickup',
+  out_for_delivery: 'On the way',
+  completed: 'Completed',
   declined: 'Declined',
   cancelled: 'Cancelled',
 };

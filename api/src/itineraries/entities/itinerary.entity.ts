@@ -10,7 +10,13 @@ import {
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
 import { Place } from "../../places/entities/place.entity";
-import { BudgetBand, ItineraryKind, TripVisibility } from "./itinerary.enums";
+import {
+  BudgetBand,
+  ItineraryKind,
+  TransportMode,
+  TripPace,
+  TripVisibility,
+} from "./itinerary.enums";
 
 // Exactly one of placeId/eventId/carListingId is set — a stop points at one
 // catalog item, never more than one (same "nullable-FK XOR" convention as
@@ -149,6 +155,38 @@ export class Itinerary {
   // Manual sort order within a featuredCategory group — null sorts last.
   @Column({ name: "featured_order", type: "smallint", nullable: true })
   featuredOrder: number | null;
+
+  // Practical planning details (release 2). All optional: the planner
+  // only shows estimates that depend on them once they're set.
+  @Column({
+    name: "starting_location",
+    type: "varchar",
+    length: 120,
+    nullable: true,
+  })
+  startingLocation: string | null;
+
+  @Column({
+    name: "transport_mode",
+    type: "enum",
+    enum: TransportMode,
+    nullable: true,
+  })
+  transportMode: TransportMode | null;
+
+  @Column({ type: "enum", enum: TripPace, nullable: true })
+  pace: TripPace | null;
+
+  // View-only share link. Null until the owner creates one; rotating or
+  // revoking it invalidates every copy of the old link.
+  @Column({
+    name: "share_token",
+    type: "varchar",
+    length: 64,
+    nullable: true,
+    unique: true,
+  })
+  shareToken: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

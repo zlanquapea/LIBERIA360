@@ -45,8 +45,17 @@ const foodOrder: FoodOrder = {
   buyer: null,
   buyerUserId: "user-1",
   items: [{ menuItemId: "item-1", name: "Jollof Rice", unitPrice: "10.00", quantity: 2 }],
+  subtotal: 20,
+  deliveryFee: 0,
   totalAmount: 20,
   currency: "USD",
+  fulfillment: "pickup",
+  deliveryAddress: null,
+  contactPhone: null,
+  paymentMethod: "cash",
+  paymentStatus: "pay_on_delivery",
+  paymentReference: null,
+  paymentAccount: null,
   notes: null,
   status: "confirmed",
   businessResponse: null,
@@ -161,7 +170,38 @@ describe("My Orders — unified food + pharmacy order history", () => {
     expect(thanks.closest("div")?.parentElement?.querySelector(".success-check")).not.toBeInTheDocument();
   });
 
-  it("still lets a food order be cancelled, unaffected by pharmacy orders sharing the page", async () => {
+  it("tracks a confirmed delivery order and its mobile money payment, with no cancel once confirmed", async () => {
+    mockGetMyFoodOrders.mockResolvedValue([
+      {
+        ...foodOrder,
+        status: "out_for_delivery",
+        fulfillment: "delivery",
+        deliveryAddress: "12 Tubman Blvd, Sinkor",
+        contactPhone: "0886 555 000",
+        subtotal: 20,
+        deliveryFee: 2,
+        totalAmount: 22,
+        paymentMethod: "orange_money",
+        paymentStatus: "paid",
+        paymentReference: "OM-48213",
+        paymentAccount: "0777 123 456",
+      },
+    ]);
+    renderWithMessages(<MyOrdersPage />);
+    await screen.findByText("Tasty Spot");
+
+    const tracker = screen.getByRole("list", { name: "Order progress" });
+    expect(within(tracker).getByText("On the way").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("12 Tubman Blvd, Sinkor")).toBeInTheDocument();
+    expect(screen.getByText("OM-48213")).toBeInTheDocument();
+    expect(screen.getByText("Paid")).toBeInTheDocument();
+    expect(screen.getByText("US$2.00")).toBeInTheDocument();
+    expect(screen.getByText("US$22.00")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument();
+  });
+
+  it("still lets a pending food order be cancelled, unaffected by pharmacy orders sharing the page", async () => {
+    mockGetMyFoodOrders.mockResolvedValue([{ ...foodOrder, status: "pending" }]);
     mockCancelFoodOrder.mockResolvedValue({ ...foodOrder, status: "cancelled" });
 
     renderWithMessages(<MyOrdersPage />);

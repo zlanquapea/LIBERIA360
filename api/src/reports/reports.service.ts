@@ -7,6 +7,7 @@ import { ReportTargetType } from "./entities/content-report.enums";
 import { Review } from "../reviews/entities/review.entity";
 import { Event } from "../events/entities/event.entity";
 import { Business } from "../businesses/entities/business.entity";
+import { Place } from "../places/entities/place.entity";
 import { CreateContentReportDto } from "./dto/create-content-report.dto";
 import { SettingsService } from "../settings/settings.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -28,6 +29,8 @@ export class ReportsService {
     private readonly eventRepo: Repository<Event>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(Place)
+    private readonly placeRepo: Repository<Place>,
     private readonly settingsService: SettingsService,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
@@ -86,7 +89,9 @@ export class ReportsService {
       ? this.reviewRepo.exists({ where: { id: targetId } })
       : targetType === ReportTargetType.EVENT
         ? this.eventRepo.exists({ where: { id: targetId } })
-        : this.businessRepo.exists({ where: { id: targetId } }));
+        : targetType === ReportTargetType.PLACE
+          ? this.placeRepo.exists({ where: { id: targetId } })
+          : this.businessRepo.exists({ where: { id: targetId } }));
     if (!exists) {
       throw new NotFoundException(`${targetType} "${targetId}" not found`);
     }
@@ -104,14 +109,17 @@ export class ReportsService {
    * the "Flagged content" queue the way reviews/events do (see
    * AdminService's doc comment on getModerationQueue), so they're
    * excluded here rather than silently mis-notifying about a target the
-   * moderation queue doesn't actually treat as flagged. */
+   * moderation queue doesn't actually treat as flagged. Places are
+   * included: an "incorrect details" report is something an admin should
+   * go and check. */
   private async maybeNotifyContentFlagged(
     targetType: ReportTargetType,
     targetId: string,
   ): Promise<void> {
     if (
       targetType !== ReportTargetType.REVIEW &&
-      targetType !== ReportTargetType.EVENT
+      targetType !== ReportTargetType.EVENT &&
+      targetType !== ReportTargetType.PLACE
     ) {
       return;
     }
@@ -186,6 +194,10 @@ export class ReportsService {
       return review
         ? `A review by ${review.user?.name ?? "a guest"}`
         : "A review";
+    }
+    if (targetType === ReportTargetType.PLACE) {
+      const place = await this.placeRepo.findOne({ where: { id: targetId } });
+      return place ? `Details on "${place.name}"` : "A place";
     }
     const event = await this.eventRepo.findOne({ where: { id: targetId } });
     return event ? `The event "${event.name}"` : "An event";

@@ -85,6 +85,23 @@ const config: Config = {
           800: '#1c5c0c',
           900: '#123f08',
         },
+        // Sunset orange — the warm accent of the forest/ivory/charcoal
+        // direction, used sparingly for highlights and primary hero CTAs.
+        // Contrast: 600 5.4:1 (4.8:1 on ivory) and 700 7.1:1 on white (text-safe from 600
+        // up; white text on a 600 fill 5.4:1); 300 7.1:1 on brand-900, the
+        // hero's highlight-on-forest pairing.
+        sunset: {
+          50: '#fef3eb',
+          100: '#fde1ce',
+          200: '#fbc39d',
+          300: '#f79f64',
+          400: '#f27b36',
+          500: '#ed5b12',
+          600: '#bb4310',
+          700: '#9c3611',
+          800: '#782b12',
+          900: '#562110',
+        },
         gold: {
           // 50/300/950 added alongside the same audit as `brand.950` above —
           // `bg-gold-50`, `text-gold-300`, and `dark:bg-gold-950` were

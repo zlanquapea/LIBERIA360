@@ -18,6 +18,8 @@ import { CreateInvitationsDto } from "./dto/create-invitations.dto";
 import { SearchInvitableUsersDto } from "./dto/search-invitable-users.dto";
 import { RenameItineraryDto } from "./dto/rename-itinerary.dto";
 import { UpdatePartySizeDto } from "./dto/update-party-size.dto";
+import { UpdateTripDetailsDto } from "./dto/update-trip-details.dto";
+import { SetCollaboratorRoleDto } from "./dto/set-collaborator-role.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -67,6 +69,13 @@ export class ItinerariesController {
     return this.itinerariesService.findPublicTripById(id);
   }
 
+  /** A trip opened through its view-only share link. Public, and declared
+   * before ":id" for the same routing reason as "public" above. */
+  @Get("shared/:token")
+  findSharedTrip(@Param("token") token: string) {
+    return this.itinerariesService.findSharedTrip(token);
+  }
+
   /** "Trip Ideas" (curated starter itineraries) — public, unauthenticated,
    * and declared before ":id" for the same routing reason as "public"
    * above. */
@@ -97,7 +106,7 @@ export class ItinerariesController {
     return this.itinerariesService.findOne(user.id, id);
   }
 
-  /** Owner or any collaborator can rename the trip. */
+  /** Owner or an editor can rename the trip. */
   @Patch(":id")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -109,7 +118,7 @@ export class ItinerariesController {
     return this.itinerariesService.renameTrip(user.id, id, dto.title);
   }
 
-  /** Owner or any collaborator can update the traveler headcount. */
+  /** Owner or an editor can update the traveler headcount. */
   @Patch(":id/party-size")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -119,6 +128,35 @@ export class ItinerariesController {
     @Body() dto: UpdatePartySizeDto,
   ) {
     return this.itinerariesService.updatePartySize(user.id, id, dto.partySize);
+  }
+
+  /** Owner or an editor can update the practical planning details. */
+  @Patch(":id/details")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updateDetails(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: UpdateTripDetailsDto,
+  ) {
+    return this.itinerariesService.updateDetails(user.id, id, dto);
+  }
+
+  /** Owner only: create or replace the view-only share link. */
+  @Post(":id/share-link")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  createShareLink(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.createShareLink(user.id, id);
+  }
+
+  /** Owner only: turn the share link off. */
+  @Delete(":id/share-link")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeShareLink(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.revokeShareLink(user.id, id);
   }
 
   /** Owner or any collaborator can duplicate the trip — the copy always
@@ -234,7 +272,12 @@ export class ItinerariesController {
     @Param("id") id: string,
     @Body() dto: CreateInvitationsDto,
   ) {
-    return this.itinerariesService.createInvitations(user.id, id, dto.invitees);
+    return this.itinerariesService.createInvitations(
+      user.id,
+      id,
+      dto.invitees,
+      dto.role,
+    );
   }
 
   /** Owner-only: the People/Participants panel's invitation list, with
@@ -287,7 +330,25 @@ export class ItinerariesController {
     );
   }
 
-  /** Owner or any collaborator can add a stop. */
+  /** Owner only: switch a collaborator between editing and view-only. */
+  @Patch(":id/collaborators/:userId")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  setCollaboratorRole(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Param("userId") collaboratorUserId: string,
+    @Body() dto: SetCollaboratorRoleDto,
+  ) {
+    return this.itinerariesService.setCollaboratorRole(
+      user.id,
+      id,
+      collaboratorUserId,
+      dto.role,
+    );
+  }
+
+  /** Owner or an editor can add a stop. */
   @Post(":id/stops")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -299,7 +360,7 @@ export class ItinerariesController {
     return this.itinerariesService.addStop(user.id, id, dto);
   }
 
-  /** Owner or any collaborator can edit a stop's notes or move its day.
+  /** Owner or an editor can edit a stop's notes or move its day.
    * `itemId` is whichever of placeId/eventId/carListingId identifies the
    * stop (see ItineraryStop's own doc comment). */
   @Patch(":id/stops/:itemId")
@@ -314,7 +375,7 @@ export class ItinerariesController {
     return this.itinerariesService.updateStop(user.id, id, itemId, dto);
   }
 
-  /** Owner or any collaborator can remove a stop. */
+  /** Owner or an editor can remove a stop. */
   @Delete(":id/stops/:itemId")
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

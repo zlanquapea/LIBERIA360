@@ -1,5 +1,6 @@
 'use client';
 
+import { SavedGuidesSection } from '@/components/creator-guides/SavedGuidesSection';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -153,6 +154,8 @@ export default function SavedPage() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10">
       <SavedPostsSection />
+
+      <SavedGuidesSection />
 
       <section aria-labelledby="saved-places-heading" className="flex flex-col gap-4">
         <div>

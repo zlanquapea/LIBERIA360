@@ -55,3 +55,35 @@ export enum PlaceReviewStatus {
   REJECTED = "rejected",
   SUSPENDED = "suspended",
 }
+
+/** Who last supplied a place's practical details (hours, prices, contacts,
+ * amenities, access and transport notes). Shown next to the "last
+ * checked" date so visitors can judge how far to trust it. Distinct from
+ * VerificationStatus, which is the platform's own judgment of the place. */
+export enum PracticalInfoSource {
+  LIBERIA360_TEAM = "liberia360_team",
+  BUSINESS_OWNER = "business_owner",
+  COMMUNITY = "community",
+  OFFICIAL_SOURCE = "official_source",
+}
+
+/** Fixed vocabulary so amenities render as consistent, translatable chips
+ * and can be filtered on later — free text goes in the notes fields. */
+export const PLACE_AMENITIES = [
+  "parking",
+  "restrooms",
+  "drinking_water",
+  "food_on_site",
+  "wifi",
+  "power_backup",
+  "card_payments",
+  "mobile_money",
+  "guided_tours",
+  "lifeguard",
+  "changing_rooms",
+  "shade_seating",
+  "family_friendly",
+  "pet_friendly",
+] as const;
+
+export type PlaceAmenity = (typeof PLACE_AMENITIES)[number];

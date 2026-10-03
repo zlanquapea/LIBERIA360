@@ -37,7 +37,7 @@ export const MENU_TAG_STYLES: Record<MenuItemTag, string> = {
   spicy: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200',
   vegetarian: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   vegan: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
-  halal: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200',
+  halal: 'bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200',
   gluten_free: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
 };
 

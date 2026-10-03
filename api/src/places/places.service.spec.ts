@@ -7,7 +7,11 @@ import {
   findMatchingCategory,
 } from "./places.service";
 import { Place } from "./entities/place.entity";
-import { PlaceReviewStatus, PlaceType } from "./entities/place.enums";
+import {
+  PlaceReviewStatus,
+  PlaceType,
+  PracticalInfoSource,
+} from "./entities/place.enums";
 import { Category } from "../categories/entities/category.entity";
 import { County } from "../counties/entities/county.entity";
 import { BusinessesService } from "../businesses/businesses.service";
@@ -149,6 +153,16 @@ describe("PlacesService.submitPlace", () => {
       }),
     );
     expect(placeRepo.save).toHaveBeenCalled();
+  });
+
+  it("records a submission's practical details as community-provided, as of now", async () => {
+    await service.submitPlace(OWNER_ID, dto);
+    expect(placeRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        practicalInfoSource: PracticalInfoSource.COMMUNITY,
+        practicalInfoCheckedAt: expect.any(Date),
+      }),
+    );
   });
 
   it("slugifies the name for the new place", async () => {
@@ -364,6 +378,31 @@ describe("PlacesService.updateMine", () => {
     expect(placeRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ name: "New name" }),
     );
+  });
+
+  it("credits the owner and stamps the check date when they edit practical details", async () => {
+    await service.updateMine(OWNER_ID, PLACE_ID, {
+      openingHours: "Mon-Fri 9:00-17:00",
+      amenities: ["parking", "restrooms", "parking"],
+      transportNotes: "  Keke from Red Light, ask for the junction  ",
+      accessibilityNotes: "   ",
+    });
+    expect(placeRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        practicalInfoSource: PracticalInfoSource.BUSINESS_OWNER,
+        practicalInfoCheckedAt: expect.any(Date),
+        amenities: ["parking", "restrooms"],
+        transportNotes: "Keke from Red Light, ask for the junction",
+        accessibilityNotes: null,
+      }),
+    );
+  });
+
+  it("leaves provenance alone when only non-practical fields change", async () => {
+    await service.updateMine(OWNER_ID, PLACE_ID, { name: "New name" });
+    const saved = placeRepo.save.mock.calls[0][0];
+    expect(saved.practicalInfoSource).toBeUndefined();
+    expect(saved.practicalInfoCheckedAt).toBeUndefined();
   });
 
   it("leaves a SUBMITTED_FOR_REVIEW place's status alone on edit", async () => {

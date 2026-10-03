@@ -11,7 +11,12 @@ import {
 import { Business } from "../../businesses/entities/business.entity";
 import { User } from "../../users/entities/user.entity";
 import { decimalTransformer } from "../../database/decimal.transformer";
-import { FoodOrderStatus } from "./food-order.enums";
+import {
+  FoodFulfillment,
+  FoodOrderStatus,
+  FoodPaymentMethod,
+  FoodPaymentStatus,
+} from "./food-order.enums";
 import type { MenuCurrency } from "../../menu-items/entities/menu-item.enums";
 
 /** One line item on a food order, snapshotted at order time — `name` and
@@ -53,6 +58,18 @@ export interface FoodOrderLineOption {
  * assert its own price for a line item.
  */
 @Entity("food_orders")
+// One mobile money transaction can only pay for one live order at a time
+// at a given restaurant (same guard as event tickets). Declined and
+// cancelled orders drop out so a customer can retry with the same ID.
+@Index(
+  "UQ_food_orders_business_payment_reference",
+  ["businessId", "paymentReference"],
+  {
+    unique: true,
+    where:
+      "payment_reference IS NOT NULL AND status NOT IN ('declined', 'cancelled')",
+  },
+)
 export class FoodOrder {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -76,6 +93,29 @@ export class FoodOrder {
   @Column({ type: "jsonb" })
   items: FoodOrderLineItem[];
 
+  // Sum of the line items, before delivery.
+  @Column({
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
+  subtotal: number;
+
+  // Snapshotted from MenuSettings at order time; 0 for pickup and for
+  // free delivery.
+  @Column({
+    name: "delivery_fee",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: decimalTransformer,
+  })
+  deliveryFee: number;
+
+  // subtotal + deliveryFee: what the customer pays.
   @Column({
     name: "total_amount",
     type: "numeric",
@@ -92,6 +132,61 @@ export class FoodOrder {
 
   @Column({ type: "text", nullable: true })
   notes: string | null;
+
+  @Column({
+    type: "enum",
+    enum: FoodFulfillment,
+    default: FoodFulfillment.PICKUP,
+  })
+  fulfillment: FoodFulfillment;
+
+  @Column({ name: "delivery_address", type: "text", nullable: true })
+  deliveryAddress: string | null;
+
+  // How the restaurant or rider reaches the customer. Required for
+  // delivery, optional for pickup.
+  @Column({
+    name: "contact_phone",
+    type: "varchar",
+    length: 30,
+    nullable: true,
+  })
+  contactPhone: string | null;
+
+  @Column({
+    name: "payment_method",
+    type: "enum",
+    enum: FoodPaymentMethod,
+    default: FoodPaymentMethod.CASH,
+  })
+  paymentMethod: FoodPaymentMethod;
+
+  @Column({
+    name: "payment_status",
+    type: "enum",
+    enum: FoodPaymentStatus,
+    default: FoodPaymentStatus.PAY_ON_DELIVERY,
+  })
+  paymentStatus: FoodPaymentStatus;
+
+  // Mobile money transaction ID the customer submitted.
+  @Column({
+    name: "payment_reference",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
+  paymentReference: string | null;
+
+  // The number the customer was told to pay, kept so the restaurant can
+  // see which wallet to check even if they change numbers later.
+  @Column({
+    name: "payment_account",
+    type: "varchar",
+    length: 30,
+    nullable: true,
+  })
+  paymentAccount: string | null;
 
   @Column({
     type: "enum",

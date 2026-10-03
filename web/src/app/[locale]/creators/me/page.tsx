@@ -267,6 +267,18 @@ export default function MyCreatorProfilePage() {
               window.scrollTo({ top: 0 });
             }}
           />
+          <Link
+            href="/creators/me/guides"
+            className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 hover:border-brand-500 dark:border-slate-800 dark:bg-slate-900"
+          >
+            <span>
+              <span className="block font-semibold text-slate-900 dark:text-slate-50">Your guides</span>
+              <span className="block text-sm text-slate-500 dark:text-slate-400">
+                Write a guide to places you know — travelers can save it or turn it into a trip.
+              </span>
+            </span>
+            <span aria-hidden className="text-brand-700 dark:text-brand-300">→</span>
+          </Link>
         </div>
       ) : (
         <header>

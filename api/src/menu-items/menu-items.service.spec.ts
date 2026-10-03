@@ -350,14 +350,36 @@ describe("MenuItemsService", () => {
   });
 
   describe("settings", () => {
-    it("returns USD defaults for a business that never saved settings", async () => {
-      await expect(service.getSettings(BUSINESS_ID)).resolves.toEqual({
-        businessId: BUSINESS_ID,
-        currency: "USD",
+    const DEFAULTS = {
+      businessId: BUSINESS_ID,
+      currency: "USD",
+      pickupEnabled: true,
+      deliveryEnabled: false,
+      deliveryFee: 0,
+      freeDeliveryMinimum: null,
+      deliveryAreas: null,
+      deliveryEstimate: null,
+      cashEnabled: true,
+      mtnMomoNumber: null,
+      orangeMoneyNumber: null,
+      mobileMoneyName: null,
+    };
+
+    // The repo hands back whatever was last saved, like the real table.
+    function persistSaves() {
+      let row: Record<string, unknown> | null = null;
+      settingsRepo.findOne.mockImplementation(async () => row);
+      settingsRepo.save.mockImplementation(async (data) => {
+        row = { ...data };
+        return row;
       });
+    }
+
+    it("returns pickup + cash defaults for a business that never saved settings", async () => {
+      await expect(service.getSettings(BUSINESS_ID)).resolves.toEqual(DEFAULTS);
     });
 
-    it("403s a stranger changing another business's currency", async () => {
+    it("403s a stranger changing another business's settings", async () => {
       await expect(
         service.updateSettings(STRANGER_ID, BUSINESS_ID, { currency: "LRD" }),
       ).rejects.toBeInstanceOf(ForbiddenException);
@@ -365,17 +387,69 @@ describe("MenuItemsService", () => {
     });
 
     it("creates the settings row on the owner's first change", async () => {
-      settingsRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ businessId: BUSINESS_ID, currency: "LRD" });
+      persistSaves();
       const result = await service.updateSettings(OWNER_ID, BUSINESS_ID, {
         currency: "LRD",
       });
-      expect(settingsRepo.save).toHaveBeenCalledWith({
-        businessId: BUSINESS_ID,
-        currency: "LRD",
+      expect(result).toEqual({ ...DEFAULTS, currency: "LRD" });
+    });
+
+    it("saves delivery and mobile money settings, tidying the text", async () => {
+      persistSaves();
+      const result = await service.updateSettings(OWNER_ID, BUSINESS_ID, {
+        deliveryEnabled: true,
+        deliveryFee: 1.555,
+        freeDeliveryMinimum: 20,
+        deliveryAreas: "  Sinkor, Congo Town ",
+        deliveryEstimate: "",
+        orangeMoneyNumber: " 0777 123 456 ",
+        mobileMoneyName: "Mama's Kitchen",
       });
-      expect(result.currency).toBe("LRD");
+      expect(result).toEqual(
+        expect.objectContaining({
+          deliveryEnabled: true,
+          deliveryFee: 1.56,
+          freeDeliveryMinimum: 20,
+          deliveryAreas: "Sinkor, Congo Town",
+          deliveryEstimate: null,
+          orangeMoneyNumber: "0777 123 456",
+          mobileMoneyName: "Mama's Kitchen",
+        }),
+      );
+    });
+
+    it("clears the free-delivery minimum and a mobile money number", async () => {
+      persistSaves();
+      await service.updateSettings(OWNER_ID, BUSINESS_ID, {
+        freeDeliveryMinimum: 20,
+        orangeMoneyNumber: "0777123456",
+      });
+      const result = await service.updateSettings(OWNER_ID, BUSINESS_ID, {
+        freeDeliveryMinimum: null,
+        orangeMoneyNumber: "",
+      });
+      expect(result.freeDeliveryMinimum).toBeNull();
+      expect(result.orangeMoneyNumber).toBeNull();
+    });
+
+    it("refuses to turn off both pickup and delivery", async () => {
+      persistSaves();
+      await expect(
+        service.updateSettings(OWNER_ID, BUSINESS_ID, { pickupEnabled: false }),
+      ).rejects.toThrow(/pickup or delivery/);
+      expect(settingsRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses to leave the restaurant with no way to get paid", async () => {
+      persistSaves();
+      await expect(
+        service.updateSettings(OWNER_ID, BUSINESS_ID, { cashEnabled: false }),
+      ).rejects.toThrow(/at least one payment method/);
+      const result = await service.updateSettings(OWNER_ID, BUSINESS_ID, {
+        cashEnabled: false,
+        mtnMomoNumber: "0886 000 111",
+      });
+      expect(result.cashEnabled).toBe(false);
     });
   });
 

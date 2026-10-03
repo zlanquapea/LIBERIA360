@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { FlagIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +10,7 @@ import { HttpError } from '@/lib/http';
 import type { ReportReason, ReportTargetType } from '@/lib/types';
 
 const REASON_OPTIONS: { value: ReportReason; label: string }[] = [
+  { value: 'incorrect_info', label: 'Incorrect or outdated details' },
   { value: 'spam', label: 'Spam' },
   { value: 'inappropriate', label: 'Inappropriate content' },
   { value: 'fake', label: "Fake / doesn't seem real" },
@@ -39,14 +42,29 @@ export function ReportButton({
   label?: string;
 }) {
   const { user, token } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<ReportReason>('spam');
+  // A place report is almost always "these details are wrong".
+  const [reason, setReason] = useState<ReportReason>(targetType === 'place' ? 'incorrect_info' : 'spam');
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reported, setReported] = useState(false);
 
-  if (!user) return null;
+  if (!user) {
+    // Wrong details are worth hearing about from anyone, so a place's
+    // report link stays visible and asks for a log-in first.
+    if (targetType !== 'place') return null;
+    return (
+      <Link
+        href={`/login?next=${encodeURIComponent(pathname ?? '/')}`}
+        className="flex items-center gap-1 text-xs text-slate-500 underline-offset-2 hover:text-flag-700 hover:underline dark:text-slate-400 dark:hover:text-flag-300"
+      >
+        <FlagIcon aria-hidden className="h-3 w-3" />
+        {label}
+      </Link>
+    );
+  }
 
   if (reported) {
     return <span className="text-xs text-slate-400 dark:text-slate-400">Thanks — sent to the team.</span>;
@@ -103,7 +121,11 @@ export function ReportButton({
         onChange={(e) => setDetails(e.target.value)}
         maxLength={500}
         rows={2}
-        placeholder="Add details (optional)"
+        placeholder={
+          targetType === 'place'
+            ? 'What’s wrong? e.g. new opening hours, phone no longer works'
+            : 'Add details (optional)'
+        }
         className="rounded border border-slate-300 dark:border-slate-700 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
       />
       {error && (

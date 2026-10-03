@@ -36,3 +36,29 @@ export enum TripStatus {
   COMPLETED = "completed",
   CANCELLED = "cancelled",
 }
+
+/** How the travelers plan to get around. Drives the travel-time
+ * assumptions the planner shows (see web/src/lib/trip-checks.ts). */
+export enum TransportMode {
+  OWN_CAR = "own_car",
+  TAXI = "taxi",
+  PUBLIC_TRANSPORT = "public_transport",
+  TOUR_OPERATOR = "tour_operator",
+  MIXED = "mixed",
+}
+
+/** How full the travelers want each day — sets the hours per day above
+ * which the planner flags a day as unrealistic. */
+export enum TripPace {
+  RELAXED = "relaxed",
+  BALANCED = "balanced",
+  PACKED = "packed",
+}
+
+/** What someone invited to a trip may do. Editors change the plan
+ * (stops, notes, details); viewers can see everything and chat but not
+ * change the plan. The owner can switch either way at any time. */
+export enum CollaboratorRole {
+  EDITOR = "editor",
+  VIEWER = "viewer",
+}

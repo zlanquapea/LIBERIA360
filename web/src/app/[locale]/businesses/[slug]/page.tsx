@@ -209,7 +209,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
             href={directionsLink(linkedPlace.latitude, linkedPlace.longitude)}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${actionClass} col-span-3 bg-teal-800 text-white hover:bg-teal-900`}
+            className={`${actionClass} col-span-3 bg-brand-800 text-white hover:bg-brand-900`}
           >
             <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
             Get directions
@@ -323,6 +323,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         items={menuItems}
         menuHref={`/businesses/${business.slug}/menu`}
         currency={menuSettings?.currency}
+        settings={menuSettings}
       />
 
       <Section eyebrow="Find your way" title="Location">

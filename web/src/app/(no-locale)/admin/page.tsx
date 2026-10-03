@@ -579,7 +579,7 @@ function QuickActions() {
             <Link
               key={group.id}
               href={href}
-              className="group flex min-h-36 flex-col justify-between rounded-[1.45rem] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(0,47,59,0.08)] transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_14px_30px_rgba(0,47,59,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:min-h-40 sm:p-5"
+              className="group flex min-h-36 flex-col justify-between rounded-[1.45rem] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(8,46,33,0.08)] transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_14px_30px_rgba(8,46,33,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:min-h-40 sm:p-5"
             >
               <span className="flex items-start justify-between gap-2">
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-800 group-hover:bg-brand-100 dark:bg-brand-950/60 dark:text-brand-300 dark:group-hover:bg-brand-900/60">

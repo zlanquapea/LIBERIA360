@@ -1,4 +1,4 @@
-import type { Place, PlaceType, RecommendedVisitLength } from './types';
+import type { Place, PlaceAmenity, PlaceType, RecommendedVisitLength } from './types';
 import { apiRequest, authHeader } from './http';
 
 // Self-service place submission (a business owner listing a destination
@@ -45,7 +45,12 @@ export function getMyPlaces(token: string): Promise<Place[]> {
   return apiRequest<Place[]>('/places/mine', { headers: authHeader(token) });
 }
 
-export type UpdateMyPlaceInput = Partial<SubmitPlaceInput>;
+export type UpdateMyPlaceInput = Partial<SubmitPlaceInput> & {
+  amenities?: PlaceAmenity[];
+  // Send "" to clear.
+  accessibilityNotes?: string;
+  transportNotes?: string;
+};
 
 // Editing a submission after the fact. On a REJECTED place this
 // automatically resubmits it for review (see PlacesService.updateMine) —
