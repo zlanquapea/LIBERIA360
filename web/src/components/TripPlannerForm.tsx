@@ -98,6 +98,20 @@ export function TripPlannerForm() {
   const durationDays =
     startDate && endDate ? durationDaysFromRange(startDate, endDate) : null;
 
+  // Links like "Plan this weekend" pass ?start=YYYY-MM-DD&end=...&title=...
+  // to pre-fill the form; read once on mount, never overriding a resumed
+  // draft.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    const start = params.get("start");
+    const end = params.get("end");
+    if (start && iso.test(start)) setStartDate(start);
+    if (end && iso.test(end)) setEndDate(end);
+    const prefillTitle = params.get("title");
+    if (prefillTitle) setTitle(prefillTitle.slice(0, 120));
+  }, []);
+
   // Picks back up a guest-built trip the moment login finishes: if this
   // visitor clicked "Log in to save" a minute ago, the draft they were
   // looking at is sitting in sessionStorage, waiting to be handed to the

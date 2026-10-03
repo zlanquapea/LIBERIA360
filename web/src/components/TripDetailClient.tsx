@@ -25,6 +25,7 @@ import {
   setFeaturedTemplate,
   updateItineraryStop,
   updatePartySize,
+  updateTripDetails,
 } from "@/lib/itinerary-api";
 import { getFriendlyErrorMessage, isNotFoundError } from "@/lib/errors";
 import {
@@ -46,6 +47,9 @@ import {
 } from "@/components/TripShareCard";
 import { TripMapLoader } from "@/components/TripMapLoader";
 import { TripCostSummary } from "@/components/TripCostSummary";
+import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
+import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
+import { TripShareLink } from "@/components/trips/TripShareLink";
 import { tripHasMapPins } from "@/lib/trip-map";
 import type {
   ItineraryDetail,
@@ -739,6 +743,23 @@ function MemberTripView({
           </p>
         )}
 
+        <div className="mt-4">
+          <TripDetailsEditor
+            value={{
+              startingLocation: itinerary.startingLocation,
+              transportMode: itinerary.transportMode,
+              pace: itinerary.pace,
+              budgetBand: itinerary.budgetBand,
+            }}
+            editable={canEdit}
+            onSave={async (input) => {
+              if (!token) return;
+              await updateTripDetails(token, itinerary.id, input);
+              reload();
+            }}
+          />
+        </div>
+
         <div className="mt-3">
           <TripCostSummary stops={itinerary.stops} />
         </div>
@@ -766,6 +787,14 @@ function MemberTripView({
         )}
       </div>
 
+      <TripShareLink
+        itineraryId={itinerary.id}
+        shareToken={itinerary.shareToken}
+        isOwner={isOwner}
+        token={token}
+        onChange={reload}
+      />
+
       <TripPeoplePanel
         itineraryId={itinerary.id}
         admin={itinerary.admin}
@@ -787,9 +816,27 @@ function MemberTripView({
         </div>
       )}
 
+      <TripPlanChecks
+        stops={itinerary.stops}
+        durationDays={itinerary.durationDays}
+        transportMode={itinerary.transportMode}
+        pace={itinerary.pace}
+        startDate={itinerary.startDate}
+        endDate={itinerary.endDate}
+      />
+
       <ItineraryStops
         stops={itinerary.stops}
         durationDays={itinerary.durationDays}
+        onReorder={
+          canEdit
+            ? async (itemId, position) => {
+                if (!token) return;
+                await updateItineraryStop(token, itinerary.id, itemId, { position });
+                reload();
+              }
+            : undefined
+        }
         onRemove={
           canEdit
             ? async (itemId) => {

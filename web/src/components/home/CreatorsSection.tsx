@@ -5,13 +5,16 @@ import { MapPinIcon, VideoCameraIcon } from '@heroicons/react/24/outline';
 import { SafeImage } from '@/components/SafeImage';
 import { formatCreatorCategory } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
-import type { Creator } from '@/lib/types';
+import type { Creator, CreatorGuide } from '@/lib/types';
+import { GuideCard } from '@/components/creator-guides/GuideCard';
 import { SectionHeading } from './SectionHeading';
 
-// Local creators with their own cover photo and the places they cover.
-// With nobody listed yet, the section becomes an invitation instead.
-export async function CreatorsSection({ creators }: { creators: Creator[] }) {
+// Local voices: their newest guides to real places first, then the
+// creators themselves. With nobody listed yet, the section becomes an
+// invitation instead.
+export async function CreatorsSection({ creators, guides = [] }: { creators: Creator[]; guides?: CreatorGuide[] }) {
   const t = await getTranslations('discover');
+  const tg = await getTranslations('creatorGuides');
   return (
     <section aria-labelledby="creators-heading" className="flex flex-col gap-5">
       <SectionHeading
@@ -22,6 +25,23 @@ export async function CreatorsSection({ creators }: { creators: Creator[] }) {
         href={creators.length > 0 ? '/creators' : undefined}
         linkLabel={t('creatorsSeeAll')}
       />
+      {guides.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-display text-lg font-bold text-slate-900 dark:text-slate-50">{tg('latestGuides')}</h3>
+            <Link href="/creator-guides" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
+              {tg('allGuides')}
+            </Link>
+          </div>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {guides.map((g) => (
+              <li key={g.id}>
+                <GuideCard guide={g} byLabel={tg('byCreator', { name: g.creator.name })} placesLabel={tg('placeCount', { count: g.stops.length })} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {creators.length > 0 ? (
         <ul className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
           {creators.map((creator) => {

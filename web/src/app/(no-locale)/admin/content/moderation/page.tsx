@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { PendingGuidesSection } from './PendingGuidesSection';
 import {
   bulkSetBusinessContentReviewStatus,
   bulkSetPlaceReviewStatus,
@@ -115,6 +116,8 @@ export default function ModerationPage() {
         title="Moderation"
         description="Pending business verification and flagged reviews/events."
       />
+
+      <PendingGuidesSection />
 
       <section className="flex flex-col gap-3">
         <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">

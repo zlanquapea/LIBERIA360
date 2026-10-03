@@ -18,6 +18,7 @@ import { CreateInvitationsDto } from "./dto/create-invitations.dto";
 import { SearchInvitableUsersDto } from "./dto/search-invitable-users.dto";
 import { RenameItineraryDto } from "./dto/rename-itinerary.dto";
 import { UpdatePartySizeDto } from "./dto/update-party-size.dto";
+import { UpdateTripDetailsDto } from "./dto/update-trip-details.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -65,6 +66,13 @@ export class ItinerariesController {
   @Get("public/:id")
   findPublicTripById(@Param("id") id: string) {
     return this.itinerariesService.findPublicTripById(id);
+  }
+
+  /** A trip opened through its view-only share link. Public, and declared
+   * before ":id" for the same routing reason as "public" above. */
+  @Get("shared/:token")
+  findSharedTrip(@Param("token") token: string) {
+    return this.itinerariesService.findSharedTrip(token);
   }
 
   /** "Trip Ideas" (curated starter itineraries) — public, unauthenticated,
@@ -119,6 +127,35 @@ export class ItinerariesController {
     @Body() dto: UpdatePartySizeDto,
   ) {
     return this.itinerariesService.updatePartySize(user.id, id, dto.partySize);
+  }
+
+  /** Owner or any collaborator can update the practical planning details. */
+  @Patch(":id/details")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  updateDetails(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Body() dto: UpdateTripDetailsDto,
+  ) {
+    return this.itinerariesService.updateDetails(user.id, id, dto);
+  }
+
+  /** Owner only: create or replace the view-only share link. */
+  @Post(":id/share-link")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  createShareLink(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.createShareLink(user.id, id);
+  }
+
+  /** Owner only: turn the share link off. */
+  @Delete(":id/share-link")
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  revokeShareLink(@CurrentUser() user: User, @Param("id") id: string) {
+    return this.itinerariesService.revokeShareLink(user.id, id);
   }
 
   /** Owner or any collaborator can duplicate the trip — the copy always

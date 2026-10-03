@@ -32,7 +32,7 @@ export async function WeekendSection({
         id="weekend-heading"
         eyebrow={isNow ? t('weekendNowEyebrow') : t('weekendEyebrow', { range })}
         title={t('weekendTitle')}
-        href="/events"
+        href="/weekend"
         linkLabel={t('weekendSeeAll')}
       />
       {events.length > 0 ? (

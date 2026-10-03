@@ -890,6 +890,9 @@ export interface PaginatedEvents {
 export type BudgetBand = "budget" | "moderate" | "premium";
 export type ItineraryKind = "trip" | "weekend";
 export type TripVisibility = "private" | "public";
+
+export type TransportMode = "own_car" | "taxi" | "public_transport" | "tour_operator" | "mixed";
+export type TripPace = "relaxed" | "balanced" | "packed";
 export type TripStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
 // GET /itineraries (list) returns stops as stored — an id only, not
@@ -939,6 +942,12 @@ export interface Itinerary {
   isFeaturedTemplate: boolean;
   featuredCategory: string | null;
   featuredOrder: number | null;
+  // Practical planning details (release 2) — all optional.
+  startingLocation: string | null;
+  transportMode: TransportMode | null;
+  pace: TripPace | null;
+  // View-only share link token; null when sharing is off.
+  shareToken: string | null;
   cancelledAt: string | null;
   createdAt: string;
 }
@@ -1017,6 +1026,17 @@ export interface PublicTripSummary {
 
 export interface PublicTripDetail extends PublicTripSummary {
   stops: ItineraryStopDetail[];
+}
+
+/** GET /itineraries/shared/:token — the plan behind a view-only link. */
+export interface SharedTripView extends PublicTripDetail {
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  partySize: number | null;
+  startingLocation: string | null;
+  transportMode: TransportMode | null;
+  pace: TripPace | null;
 }
 
 // What GET /itineraries/public/:id returns for a real but PRIVATE trip —
@@ -2397,4 +2417,62 @@ export interface PublicExplorerProfile {
   name: string;
   profileImage: string | null;
   progress: ExplorerProgress;
+}
+
+// ---------------------------------------------------------------------------
+// Creator guides (release 2): a local creator's guide to real places.
+
+export type CreatorGuideStatus = "draft" | "pending_review" | "published" | "rejected";
+
+/** Who wrote a guide — public fields only. */
+export interface GuideCreatorSummary {
+  id: string;
+  name: string;
+  username: string;
+  profileImage: string | null;
+  category: CreatorCategory;
+  verificationStatus: CreatorVerificationStatus;
+}
+
+export interface CreatorGuideStopView {
+  day: number;
+  note: string | null;
+  place: Place;
+}
+
+export interface CreatorGuide {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  coverImage: string | null;
+  videoUrl: string | null;
+  status: CreatorGuideStatus;
+  rejectionReason: string | null;
+  mediaPermissionConfirmedAt: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+  creator: GuideCreatorSummary;
+  stops: CreatorGuideStopView[];
+  dayCount: number;
+}
+
+export interface PaginatedCreatorGuides {
+  data: CreatorGuide[];
+  meta: { total: number; page: number; limit: number };
+}
+
+export interface CreatorGuideStopInput {
+  placeId: string;
+  day: number;
+  note?: string | null;
+}
+
+export interface CreatorGuideInput {
+  title: string;
+  summary: string;
+  coverImage?: string | null;
+  videoUrl?: string | null;
+  stops: CreatorGuideStopInput[];
+  mediaPermissionConfirmed?: boolean;
 }

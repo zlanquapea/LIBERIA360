@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -27,6 +28,8 @@ import {
   BudgetBand,
   ItineraryKind,
   TripStatus,
+  TransportMode,
+  TripPace,
   TripVisibility,
 } from "./entities/itinerary.enums";
 import { GenerateTripDto } from "./dto/generate-trip.dto";
@@ -34,6 +37,7 @@ import { CreateTripDto } from "./dto/create-trip.dto";
 import { QueryPublicTripsDto } from "./dto/query-public-trips.dto";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { UpdateStopDto } from "./dto/update-stop.dto";
+import { UpdateTripDetailsDto } from "./dto/update-trip-details.dto";
 import { InviteeDto } from "./dto/create-invitations.dto";
 import { UsersService } from "../users/users.service";
 import {
@@ -180,6 +184,17 @@ export interface PublicTripSummary {
 
 export interface PublicTripDetail extends PublicTripSummary {
   stops: ItineraryStopDetail[];
+}
+
+/** What a view-only share link shows: the plan, not the people. */
+export interface SharedTripView extends PublicTripDetail {
+  durationDays: number;
+  budgetBand: BudgetBand;
+  interests: string[];
+  partySize: number | null;
+  startingLocation: string | null;
+  transportMode: TransportMode | null;
+  pace: TripPace | null;
 }
 
 /** What GET /itineraries/public/:id returns for a PRIVATE trip instead of
@@ -424,6 +439,79 @@ export class ItinerariesService {
     return this.findOne(userId, itineraryId);
   }
 
+  /** Practical planning details — owner or any collaborator, same tier
+   * as renameTrip. Only fields present on the DTO change; null clears. */
+  async updateDetails(
+    userId: string,
+    itineraryId: string,
+    dto: UpdateTripDetailsDto,
+  ): Promise<ItineraryResponse> {
+    const itinerary = await this.getEditable(userId, itineraryId);
+    if (dto.startingLocation !== undefined) {
+      itinerary.startingLocation = dto.startingLocation?.trim() || null;
+    }
+    if (dto.transportMode !== undefined) {
+      itinerary.transportMode = dto.transportMode ?? null;
+    }
+    if (dto.pace !== undefined) itinerary.pace = dto.pace ?? null;
+    if (dto.budgetBand !== undefined) itinerary.budgetBand = dto.budgetBand;
+    if (dto.interests !== undefined) {
+      itinerary.interests = [
+        ...new Set(dto.interests.map((i) => i.trim()).filter(Boolean)),
+      ];
+    }
+    if (dto.description !== undefined) {
+      itinerary.description = dto.description?.trim() || null;
+    }
+    await this.itineraryRepo.save(itinerary);
+    return this.findOne(userId, itineraryId);
+  }
+
+  /** Creates (or replaces) the trip's view-only share link — owner only,
+   * since it opens the trip to anyone holding the link. Replacing it
+   * invalidates the previous link. */
+  async createShareLink(
+    userId: string,
+    itineraryId: string,
+  ): Promise<{ shareToken: string }> {
+    const itinerary = await this.getOwned(userId, itineraryId);
+    itinerary.shareToken = randomBytes(18).toString("base64url");
+    await this.itineraryRepo.save(itinerary);
+    return { shareToken: itinerary.shareToken };
+  }
+
+  /** Turns the share link off — owner only. */
+  async revokeShareLink(userId: string, itineraryId: string): Promise<void> {
+    const itinerary = await this.getOwned(userId, itineraryId);
+    itinerary.shareToken = null;
+    await this.itineraryRepo.save(itinerary);
+  }
+
+  /** GET /itineraries/shared/:token — unauthenticated, read-only. Shows
+   * the plan (stops and planning details) but never collaborators,
+   * invitations or the chat. A revoked or unknown token is a 404. */
+  async findSharedTrip(token: string): Promise<SharedTripView> {
+    const itinerary = token
+      ? await this.itineraryRepo.findOne({ where: { shareToken: token } })
+      : null;
+    if (!itinerary) {
+      throw new NotFoundException("This share link isn't active");
+    }
+    const resolvedStops = await this.resolveStopReferences(itinerary.stops);
+    const summary = await this.toPublicSummary(itinerary);
+    return {
+      ...summary,
+      stops: this.mapStops(itinerary, resolvedStops),
+      durationDays: itinerary.durationDays,
+      budgetBand: itinerary.budgetBand,
+      interests: itinerary.interests,
+      partySize: itinerary.partySize,
+      startingLocation: itinerary.startingLocation,
+      transportMode: itinerary.transportMode,
+      pace: itinerary.pace,
+    };
+  }
+
   /** "Duplicate this trip" (Sep 2026 UX pass) — a repeat traveler replans
    * from a copy instead of from scratch. Owner or any collaborator can
    * duplicate (same view-tier reasoning as renameTrip: this reads the
@@ -453,6 +541,9 @@ export class ItinerariesService {
         startDate: source.startDate,
         endDate: source.endDate,
         partySize: source.partySize,
+        startingLocation: source.startingLocation,
+        transportMode: source.transportMode,
+        pace: source.pace,
         maxParticipants: null,
       }),
     );
@@ -1200,9 +1291,30 @@ export class ItinerariesService {
         : 0;
       stop.day = dto.day;
     }
+    if (dto.position !== undefined) {
+      this.moveWithinDay(itinerary, stop, dto.position);
+    }
     itinerary.stops = [...itinerary.stops];
     await this.itineraryRepo.save(itinerary);
     return this.findOne(userId, itineraryId);
+  }
+
+  /** Puts `stop` at `position` among its day's stops (clamped to the
+   * day's length) and renumbers that day 0..n-1, so orders never collide
+   * or leave gaps. */
+  private moveWithinDay(
+    itinerary: Itinerary,
+    stop: ItineraryStop,
+    position: number,
+  ): void {
+    const others = itinerary.stops
+      .filter((s) => s.day === stop.day && s !== stop)
+      .sort((a, b) => a.order - b.order);
+    const at = Math.min(position, others.length);
+    others.splice(at, 0, stop);
+    others.forEach((s, i) => {
+      s.order = i;
+    });
   }
 
   private resolveStopKind(dto: AddStopDto): { kind: StopKind; id: string } {
@@ -1589,6 +1701,9 @@ export class ItinerariesService {
         startDate: source.startDate,
         endDate: source.endDate,
         partySize: source.partySize,
+        startingLocation: source.startingLocation,
+        transportMode: source.transportMode,
+        pace: source.pace,
         maxParticipants: null,
       }),
     );

@@ -11,7 +11,7 @@ import {
   getCreators,
   getFeaturedItineraries,
   getPlaces,
-  getPublicTrips,
+  getCreatorGuides,
   getUpcomingEvents,
 } from '@/lib/api';
 import { summarizeCollections, weekendWindow, withoutShown } from '@/lib/home-discovery';
@@ -21,7 +21,6 @@ import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { FeaturedPlacementsCarousel } from '@/components/FeaturedPlacementsCarousel';
 import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
-import { PublicTripCard } from '@/components/PublicTripCard';
 import { SafeImage } from '@/components/SafeImage';
 import { HomeHero } from '@/components/home/HomeHero';
 import { CollectionsSection } from '@/components/home/CollectionsSection';
@@ -58,7 +57,7 @@ export default async function Home() {
     businesses,
     creators,
     tripIdeas,
-    communityTrips,
+    guides,
   ] = await Promise.all([
     getCounties(),
     getCategories(),
@@ -74,7 +73,7 @@ export default async function Home() {
     getBusinesses({ limit: 100 }),
     getCreators({ limit: CREATORS_LIMIT }),
     getFeaturedItineraries(),
-    getPublicTrips({ limit: TRIPS_LIMIT }),
+    getCreatorGuides({ limit: 3 }),
   ]);
   // Only needed when nothing is on this weekend.
   const upcomingEvents = weekendEvents.data.length === 0 ? (await getUpcomingEvents({ limit: 4 })).data : [];
@@ -164,21 +163,20 @@ export default async function Home() {
           </section>
         )}
 
-        <CreatorsSection creators={creators.data} />
+        <CreatorsSection creators={creators.data} guides={guides.data} />
 
-        {(trips.length > 0 || communityTrips.data.length > 0) && (
+        {trips.length > 0 && (
           <section aria-labelledby="trips-heading" className="flex flex-col gap-5">
             <SectionHeading
               id="trips-heading"
               eyebrow={t('discover.tripIdeasEyebrow')}
-              title={trips.length > 0 ? t('discover.tripIdeasTitle') : t('discover.communityTrips')}
-              body={trips.length > 0 ? t('discover.tripIdeasBody') : undefined}
-              href={trips.length > 0 ? '/trip-ideas' : '/trips/community'}
+              title={t('discover.tripIdeasTitle')}
+              body={t('discover.tripIdeasBody')}
+              href="/trip-ideas"
               linkLabel={t('discover.seeAll')}
             />
             <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-              {trips.length > 0
-                ? trips.map((trip) => (
+              {trips.map((trip) => (
                     <Link
                       key={trip.id}
                       href="/trip-ideas"
@@ -210,11 +208,6 @@ export default async function Home() {
                         )}
                       </div>
                     </Link>
-                  ))
-                : communityTrips.data.map((trip) => (
-                    <div key={trip.id} className="w-64 shrink-0 snap-start sm:w-72">
-                      <PublicTripCard trip={trip} />
-                    </div>
                   ))}
             </div>
           </section>

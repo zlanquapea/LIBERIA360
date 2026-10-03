@@ -6,7 +6,10 @@ import type {
   PublicTripDetail,
   PublicTripSummary,
   RestrictedTripPreview,
+  SharedTripView,
+  TransportMode,
   TripJoinRequestStatus,
+  TripPace,
   TripJoinRequestSummary,
   TripPreviewResponse,
   TripVisibility,
@@ -211,6 +214,8 @@ export function addItineraryStop(token: string, itineraryId: string, input: AddS
 export interface UpdateStopInput {
   notes?: string;
   day?: number;
+  // 0-based position within the (new) day.
+  position?: number;
 }
 
 // `itemId` matches whichever of the stop's placeId/eventId/carListingId
@@ -270,4 +275,45 @@ export function cloneFeaturedItinerary(token: string, itineraryId: string): Prom
     method: 'POST',
     headers: authHeader(token),
   });
+}
+
+export interface UpdateTripDetailsInput {
+  startingLocation?: string | null;
+  transportMode?: TransportMode | null;
+  pace?: TripPace | null;
+  budgetBand?: BudgetBand;
+  description?: string | null;
+}
+
+// Owner or any collaborator.
+export function updateTripDetails(
+  token: string,
+  itineraryId: string,
+  input: UpdateTripDetailsInput,
+): Promise<ItineraryDetail> {
+  return apiRequest<ItineraryDetail>(`/itineraries/${itineraryId}/details`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+}
+
+// Owner only. Creating again replaces the previous link.
+export function createShareLink(token: string, itineraryId: string): Promise<{ shareToken: string }> {
+  return apiRequest<{ shareToken: string }>(`/itineraries/${itineraryId}/share-link`, {
+    method: 'POST',
+    headers: authHeader(token),
+  });
+}
+
+export function revokeShareLink(token: string, itineraryId: string): Promise<void> {
+  return apiRequest<void>(`/itineraries/${itineraryId}/share-link`, {
+    method: 'DELETE',
+    headers: authHeader(token),
+  });
+}
+
+// Public: the plan behind a view-only share link.
+export function getSharedTrip(shareToken: string): Promise<SharedTripView> {
+  return apiRequest<SharedTripView>(`/itineraries/shared/${encodeURIComponent(shareToken)}`);
 }

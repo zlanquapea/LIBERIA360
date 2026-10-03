@@ -6,6 +6,7 @@ import {
   ApiError,
   getBusinessByPlace,
   getCountyPlaces,
+  getCreatorGuides,
   getMenuItems,
   getMenuSettings,
   getPlaceBySlug,
@@ -42,6 +43,7 @@ import { PlaceFreshnessPrompt } from "@/components/PlaceFreshnessPrompt";
 import { PublicTripCard } from "@/components/PublicTripCard";
 import { PlaceGoodToKnow } from "@/components/place/PlaceGoodToKnow";
 import { VisitorPhotos } from "@/components/place/VisitorPhotos";
+import { PlaceInGuides } from "@/components/creator-guides/PlaceInGuides";
 import { distanceKm } from "@/lib/geo";
 import { JsonLd } from "@/components/JsonLd";
 import { placeJsonLd } from "@/lib/structured-data";
@@ -110,7 +112,7 @@ export default async function PlaceProfilePage({
     notFound();
   }
 
-  const [nearbyResult, reviewsResult, business, pharmacy, publicTripsResult] =
+  const [nearbyResult, reviewsResult, business, pharmacy, publicTripsResult, guidesResult] =
     await Promise.all([
       getCountyPlaces(place.county.slug, { limit: 30 }),
       getReviews(place.id, { limit: 20 }),
@@ -124,6 +126,7 @@ export default async function PlaceProfilePage({
       // whose destination is this exact place, discoverable by anyone
       // browsing it, not just the trip's own creator/roster.
       getPublicTrips({ destinationPlaceId: place.id, limit: 6 }),
+      getCreatorGuides({ placeId: place.id, limit: 3 }),
     ]);
   // The menu is information about *this place* to a visitor, not about the
   // separate "Business" management entity — it belongs here, not gated
@@ -363,6 +366,8 @@ export default async function PlaceProfilePage({
           initialBusiness={business}
         />
       </section>
+
+      <PlaceInGuides guides={guidesResult.data} />
 
       <VisitorPhotos reviews={reviewsResult.data} />
 

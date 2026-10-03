@@ -1,4 +1,4 @@
-import { COLLECTIONS, collectionHref, summarizeCollections, weekendWindow, withoutShown } from './home-discovery';
+import { COLLECTIONS, collectionHref, openOnDays, summarizeCollections, weekendDays, weekendTripDates, weekendWindow, withoutShown } from './home-discovery';
 import type { Place } from './types';
 
 describe('weekendWindow', () => {
@@ -57,5 +57,29 @@ describe('summarizeCollections', () => {
     expect(beach.cover).toBe('/a.jpg');
     expect(nature.count).toBe(0);
     expect(nature.cover).toBeNull();
+  });
+});
+
+describe('weekend helpers', () => {
+  const wed = weekendWindow(new Date('2026-10-07T12:00:00Z')); // Wednesday
+  const sun = weekendWindow(new Date('2026-10-11T09:00:00Z')); // Sunday
+
+  it('lists the days left in the window', () => {
+    expect(weekendDays(wed)).toEqual([5, 6, 0]);
+    expect(weekendDays(sun)).toEqual([0]);
+  });
+
+  it('keeps only places with hours listed on those days', () => {
+    const places = [
+      { id: 'sat', structuredHours: [{ dayOfWeek: 6, opens: '09:00', closes: '17:00' }] },
+      { id: 'weekdays', structuredHours: [{ dayOfWeek: 2, opens: '09:00', closes: '17:00' }] },
+      { id: 'unknown', structuredHours: null },
+    ] as unknown as Place[];
+    expect(openOnDays(places, [5, 6, 0]).map((p) => p.id)).toEqual(['sat']);
+  });
+
+  it('plans from Saturday, or from today once the weekend has started', () => {
+    expect(weekendTripDates(wed)).toEqual({ start: '2026-10-10', end: '2026-10-11' });
+    expect(weekendTripDates(sun)).toEqual({ start: '2026-10-11', end: '2026-10-11' });
   });
 });

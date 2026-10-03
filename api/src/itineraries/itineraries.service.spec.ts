@@ -25,6 +25,8 @@ import { ConfigService } from "@nestjs/config";
 import {
   BudgetBand,
   ItineraryKind,
+  TransportMode,
+  TripPace,
   TripVisibility,
 } from "./entities/itinerary.enums";
 import { TripJoinRequestStatus } from "./entities/trip-join-request.entity";
@@ -1061,6 +1063,163 @@ describe("ItinerariesService (collaboration)", () => {
       await expect(
         service.updatePartySize(STRANGER_ID, ITINERARY_ID, 2),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("updateDetails", () => {
+    it("saves planning details, trimming text and clearing with null", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ description: "old", pace: TripPace.PACKED }),
+      );
+      await service.updateDetails(OWNER_ID, ITINERARY_ID, {
+        startingLocation: "  Sinkor, Monrovia ",
+        transportMode: TransportMode.TAXI,
+        pace: null,
+        interests: ["beaches", " beaches", "food"],
+        description: "  ",
+      });
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startingLocation: "Sinkor, Monrovia",
+          transportMode: TransportMode.TAXI,
+          pace: null,
+          interests: ["beaches", "food"],
+          description: null,
+        }),
+      );
+    });
+
+    it("404s a stranger", async () => {
+      await expect(
+        service.updateDetails(STRANGER_ID, ITINERARY_ID, {
+          pace: TripPace.RELAXED,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe("updateStop position", () => {
+    it("moves a stop within its day and renumbers the day", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({
+          stops: [
+            { day: 1, order: 0, placeId: "a", notes: null },
+            { day: 1, order: 1, placeId: "b", notes: null },
+            { day: 1, order: 2, placeId: "c", notes: null },
+            { day: 2, order: 0, placeId: "d", notes: null },
+          ],
+        }),
+      );
+      await service.updateStop(OWNER_ID, ITINERARY_ID, "c", { position: 0 });
+      const saved = itineraryRepo.save.mock.calls[0][0] as Itinerary;
+      const day1 = saved.stops
+        .filter((s) => s.day === 1)
+        .sort((x, y) => x.order - y.order)
+        .map((s) => s.placeId);
+      expect(day1).toEqual(["c", "a", "b"]);
+      expect(saved.stops.find((s) => s.placeId === "d")?.order).toBe(0);
+    });
+
+    it("places a stop moved to another day at the requested position", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({
+          stops: [
+            { day: 1, order: 0, placeId: "a", notes: null },
+            { day: 2, order: 0, placeId: "b", notes: null },
+            { day: 2, order: 1, placeId: "c", notes: null },
+          ],
+        }),
+      );
+      await service.updateStop(OWNER_ID, ITINERARY_ID, "a", {
+        day: 2,
+        position: 1,
+      });
+      const saved = itineraryRepo.save.mock.calls[0][0] as Itinerary;
+      const day2 = saved.stops
+        .filter((s) => s.day === 2)
+        .sort((x, y) => x.order - y.order)
+        .map((s) => s.placeId);
+      expect(day2).toEqual(["b", "a", "c"]);
+    });
+  });
+
+  describe("share links", () => {
+    it("lets the owner create a link and replaces any previous one", async () => {
+      const trip = makeItinerary({ shareToken: "old-token" });
+      itineraryRepo.findOne.mockResolvedValue(trip);
+      const { shareToken } = await service.createShareLink(
+        OWNER_ID,
+        ITINERARY_ID,
+      );
+      expect(shareToken).toMatch(/^[A-Za-z0-9_-]{24}$/);
+      expect(shareToken).not.toBe("old-token");
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ shareToken }),
+      );
+    });
+
+    it("doesn't let a collaborator create or revoke the link", async () => {
+      collaboratorRepo.find.mockResolvedValue([
+        {
+          userId: COLLABORATOR_ID,
+          user: { id: COLLABORATOR_ID, name: "Collab" },
+        },
+      ]);
+      await expect(
+        service.createShareLink(COLLABORATOR_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        service.revokeShareLink(COLLABORATOR_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(itineraryRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("revokes the link", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ shareToken: "live" }),
+      );
+      await service.revokeShareLink(OWNER_ID, ITINERARY_ID);
+      expect(itineraryRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ shareToken: null }),
+      );
+    });
+
+    it("404s an unknown or revoked token", async () => {
+      itineraryRepo.findOne.mockResolvedValue(null);
+      await expect(service.findSharedTrip("nope")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(service.findSharedTrip("")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("shows the plan without the people", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({
+          shareToken: "live",
+          pace: TripPace.RELAXED,
+          transportMode: TransportMode.OWN_CAR,
+          startingLocation: "Monrovia",
+          partySize: 3,
+        }),
+      );
+      const view = await service.findSharedTrip("live");
+      expect(itineraryRepo.findOne).toHaveBeenCalledWith({
+        where: { shareToken: "live" },
+      });
+      expect(view).toEqual(
+        expect.objectContaining({
+          id: ITINERARY_ID,
+          pace: TripPace.RELAXED,
+          transportMode: TransportMode.OWN_CAR,
+          startingLocation: "Monrovia",
+          partySize: 3,
+          durationDays: 2,
+        }),
+      );
+      expect(view).not.toHaveProperty("collaborators");
+      expect(view).not.toHaveProperty("shareToken");
     });
   });
 

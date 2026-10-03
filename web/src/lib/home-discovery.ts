@@ -69,3 +69,31 @@ export function summarizeCollections(categories: Category[], pool: Place[]): Col
     };
   });
 }
+
+/** The weekdays (0 Sun … 6 Sat) still ahead in a weekend window. */
+export function weekendDays(window: { from: Date; to: Date }): number[] {
+  const days: number[] = [];
+  const cursor = new Date(Date.UTC(window.from.getUTCFullYear(), window.from.getUTCMonth(), window.from.getUTCDate()));
+  while (cursor <= window.to) {
+    days.push(cursor.getUTCDay());
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
+}
+
+/** Places whose listed opening hours cover at least one of `days`. A
+ * place without parsed hours is left out: unknown isn't open. */
+export function openOnDays<T extends Pick<Place, 'structuredHours'>>(places: T[], days: number[]): T[] {
+  const wanted = new Set(days);
+  return places.filter((p) => (p.structuredHours ?? []).some((period) => wanted.has(period.dayOfWeek)));
+}
+
+/** YYYY-MM-DD start and end for planning a trip over this weekend: from
+ * Saturday (or today, once the weekend has started) to Sunday. */
+export function weekendTripDates(window: { from: Date; to: Date }): { start: string; end: string } {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const saturday = new Date(window.to);
+  saturday.setUTCDate(saturday.getUTCDate() - 1);
+  const start = window.from > saturday ? window.from : saturday;
+  return { start: iso(start), end: iso(window.to) };
+}

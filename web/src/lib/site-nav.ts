@@ -9,6 +9,7 @@ import {
   LifebuoyIcon,
   ViewfinderCircleIcon,
   StarIcon,
+  BookOpenIcon,
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 
@@ -57,6 +58,7 @@ export const MOBILE_MENU_NAVIGATION: SiteNavItem[] = [
   { href: "/car-rentals", labelKey: "carRentals", icon: TruckIcon },
   { href: "/near-me", labelKey: "nearMe", icon: ViewfinderCircleIcon },
   { href: "/featured", labelKey: "featured", icon: StarIcon },
+  { href: "/creator-guides", labelKey: "localGuides", icon: BookOpenIcon },
   // UX audit (Sep 5, 2026): the only link to /saved anywhere in the app
   // used to live inside /account — unreachable for a signed-out guest,
   // even though saved places are explicitly account-free. Still true
