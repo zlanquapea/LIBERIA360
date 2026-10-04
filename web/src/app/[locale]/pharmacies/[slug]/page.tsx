@@ -22,10 +22,13 @@ export async function generateMetadata({
 
 export default async function PharmacyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ rx?: string }>;
 }) {
   const { slug } = await params;
+  const { rx } = await searchParams;
   const p = await getPharmacy(slug).catch(() => null);
   if (!p) notFound();
   const [products, categories] = await Promise.all([
@@ -34,7 +37,12 @@ export default async function PharmacyPage({
   ]);
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8">
-      <PharmacyStorefront pharmacy={p} products={products} categories={categories} />
+      <PharmacyStorefront
+        pharmacy={p}
+        products={products}
+        categories={categories}
+        prescriptionId={typeof rx === "string" ? rx : null}
+      />
     </main>
   );
 }

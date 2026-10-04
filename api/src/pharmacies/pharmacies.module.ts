@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { StorageModule } from "../uploads/storage/storage.module";
 import { UsersModule } from "../users/users.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { ClinicsModule } from "../clinics/clinics.module";
 import { PharmacyOrderFlowService } from "./pharmacy-order-flow.service";
 import { PharmacyNotifier } from "./pharmacy-notifier";
 import {
@@ -67,6 +68,7 @@ export const PHARMACY_ENTITIES = [
     StorageModule,
     UsersModule,
     NotificationsModule,
+    ClinicsModule,
   ],
   controllers: [
     PharmaciesController,

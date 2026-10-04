@@ -142,6 +142,9 @@ export class CreateOrderDto {
   items: CartItemDto[];
   @IsOptional() @IsUUID() prescriptionId?: string;
   @IsOptional() @IsBoolean() consentToPrescriptionProcessing?: boolean;
+  // A doctor's e-prescription covers the prescription items instead of an
+  // uploaded photo.
+  @IsOptional() @IsUUID() ePrescriptionId?: string;
   // Defaults to cash. For mobile money on an order without a prescription
   // the customer pays at checkout and sends the transaction ID here; a
   // prescription order is paid for after the pharmacist approves it.

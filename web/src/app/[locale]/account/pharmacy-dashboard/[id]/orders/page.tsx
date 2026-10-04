@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePharmacyDashboard } from '@/components/PharmacyDashboardContext';
 import { CopyButton } from '@/components/menu/CartSheet';
-import { PharmacyOrderChat, PharmacyOrderHistory } from '@/components/pharmacy/PharmacyOrderParts';
+import {
+  OrderPrescriptionNote,
+  PharmacyOrderChat,
+  PharmacyOrderHistory,
+} from '@/components/pharmacy/PharmacyOrderParts';
 import {
   getPharmacyDashboardOrders,
   markPharmacyRefunded,
@@ -396,6 +400,7 @@ export default function PharmacyOrdersPage() {
                 )}
               </dl>
             )}
+            <OrderPrescriptionNote order={o} />
             <PaymentBox order={o} pharmacyId={pharmacyId} onChanged={reload} />
             <PharmacyOrderHistory order={o} />
             {o.status === 'under_review' && o.prescriptionId && !isPharmacist && (

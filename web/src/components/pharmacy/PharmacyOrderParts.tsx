@@ -413,3 +413,22 @@ export function PharmacyOrderHistory({ order }: { order: PharmacyOrder }) {
     </ul>
   );
 }
+
+/** "Filled from Dr X's e-prescription", on an order card. */
+export function OrderPrescriptionNote({ order }: { order: PharmacyOrder }) {
+  const rx = order.ePrescription;
+  if (!rx) return null;
+  return (
+    <p className="mt-3 flex items-start gap-2 rounded-2xl bg-brand-50 px-3 py-2 text-sm text-brand-950 dark:bg-brand-950/40 dark:text-brand-50">
+      <span aria-hidden className="font-serif text-lg font-black italic leading-5 text-brand-700 dark:text-brand-300">
+        ℞
+      </span>
+      <span className="min-w-0">
+        E-prescription <span className="font-mono font-semibold">{rx.code}</span>
+        {rx.doctorName && ` · Dr ${rx.doctorName}`}
+        {rx.clinicName && `, ${rx.clinicName}`}
+        <span className="block text-xs text-brand-800/80 dark:text-brand-200/80">Checked by LIBERIA360. No upload needed.</span>
+      </span>
+    </p>
+  );
+}

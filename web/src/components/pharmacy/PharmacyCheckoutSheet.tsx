@@ -59,6 +59,7 @@ export function PharmacyCheckoutSheet({
   open,
   onClose,
   pharmacy,
+  ePrescription = null,
   products,
   cart,
   onQuantityChange,
@@ -69,6 +70,8 @@ export function PharmacyCheckoutSheet({
   open: boolean;
   onClose: () => void;
   pharmacy: Pharmacy;
+  // A doctor's e-prescription attached from My prescriptions: no upload needed.
+  ePrescription?: { id: string; code: string; doctorName: string | null } | null;
   products: PharmacyProduct[];
   cart: PharmacyCart;
   onQuantityChange: (productId: string, quantity: number) => void;
@@ -100,6 +103,8 @@ export function PharmacyCheckoutSheet({
 
   const lines = products.filter((p) => (cart[p.id] ?? 0) > 0);
   const totals = cartTotals(cart, products, fulfillment, pharmacy.deliveryFee);
+  // A photo is only needed when no doctor's e-prescription covers the order.
+  const needsUpload = totals.needsPrescription && !ePrescription;
   const account = merchantNumber(pharmacy, paymentMethod);
   const mobile = paymentMethod !== 'cash';
   const canOrder = (pharmacy.pickupEnabled || pharmacy.deliveryEnabled) && methods.length > 0;
@@ -120,7 +125,7 @@ export function PharmacyCheckoutSheet({
       phone,
       paymentMethod,
       paymentReference,
-      needsPrescription: totals.needsPrescription,
+      needsPrescription: needsUpload,
       prescriptionFile,
       consent,
     });
@@ -132,11 +137,11 @@ export function PharmacyCheckoutSheet({
     setError(null);
     try {
       const cached = uploaded.current;
-      if (!totals.needsPrescription && cached) {
+      if (!needsUpload && cached) {
         uploaded.current = null;
         deleteUnattachedPrescription(cached.id).catch(() => undefined);
       }
-      const prescriptionId = !totals.needsPrescription
+      const prescriptionId = !needsUpload
         ? undefined
         : cached && cached.file === prescriptionFile
           ? cached.id
@@ -152,9 +157,10 @@ export function PharmacyCheckoutSheet({
         note: note.trim() || undefined,
         items: lines.map((p) => ({ productId: p.id, quantity: cart[p.id] })),
         prescriptionId,
-        consentToPrescriptionProcessing: totals.needsPrescription ? consent : undefined,
+        ePrescriptionId: ePrescription?.id,
+        consentToPrescriptionProcessing: needsUpload ? consent : undefined,
         paymentMethod,
-        paymentReference: mobile && !totals.needsPrescription ? paymentReference.trim() : undefined,
+        paymentReference: mobile && !needsUpload ? paymentReference.trim() : undefined,
       });
       uploaded.current = null;
       setPrescriptionFile(null);
@@ -265,7 +271,13 @@ export function PharmacyCheckoutSheet({
               })}
             </ul>
           )}
-          {totals.needsPrescription && (
+          {ePrescription && (
+            <p className="flex gap-2 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <ShieldCheckIcon aria-hidden className="h-5 w-5 shrink-0" />
+              {ePrescription.doctorName ? `Dr ${ePrescription.doctorName}'s` : 'Your'} e-prescription ({ePrescription.code}) is attached. No upload needed.
+            </p>
+          )}
+          {needsUpload && (
             <p className="flex gap-2 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
               <ShieldCheckIcon aria-hidden className="h-5 w-5 shrink-0" />
               Some items need a prescription. You&apos;ll upload it at checkout and a pharmacist checks it before anything is prepared.
@@ -332,7 +344,17 @@ export function PharmacyCheckoutSheet({
             </div>
           )}
 
-          {totals.needsPrescription && (
+          {ePrescription && (
+            <p className="flex items-start gap-2 rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+              <ShieldCheckIcon aria-hidden className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>
+                <span className="block font-semibold">Prescription {ePrescription.code} attached</span>
+                Written by {ePrescription.doctorName ? `Dr ${ePrescription.doctorName}` : 'your doctor'} and checked by
+                LIBERIA360, so you can pay now. Collecting the order uses up the prescription.
+              </span>
+            </p>
+          )}
+          {needsUpload && (
             <fieldset className="flex flex-col gap-3 rounded-3xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
               <legend className="px-1 font-display text-lg font-bold text-slate-950 dark:text-slate-50">Your prescription</legend>
               <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-amber-400 bg-white p-4 text-sm font-semibold text-amber-900 dark:bg-slate-900 dark:text-amber-200">
@@ -379,7 +401,7 @@ export function PharmacyCheckoutSheet({
           </fieldset>
 
           {mobile && account && (
-            totals.needsPrescription ? (
+            needsUpload ? (
               <p className="rounded-2xl bg-sky-50 p-4 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
                 You&apos;ll pay by {PAYMENT_LABELS[paymentMethod]} <strong>after the pharmacist approves your prescription</strong>. We&apos;ll notify you with the amount and number.
               </p>

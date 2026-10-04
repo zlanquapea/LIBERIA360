@@ -29,6 +29,7 @@ import {
 } from "@/lib/pharmacy-api";
 import type { FoodOrder } from "@/lib/types";
 import {
+  OrderPrescriptionNote,
   PharmacyOrderActions,
   PharmacyOrderChat,
   PharmacyOrderTracker,
@@ -311,6 +312,7 @@ function PharmacyOrderCard({
       </div>
       <div className="p-5">
         <PharmacyOrderTracker order={o} />
+        <OrderPrescriptionNote order={o} />
         {o.items && o.items.length > 0 && (
           <ul className="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
             {o.items.map((item) => (

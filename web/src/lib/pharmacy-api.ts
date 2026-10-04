@@ -119,6 +119,14 @@ export type PharmacyOrder = {
   // and unread chat messages from the other side.
   timeline?: PharmacyTimelineEntry[];
   unreadMessages?: number;
+  // Set when the order was placed with a doctor's e-prescription.
+  ePrescriptionId?: string | null;
+  ePrescription?: {
+    id: string;
+    code: string;
+    doctorName: string | null;
+    clinicName: string | null;
+  } | null;
 };
 export type PharmacyPaymentMethod = "cash" | "mtn_momo" | "orange_money";
 export type PharmacyPaymentStatus =

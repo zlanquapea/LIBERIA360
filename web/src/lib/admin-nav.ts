@@ -4,6 +4,7 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
+  HeartIcon,
   ServerStackIcon,
   ShieldCheckIcon,
   Squares2X2Icon,
@@ -104,6 +105,15 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: "/admin/content/reports",
         capability: "content.moderate",
       },
+    ],
+  },
+  {
+    id: "health",
+    label: "Health",
+    icon: HeartIcon,
+    items: [
+      { label: "Clinics & doctors", href: "/admin/clinics" },
+      { label: "Pharmacies", href: "/admin/pharmacies" },
     ],
   },
   {

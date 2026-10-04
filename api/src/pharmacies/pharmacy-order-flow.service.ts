@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Optional,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -22,6 +23,7 @@ import {
   PharmacyOrderStatus,
   PharmacyPaymentMethod,
 } from "./entities/pharmacy.enums";
+import { EPrescriptionsService } from "../clinics/e-prescriptions.service";
 import { PharmacyNotifier, lrd, orderRef } from "./pharmacy-notifier";
 
 /** One step on an order's timeline, as the customer and staff see it. */
@@ -74,6 +76,7 @@ export class PharmacyOrderFlowService {
     @InjectRepository(PharmacyAuditLog)
     private readonly audits: Repository<PharmacyAuditLog>,
     private readonly notifier: PharmacyNotifier,
+    @Optional() private readonly ePrescriptions?: EPrescriptionsService,
   ) {}
 
   // ── Payments ────────────────────────────────────────────────────────
@@ -254,6 +257,8 @@ export class PharmacyOrderFlowService {
         ),
       );
     else await run(this.orders, this.items, this.inventory, this.audits);
+    if (order.ePrescriptionId)
+      await this.ePrescriptions?.orderSettled(order.id, false);
     void this.notifier.staffOf(
       order.pharmacyId,
       "pharmacy_order.cancelled",
@@ -349,10 +354,20 @@ export class PharmacyOrderFlowService {
       .groupBy("m.orderId")
       .getRawMany<{ orderId: string; count: string }>();
     const unreadById = new Map(unread.map((u) => [u.orderId, Number(u.count)]));
+    const rxIds = orders
+      .map((o) => (o as { ePrescriptionId?: string | null }).ePrescriptionId)
+      .filter(Boolean) as string[];
+    const eRx = rxIds.length
+      ? ((await this.ePrescriptions?.summaries(rxIds)) ?? new Map())
+      : new Map();
     return orders.map((o) => ({
       ...o,
       timeline: timelines.get(o.id) ?? [],
       unreadMessages: unreadById.get(o.id) ?? 0,
+      ePrescription:
+        eRx.get(
+          (o as { ePrescriptionId?: string | null }).ePrescriptionId ?? "",
+        ) ?? null,
     }));
   }
 

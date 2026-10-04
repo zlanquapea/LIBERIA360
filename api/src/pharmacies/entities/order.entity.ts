@@ -167,6 +167,10 @@ export class PharmacyOrder {
     nullable: true,
   })
   customerNote: string | null;
+  // Set when the order was placed with a doctor's e-prescription instead of
+  // an uploaded photo; no pharmacist review is needed then.
+  @Column({ name: "e_prescription_id", type: "uuid", nullable: true })
+  ePrescriptionId: string | null;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
   @UpdateDateColumn({ name: "updated_at" }) updatedAt: Date;
 }

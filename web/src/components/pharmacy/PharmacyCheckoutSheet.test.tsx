@@ -40,10 +40,17 @@ const pharmacy: Pharmacy = {
 const rx: PharmacyProduct = { id: 'rx', pharmacyId: 'pharmacy-1', categoryId: 'c', name: 'Amoxicillin', imageUrl: null, price: 10, prescriptionRequired: true, isVisible: true, inventory: { quantity: 5 } };
 const otc: PharmacyProduct = { id: 'otc', pharmacyId: 'pharmacy-1', categoryId: 'c', name: 'Vitamin C', imageUrl: null, price: 5, prescriptionRequired: false, isVisible: true, inventory: { quantity: 20 } };
 
-function Harness({ initial }: { initial: Record<string, number> }) {
+function Harness({
+  initial,
+  ePrescription = null,
+}: {
+  initial: Record<string, number>;
+  ePrescription?: { id: string; code: string; doctorName: string | null } | null;
+}) {
   const [cart, setCart] = useState(initial);
   return (
     <PharmacyCheckoutSheet
+      ePrescription={ePrescription}
       open
       onClose={() => undefined}
       pharmacy={pharmacy}
@@ -151,5 +158,21 @@ describe('PharmacyCheckoutSheet', () => {
     fireEvent.change(screen.getByPlaceholderText(/blue church/i), { target: { value: 'Behind the blue church, Sinkor' } });
     fireEvent.click(screen.getByRole('button', { name: /place order/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/phone number/i);
+  });
+
+  it("uses the doctor's e-prescription instead of an upload, and takes mobile money up front", async () => {
+    createOrder.mockResolvedValue({ id: 'o1', status: 'pending' });
+    render(<Harness initial={{ rx: 1 }} ePrescription={{ id: 'erx-1', code: '64E3-BUSJ', doctorName: 'Musu Kollie' }} />);
+    expect(screen.getByText(/e-prescription \(64E3-BUSJ\) is attached/i)).toBeInTheDocument();
+    toCheckout();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    fireEvent.click(screen.getByLabelText(/mtn momo/i));
+    fireEvent.change(screen.getByPlaceholderText(/MP240115/), { target: { value: 'MP999001' } });
+    fireEvent.click(screen.getByRole('button', { name: /place order/i }));
+    await waitFor(() => expect(createOrder).toHaveBeenCalled());
+    expect(upload).not.toHaveBeenCalled();
+    expect(createOrder.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ ePrescriptionId: 'erx-1', prescriptionId: undefined, paymentReference: 'MP999001' }),
+    );
   });
 });

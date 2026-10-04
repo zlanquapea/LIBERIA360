@@ -16,6 +16,8 @@ import {
   StorageProvider,
 } from "../uploads/storage/storage-provider.interface";
 import { slugify } from "../common/slugify";
+import { EPrescription } from "../clinics/entities/e-prescription.entity";
+import { EPrescriptionsService } from "../clinics/e-prescriptions.service";
 import { Place } from "../places/entities/place.entity";
 import { CreatePlaceSubmissionDto } from "../places/dto/create-place-submission.dto";
 import {
@@ -141,6 +143,7 @@ export class PharmaciesService {
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
     private readonly users: UsersService,
     @Optional() private readonly notifier?: PharmacyNotifier,
+    @Optional() private readonly ePrescriptions?: EPrescriptionsService,
   ) {}
 
   async directory(q: PharmacyQueryDto) {
@@ -868,6 +871,7 @@ export class PharmaciesService {
       inventoryRepo: Repository<PharmacyInventory>,
       prescriptionRepo: Repository<Prescription>,
       auditRepo: Repository<PharmacyAuditLog>,
+      ePrescriptionRepo?: Repository<EPrescription>,
     ) => {
       // Locked and read inside the transaction, not before it — a
       // pre-transaction read left a window where an admin could suspend or
@@ -908,6 +912,19 @@ export class PharmaciesService {
           `${pharmacy.name} doesn't take ${PHARMACY_PAYMENT_LABELS[paymentMethod]}`,
         );
 
+      // A doctor's e-prescription stands in for the uploaded photo.
+      // Checked before stock so a used one gets a clear answer.
+      let ePrescription: EPrescription | null = null;
+      if (dto.ePrescriptionId) {
+        if (!this.ePrescriptions)
+          throw new BadRequestException("E-prescriptions aren't available");
+        ePrescription = await this.ePrescriptions.usableForOrder(
+          userId,
+          dto.ePrescriptionId,
+          ePrescriptionRepo,
+        );
+      }
+
       // Locked the same way — staff could otherwise change a product's
       // price, prescriptionRequired flag, or visibility between the cart
       // being built and checkout running here, letting a since-restricted
@@ -945,8 +962,9 @@ export class PharmaciesService {
           prescriptionRequired: p.prescriptionRequired,
         });
       });
+      const needsUpload = requires && !ePrescription;
       if (
-        requires &&
+        needsUpload &&
         (!dto.prescriptionId || !dto.consentToPrescriptionProcessing)
       )
         throw new BadRequestException(
@@ -960,7 +978,7 @@ export class PharmaciesService {
       // nothing persisted rather than leaving a phantom under_review order
       // behind.
       let prescription: Prescription | null = null;
-      if (requires) {
+      if (needsUpload) {
         prescription = await prescriptionRepo.findOne({
           where: {
             id: dto.prescriptionId,
@@ -988,7 +1006,7 @@ export class PharmaciesService {
       const paymentReference = dto.paymentReference?.trim() || null;
       let paymentStatus = PharmacyOrderPaymentStatus.PAY_ON_COLLECTION;
       if (paymentMethod !== PharmacyPaymentMethod.CASH) {
-        if (requires)
+        if (needsUpload)
           paymentStatus = PharmacyOrderPaymentStatus.AWAITING_PAYMENT;
         else if (!paymentReference)
           throw new BadRequestException(
@@ -1008,9 +1026,10 @@ export class PharmaciesService {
             deliveryFee: delivery,
             platformFee: 0,
             finalTotal: total,
-            status: requires
+            status: needsUpload
               ? PharmacyOrderStatus.UNDER_REVIEW
               : PharmacyOrderStatus.PENDING,
+            ePrescriptionId: ePrescription?.id ?? null,
             paymentMethod,
             paymentStatus,
             paymentReference:
@@ -1052,6 +1071,13 @@ export class PharmaciesService {
             "This prescription was just used for another order",
           );
       }
+      if (ePrescription)
+        await this.ePrescriptions!.attachToOrder(
+          ePrescription.id,
+          order.id,
+          pharmacy.id,
+          ePrescriptionRepo,
+        );
       for (const [productId, quantity] of quantityByProduct) {
         try {
           await inventoryRepo.decrement({ productId }, "quantity", quantity);
@@ -1097,6 +1123,7 @@ export class PharmaciesService {
             tx.getRepository(PharmacyInventory),
             tx.getRepository(Prescription),
             tx.getRepository(PharmacyAuditLog),
+            dto.ePrescriptionId ? tx.getRepository(EPrescription) : undefined,
           ),
         )
       : await persist(
@@ -1679,6 +1706,17 @@ export class PharmaciesService {
     order.status = status;
     if (status === PharmacyOrderStatus.CANCELLED)
       order.previousStatus = fromStatus;
+    // Collecting the order dispenses its e-prescription; cancelling frees it.
+    if (
+      order.ePrescriptionId &&
+      (status === PharmacyOrderStatus.COMPLETED ||
+        status === PharmacyOrderStatus.CANCELLED)
+    )
+      await this.ePrescriptions?.orderSettled(
+        order.id,
+        status === PharmacyOrderStatus.COMPLETED,
+        userId,
+      );
     Object.assign(order, paymentPatch);
     const update = STATUS_MESSAGES[status];
     if (update)
@@ -1789,6 +1827,12 @@ export class PharmaciesService {
 
     order.status = restoredStatus;
     order.previousStatus = null;
+    if (order.ePrescriptionId)
+      await this.ePrescriptions?.orderRestored(
+        order.ePrescriptionId,
+        order.id,
+        pharmacyId,
+      );
     return order;
   }
   async review(

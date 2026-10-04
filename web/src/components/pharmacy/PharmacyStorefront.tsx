@@ -32,6 +32,8 @@ import {
 } from '@/lib/pharmacy-ordering';
 import { PharmacyProductCard } from './PharmacyProductCard';
 import { PharmacyCheckoutSheet } from './PharmacyCheckoutSheet';
+import { PrescriptionDraftBanner } from './PrescriptionDraftBanner';
+import { getOrderDraft, type OrderDraft } from '@/lib/clinic-api';
 
 const chip =
   'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
@@ -47,10 +49,13 @@ export function PharmacyStorefront({
   pharmacy,
   products,
   categories,
+  prescriptionId = null,
 }: {
   pharmacy: Pharmacy;
   products: PharmacyProduct[];
   categories: Array<{ id: string; name: string }>;
+  // From "Order" on My prescriptions: fill the cart from the doctor's e-prescription.
+  prescriptionId?: string | null;
 }) {
   const { user } = useAuth();
   const [cart, setCart] = useState<PharmacyCart>({});
@@ -60,6 +65,8 @@ export function PharmacyStorefront({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [placed, setPlaced] = useState<PharmacyOrder | null>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const [draft, setDraft] = useState<OrderDraft | null>(null);
+  const [draftError, setDraftError] = useState('');
 
   // Restore the saved cart, keeping only what this shop still sells and has.
   useEffect(() => {
@@ -79,6 +86,26 @@ export function PharmacyStorefront({
   useEffect(() => {
     if (loaded) saveCart(pharmacy.id, cart);
   }, [cart, loaded, pharmacy.id]);
+
+  // Fill the cart from the e-prescription, once the saved cart is restored.
+  useEffect(() => {
+    if (!prescriptionId || !user || !loaded) return;
+    let cancelled = false;
+    getOrderDraft(prescriptionId, pharmacy.id)
+      .then((d) => {
+        if (cancelled) return;
+        setDraft(d);
+        const next: PharmacyCart = {};
+        for (const line of d.lines)
+          if (line.product && line.product.stock > 0)
+            next[line.product.id] = Math.min(line.quantity, line.product.stock, MAX_PER_PRODUCT);
+        setCart(next);
+      })
+      .catch((e) => !cancelled && setDraftError(e instanceof Error ? e.message : 'Could not load the prescription.'));
+    return () => {
+      cancelled = true;
+    };
+  }, [prescriptionId, user, loaded, pharmacy.id]);
 
   const methods = acceptedPaymentMethods(pharmacy);
   const hours = pharmacyOpeningPeriods(pharmacy.openingHours);
@@ -190,6 +217,15 @@ export function PharmacyStorefront({
         </span>
       </div>
 
+      {prescriptionId && !placed && (
+        <PrescriptionDraftBanner
+          draft={draft}
+          error={draftError}
+          signedIn={Boolean(user)}
+          loginHref={`/login?next=${encodeURIComponent(`/pharmacies/${pharmacy.slug}?rx=${prescriptionId}`)}`}
+          onReview={() => setSheetOpen(true)}
+        />
+      )}
       {placed && (
         <div role="status" className="flex flex-col gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/40 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
@@ -299,6 +335,11 @@ export function PharmacyStorefront({
       )}
 
       <PharmacyCheckoutSheet
+        ePrescription={
+          draft
+            ? { id: draft.prescriptionId, code: draft.code, doctorName: draft.doctorName }
+            : null
+        }
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         pharmacy={pharmacy}
@@ -309,6 +350,7 @@ export function PharmacyStorefront({
         loginHref={`/login?next=${encodeURIComponent(`/pharmacies/${pharmacy.slug}`)}`}
         onPlaced={(order) => {
           setCart({});
+          setDraft(null);
           setSheetOpen(false);
           setPlaced(order);
           window.scrollTo({ top: 0, behavior: 'smooth' });

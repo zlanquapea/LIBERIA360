@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from 'react';
 import {
   BeakerIcon,
   BuildingStorefrontIcon,
+  ClipboardDocumentCheckIcon,
   HomeIcon,
   ShoppingBagIcon,
   Squares2X2Icon,
@@ -28,6 +29,7 @@ export const PHARMACY_DASHBOARD_NAV: PharmacyDashboardNavItem[] = [
   { key: 'profile', label: 'Profile & Hours', segment: 'profile', icon: BuildingStorefrontIcon },
   { key: 'products', label: 'Products', segment: 'products', icon: Squares2X2Icon },
   { key: 'orders', label: 'Orders', segment: 'orders', icon: ShoppingBagIcon },
+  { key: 'prescriptions', label: 'Prescriptions', segment: 'prescriptions', icon: ClipboardDocumentCheckIcon },
   { key: 'staff', label: 'Staff', segment: 'staff', icon: UserGroupIcon },
 ];
 
