@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { ArrowRightIcon, BeakerIcon, GlobeAltIcon, TruckIcon } from '@heroicons/react/24/outline';
-import { MapPinIcon } from '@heroicons/react/20/solid';
 import {
   getActiveAdvertisements,
   getActiveSponsoredPlacements,
@@ -15,14 +14,11 @@ import {
   getUpcomingEvents,
 } from '@/lib/api';
 import { summarizeCollections, weekendWindow, withoutShown } from '@/lib/home-discovery';
-import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
-import { gradientForCategory } from '@/lib/category-colors';
 import { leadsWithFeature } from '@/lib/place-card';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { FeaturedPlacementsCarousel } from '@/components/FeaturedPlacementsCarousel';
 import { PersonalizedPicksSection } from '@/components/PersonalizedPicksSection';
-import { SafeImage } from '@/components/SafeImage';
 import { HomeHero } from '@/components/home/HomeHero';
 import { CollectionsSection } from '@/components/home/CollectionsSection';
 import { WeekendSection } from '@/components/home/WeekendSection';
@@ -30,6 +26,7 @@ import { CreatorsSection } from '@/components/home/CreatorsSection';
 import { CountyExplorer } from '@/components/home/CountyExplorer';
 import { ContributeSection } from '@/components/home/ContributeSection';
 import { SectionHeading } from '@/components/home/SectionHeading';
+import { BoardingPass } from '@/components/BoardingPass';
 import { PhraseOfTheDay } from '@/components/home/PhraseOfTheDay';
 
 // Nine lets the grid lead with one large tile and still end flush: 2 + 8
@@ -189,38 +186,10 @@ export default async function Home() {
             />
             <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
               {trips.map((trip) => (
-                    <Link
-                      key={trip.id}
-                      href="/trip-ideas"
-                      className="group flex w-64 shrink-0 snap-start flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:w-72 dark:border-slate-800 dark:bg-slate-900"
-                    >
-                      <div className="h-32 overflow-hidden">
-                        <SafeImage
-                          src={trip.coverImage ? resolveImageUrl(trip.coverImage) : null}
-                          thumbSrc={trip.coverImage ? resolveThumbUrl(trip.coverImage) : null}
-                          alt=""
-                          className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
-                          fallback={
-                            <div
-                              aria-hidden
-                              className="flex h-32 items-center justify-center"
-                              style={{ backgroundImage: gradientForCategory(trip.destination?.category.slug ?? 'default') }}
-                            >
-                              <MapPinIcon className="h-8 w-8 text-white/90" />
-                            </div>
-                          }
-                        />
-                      </div>
-                      <div className="flex flex-1 flex-col gap-1 p-4">
-                        <h3 className="font-display font-bold leading-snug text-slate-900 group-hover:text-brand-700 dark:text-slate-50 dark:group-hover:text-brand-300">
-                          {trip.title}
-                        </h3>
-                        {trip.destination && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{trip.destination.name}</p>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
+                <div key={trip.id} className="w-72 shrink-0 snap-start sm:w-80">
+                  <BoardingPass trip={trip} href="/trip-ideas" />
+                </div>
+              ))}
             </div>
           </section>
         )}

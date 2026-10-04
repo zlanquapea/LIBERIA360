@@ -857,5 +857,54 @@
     "ratingLabel": "التقييم {rating} من 5 بناءً على {count, plural, one {مراجعة واحدة} two {مراجعتين} few {# مراجعات} many {# مراجعة} other {# مراجعة}}",
     "free": "دخول مجاني",
     "entry": "الدخول {price}"
+  },
+  "eventTicket": {
+    "live": "مباشر الآن",
+    "today": "اليوم",
+    "tomorrow": "غدًا",
+    "inDays": "بعد {count} أيام",
+    "admitOne": "تذكرة دخول",
+    "free": "مجاني",
+    "from": "ابتداءً من {price}",
+    "going": "{count} سيحضرون",
+    "interested": "{count} مهتمون"
+  },
+  "boardingPass": {
+    "title": "بطاقة الصعود",
+    "date": "التاريخ",
+    "days": "الأيام",
+    "travellers": "المسافرون",
+    "seats": "المقاعد",
+    "flexible": "مرن",
+    "open": "متاح",
+    "full": "مكتمل",
+    "left": "متبقٍ {count}",
+    "anywhere": "ليبيريا",
+    "organizer": "ينظّمها {name}",
+    "communityTrip": "رحلة مجتمعية"
+  },
+  "featuredCard": {
+    "featured": "مميّز",
+    "explore": "استكشف"
+  },
+  "carCard": {
+    "seats": "المقاعد",
+    "gearbox": "ناقل الحركة",
+    "fuel": "الوقود",
+    "driver": "السائق",
+    "driverYes": "متاح",
+    "driverNo": "ذاتي",
+    "instantBook": "حجز فوري",
+    "delivery": "توصيل",
+    "perDay": "/يوم",
+    "perHour": "أو {price}/ساعة",
+    "view": "عرض"
+  },
+  "creatorCard": {
+    "followers": "المتابعون",
+    "rating": "التقييم",
+    "years": "سنوات",
+    "verified": "صانع محتوى موثّق",
+    "featured": "مميّز"
   }
 }

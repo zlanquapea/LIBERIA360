@@ -1487,3 +1487,168 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .reveal-on-scroll { animation: none; }
 }
+
+/* Event ticket: two halves joined at a perforated tear, with round
+   notches cut into both sides. The shadow is a drop-shadow so it follows
+   the notches. On hover the ticket lifts off the table and the halves
+   ease apart at the tear, as if about to be torn. On wider screens
+   (.lib-ticket--split) the tear runs top to bottom instead. */
+.lib-ticket {
+  --notch: 12px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.06)) drop-shadow(0 10px 16px rgb(8 46 33 / 0.1));
+  transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 450ms ease;
+}
+.lib-ticket__top,
+.lib-ticket__bottom { transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.lib-ticket__top {
+  -webkit-mask: radial-gradient(circle var(--notch) at 0 100%, #0000 98%, #000), radial-gradient(circle var(--notch) at 100% 100%, #0000 98%, #000);
+  -webkit-mask-composite: source-in;
+  mask: radial-gradient(circle var(--notch) at 0 100%, #0000 98%, #000), radial-gradient(circle var(--notch) at 100% 100%, #0000 98%, #000);
+  mask-composite: intersect;
+}
+.lib-ticket__bottom {
+  -webkit-mask: radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000), radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000);
+  -webkit-mask-composite: source-in;
+  mask: radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000), radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000);
+  mask-composite: intersect;
+}
+@media (min-width: 640px) {
+  .lib-ticket--split .lib-ticket__top {
+    -webkit-mask: radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000), radial-gradient(circle var(--notch) at 100% 100%, #0000 98%, #000);
+    -webkit-mask-composite: source-in;
+    mask: radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000), radial-gradient(circle var(--notch) at 100% 100%, #0000 98%, #000);
+    mask-composite: intersect;
+  }
+  .lib-ticket--split .lib-ticket__bottom {
+    -webkit-mask: radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000), radial-gradient(circle var(--notch) at 0 100%, #0000 98%, #000);
+    -webkit-mask-composite: source-in;
+    mask: radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000), radial-gradient(circle var(--notch) at 0 100%, #0000 98%, #000);
+    mask-composite: intersect;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .lib-ticket:hover {
+    transform: translateY(-4px) rotate(-0.6deg);
+    filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.06)) drop-shadow(0 22px 28px rgb(8 46 33 / 0.18));
+  }
+  .lib-ticket:hover .lib-ticket__top { transform: translateY(-2px); }
+  .lib-ticket:hover .lib-ticket__bottom { transform: translateY(2px); }
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
+  .lib-ticket--split:hover .lib-ticket__top { transform: translateX(-2px); }
+  .lib-ticket--split:hover .lib-ticket__bottom { transform: translateX(2px); }
+}
+.lib-ticket:active { transform: scale(0.985); transition-duration: 150ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lib-ticket, .lib-ticket:hover, .lib-ticket__top, .lib-ticket__bottom,
+  .lib-ticket:hover .lib-ticket__top, .lib-ticket:hover .lib-ticket__bottom { transform: none; transition: none; }
+}
+
+/* Boarding pass (trip cards): lifts like a pass slid out of a wallet;
+   the Lone Star travels the dotted route to the destination on hover. */
+.lib-pass {
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.06)) drop-shadow(0 12px 18px rgb(8 46 33 / 0.12));
+  transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 450ms ease;
+}
+.lib-pass__traveller { left: 0; transition: left 1100ms cubic-bezier(0.45, 0, 0.2, 1); }
+@media (hover: hover) and (pointer: fine) {
+  .lib-pass:hover { transform: translateY(-5px); filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.06)) drop-shadow(0 24px 30px rgb(8 46 33 / 0.2)); }
+  .lib-pass:hover .lib-pass__traveller { left: calc(100% - 1rem); }
+}
+.lib-pass:active { transform: scale(0.985); transition-duration: 150ms; }
+@media (prefers-reduced-motion: reduce) {
+  .lib-pass, .lib-pass:hover { transform: none; transition: none; }
+  .lib-pass__traveller { transition: none; }
+}
+
+/* Featured place (cinematic spotlight): the slide in view drifts in a
+   slow Ken Burns zoom; a gold foil sash crosses the corner and its shine
+   sweeps across on hover. */
+@keyframes lib-kenburns {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.14) translate3d(-2%, -1.5%, 0); }
+}
+.lib-kenburns { animation: lib-kenburns 18s ease-in-out infinite alternate; }
+.lib-foil {
+  background: linear-gradient(110deg, #9a6b0a 0%, #f7d774 22%, #c8961c 40%, #fff3c4 50%, #c8961c 60%, #f7d774 78%, #9a6b0a 100%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  transition: background-position 1200ms ease;
+  color: #3b2a00;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.45);
+}
+.group:hover .lib-foil { background-position: 0 0; }
+@media (prefers-reduced-motion: reduce) {
+  .lib-kenburns { animation: none; }
+  .lib-foil { transition: none; }
+}
+
+/* Car showroom: a headlight beam sweeps across the car on hover, and the
+   price glows like a dashboard readout. */
+.lib-headlight {
+  position: absolute; inset: -20% auto -20% -60%; width: 45%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.28) 45%, rgb(255 244 214 / 0.42) 50%, rgb(255 255 255 / 0.28) 55%, transparent);
+  transform: skewX(-18deg); opacity: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .lib-headlight { animation: lib-headlight 900ms cubic-bezier(0.3, 0, 0.2, 1) 1; }
+}
+@keyframes lib-headlight {
+  0% { left: -60%; opacity: 0; }
+  15% { opacity: 1; }
+  100% { left: 120%; opacity: 0; }
+}
+.lib-readout { text-shadow: 0 0 12px rgb(110 231 183 / 0.55); }
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .lib-headlight { animation: none; }
+}
+
+/* Creator collectible: a holographic foil that follows the pointer
+   (driven by InteractiveCard's --card-mx/--card-my), shown on verified
+   creators' cards only. */
+.lib-holo {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
+  opacity: 0; transition: opacity 400ms ease; mix-blend-mode: color-dodge;
+  background:
+    radial-gradient(circle at var(--card-mx, 50%) var(--card-my, 30%), rgb(255 255 255 / 0.35), transparent 40%),
+    linear-gradient(115deg, transparent 20%, rgb(255 0 128 / 0.35) 32%, rgb(255 214 0 / 0.35) 42%, rgb(0 255 170 / 0.35) 52%, rgb(0 170 255 / 0.35) 62%, transparent 75%);
+  background-size: 100% 100%, 250% 250%;
+  background-position: center, var(--card-mx, 50%) var(--card-my, 50%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .lib-holo { opacity: 0.7; }
+}
+/* Touch screens get a slow shimmer instead, three times, on reveal. */
+@media (hover: none) {
+  .lib-holo { opacity: 0.45; animation: lib-holo-drift 3.5s ease-in-out 3 alternate; }
+}
+@keyframes lib-holo-drift {
+  from { background-position: center, 0% 0%; }
+  to { background-position: center, 100% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-holo { animation: none; transition: none; }
+}
+
+/* Creator guide (field journal): ruled paper, a stitched spine, a taped
+   snapshot. On hover the cover swings open a little on its spine and the
+   snapshot straightens. */
+.lib-journal { perspective: 1200px; }
+.lib-journal__cover {
+  transform-origin: left center;
+  transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 600ms ease;
+  background-color: #fbf5e6;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, rgb(120 160 190 / 0.18) 27px 28px);
+}
+:root.dark .lib-journal__cover, .dark .lib-journal__cover { background-color: rgb(30 41 59); background-image: repeating-linear-gradient(to bottom, transparent 0 27px, rgb(148 163 184 / 0.12) 27px 28px); }
+[dir="rtl"] .lib-journal__cover { transform-origin: right center; }
+.lib-journal__snap { transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1); transform: rotate(-2.5deg); }
+@media (hover: hover) and (pointer: fine) {
+  .lib-journal:hover .lib-journal__cover { transform: rotateY(-7deg); box-shadow: 18px 22px 40px -24px rgb(8 46 33 / 0.45); }
+  [dir="rtl"] .lib-journal:hover .lib-journal__cover { transform: rotateY(7deg); }
+  .lib-journal:hover .lib-journal__snap { transform: rotate(0deg) translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-journal__cover, .lib-journal__snap { transition: none; }
+  .lib-journal:hover .lib-journal__cover, [dir="rtl"] .lib-journal:hover .lib-journal__cover { transform: none; }
+}

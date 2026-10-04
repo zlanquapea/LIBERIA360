@@ -107,54 +107,55 @@ export function FeaturedPlacementsCarousel({
               ref={(el) => {
                 cardEls.current[i] = el;
               }}
-              className="w-72 shrink-0 snap-start sm:w-80"
+              className="w-[86%] shrink-0 snap-center sm:w-[32rem] lg:w-[38rem]"
             >
               <FeaturedDestinationCard
                 place={placement.place}
                 verificationStatus={placement.verificationStatus}
+                active={i === activeIndex}
               />
             </div>
           ))}
         </div>
 
-        {placements.length > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={() => scrollToIndex(activeIndex - 1)}
-              aria-label="Previous featured place"
-              className="absolute left-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
-            >
-              <ChevronLeftIcon aria-hidden className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToIndex(activeIndex + 1)}
-              aria-label="Next featured place"
-              className="absolute right-1 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-white sm:flex dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900"
-            >
-              <ChevronRightIcon aria-hidden className="h-5 w-5" />
-            </button>
-          </>
-        )}
       </div>
 
+      {/* Arrows sit beside the dots, below the slides, so they never
+          cover a slide's headline. */}
       {placements.length > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-1.5">
-          {placements.map((placement, i) => (
-            <button
-              key={placement.id}
-              type="button"
-              onClick={() => scrollToIndex(i)}
-              aria-label={`Go to featured place ${i + 1}`}
-              aria-current={i === activeIndex}
-              className={`h-1.5 rounded-full transition-all ${
-                i === activeIndex
-                  ? "w-5 bg-brand-700 dark:bg-brand-400"
-                  : "w-1.5 bg-slate-300 dark:bg-slate-700"
-              }`}
-            />
-          ))}
+        <div className="mt-3 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => scrollToIndex(activeIndex - 1)}
+            aria-label="Previous featured place"
+            className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:border-brand-400 hover:text-brand-700 sm:flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <ChevronLeftIcon aria-hidden className="h-5 w-5 rtl:-scale-x-100" />
+          </button>
+          <div className="flex items-center gap-1.5">
+            {placements.map((placement, i) => (
+              <button
+                key={placement.id}
+                type="button"
+                onClick={() => scrollToIndex(i)}
+                aria-label={`Go to featured place ${i + 1}`}
+                aria-current={i === activeIndex}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === activeIndex
+                    ? "w-5 bg-brand-700 dark:bg-brand-400"
+                    : "w-1.5 bg-slate-300 dark:bg-slate-700"
+                }`}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => scrollToIndex(activeIndex + 1)}
+            aria-label="Next featured place"
+            className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:border-brand-400 hover:text-brand-700 sm:flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <ChevronRightIcon aria-hidden className="h-5 w-5 rtl:-scale-x-100" />
+          </button>
         </div>
       )}
     </div>
