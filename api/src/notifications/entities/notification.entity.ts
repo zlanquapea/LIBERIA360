@@ -17,6 +17,7 @@ import {
 // for `admin.content_flagged` — see Settings > Notifications) — see
 // NotificationsService's call sites for exactly who gets each one.
 export type NotificationType =
+  | "booking.availability"
   | "creator.comment"
   | "booking.requested"
   | "booking.confirmed"
