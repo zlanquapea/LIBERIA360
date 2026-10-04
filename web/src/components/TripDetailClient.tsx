@@ -51,6 +51,7 @@ import { TripTimeline } from "@/components/trips/TripTimeline";
 import { TripCostSummary } from "@/components/TripCostSummary";
 import { TripBudgetPanel } from "@/components/trips/TripBudgetPanel";
 import { TripVotingPanel } from "@/components/trips/TripVotingPanel";
+import { TripActivityPanel } from "@/components/trips/TripActivityPanel";
 import { TripPackingPanel } from "@/components/trips/TripPackingPanel";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
@@ -850,6 +851,7 @@ function MemberTripView({
         key={`${itinerary.id}-${user?.id}`}
         tripId={itinerary.id}
       />
+      <TripActivityPanel key={`activity-${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
 
       <TripShareLink
         itineraryId={itinerary.id}

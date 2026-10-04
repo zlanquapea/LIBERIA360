@@ -7,6 +7,7 @@ import {
 import { DataSource, EntityManager } from "typeorm";
 import { AddStopDto } from "./dto/add-stop.dto";
 import { ItinerariesService } from "./itineraries.service";
+import { recordTripActivity } from "./trip-activity.service";
 @Injectable()
 export class TripVotingService {
   constructor(
@@ -74,10 +75,11 @@ export class TripVotingService {
       if (count.n >= 100)
         throw new BadRequestException("Remove a suggestion before adding more");
       const clean = { [key]: input[key], day: input.day };
-      await m.query(
-        `INSERT INTO trip_suggestions(trip_id,user_id,title,input) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(trip_id,input) DO NOTHING`,
+      const inserted = await m.query(
+        `INSERT INTO trip_suggestions(trip_id,user_id,title,input) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(trip_id,input) DO NOTHING RETURNING id`,
         [id, user, item.title, JSON.stringify(clean)],
       );
+      if (inserted.length) await recordTripActivity(m,id,user,"suggested",item.title,`trip-suggestion-${inserted[0].id}`);
       return { ok: true };
     });
   }

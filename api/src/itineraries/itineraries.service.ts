@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { recordTripActivity } from "./trip-activity.service";
 import {
   BadRequestException,
   ConflictException,
@@ -1296,7 +1297,11 @@ export class ItinerariesService {
           ? { ...base, eventId: itemId }
           : { ...base, carListingId: itemId };
     itinerary.stops = [...itinerary.stops, newStop];
-    const saved = await this.itineraryRepo.save(itinerary);
+    const saved = await this.itineraryRepo.manager.transaction(async (m) => {
+      const result = await m.save(Itinerary, itinerary);
+      await recordTripActivity(m,itineraryId,userId,"added",this.stopItemTitle(kind,item),`trip-stop-${itemId}`);
+      return result;
+    });
     // So everyone on the trip sees a new car/place/event land, not just
     // whoever added it and happens to still be looking at the stop list —
     // same "the chat carries a record of what changed" reasoning as

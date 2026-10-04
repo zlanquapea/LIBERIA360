@@ -138,7 +138,7 @@ export function ItineraryStops({
                 const itemId = stopItemId(stop);
                 if (!itemId) return null;
                 return (
-                  <li key={`${stop.day}-${stop.order}-${itemId}`}>
+                  <li id={`trip-stop-${itemId}`} className="scroll-mt-24" key={`${stop.day}-${stop.order}-${itemId}`}>
                     <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-card">
                       <Link href={stopHref(stop)} className="flex min-w-0 flex-1 items-center gap-3">
                         <StopThumbnail stop={stop} />

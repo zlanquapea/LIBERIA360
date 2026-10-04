@@ -107,6 +107,7 @@ export function TripVotingPanel({
             {data.items.map((s) => (
               <li
                 key={s.id}
+                id={`trip-suggestion-${s.id}`}
                 className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"
               >
                 <p className="font-semibold">

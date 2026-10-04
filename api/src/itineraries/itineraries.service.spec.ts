@@ -92,6 +92,7 @@ function makeInvitation(
 describe("ItinerariesService (collaboration)", () => {
   let service: ItinerariesService;
   let itineraryRepo: {
+    manager: { transaction: jest.Mock };
     findOne: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
@@ -169,6 +170,7 @@ describe("ItinerariesService (collaboration)", () => {
       getMany: jest.fn().mockResolvedValue([]),
     };
     itineraryRepo = {
+      manager: { transaction: jest.fn(async (fn) => fn({ save: (_entity: unknown, data: unknown) => itineraryRepo.save(data), query: jest.fn().mockResolvedValue([]) })) },
       findOne: jest.fn().mockResolvedValue(makeItinerary()),
       save: jest.fn((data) => data),
       create: jest.fn((data) => data),
@@ -754,6 +756,7 @@ describe("ItinerariesService (collaboration)", () => {
     });
 
     it("lets a collaborator add a stop", async () => {
+      placeRepo.findOne.mockResolvedValue({ id: "place-2", name: "Beach" });
       collaboratorRepo.find.mockResolvedValue([
         {
           userId: COLLABORATOR_ID,
