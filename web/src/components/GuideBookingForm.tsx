@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { apiRequest } from "@/lib/http";
 import { useAuth } from "@/hooks/useAuth";
 import { requestGuideBooking } from "@/lib/guides-api";
 
@@ -12,6 +13,34 @@ export function GuideBookingForm({
   maxGroupSize: number;
 }) {
   const { token } = useAuth();
+  const [availability, setAvailability] = useState<{
+    enabled: boolean;
+    weekdays: number[];
+    blockedDates: string[];
+    bookedDates: string[];
+  } | null>(null);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    apiRequest<{
+      enabled: boolean;
+      weekdays: number[];
+      blockedDates: string[];
+      bookedDates: string[];
+    }>(`/experiences/${experienceId}/availability`, { cache: "no-store" })
+      .then((value) => {
+        if (alive) {
+          setAvailability(value);
+          setAvailabilityError(false);
+        }
+      })
+      .catch(() => {
+        if (alive) setAvailabilityError(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [experienceId]);
   const [requestedDate, setRequestedDate] = useState("");
   const [groupSize, setGroupSize] = useState(1);
   const [note, setNote] = useState("");
@@ -22,6 +51,15 @@ export function GuideBookingForm({
   const today = new Date();
   const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const [message, setMessage] = useState("");
+  const unavailable =
+    !!availability &&
+    !!requestedDate &&
+    (availability.bookedDates.includes(requestedDate) ||
+      (availability.enabled &&
+        (!availability.weekdays.includes(
+          new Date(requestedDate + "T00:00:00Z").getUTCDay(),
+        ) ||
+          availability.blockedDates.includes(requestedDate))));
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (state === "sending" || state === "success") return;
@@ -39,6 +77,11 @@ export function GuideBookingForm({
     ) {
       setState("error");
       setMessage(`Choose a date and group size from 1 to ${maxGroupSize}.`);
+      return;
+    }
+    if (unavailable) {
+      setState("error");
+      setMessage("The guide is unavailable on this date. Please choose another date.");
       return;
     }
     if (!reviewing) {
@@ -76,6 +119,36 @@ export function GuideBookingForm({
         No payment is required yet. Your request is sent to the guide for
         confirmation.
       </p>
+      <div
+        className="mt-4 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800"
+        role="status"
+      >
+        {availabilityError
+          ? "Live availability could not load. Your date will be checked when you send the request."
+          : !availability
+            ? "Checking guide availability…"
+            : availability.enabled
+              ? `Working days: ${
+                  availability.weekdays.length
+                    ? availability.weekdays
+                        .map(
+                          (day) =>
+                            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+                              day
+                            ],
+                        )
+                        .join(", ")
+                    : "No dates currently available"
+                }. Blocked and already-booked dates are unavailable.`
+              : "The guide accepts date requests. Already-booked dates are unavailable."}
+        {requestedDate && availability && (
+          <p className="mt-2 font-semibold">
+            {unavailable
+              ? "Unavailable — choose another date."
+              : "Available to request. Final confirmation is still required."}
+          </p>
+        )}
+      </div>
       <ol
         aria-label="Booking progress"
         className="my-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold"

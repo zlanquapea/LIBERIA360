@@ -1168,6 +1168,7 @@ export interface InvitationPreview {
 export type PlaceSort = "featured" | "rating" | "distance" | "name" | "popular";
 
 export interface PlacesQuery {
+  amenity?: string;
   category?: string;
   county?: string;
   tag?: string;

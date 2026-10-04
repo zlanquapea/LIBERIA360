@@ -1,3 +1,5 @@
+import { assertGuideDate, defaultAvailability } from './availability';
+import { GuideAvailabilityDto } from './dto/guide-availability.dto';
 import {
   BadRequestException,
   ConflictException,
@@ -547,6 +549,37 @@ export class GuidesService {
     return { uploaded: true };
   }
 
+  async myAvailability(userId: string) {
+    const guide = await this.guideRepo.findOne({ where: { userId } });
+    if (!guide) throw new NotFoundException('Guide profile not found');
+    return guide.availability ?? defaultAvailability;
+  }
+
+  async saveAvailability(userId: string, dto: GuideAvailabilityDto) {
+    for (const date of dto.blockedDates) {
+      const parsed = new Date(date + 'T00:00:00Z');
+      if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) throw new BadRequestException('Invalid blocked date');
+    }
+    return this.guideRepo.manager.transaction(async manager => {
+      const repo = manager.getRepository(GuideProfile);
+      const guide = await repo.findOne({ where: { userId }, loadEagerRelations: false, lock: { mode: 'pessimistic_write' } });
+      if (!guide) throw new NotFoundException('Guide profile not found');
+      if ((guide.availability?.version ?? 0) !== dto.version) throw new ConflictException('Availability changed on another device. Reload first.');
+      guide.availability = { ...dto, version: dto.version + 1 };
+      await repo.save(guide);
+      return guide.availability;
+    });
+  }
+
+  async experienceAvailability(id: string) {
+    if (!isUuid(id)) throw new BadRequestException('Invalid experience id');
+    const experience = await this.experienceRepo.findOne({ where: { id, status: ExperienceStatus.PUBLISHED } });
+    if (!experience || experience.guide.verificationStatus !== GuideVerificationStatus.VERIFIED) throw new NotFoundException();
+    const dates = await this.bookingRepo.manager.query(`SELECT b.requested_date::text AS date FROM guide_bookings b JOIN experiences e ON e.id = b.experience_id WHERE e.guide_id = $1 AND b.status = 'confirmed' AND b.requested_date >= CURRENT_DATE`, [experience.guide.id]);
+    const { version: _version, ...availability } = experience.guide.availability ?? defaultAvailability;
+    return { ...availability, bookedDates: dates.map((row: { date: string }) => row.date) };
+  }
+
   async createBooking(
     userId: string,
     experienceId: string,
@@ -563,6 +596,8 @@ export class GuidesService {
     ) {
       throw new NotFoundException("Published experience not found");
     }
+    const availability = await this.experienceAvailability(experienceId);
+    assertGuideDate(dto.requestedDate, { ...availability, version: 0 }, availability.bookedDates);
     if (new Date(dto.requestedDate) < startOfToday())
       throw new BadRequestException("requestedDate cannot be in the past");
     if (dto.groupSize > experience.maxGroupSize)
@@ -630,23 +665,44 @@ export class GuidesService {
     dto: RespondGuideBookingDto,
   ) {
     if (!isUuid(bookingId)) throw new BadRequestException("Invalid booking id");
-    const booking = await this.bookingRepo.findOne({
-      where: { id: bookingId },
-    });
-    if (!booking) throw new NotFoundException("Booking not found");
-    if (booking.experience.guide.userId !== userId)
-      throw new ForbiddenException("Only the guide can respond");
-    if (
-      booking.status !== GuideBookingStatus.REQUESTED &&
-      dto.status !== GuideBookingStatus.COMPLETED
-    )
-      throw new ConflictException(
-        "This booking is no longer awaiting a response",
-      );
-    booking.status = dto.status;
-    booking.guideResponse = dto.response ?? null;
-    booking.respondedAt = new Date();
-    await this.bookingRepo.save(booking);
+    const booking = await this.bookingRepo.manager.transaction(
+      async (manager) => {
+        const repo = manager.getRepository(GuideBooking);
+        let current = await repo.findOne({ where: { id: bookingId } });
+        if (!current) throw new NotFoundException("Booking not found");
+        if (current.experience.guide.userId !== userId)
+          throw new ForbiddenException("Only the guide can respond");
+        const guide = await manager
+          .getRepository(GuideProfile)
+          .findOne({
+            where: { id: current.experience.guide.id },
+            loadEagerRelations: false,
+            lock: { mode: "pessimistic_write" },
+          });
+        if (!guide) throw new NotFoundException();
+        current = await repo.findOneOrFail({ where: { id: bookingId } });
+        if (dto.status === GuideBookingStatus.COMPLETED) {
+          if (current.status !== GuideBookingStatus.CONFIRMED)
+            throw new ConflictException("Only a confirmed booking can be completed");
+        } else if (current.status !== GuideBookingStatus.REQUESTED)
+          throw new ConflictException("This booking is no longer awaiting a response");
+        if (dto.status === GuideBookingStatus.CONFIRMED) {
+          const taken = await manager.query(
+            `SELECT b.id FROM guide_bookings b JOIN experiences e ON e.id = b.experience_id WHERE e.guide_id = $1 AND b.requested_date = $2 AND b.status = 'confirmed'`,
+            [guide.id, current.requestedDate],
+          );
+          assertGuideDate(
+            current.requestedDate,
+            guide.availability ?? defaultAvailability,
+            taken.length ? [current.requestedDate] : [],
+          );
+        }
+        current.status = dto.status;
+        current.guideResponse = dto.response ?? null;
+        current.respondedAt = new Date();
+        return repo.save(current);
+      },
+    );
     if (
       dto.status === GuideBookingStatus.CONFIRMED ||
       dto.status === GuideBookingStatus.DECLINED

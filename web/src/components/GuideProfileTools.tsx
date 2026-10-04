@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GuideAvailabilityEditor } from "./GuideAvailabilityEditor";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChatBubbleLeftRightIcon,
@@ -496,6 +497,7 @@ export function GuideProfileTools({
         </p>
       )}
 
+      {isOwner && <GuideAvailabilityEditor />}
       {isOwner ? (
         <section className="rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
