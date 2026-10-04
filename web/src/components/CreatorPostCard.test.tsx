@@ -77,16 +77,19 @@ beforeEach(() => {
 });
 
 describe("CreatorPostCard actions", () => {
-  it("opens the two-item overflow menu and dismisses it outside or with Escape", async () => {
+  it("opens the overflow menu (edit, delete, safety) and dismisses it outside or with Escape", async () => {
     const user = userEvent.setup();
     renderWithMessages(<CreatorPostCard post={post} />);
 
     await user.click(screen.getByRole("button", { name: "More post actions" }));
     expect(screen.getByRole("menu")).toBeInTheDocument();
-    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(3);
     expect(screen.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", { name: "Delete" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Safety options" }),
     ).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);

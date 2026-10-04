@@ -3,8 +3,9 @@ import { SafetyControls, BlockedAccounts } from "./SafetyControls";
 import { SafetyReviewQueue } from "./SafetyReviewQueue";
 import { apiRequest } from "@/lib/http";
 import { useAuth } from "@/hooks/useAuth";
-jest.mock("@/lib/http", () => ({ apiRequest: jest.fn() }));
-jest.mock("@/hooks/useAuth", () => ({ useAuth: jest.fn() }));
+// Relative paths: jest.mock specifiers aren't rewritten through the @/ alias.
+jest.mock("../lib/http", () => ({ apiRequest: jest.fn() }));
+jest.mock("../hooks/useAuth", () => ({ useAuth: jest.fn() }));
 const api = apiRequest as jest.Mock;
 const auth = useAuth as jest.Mock;
 beforeEach(() => {
