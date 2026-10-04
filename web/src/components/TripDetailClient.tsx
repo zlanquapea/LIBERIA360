@@ -356,7 +356,7 @@ export function TripDetailClient({ id }: { id: string }) {
         </p>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <section aria-labelledby="trip-plan" className="flex min-w-0 flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card sm:p-7 dark:border-slate-800 dark:bg-slate-900">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{tTrip("planEyebrow")}</p>

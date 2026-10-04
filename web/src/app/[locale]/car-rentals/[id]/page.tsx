@@ -250,7 +250,7 @@ export default async function CarListingDetailPage({
             {t("back")}
           </Link>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-8">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-8">
             <div className="flex min-w-0 flex-col gap-4">
               {images.length > 0 ? (
                 <PlaceGallery
@@ -298,7 +298,7 @@ export default async function CarListingDetailPage({
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300">
                   {formatCarCategory(listing.category)}
                 </p>
-                <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+                <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-4xl">
                   {listing.title}
                 </h1>
                 <p className="text-sm text-white/60">
@@ -411,7 +411,7 @@ export default async function CarListingDetailPage({
       </div>
 
       {/* ── Below the stage ───────────────────────────────────────── */}
-      <div className="mx-auto mt-6 grid max-w-6xl gap-6 px-4 sm:mt-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:px-10">
+      <div className="mx-auto mt-6 grid grid-cols-1 max-w-6xl gap-6 px-4 sm:mt-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:px-10">
         <div className="flex min-w-0 flex-col gap-6">
           {listing.description && (
             <Section title={t("about")}>

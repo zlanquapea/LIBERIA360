@@ -71,7 +71,7 @@ export default async function CreatorGuidePage({ params }: { params: Promise<{ s
       <header className="lib-paper relative overflow-hidden border-b border-amber-900/10 dark:border-white/10">
         <span aria-hidden className="absolute inset-y-0 start-0 w-3 bg-gradient-to-r from-brand-950 to-brand-800 sm:w-5" />
         <span aria-hidden className="absolute inset-y-3 start-[5px] border-s-2 border-dashed border-gold-300/70 sm:start-[9px]" />
-        <div className="mx-auto grid max-w-6xl gap-8 px-6 pb-10 pt-8 sm:px-10 sm:pb-14 sm:pt-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-center lg:gap-14">
+        <div className="mx-auto grid grid-cols-1 max-w-6xl gap-8 px-6 pb-10 pt-8 sm:px-10 sm:pb-14 sm:pt-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-center lg:gap-14">
           <div className="lib-journal__snap relative mx-auto w-full max-w-xl bg-white p-2 pb-8 shadow-xl dark:bg-slate-100 sm:p-3 sm:pb-10">
             <span aria-hidden className="absolute -top-3 start-8 h-6 w-20 rotate-[-6deg] bg-gold-200/85 shadow-sm" />
             <span aria-hidden className="absolute -top-3 end-8 h-6 w-20 rotate-[5deg] bg-gold-200/85 shadow-sm" />
@@ -92,7 +92,7 @@ export default async function CreatorGuidePage({ params }: { params: Promise<{ s
 
           <div className="flex flex-col gap-4">
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-sunset-700 dark:text-sunset-300">{t('eyebrow')}</p>
-            <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-950 dark:text-slate-50 sm:text-5xl">
+            <h1 className="font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight text-slate-950 [overflow-wrap:anywhere] dark:text-slate-50 sm:text-5xl">
               {guide.title}
             </h1>
             <Link href={`/creators/${guide.creator.username}`} className="flex w-fit items-center gap-3 rounded-full pe-4 transition-colors hover:bg-amber-900/5 dark:hover:bg-white/5">
@@ -131,7 +131,7 @@ export default async function CreatorGuidePage({ params }: { params: Promise<{ s
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4 pt-8 sm:px-6 sm:pt-10 lg:px-10">
         {/* ── The route ─────────────────────────────────────────────── */}
         {guide.stops.length > 0 && (
-          <section aria-labelledby="route-title" className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+          <section aria-labelledby="route-title" className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-sunset-700 dark:text-sunset-300">{tj('routeEyebrow')}</p>
               <h2 id="route-title" className="mt-1 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">

@@ -100,8 +100,8 @@ export function ReviewsSection({
         <ul className="flex flex-col gap-3">
           {reviews.map((review) => (
             <li key={review.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <p className="font-medium text-slate-900 dark:text-slate-50">{review.user?.name ?? 'LIBERIA360 user'}</p>
                   {review.verifiedVisit && <VerifiedVisitBadge />}
                 </div>

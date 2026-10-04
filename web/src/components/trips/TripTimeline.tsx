@@ -34,11 +34,11 @@ export function TripTimeline({ stops, startDate }: { stops: ItineraryStopDetail[
         const date = dayDate(startDate, day, locale);
         return (
           <li key={day}>
-            <h3 className="flex items-baseline gap-3">
+            <h3 className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-display text-2xl font-black text-slate-950 dark:text-white">{t('day', { day })}</span>
               {date && <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{date}</span>}
             </h3>
-            <ol className="relative mt-4 flex flex-col gap-4 border-s-2 border-dashed border-brand-200 ps-6 dark:border-brand-900">
+            <ol className="relative mt-4 flex min-w-0 flex-col gap-4 border-s-2 border-dashed border-brand-200 ps-6 dark:border-brand-900">
               {dayStops.map((stop, i) => {
                 const image =
                   stop.place?.images[0] ?? stop.event?.images[0] ?? stop.carListing?.images[0] ?? null;
@@ -59,7 +59,7 @@ export function TripTimeline({ stops, startDate }: { stops: ItineraryStopDetail[
                     : stop.carListing?.county?.name ?? null;
                 const body = (
                   <div className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-card dark:border-slate-800 dark:bg-slate-900">
-                    <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-brand-900">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-brand-900 sm:h-20 sm:w-24">
                       <SafeImage
                         src={image ? resolveImageUrl(image) : null}
                         thumbSrc={image ? resolveThumbUrl(image) : null}
@@ -73,11 +73,11 @@ export function TripTimeline({ stops, startDate }: { stops: ItineraryStopDetail[
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
+                      <p className="flex flex-wrap items-center gap-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
                         <Icon aria-hidden className="h-3.5 w-3.5" />
                         {kind}
                       </p>
-                      <p className="mt-0.5 font-display font-bold leading-snug text-slate-950 dark:text-white">{name}</p>
+                      <p className="mt-0.5 font-display font-bold leading-snug text-slate-950 [overflow-wrap:anywhere] dark:text-white">{name}</p>
                       {sub && <p className="truncate text-sm text-slate-500 dark:text-slate-400">{sub}</p>}
                       {stop.notes && <p className="mt-1 line-clamp-2 text-sm italic text-slate-600 dark:text-slate-300">“{stop.notes}”</p>}
                     </div>

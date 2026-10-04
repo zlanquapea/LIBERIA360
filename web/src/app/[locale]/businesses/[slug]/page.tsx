@@ -140,7 +140,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
       ) : (
         <>
           <div>
-            <PlaceGallery images={gallery} categorySlug={linked.category.slug} categoryIcon={linked.category.icon} alt={business.name} />
+            <PlaceGallery images={gallery} categorySlug={linked.category.slug} categoryIcon={linked.category.icon} alt={business.name} overlapped />
             <PlaceIdentity place={place} kind={kind} verificationStatus={verification} hoursText={business.openingHours ?? linked.openingHours} />
           </div>
           <PlaceAtAGlance place={place} kind={kind} business={business} menuCount={menuItems.length} menuSettings={menuSettings} />

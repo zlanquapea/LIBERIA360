@@ -96,7 +96,7 @@ export function PlaceAtAGlance({
   if (shown.length === 0) return null;
 
   return (
-    <section aria-label={t('atAGlance')} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <section aria-label={t('atAGlance')} className="grid grid-cols-2 gap-3 lg:grid-cols-4 max-lg:[&>*:last-child:nth-child(odd)]:col-span-2">
       {shown.map((tile) => (
         <div key={tile.label} className="flex min-w-0 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">

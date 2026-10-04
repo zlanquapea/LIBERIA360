@@ -45,7 +45,7 @@ export function TripHero({ trip, actions }: { trip: PublicTripDetail; actions: R
             {formatTripStatus(trip.status)}
           </span>
         </div>
-        <h1 className="mt-4 max-w-3xl font-display text-3xl font-black leading-[1.05] tracking-tight sm:text-5xl">{trip.title}</h1>
+        <h1 className="mt-4 max-w-3xl font-display text-[1.75rem] font-black leading-[1.05] tracking-tight [overflow-wrap:anywhere] sm:text-5xl">{trip.title}</h1>
         {trip.admin && <p className="mt-2 text-sm text-white/75">{t('organizer', { name: trip.admin.name })}</p>}
       </div>
 
