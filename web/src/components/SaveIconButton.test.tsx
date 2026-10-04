@@ -30,4 +30,11 @@ describe('SaveIconButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Remove from saved places' }));
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
+
+  it('keeps the position a card gives it', () => {
+    renderWithMessages(<SaveIconButton slug="elwa-beach" className="absolute end-2 top-2" />);
+    const button = screen.getByRole('button');
+    expect(button).toHaveClass('absolute');
+    expect(button).not.toHaveClass('relative');
+  });
 });

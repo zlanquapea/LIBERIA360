@@ -40,13 +40,15 @@ export function SaveIconButton({
     }
   }
 
+  // The snap burst needs a positioned parent. Cards already place this
+  // button with `absolute`; adding `relative` too would override it.
   return (
     <button
       type="button"
       onClick={handleClick}
       aria-pressed={saved}
       aria-label={saved ? 'Remove from saved places' : 'Save this place'}
-      className={`relative flex items-center justify-center rounded-full transition-[background-color,transform] active:scale-90 ${
+      className={`${/\babsolute\b/.test(className) ? '' : 'relative'} flex items-center justify-center rounded-full transition-[background-color,transform] active:scale-90 ${
         tone === 'glass'
           ? 'h-9 w-9 bg-black/25 text-white ring-1 ring-white/30 backdrop-blur-md before:absolute before:-inset-1 before:content-[""] hover:bg-black/45'
           : 'h-8 w-8 bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900'

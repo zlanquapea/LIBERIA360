@@ -42,7 +42,7 @@ export function PlaceCardCompact({
     >
       <InteractiveCard
         className={`group relative isolate h-full overflow-hidden rounded-[1.5rem] bg-brand-950 shadow-card ring-1 ring-black/5 dark:ring-white/10 ${
-          feature ? 'aspect-[16/11] lg:aspect-auto lg:min-h-[28rem]' : 'aspect-[4/5]'
+          feature ? 'aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto lg:min-h-[28rem]' : 'aspect-[4/5]'
         }`}
       >
         <Link
@@ -83,7 +83,7 @@ export function PlaceCardCompact({
               <span className="truncate">{placeLocation(place)}</span>
             </p>
             {feature && place.description && (
-              <p className="line-clamp-2 max-w-xl text-sm leading-6 text-white/80">{place.description}</p>
+              <p className="hidden max-w-xl text-sm leading-6 text-white/80 sm:line-clamp-2">{place.description}</p>
             )}
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <PlaceRating place={place} />
