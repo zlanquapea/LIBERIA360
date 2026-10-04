@@ -18,6 +18,8 @@ import {
   TicketIcon,
   LifebuoyIcon,
   UserCircleIcon,
+  BuildingOffice2Icon,
+  ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLoader } from "@/components/BrandLoader";
@@ -121,6 +123,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         description: "Track your food & pharmacy orders",
         icon: ShoppingBagIcon,
       },
+      {
+        href: "/account/prescriptions",
+        label: "My Prescriptions",
+        description: "E-prescriptions from your doctor",
+        icon: ClipboardDocumentCheckIcon,
+      },
     ],
   },
   {
@@ -162,6 +170,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         label: "Pharmacy Dashboard",
         description: "Manage your pharmacy profile, inventory & orders",
         icon: BeakerIcon,
+      },
+      {
+        href: "/account/clinic-dashboard",
+        label: "Clinics & Prescribing",
+        description: "Run a clinic or write e-prescriptions",
+        icon: BuildingOffice2Icon,
       },
     ],
   },

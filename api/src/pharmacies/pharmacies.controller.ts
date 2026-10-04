@@ -27,6 +27,7 @@ import {
   AssignStaffDto,
   CreateOrderDto,
   OrderFeedbackDto,
+  PharmacyOrderMessageDto,
   PharmacyProfileDto,
   PharmacyQueryDto,
   PrescriptionReviewDto,
@@ -34,10 +35,13 @@ import {
   ProductQueryDto,
   SaveOpeningHoursDto,
   StatusDto,
+  SubmitPaymentDto,
   UploadPrescriptionDto,
   VerificationDto,
+  VerifyPaymentDto,
 } from "./dto/pharmacy.dto";
 import { PharmaciesService } from "./pharmacies.service";
+import { PharmacyOrderFlowService } from "./pharmacy-order-flow.service";
 
 // Matches uploads.controller.ts's own image cap; a prescription upload
 // separately also allows a PDF (see pharmacies.service.ts) up to 10MB.
@@ -73,12 +77,50 @@ export class PharmaciesController {
 @UseGuards(JwtAuthGuard)
 @Controller("pharmacy-marketplace")
 export class PharmacyCustomerController {
-  constructor(private readonly service: PharmaciesService) {}
+  constructor(
+    private readonly service: PharmaciesService,
+    private readonly flow: PharmacyOrderFlowService,
+  ) {}
   @Post("orders") create(@CurrentUser() u: User, @Body() dto: CreateOrderDto) {
     return this.service.createOrder(u.id, dto);
   }
-  @Get("orders/mine") mine(@CurrentUser() u: User) {
-    return this.service.customerOrders(u.id);
+  @Get("orders/mine") async mine(@CurrentUser() u: User) {
+    return this.flow.enrich(await this.service.customerOrders(u.id), false);
+  }
+  // Mobile money: the transaction ID for an order waiting for payment.
+  @Post("orders/:orderId/payment") submitPayment(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+    @Body() dto: SubmitPaymentDto,
+  ) {
+    return this.flow.submitPayment(u.id, orderId, dto.paymentReference);
+  }
+  @Post("orders/:orderId/cancel") cancel(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+  ) {
+    return this.flow.cancelByCustomer(u.id, orderId);
+  }
+  @Get("orders/:orderId/reorder") reorder(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+  ) {
+    return this.flow.reorder(u.id, orderId);
+  }
+  // Order chat — the same routes serve the customer and the pharmacy's
+  // staff; the service works out which side the caller is on.
+  @Get("orders/:orderId/messages") messages(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+  ) {
+    return this.flow.listMessages(u.id, orderId);
+  }
+  @Post("orders/:orderId/messages") sendMessage(
+    @CurrentUser() u: User,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+    @Body() dto: PharmacyOrderMessageDto,
+  ) {
+    return this.flow.sendMessage(u.id, orderId, dto.body);
   }
   // One rating per completed order — see PharmaciesService.submitOrderFeedback.
   @Post("orders/:orderId/feedback") submitFeedback(
@@ -197,7 +239,10 @@ export class PharmacyCustomerController {
 @UseGuards(JwtAuthGuard)
 @Controller("pharmacy-dashboard")
 export class PharmacyDashboardController {
-  constructor(private readonly service: PharmaciesService) {}
+  constructor(
+    private readonly service: PharmaciesService,
+    private readonly flow: PharmacyOrderFlowService,
+  ) {}
   @Get() mine(@CurrentUser() u: User) {
     return this.service.mine(u.id);
   }
@@ -290,11 +335,27 @@ export class PharmacyDashboardController {
   ) {
     return this.service.removeProduct(u.id, id, productId);
   }
-  @Get(":id/orders") orders(
+  @Get(":id/orders") async orders(
     @CurrentUser() u: User,
     @Param("id", ParseUUIDPipe) id: string,
   ) {
-    return this.service.pharmacyOrders(u.id, id);
+    return this.flow.enrich(await this.service.pharmacyOrders(u.id, id), true);
+  }
+  // Staff confirm whether a mobile money payment arrived.
+  @Patch(":id/orders/:orderId/payment") verifyPayment(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+    @Body() dto: VerifyPaymentDto,
+  ) {
+    return this.flow.verifyPayment(u.id, id, orderId, dto.received);
+  }
+  @Patch(":id/orders/:orderId/refunded") refunded(
+    @CurrentUser() u: User,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("orderId", ParseUUIDPipe) orderId: string,
+  ) {
+    return this.flow.markRefunded(u.id, id, orderId);
   }
   @Patch(":id/orders/:orderId/status") status(
     @CurrentUser() u: User,

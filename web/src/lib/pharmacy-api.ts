@@ -33,6 +33,12 @@ export type Pharmacy = {
   deliveryFee: number;
   status: string;
   sponsored: boolean;
+  // Payment methods (see api PharmacyProfileDto). Mobile money goes to these
+  // merchant numbers; the customer submits the transaction ID.
+  acceptsCash?: boolean;
+  mtnMomoNumber?: string | null;
+  orangeMoneyNumber?: string | null;
+  paymentNote?: string | null;
   // Only present on GET /admin/pharmacies/applications — every other read
   // omits both (Pharmacy.licenceNumber/licenceDocumentKey are `select:
   // false` columns; applications() is the one query that opts back in).
@@ -102,6 +108,57 @@ export type PharmacyOrder = {
   // so the order history can show "thanks for your feedback" instead of
   // re-prompting once one exists.
   feedback?: { rating: number; comment: string | null } | null;
+  paymentMethod?: PharmacyPaymentMethod;
+  paymentStatus?: PharmacyPaymentStatus;
+  paymentReference?: string | null;
+  paymentAccount?: string | null;
+  deliveryAddress?: string | null;
+  contactPhone?: string | null;
+  customerNote?: string | null;
+  // Added by the list endpoints: steps so far (from the pharmacy audit log)
+  // and unread chat messages from the other side.
+  timeline?: PharmacyTimelineEntry[];
+  unreadMessages?: number;
+  // Set when the order was placed with a doctor's e-prescription.
+  ePrescriptionId?: string | null;
+  ePrescription?: {
+    id: string;
+    code: string;
+    doctorName: string | null;
+    clinicName: string | null;
+  } | null;
+};
+export type PharmacyPaymentMethod = "cash" | "mtn_momo" | "orange_money";
+export type PharmacyPaymentStatus =
+  | "pay_on_collection"
+  | "awaiting_payment"
+  | "awaiting_verification"
+  | "paid"
+  | "failed"
+  | "refund_due"
+  | "refunded";
+export type PharmacyTimelineEntry = { key: string; at: string; note?: string };
+export type PharmacyOrderMessage = {
+  id: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+  fromPharmacy: boolean;
+  senderUserId: string;
+  senderName: string;
+};
+export type PharmacyReorder = {
+  pharmacyId: string;
+  pharmacySlug: string | null;
+  lines: Array<{
+    productId: string | null;
+    name: string;
+    quantity: number;
+    previousQuantity: number;
+    price: number | null;
+    prescriptionRequired: boolean;
+    available: boolean;
+  }>;
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
@@ -166,6 +223,42 @@ export const submitPharmacyOrderFeedback = (
 // href> (or window.location), same pattern as prescriptionFile() above:
 // the browser downloads it directly via the Content-Disposition the API
 // sets, so there's nothing to hand back here but the path itself.
+export const submitPharmacyPayment = (orderId: string, paymentReference: string) =>
+  apiRequest<PharmacyOrder>(`/pharmacy-marketplace/orders/${orderId}/payment`, {
+    method: "POST",
+    body: JSON.stringify({ paymentReference }),
+  });
+export const cancelPharmacyOrder = (orderId: string) =>
+  apiRequest<PharmacyOrder>(`/pharmacy-marketplace/orders/${orderId}/cancel`, {
+    method: "POST",
+  });
+export const getPharmacyReorder = (orderId: string) =>
+  apiRequest<PharmacyReorder>(`/pharmacy-marketplace/orders/${orderId}/reorder`);
+// Order chat — the same routes serve the customer and pharmacy staff.
+export const getPharmacyOrderMessages = (orderId: string) =>
+  apiRequest<PharmacyOrderMessage[]>(
+    `/pharmacy-marketplace/orders/${orderId}/messages`,
+  );
+export const sendPharmacyOrderMessage = (orderId: string, body: string) =>
+  apiRequest<PharmacyOrderMessage>(
+    `/pharmacy-marketplace/orders/${orderId}/messages`,
+    { method: "POST", body: JSON.stringify({ body }) },
+  );
+export const verifyPharmacyPayment = (
+  pharmacyId: string,
+  orderId: string,
+  received: boolean,
+) =>
+  apiRequest<PharmacyOrder>(
+    `/pharmacy-dashboard/${pharmacyId}/orders/${orderId}/payment`,
+    { method: "PATCH", body: JSON.stringify({ received }) },
+  );
+export const markPharmacyRefunded = (pharmacyId: string, orderId: string) =>
+  apiRequest<PharmacyOrder>(
+    `/pharmacy-dashboard/${pharmacyId}/orders/${orderId}/refunded`,
+    { method: "PATCH" },
+  );
+
 export const pharmacyOrderReceiptUrl = (orderId: string) =>
   `/api/v1/pharmacy-marketplace/orders/${orderId}/receipt`;
 // POST /pharmacy-marketplace/prescriptions — multipart, so this bypasses
@@ -191,7 +284,7 @@ export async function uploadPrescription(
   body.append("pharmacyId", pharmacyId);
   body.append("file", file);
   // Relative, same-origin path — this runs client-side (called from
-  // PharmacyShop, a "use client" component), unlike this file's read()
+  // PharmacyCheckoutSheet, a "use client" component), unlike this file's read()
   // helper above which runs server-side and needs serverApiOrigin()'s
   // bare host. Same reasoning as lib/uploads-api.ts's uploadImage.
   const res = await fetch("/api/v1/pharmacy-marketplace/prescriptions", {
@@ -213,7 +306,7 @@ export async function uploadPrescription(
 // DELETE /pharmacy-marketplace/prescriptions/:id — cleans up a prescription
 // uploadPrescription() created but that never ended up attached to an
 // order (e.g. the customer picked a different file). Best-effort from the
-// caller's side: PharmacyShop swallows any failure here rather than
+// caller's side: PharmacyCheckoutSheet swallows any failure here rather than
 // blocking on it, since it's just housekeeping.
 export async function deleteUnattachedPrescription(id: string): Promise<void> {
   await fetch(`/api/v1/pharmacy-marketplace/prescriptions/${encodeURIComponent(id)}`, {
@@ -270,6 +363,10 @@ export type PharmacyProfileInput = {
   deliveryEnabled: boolean;
   deliveryFee: number;
   licenceNumber?: string;
+  acceptsCash?: boolean;
+  mtnMomoNumber?: string | null;
+  orangeMoneyNumber?: string | null;
+  paymentNote?: string | null;
 };
 
 export const getMyPharmacies = () => apiRequest<Pharmacy[]>("/pharmacy-dashboard");

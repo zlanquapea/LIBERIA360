@@ -20,10 +20,15 @@ import {
 import {
   FulfillmentMethod,
   PharmacyOrderStatus,
+  PharmacyPaymentMethod,
   PharmacyStaffRole,
   PharmacyStatus,
   PrescriptionDecision,
 } from "../entities/pharmacy.enums";
+
+// Same shape the food-order DTO accepts for a contact phone.
+const PHONE_PATTERN = /^\+?[0-9][0-9 -]{5,18}[0-9]$/;
+const PHONE_MESSAGE = { message: "Enter a valid phone number" };
 
 export class PharmacyQueryDto {
   // Public destination-page lookup (?placeId=), same pattern as
@@ -85,6 +90,17 @@ export class PharmacyProfileDto {
   @IsBoolean() deliveryEnabled: boolean;
   @Type(() => Number) @IsNumber() @Min(0) deliveryFee: number;
   @IsOptional() @IsString() @Length(2, 100) licenceNumber?: string;
+  // Payment methods. Omitted = unchanged; an explicit null clears a number.
+  @IsOptional() @IsBoolean() acceptsCash?: boolean;
+  @IsOptional()
+  @IsString()
+  @Matches(PHONE_PATTERN, PHONE_MESSAGE)
+  mtnMomoNumber?: string | null;
+  @IsOptional()
+  @IsString()
+  @Matches(PHONE_PATTERN, PHONE_MESSAGE)
+  orangeMoneyNumber?: string | null;
+  @IsOptional() @IsString() @Length(0, 300) paymentNote?: string | null;
 }
 export class ProductDto {
   @IsString() @Length(2, 180) name: string;
@@ -126,6 +142,30 @@ export class CreateOrderDto {
   items: CartItemDto[];
   @IsOptional() @IsUUID() prescriptionId?: string;
   @IsOptional() @IsBoolean() consentToPrescriptionProcessing?: boolean;
+  // A doctor's e-prescription covers the prescription items instead of an
+  // uploaded photo.
+  @IsOptional() @IsUUID() ePrescriptionId?: string;
+  // Defaults to cash. For mobile money on an order without a prescription
+  // the customer pays at checkout and sends the transaction ID here; a
+  // prescription order is paid for after the pharmacist approves it.
+  @IsOptional()
+  @IsEnum(PharmacyPaymentMethod)
+  paymentMethod?: PharmacyPaymentMethod;
+  @IsOptional() @IsString() @Length(4, 80) paymentReference?: string;
+  @IsOptional()
+  @IsString()
+  @Matches(PHONE_PATTERN, PHONE_MESSAGE)
+  contactPhone?: string;
+  @IsOptional() @IsString() @Length(0, 500) note?: string;
+}
+export class SubmitPaymentDto {
+  @IsString() @Length(4, 80) paymentReference: string;
+}
+export class VerifyPaymentDto {
+  @IsBoolean() received: boolean;
+}
+export class PharmacyOrderMessageDto {
+  @IsString() @Length(1, 2000) body: string;
 }
 export class OrderFeedbackDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(5) rating: number;

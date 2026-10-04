@@ -14,7 +14,9 @@ import {
 } from "./pharmacies.service";
 import {
   FulfillmentMethod,
+  PharmacyOrderPaymentStatus,
   PharmacyOrderStatus,
+  PharmacyPaymentMethod,
   PharmacyStaffRole,
   PharmacyStatus,
   PrescriptionDecision,
@@ -40,6 +42,7 @@ import {
 } from "./entities/order.entity";
 import { STORAGE_PROVIDER } from "../uploads/storage/storage-provider.interface";
 import { UsersService } from "../users/users.service";
+import { EPrescriptionsService } from "../clinics/e-prescriptions.service";
 
 describe("pharmacy marketplace policies", () => {
   it("calculates pickup and delivery totals server-side", () => {
@@ -293,7 +296,15 @@ describe("PharmaciesService", () => {
     } as PharmacyProduct;
   }
 
+  const ePrescriptions = {
+    usableForOrder: jest.fn(),
+    attachToOrder: jest.fn(),
+    orderSettled: jest.fn(),
+    orderRestored: jest.fn(),
+  };
+
   beforeEach(async () => {
+    jest.clearAllMocks();
     pharmacyRepo = {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
@@ -443,6 +454,7 @@ describe("PharmaciesService", () => {
         { provide: getRepositoryToken(PharmacyAuditLog), useValue: auditRepo },
         { provide: STORAGE_PROVIDER, useValue: storageProvider },
         { provide: UsersService, useValue: usersService },
+        { provide: EPrescriptionsService, useValue: ePrescriptions },
       ],
     }).compile();
 
@@ -655,6 +667,62 @@ describe("PharmaciesService", () => {
   });
 
   describe("createOrder", () => {
+    it("takes a doctor's e-prescription instead of an upload, with no review", async () => {
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+      ePrescriptions.usableForOrder.mockResolvedValue({ id: "rx-1" });
+
+      await service.createOrder("user-1", {
+        pharmacyId: "pharmacy-1",
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        items: [{ productId: "product-1", quantity: 1 }],
+        ePrescriptionId: "rx-1",
+      } as any);
+
+      expect(ePrescriptions.usableForOrder).toHaveBeenCalledWith(
+        "user-1",
+        "rx-1",
+        undefined,
+      );
+      expect(orderRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: PharmacyOrderStatus.PENDING,
+          ePrescriptionId: "rx-1",
+        }),
+      );
+      expect(ePrescriptions.attachToOrder).toHaveBeenCalledWith(
+        "rx-1",
+        "order-1",
+        "pharmacy-1",
+        undefined,
+      );
+      expect(prescriptionRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it("stops before saving when the e-prescription can't be used", async () => {
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+      ePrescriptions.usableForOrder.mockRejectedValue(
+        new BadRequestException("Already dispensed"),
+      );
+
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+          ePrescriptionId: "rx-1",
+        } as any),
+      ).rejects.toThrow("Already dispensed");
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
     it("aggregates duplicate product lines into a single stock check and decrement", async () => {
       mockCreateOrderFixtures(
         approvedPharmacy(),
@@ -797,6 +865,104 @@ describe("PharmaciesService", () => {
       expect(orderRepo.save).not.toHaveBeenCalled();
       expect(orderItemRepo.save).not.toHaveBeenCalled();
       expect(inventoryRepo.decrement).not.toHaveBeenCalled();
+    });
+
+    it("takes mobile money at checkout with the transaction ID, to the pharmacy's number", async () => {
+      mockCreateOrderFixtures(
+        approvedPharmacy({ mtnMomoNumber: "0886 000 111" }),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+
+      await service.createOrder("user-1", {
+        pharmacyId: "pharmacy-1",
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        items: [{ productId: "product-1", quantity: 1 }],
+        paymentMethod: PharmacyPaymentMethod.MTN_MOMO,
+        paymentReference: " MP123 ",
+      } as any);
+
+      expect(orderRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentMethod: PharmacyPaymentMethod.MTN_MOMO,
+          paymentStatus: PharmacyOrderPaymentStatus.AWAITING_VERIFICATION,
+          paymentReference: "MP123",
+          paymentAccount: "0886 000 111",
+        }),
+      );
+    });
+
+    it("needs the transaction ID for mobile money, and a pharmacy that takes it", async () => {
+      mockCreateOrderFixtures(
+        approvedPharmacy({ mtnMomoNumber: "0886 000 111" }),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+          paymentMethod: PharmacyPaymentMethod.MTN_MOMO,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      mockCreateOrderFixtures(
+        approvedPharmacy(),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+          paymentMethod: PharmacyPaymentMethod.ORANGE_MONEY,
+          paymentReference: "OM1",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("waits to take mobile money on a prescription order until the pharmacist approves it", async () => {
+      mockCreateOrderFixtures(
+        approvedPharmacy({ orangeMoneyNumber: "0777 000 222" }),
+        [product({ prescriptionRequired: true })],
+        [{ productId: "product-1", quantity: 1 }],
+      );
+      prescriptionRepo.findOne.mockResolvedValue({ id: "rx-1", orderId: null });
+
+      await service.createOrder("user-1", {
+        pharmacyId: "pharmacy-1",
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        items: [{ productId: "product-1", quantity: 1 }],
+        prescriptionId: "rx-1",
+        consentToPrescriptionProcessing: true,
+        paymentMethod: PharmacyPaymentMethod.ORANGE_MONEY,
+      } as any);
+
+      expect(orderRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: PharmacyOrderStatus.UNDER_REVIEW,
+          paymentStatus: PharmacyOrderPaymentStatus.AWAITING_PAYMENT,
+          paymentReference: null,
+        }),
+      );
+    });
+
+    it("refuses cash when the pharmacy has turned it off", async () => {
+      mockCreateOrderFixtures(
+        approvedPharmacy({ acceptsCash: false }),
+        [product()],
+        [{ productId: "product-1", quantity: 5 }],
+      );
+      await expect(
+        service.createOrder("user-1", {
+          pharmacyId: "pharmacy-1",
+          fulfillmentMethod: FulfillmentMethod.PICKUP,
+          items: [{ productId: "product-1", quantity: 1 }],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it("links a valid prescription to the order once it exists", async () => {
@@ -1733,6 +1899,93 @@ describe("PharmaciesService", () => {
   });
 
   describe("transition", () => {
+    it("dispenses the e-prescription when its order is collected, and frees it on cancel", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValueOnce({
+        id: "order-1",
+        status: PharmacyOrderStatus.READY_FOR_PICKUP,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        paymentMethod: PharmacyPaymentMethod.CASH,
+        paymentStatus: PharmacyOrderPaymentStatus.PAY_ON_COLLECTION,
+        ePrescriptionId: "rx-1",
+      });
+      await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+        PharmacyOrderStatus.COMPLETED,
+      );
+      expect(ePrescriptions.orderSettled).toHaveBeenCalledWith(
+        "order-1",
+        true,
+        "user-1",
+      );
+
+      orderRepo.findOneBy.mockResolvedValueOnce({
+        id: "order-2",
+        status: PharmacyOrderStatus.PENDING,
+        fulfillmentMethod: FulfillmentMethod.PICKUP,
+        paymentMethod: PharmacyPaymentMethod.CASH,
+        paymentStatus: PharmacyOrderPaymentStatus.PAY_ON_COLLECTION,
+        ePrescriptionId: "rx-2",
+      });
+      orderItemRepo.find.mockResolvedValue([]);
+      await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-2",
+        PharmacyOrderStatus.CANCELLED,
+      );
+      expect(ePrescriptions.orderSettled).toHaveBeenCalledWith(
+        "order-2",
+        false,
+        "user-1",
+      );
+    });
+
+    it("won't prepare a mobile money order until the payment is confirmed", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.ACCEPTED,
+        paymentMethod: PharmacyPaymentMethod.MTN_MOMO,
+        paymentStatus: PharmacyOrderPaymentStatus.AWAITING_VERIFICATION,
+      });
+      await expect(
+        service.transition(
+          "user-1",
+          "pharmacy-1",
+          "order-1",
+          PharmacyOrderStatus.PREPARING,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("owes mobile money back when a paid order is cancelled", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      orderRepo.findOneBy.mockResolvedValue({
+        id: "order-1",
+        status: PharmacyOrderStatus.ACCEPTED,
+        paymentMethod: PharmacyPaymentMethod.MTN_MOMO,
+        paymentStatus: PharmacyOrderPaymentStatus.PAID,
+      });
+      const order = await service.transition(
+        "user-1",
+        "pharmacy-1",
+        "order-1",
+        PharmacyOrderStatus.CANCELLED,
+      );
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          status: PharmacyOrderStatus.CANCELLED,
+          paymentStatus: PharmacyOrderPaymentStatus.REFUND_DUE,
+        }),
+      );
+      expect(order.paymentStatus).toBe(PharmacyOrderPaymentStatus.REFUND_DUE);
+    });
+
     it("restores reserved inventory when an order is cancelled", async () => {
       staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
       orderRepo.findOneBy.mockResolvedValue({
@@ -2690,6 +2943,47 @@ describe("PharmaciesService", () => {
       // the dedicated TOCTOU test below for the read-timing race itself;
       // this asserts the locking mechanism is actually requested.
       expect(builder.setLock).toHaveBeenCalledWith("pessimistic_write");
+    });
+
+    it("refuses to switch off every way to pay", async () => {
+      staffRepo.findOne.mockResolvedValue({ role: PharmacyStaffRole.MANAGER });
+      mockPharmacyQueryBuilder({
+        id: "pharmacy-1",
+        status: PharmacyStatus.APPROVED,
+        licenceNumber: null,
+        slug: "existing-slug",
+        acceptsCash: true,
+        mtnMomoNumber: null,
+        orangeMoneyNumber: "0777000222",
+      });
+      const base = {
+        name: "Test Pharmacy",
+        address: "123 Main St",
+        location: "Monrovia",
+        telephone: "+231770000000",
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryFee: 5,
+      };
+
+      await expect(
+        service.saveProfile("user-1", "pharmacy-1", {
+          ...base,
+          acceptsCash: false,
+          orangeMoneyNumber: null,
+        } as any),
+      ).rejects.toThrow(/customers can pay/);
+      expect(pharmacyRepo.update).not.toHaveBeenCalled();
+
+      // Turning cash off is fine while Orange Money is still set.
+      await service.saveProfile("user-1", "pharmacy-1", {
+        ...base,
+        acceptsCash: false,
+      } as any);
+      expect(pharmacyRepo.update).toHaveBeenCalledWith(
+        { id: "pharmacy-1" },
+        expect.objectContaining({ acceptsCash: false }),
+      );
     });
 
     it("does not fabricate a pending status when a concurrent admin action already moved the pharmacy off approved", async () => {

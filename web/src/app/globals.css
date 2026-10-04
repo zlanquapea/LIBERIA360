@@ -1700,3 +1700,18 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
 }
 .lib-stamp:nth-child(even) { transform: rotate(1.2deg); }
 :root.dark .lib-stamp, .dark .lib-stamp { color: rgb(253 186 116); border-color: rgb(253 186 116 / 0.6); }
+
+/* Printing one e-prescription: only the sheet being printed shows. */
+@media print {
+  body.print-rx * { visibility: hidden; }
+  body.print-rx .rx-sheet.rx-printing,
+  body.print-rx .rx-sheet.rx-printing * { visibility: visible; }
+  body.print-rx .rx-sheet.rx-printing {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    box-shadow: none;
+    border-color: #cbd5e1;
+  }
+  body.print-rx .rx-no-print { display: none !important; }
+}
