@@ -976,7 +976,7 @@
     "nearby_health": "منشآت صحية أخرى قريبة",
     "nearby_service": "خدمات أخرى قريبة",
     "tripEyebrow": "اجعلها رحلة",
-    "tripTitle": "يوم حول {name}",
+    "tripTitle": "اجعلها يومًا كاملًا",
     "tripBody": "أضفه إلى رحلة، ثم املأ اليوم بالطعام والإقامة والمعالم القريبة."
   },
   "eventPage": {
@@ -996,5 +996,17 @@
     "photos": "الصور",
     "organisedBy": "ينظّمها {name}",
     "getTickets": "احصل على التذاكر"
+  },
+  "tripPage": {
+    "noStops": "لا توجد محطات مخططة بعد.",
+    "day": "اليوم {day}",
+    "unknownStop": "محطة",
+    "kindEvent": "فعالية",
+    "kindCar": "تأجير سيارة",
+    "kindPlace": "مكان",
+    "passLabel": "بطاقة صعود الرحلة",
+    "planEyebrow": "يومًا بيوم",
+    "planTitle": "الخطة",
+    "whoGoing": "من سيذهب"
   }
 }

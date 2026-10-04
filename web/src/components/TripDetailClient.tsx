@@ -46,6 +46,8 @@ import {
   tripHasShareableContent,
 } from "@/components/TripShareCard";
 import { TripMapLoader } from "@/components/TripMapLoader";
+import { TripHero } from "@/components/trips/TripHero";
+import { TripTimeline } from "@/components/trips/TripTimeline";
 import { TripCostSummary } from "@/components/TripCostSummary";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
@@ -90,6 +92,7 @@ const VISIBILITY_BADGE_STYLES: Record<TripVisibility, string> = {
 export function TripDetailClient({ id }: { id: string }) {
   const t = useTranslations("trips");
   const tCommon = useTranslations("common");
+  const tTrip = useTranslations("tripPage");
   const notFoundMessage = t("notFoundMessage");
   const router = useRouter();
   const { user, token, ready } = useAuth();
@@ -292,98 +295,94 @@ export function TripDetailClient({ id }: { id: string }) {
     }
   }
 
-  return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
-      <div>
+  const joinAction =
+    !isAdmin && trip.status !== "cancelled" ? (
+      isFull ? (
+        <p className="rounded-full bg-slate-200 px-5 py-3 text-sm font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          {t("tripFull")}
+        </p>
+      ) : !user ? (
         <Link
-          href="/trips/community"
-          className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline"
+          href={`/login?next=/trips/${trip.id}`}
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-700 px-6 text-base font-bold text-white hover:bg-brand-800"
         >
-          ← {t("backToCommunityTrips")}
+          {t("logInToJoin")}
         </Link>
+      ) : joinRequestState === "sent" ? (
+        <p className="rounded-full bg-emerald-100 px-5 py-3 text-sm font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+          {t("requestSent")}
+        </p>
+      ) : (
+        <button
+          type="button"
+          disabled={joinRequestState === "sending"}
+          onClick={handleRequestToJoin}
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-700 px-6 text-base font-bold text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {joinRequestState === "sending" ? t("sendingRequest") : t("requestToJoin")}
+        </button>
+      )
+    ) : null;
 
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
-            {trip.title}
-          </h1>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${VISIBILITY_BADGE_STYLES.public}`}
-          >
-            {t("visibilityPublic")}
-          </span>
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE_STYLES[trip.status]}`}
-          >
-            {formatTripStatus(trip.status)}
-          </span>
-        </div>
+  return (
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
+      <Link
+        href="/trips/community"
+        className="w-fit text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+      >
+        ← {t("backToCommunityTrips")}
+      </Link>
 
-        <TripMeta trip={trip} />
-
-        {trip.description && (
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            {trip.description}
-          </p>
-        )}
-
-        <div className="mt-3">
-          <TripCostSummary stops={trip.stops} />
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="h-10 w-10">
-            <ShareMenu placeName={trip.title} contentType="trip" />
-          </div>
-          {tripHasShareableContent(trip) && (
+      <TripHero
+        trip={trip}
+        actions={
+          <>
+            {joinAction}
             <div className="h-10 w-10">
-              <TripShareCard trip={trip} />
+              <ShareMenu placeName={trip.title} contentType="trip" />
+            </div>
+            {tripHasShareableContent(trip) && (
+              <div className="h-10 w-10">
+                <TripShareCard trip={trip} />
+              </div>
+            )}
+          </>
+        }
+      />
+      {joinRequestError && (
+        <p role="alert" className="text-sm text-flag-700 dark:text-flag-300">
+          {joinRequestError}
+        </p>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <section aria-labelledby="trip-plan" className="flex min-w-0 flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card sm:p-7 dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{tTrip("planEyebrow")}</p>
+            <h2 id="trip-plan" className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{tTrip("planTitle")}</h2>
+            {trip.description && (
+              <p className="mt-3 whitespace-pre-line leading-7 text-slate-700 dark:text-slate-200">{trip.description}</p>
+            )}
+          </div>
+          <TripTimeline stops={trip.stops} startDate={trip.startDate} />
+        </section>
+
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
+          {tripHasMapPins(trip.stops) && (
+            <div className="h-64 overflow-hidden rounded-[2rem] border border-slate-200 shadow-card dark:border-slate-800">
+              <TripMapLoader stops={trip.stops} />
             </div>
           )}
-          {!isAdmin && trip.status !== "cancelled" && (
-            <>
-              {isFull ? (
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  {t("tripFull")}
-                </p>
-              ) : !user ? (
-                <Link
-                  href={`/login?next=/trips/${trip.id}`}
-                  className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
-                >
-                  {t("logInToJoin")}
-                </Link>
-              ) : joinRequestState === "sent" ? (
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                  {t("requestSent")}
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  disabled={joinRequestState === "sending"}
-                  onClick={handleRequestToJoin}
-                  className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-60"
-                >
-                  {joinRequestState === "sending"
-                    ? t("sendingRequest")
-                    : t("requestToJoin")}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-        {joinRequestError && (
-          <p className="mt-2 text-xs text-flag-700 dark:text-flag-300">
-            {joinRequestError}
-          </p>
-        )}
+          <div className="rounded-2xl bg-white shadow-card dark:bg-slate-900">
+            <TripCostSummary stops={trip.stops} />
+          </div>
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{tTrip("whoGoing")}</p>
+            <p className="mt-1 font-display text-2xl font-black text-slate-950 dark:text-white">{t("goingCount", { count: trip.participantCount })}</p>
+            {trip.admin && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{t("organizedBy", { name: trip.admin.name })}</p>}
+          </div>
+        </aside>
       </div>
-
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        {t("goingCount", { count: trip.participantCount })}
-        {trip.admin && ` · ${t("organizedBy", { name: trip.admin.name })}`}
-      </p>
-
-      <ItineraryStops stops={trip.stops} />
     </main>
   );
 }

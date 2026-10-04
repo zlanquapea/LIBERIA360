@@ -976,7 +976,7 @@
     "nearby_health": "Other health facilities nearby",
     "nearby_service": "Other services nearby",
     "tripEyebrow": "Make it a trip",
-    "tripTitle": "Build a day around {name}",
+    "tripTitle": "Make a day of it",
     "tripBody": "Add it to a trip, then fill the day with nearby food, stays and sights."
   },
   "eventPage": {
@@ -996,5 +996,17 @@
     "photos": "Photos",
     "organisedBy": "Organised by {name}",
     "getTickets": "Get tickets"
+  },
+  "tripPage": {
+    "noStops": "No stops planned yet.",
+    "day": "Day {day}",
+    "unknownStop": "Stop",
+    "kindEvent": "Event",
+    "kindCar": "Car rental",
+    "kindPlace": "Place",
+    "passLabel": "Trip boarding pass",
+    "planEyebrow": "Day by day",
+    "planTitle": "The plan",
+    "whoGoing": "Who’s going"
   }
 }

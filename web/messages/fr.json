@@ -976,7 +976,7 @@
     "nearby_health": "Autres établissements de santé à proximité",
     "nearby_service": "Autres services à proximité",
     "tripEyebrow": "En faire un voyage",
-    "tripTitle": "Une journée autour de {name}",
+    "tripTitle": "Faites-en une journée",
     "tripBody": "Ajoutez-le à un voyage, puis complétez la journée avec repas, hébergements et sites voisins."
   },
   "eventPage": {
@@ -996,5 +996,17 @@
     "photos": "Photos",
     "organisedBy": "Organisé par {name}",
     "getTickets": "Obtenir des billets"
+  },
+  "tripPage": {
+    "noStops": "Aucune étape prévue pour le moment.",
+    "day": "Jour {day}",
+    "unknownStop": "Étape",
+    "kindEvent": "Événement",
+    "kindCar": "Location de voiture",
+    "kindPlace": "Lieu",
+    "passLabel": "Carte d’embarquement du voyage",
+    "planEyebrow": "Jour par jour",
+    "planTitle": "Le programme",
+    "whoGoing": "Qui participe"
   }
 }

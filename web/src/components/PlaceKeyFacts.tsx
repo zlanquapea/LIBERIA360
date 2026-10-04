@@ -160,7 +160,13 @@ export function PlaceKeyFacts({ place, business, kind = 'destination' }: { place
           className="min-h-11 w-full justify-center rounded-xl border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
         />
 
-        {caps.visited && <MarkVisitedButton placeId={place.id} className={mutedActionClass} />}
+        {/* A fixed slot: the button only appears once sign-in is known,
+            and it mustn't shove the other buttons sideways when it does. */}
+        {caps.visited && (
+          <div className="min-h-11">
+            <MarkVisitedButton placeId={place.id} className={mutedActionClass} />
+          </div>
+        )}
         </div>
       </div>
         )}

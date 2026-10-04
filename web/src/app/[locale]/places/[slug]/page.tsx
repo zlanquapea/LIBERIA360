@@ -356,7 +356,7 @@ export default async function PlaceProfilePage({
           <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-sunset-300">{tk("tripEyebrow")}</p>
-              <h2 className="mt-1 font-display text-2xl font-black sm:text-3xl">{tk("tripTitle", { name: place.name })}</h2>
+              <h2 className="mt-1 font-display text-2xl font-black sm:text-3xl">{tk("tripTitle")}</h2>
               <p className="mt-1 max-w-xl text-sm text-white/75">{tk("tripBody")}</p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">

@@ -976,7 +976,7 @@
     "nearby_health": "附近其他医疗机构",
     "nearby_service": "附近其他服务",
     "tripEyebrow": "安排行程",
-    "tripTitle": "围绕 {name} 安排一天",
+    "tripTitle": "安排一整天",
     "tripBody": "加入行程，再搭配附近的美食、住宿和景点。"
   },
   "eventPage": {
@@ -996,5 +996,17 @@
     "photos": "照片",
     "organisedBy": "组织者：{name}",
     "getTickets": "购票"
+  },
+  "tripPage": {
+    "noStops": "尚未安排任何站点。",
+    "day": "第 {day} 天",
+    "unknownStop": "站点",
+    "kindEvent": "活动",
+    "kindCar": "租车",
+    "kindPlace": "地点",
+    "passLabel": "行程登机牌",
+    "planEyebrow": "逐日安排",
+    "planTitle": "行程安排",
+    "whoGoing": "参与者"
   }
 }
