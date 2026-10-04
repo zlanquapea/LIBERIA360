@@ -21,7 +21,13 @@ const today = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 
-export function TripBudgetPanel({ tripId }: { tripId: string }) {
+export function TripBudgetPanel({
+  tripId,
+  onReadyChange,
+}: {
+  tripId: string;
+  onReadyChange?: (ready: boolean | null) => void;
+}) {
   const [data, setData] = useState<TripBudget | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -35,6 +41,9 @@ export function TripBudgetPanel({ tripId }: { tripId: string }) {
   const [expense, setExpense] = useState<TripExpense | null>(null);
   const [amount, setAmount] = useState("");
   const [removeId, setRemoveId] = useState<string | null>(null);
+  useEffect(() => {
+    onReadyChange?.(data ? data.budgetMinor > 0 : null);
+  }, [data, onReadyChange]);
   useEffect(() => {
     let cancelled = false;
     setLoading(true);

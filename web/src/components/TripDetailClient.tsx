@@ -58,6 +58,7 @@ import { TripBudgetPanel } from "@/components/trips/TripBudgetPanel";
 import { TripVotingPanel } from "@/components/trips/TripVotingPanel";
 import { TripActivityPanel } from "@/components/trips/TripActivityPanel";
 import { TripPackingPanel } from "@/components/trips/TripPackingPanel";
+import { BeforeYouGo } from "@/components/trips/BeforeYouGo";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
 import { TripShareLink } from "@/components/trips/TripShareLink";
@@ -251,6 +252,7 @@ export function TripDetailClient({ id }: { id: string }) {
   if (itinerary) {
     return (
       <MemberTripView
+        key={`${itinerary.id}-${user?.id}`}
         itinerary={itinerary}
         user={user}
         token={token}
@@ -506,6 +508,9 @@ function MemberTripView({
   const [duplicating, setDuplicating] = useState(false);
   const [activeTab, setActiveTab] = useState("itinerary");
   const [showSettings, setShowSettings] = useState(false);
+  const [budgetReady, setBudgetReady] = useState<boolean | null>(null);
+  const [packingReady, setPackingReady] = useState<boolean | null>(null);
+  const [offlineReady, setOfflineReady] = useState<boolean | null>(null);
   const optionsRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
@@ -928,7 +933,10 @@ function MemberTripView({
             startDate={itinerary.startDate}
             endDate={itinerary.endDate}
           />
-          <OfflinePackControl trip={itinerary} />
+          <OfflinePackControl
+            trip={itinerary}
+            onReadyChange={setOfflineReady}
+          />
         </div>
         {tripHasMapPins(itinerary.stops) && (
           <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-800 sm:h-80">
@@ -944,12 +952,49 @@ function MemberTripView({
         hidden={activeTab !== "itinerary"}
         className="space-y-5"
       >
+        <BeforeYouGo
+          canAddPlace={canEdit}
+          datesSet={Boolean(itinerary.startDate && itinerary.endDate)}
+          hasPlaces={itinerary.stops.length > 0}
+          hasPartners={itinerary.collaborators.length > 0}
+          budgetReady={budgetReady}
+          packingReady={packingReady}
+          offlineReady={offlineReady}
+          onOpen={(destination) => {
+            if (destination === "offline") {
+              setShowSettings(true);
+              window.setTimeout(
+                () =>
+                  document
+                    .getElementById("offline-pack")
+                    ?.scrollIntoView?.({ block: "center" }),
+                50,
+              );
+            } else {
+              setActiveTab(destination);
+              setShowSettings(false);
+              window.setTimeout(
+                () =>
+                  document
+                    .getElementById(
+                      destination === "itinerary"
+                        ? "trip-add-place"
+                        : `trip-label-${destination}`,
+                    )
+                    ?.focus(),
+                50,
+              );
+            }
+          }}
+        />
         {canEdit && (
-          <AddTripStop
-            itineraryId={itinerary.id}
-            durationDays={itinerary.durationDays}
-            onAdded={reload}
-          />
+          <div id="trip-add-place" tabIndex={-1} className="scroll-mt-24">
+            <AddTripStop
+              itineraryId={itinerary.id}
+              durationDays={itinerary.durationDays}
+              onAdded={reload}
+            />
+          </div>
         )}
         <ItineraryStops
           stops={itinerary.stops}
@@ -1001,6 +1046,7 @@ function MemberTripView({
         hidden={activeTab !== "budget"}
       >
         <TripBudgetPanel
+          onReadyChange={setBudgetReady}
           key={`${itinerary.id}-${user?.id}`}
           tripId={itinerary.id}
         />
@@ -1012,6 +1058,7 @@ function MemberTripView({
         hidden={activeTab !== "packing"}
       >
         <TripPackingPanel
+          onReadyChange={setPackingReady}
           key={`${itinerary.id}-${user?.id}`}
           tripId={itinerary.id}
         />
