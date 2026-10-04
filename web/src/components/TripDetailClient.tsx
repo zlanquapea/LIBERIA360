@@ -7,7 +7,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -505,6 +504,34 @@ function MemberTripView({
   // Viewers see everything but can't change the plan.
   const canEdit = isOwner || (isCollaborator && itinerary.myRole !== "viewer");
   const [duplicating, setDuplicating] = useState(false);
+  const [activeTab, setActiveTab] = useState("itinerary");
+  const [showSettings, setShowSettings] = useState(false);
+  useEffect(() => {
+    const sync = () => {
+      const hash = window.location.hash;
+      const next =
+        hash.startsWith("#trip-stop-") || hash.startsWith("#trip-suggestion-")
+          ? "itinerary"
+          : hash === "#trip-activity"
+            ? "updates"
+            : hash.replace("#trip-tab-", "");
+      if (
+        ["itinerary", "people", "budget", "packing", "updates"].includes(next)
+      ) {
+        setActiveTab(next);
+        window.setTimeout(
+          () =>
+            document
+              .getElementById(hash.slice(1))
+              ?.scrollIntoView?.({ block: "center" }),
+          100,
+        );
+      }
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [itinerary.id]);
   const canFeature = isOwner && Boolean(user?.isAdmin);
   const [showFeatureForm, setShowFeatureForm] = useState(false);
   const [featuredCategoryInput, setFeaturedCategoryInput] = useState(
@@ -648,64 +675,90 @@ function MemberTripView({
           >
             ← {t("myTrips")}
           </Link>
-          <div className="flex items-center gap-2">
-            {canEdit && (
+          <details
+            className="relative"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") e.currentTarget.open = false;
+            }}
+          >
+            <summary
+              aria-label="Trip options"
+              className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border text-xl [&::-webkit-details-marker]:hidden"
+            >
+              ⋯
+            </summary>
+            <div
+              className="absolute end-0 top-12 z-20 flex w-64 flex-col items-stretch gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button"))
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+              }}
+            >
               <button
                 type="button"
-                disabled={duplicating}
-                onClick={handleDuplicate}
-                className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
+                onClick={() => setShowSettings((v) => !v)}
+                className="min-h-11 rounded-xl border px-3 text-start text-sm font-semibold"
               >
-                <DocumentDuplicateIcon aria-hidden className="h-3.5 w-3.5" />
-                {duplicating ? t("duplicating") : t("duplicateTrip")}
+                Trip settings & offline access
               </button>
-            )}
-            {isOwner &&
-              itinerary.status !== "cancelled" &&
-              itinerary.status !== "completed" && (
+              {canEdit && (
                 <button
                   type="button"
-                  onClick={() => setConfirmingCancel(true)}
-                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-flag-400 hover:text-flag-700 dark:border-slate-700 dark:text-slate-300"
+                  disabled={duplicating}
+                  onClick={handleDuplicate}
+                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
                 >
-                  <XCircleIcon aria-hidden className="h-3.5 w-3.5" />
-                  {t("cancelTrip")}
+                  <DocumentDuplicateIcon aria-hidden className="h-3.5 w-3.5" />
+                  {duplicating ? t("duplicating") : t("duplicateTrip")}
                 </button>
               )}
-            {isOwner && (
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(true)}
-                className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 dark:border-flag-600 dark:text-flag-300"
-              >
-                <TrashIcon aria-hidden className="h-3.5 w-3.5" />
-                {t("deleteTrip")}
-              </button>
-            )}
-            {canFeature &&
-              (itinerary.isFeaturedTemplate ? (
+              {isOwner &&
+                itinerary.status !== "cancelled" &&
+                itinerary.status !== "completed" && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingCancel(true)}
+                    className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-flag-400 hover:text-flag-700 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <XCircleIcon aria-hidden className="h-3.5 w-3.5" />
+                    {t("cancelTrip")}
+                  </button>
+                )}
+              {isOwner && (
                 <button
                   type="button"
-                  disabled={featuring}
-                  onClick={() => handleSetFeatured(false)}
-                  className="flex items-center gap-1 rounded-full border border-gold-400 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800 hover:bg-gold-100 disabled:opacity-60 dark:border-gold-700 dark:bg-gold-900/20 dark:text-gold-300"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 dark:border-flag-600 dark:text-flag-300"
                 >
-                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
-                  {featuring
-                    ? t("savingFeatured")
-                    : t("unfeatureStarterItinerary")}
+                  <TrashIcon aria-hidden className="h-3.5 w-3.5" />
+                  {t("deleteTrip")}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowFeatureForm((v) => !v)}
-                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-gold-400 hover:text-gold-700 dark:border-slate-700 dark:text-slate-300"
-                >
-                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
-                  {t("featureAsStarterItinerary")}
-                </button>
-              ))}
-          </div>
+              )}
+              {canFeature &&
+                (itinerary.isFeaturedTemplate ? (
+                  <button
+                    type="button"
+                    disabled={featuring}
+                    onClick={() => handleSetFeatured(false)}
+                    className="flex items-center gap-1 rounded-full border border-gold-400 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800 hover:bg-gold-100 disabled:opacity-60 dark:border-gold-700 dark:bg-gold-900/20 dark:text-gold-300"
+                  >
+                    <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                    {featuring
+                      ? t("savingFeatured")
+                      : t("unfeatureStarterItinerary")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowFeatureForm((v) => !v)}
+                    className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-gold-400 hover:text-gold-700 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                    {t("featureAsStarterItinerary")}
+                  </button>
+                ))}
+            </div>
+          </details>
         </div>
 
         {canFeature && featureError && !showFeatureForm && (
@@ -820,14 +873,19 @@ function MemberTripView({
         )}
       </div>
 
-      <TripWorkspaceNav />
+      <TripWorkspaceNav active={activeTab} onChange={setActiveTab} />
 
-      <TripWorkspaceSection
-        id="trip-overview"
-        eyebrow="01 · Overview"
-        title="Your trip at a glance"
-        description="Review the plan, route, travel setup, and offline access before you go."
-      >
+      <div hidden={!showSettings} className="space-y-4 rounded-2xl border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-bold">Trip settings</h2>
+          <button
+            type="button"
+            onClick={() => setShowSettings(false)}
+            className="min-h-11 px-3 text-sm underline"
+          >
+            Close settings
+          </button>
+        </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
           <TripDetailsEditor
             value={{
@@ -861,14 +919,22 @@ function MemberTripView({
             <TripMapLoader stops={itinerary.stops} />
           </div>
         )}
-      </TripWorkspaceSection>
+      </div>
 
-      <TripWorkspaceSection
-        id="trip-plan"
-        eyebrow="02 · Plan"
-        title="Build the itinerary together"
-        description="Add places, events, or rentals, arrange them by day, and let the group vote on what belongs."
+      <div
+        role="tabpanel"
+        id="trip-tab-itinerary"
+        aria-labelledby="trip-label-itinerary"
+        hidden={activeTab !== "itinerary"}
+        className="space-y-5"
       >
+        {canEdit && (
+          <AddTripStop
+            itineraryId={itinerary.id}
+            durationDays={itinerary.durationDays}
+            onAdded={reload}
+          />
+        )}
         <ItineraryStops
           stops={itinerary.stops}
           durationDays={itinerary.durationDays}
@@ -904,49 +970,54 @@ function MemberTripView({
               : undefined
           }
         />
-        {canEdit && (
-          <AddTripStop
-            itineraryId={itinerary.id}
-            durationDays={itinerary.durationDays}
-            onAdded={reload}
-          />
-        )}
         <TripVotingPanel
           key={`votes-${itinerary.id}-${user?.id}`}
           tripId={itinerary.id}
           durationDays={itinerary.durationDays}
           onAdded={reload}
         />
-      </TripWorkspaceSection>
+      </div>
 
-      <TripWorkspaceSection
-        id="trip-tools"
-        eyebrow="03 · Trip tools"
-        title="Stay organized"
-        description="Keep spending and packing in one place, with private lists for each traveler."
+      <div
+        role="tabpanel"
+        id="trip-tab-budget"
+        aria-labelledby="trip-label-budget"
+        hidden={activeTab !== "budget"}
       >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <TripBudgetPanel
-            key={`${itinerary.id}-${user?.id}`}
-            tripId={itinerary.id}
-          />
-          <TripPackingPanel
-            key={`${itinerary.id}-${user?.id}`}
-            tripId={itinerary.id}
-          />
-        </div>
-      </TripWorkspaceSection>
+        <TripBudgetPanel
+          key={`${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
+        />
+      </div>
+      <div
+        role="tabpanel"
+        id="trip-tab-packing"
+        aria-labelledby="trip-label-packing"
+        hidden={activeTab !== "packing"}
+      >
+        <TripPackingPanel
+          key={`${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
+        />
+      </div>
 
-      <TripWorkspaceSection
-        id="trip-collaboration"
-        eyebrow="04 · Collaboration"
-        title="Keep everyone in sync"
-        description="See what changed, manage people, share a view-only link, or open the trip conversation."
+      <div
+        role="tabpanel"
+        id="trip-tab-updates"
+        aria-labelledby="trip-label-updates"
+        hidden={activeTab !== "updates"}
       >
         <TripActivityPanel
           key={`activity-${itinerary.id}-${user?.id}`}
           tripId={itinerary.id}
         />
+      </div>
+      <div
+        role="tabpanel"
+        id="trip-tab-people"
+        aria-labelledby="trip-label-people"
+        hidden={activeTab !== "people"}
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <TripPeoplePanel
             itineraryId={itinerary.id}
@@ -972,7 +1043,7 @@ function MemberTripView({
             </Link>
           </div>
         </div>
-      </TripWorkspaceSection>
+      </div>
 
       <ConfirmDialog
         open={confirmingCancel}
@@ -1013,64 +1084,66 @@ function MemberTripView({
   );
 }
 
-function TripWorkspaceNav() {
+function TripWorkspaceNav({
+  active,
+  onChange,
+}: {
+  active: string;
+  onChange: (id: string) => void;
+}) {
   const links = [
-    ["trip-overview", "Overview"],
-    ["trip-plan", "Plan"],
-    ["trip-tools", "Tools"],
-    ["trip-collaboration", "People & updates"],
+    ["itinerary", "Itinerary"],
+    ["people", "People"],
+    ["budget", "Budget"],
+    ["packing", "Packing"],
+    ["updates", "Updates"],
   ] as const;
   return (
     <nav
       aria-label="Trip sections"
       className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/95"
     >
-      <div className="flex min-w-max gap-1">
+      <div
+        role="tablist"
+        aria-label="Trip features"
+        className="flex min-w-max gap-1"
+      >
         {links.map(([id, label], index) => (
-          <a
+          <button
             key={id}
-            href={`#${id}`}
-            className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-300 dark:hover:bg-brand-950/40 dark:hover:text-brand-200 sm:px-4 sm:text-sm"
+            type="button"
+            role="tab"
+            id={`trip-label-${id}`}
+            aria-controls={`trip-tab-${id}`}
+            aria-selected={active === id}
+            tabIndex={active === id ? 0 : -1}
+            onClick={() => onChange(id)}
+            onKeyDown={(e) => {
+              const next =
+                e.key === "ArrowRight"
+                  ? (index + 1) % links.length
+                  : e.key === "ArrowLeft"
+                    ? (index + links.length - 1) % links.length
+                    : e.key === "Home"
+                      ? 0
+                      : e.key === "End"
+                        ? links.length - 1
+                        : null;
+              if (next !== null) {
+                e.preventDefault();
+                onChange(links[next][0]);
+                document
+                  .getElementById(`trip-label-${links[next][0]}`)
+                  ?.focus();
+              }
+            }}
+            className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${active === id ? "bg-brand-700 text-white" : "text-slate-600 hover:bg-brand-50 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
           >
-            <span className="me-1 text-[10px] text-brand-700 dark:text-brand-300">
-              0{index + 1}
-            </span>
             {label}
-          </a>
+          </button>
         ))}
       </div>
     </nav>
-  );
-}
-
-function TripWorkspaceSection({
-  id,
-  eyebrow,
-  title,
-  description,
-  children,
-}: {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <section id={id} className="scroll-mt-20 space-y-4">
-      <div className="px-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-          {eyebrow}
-        </p>
-        <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-          {title}
-        </h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          {description}
-        </p>
-      </div>
-      {children}
-    </section>
   );
 }
 
