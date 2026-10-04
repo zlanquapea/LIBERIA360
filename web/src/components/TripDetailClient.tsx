@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   DocumentDuplicateIcon,
@@ -16,6 +11,11 @@ import {
   MapPinIcon,
   StarIcon,
   XCircleIcon,
+  UsersIcon,
+  BanknotesIcon,
+  ClipboardDocumentCheckIcon,
+  BellIcon,
+  EllipsisHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -506,6 +506,18 @@ function MemberTripView({
   const [duplicating, setDuplicating] = useState(false);
   const [activeTab, setActiveTab] = useState("itinerary");
   const [showSettings, setShowSettings] = useState(false);
+  const optionsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (
+        optionsRef.current &&
+        !optionsRef.current.contains(event.target as Node)
+      )
+        optionsRef.current.open = false;
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, []);
   useEffect(() => {
     const sync = () => {
       const hash = window.location.hash;
@@ -666,8 +678,8 @@ function MemberTripView({
     collaboratorCount > 0;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
-      <div>
+    <main className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:py-6">
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/trips"
@@ -676,19 +688,23 @@ function MemberTripView({
             ← {t("myTrips")}
           </Link>
           <details
+            ref={optionsRef}
             className="relative"
             onKeyDown={(e) => {
-              if (e.key === "Escape") e.currentTarget.open = false;
+              if (e.key === "Escape") {
+                e.currentTarget.open = false;
+                e.currentTarget.querySelector("summary")?.focus();
+              }
             }}
           >
             <summary
               aria-label="Trip options"
-              className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border text-xl [&::-webkit-details-marker]:hidden"
+              className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 [&::-webkit-details-marker]:hidden"
             >
-              ⋯
+              <EllipsisHorizontalIcon aria-hidden="true" className="h-6 w-6" />
             </summary>
             <div
-              className="absolute end-0 top-12 z-20 flex w-64 flex-col items-stretch gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+              className="absolute end-0 top-12 z-20 flex w-64 max-w-[calc(100vw-4rem)] flex-col items-stretch gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:text-start [&>button]:text-sm"
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest("button"))
                   e.currentTarget.closest("details")?.removeAttribute("open");
@@ -1092,23 +1108,23 @@ function TripWorkspaceNav({
   onChange: (id: string) => void;
 }) {
   const links = [
-    ["itinerary", "Itinerary"],
-    ["people", "People"],
-    ["budget", "Budget"],
-    ["packing", "Packing"],
-    ["updates", "Updates"],
+    ["itinerary", "Itinerary", MapPinIcon],
+    ["people", "People", UsersIcon],
+    ["budget", "Budget", BanknotesIcon],
+    ["packing", "Packing", ClipboardDocumentCheckIcon],
+    ["updates", "Updates", BellIcon],
   ] as const;
   return (
     <nav
       aria-label="Trip sections"
-      className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/95"
+      className="sticky top-2 z-10 rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
     >
       <div
         role="tablist"
         aria-label="Trip features"
-        className="flex min-w-max gap-1"
+        className="grid grid-cols-5 gap-1"
       >
-        {links.map(([id, label], index) => (
+        {links.map(([id, label, Icon], index) => (
           <button
             key={id}
             type="button"
@@ -1137,9 +1153,10 @@ function TripWorkspaceNav({
                   ?.focus();
               }
             }}
-            className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${active === id ? "bg-brand-700 text-white" : "text-slate-600 hover:bg-brand-50 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}
+            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:flex-row sm:gap-2 sm:text-sm ${active === id ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"}`}
           >
-            {label}
+            <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+            <span className="break-words">{label}</span>
           </button>
         ))}
       </div>
