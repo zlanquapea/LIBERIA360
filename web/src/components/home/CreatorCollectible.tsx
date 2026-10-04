@@ -1,13 +1,34 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { MapPinIcon, StarIcon } from '@heroicons/react/20/solid';
-import { CheckBadgeIcon } from '@heroicons/react/24/solid';
+import {
+  BuildingLibraryIcon,
+  CameraIcon,
+  CheckBadgeIcon,
+  FireIcon,
+  FlagIcon,
+  MapIcon,
+  PaintBrushIcon,
+  SparklesIcon,
+  VideoCameraIcon,
+} from '@heroicons/react/24/solid';
 import { InteractiveCard } from '@/components/InteractiveCard';
 import { SafeImage } from '@/components/SafeImage';
 import { colorForCreator } from '@/lib/category-colors';
 import { formatCreatorCategory } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
-import type { Creator } from '@/lib/types';
+import type { Creator, CreatorCategory } from '@/lib/types';
+
+const CATEGORY_ICON: Record<CreatorCategory, typeof CameraIcon> = {
+  photographer: CameraIcon,
+  videographer: VideoCameraIcon,
+  tour_guide: FlagIcon,
+  tour_operator: MapIcon,
+  artist: PaintBrushIcon,
+  chef: FireIcon,
+  cultural: BuildingLibraryIcon,
+  other: SparklesIcon,
+};
 
 /**
  * A local creator as a collectible card: a coloured frame, their work in
@@ -22,6 +43,7 @@ export function CreatorCollectible({ creator }: { creator: Creator }) {
   const art = creator.coverImage ?? creator.profileImage;
   const tint = colorForCreator(creator.username);
   const where = creator.county?.name ?? creator.locationsCovered.slice(0, 2).join(', ');
+  const Icon = CATEGORY_ICON[creator.category] ?? SparklesIcon;
 
   const stats = [
     creator.followerCount > 0 && { label: t('followers'), value: creator.followerCount.toLocaleString() },
@@ -55,13 +77,17 @@ export function CreatorCollectible({ creator }: { creator: Creator }) {
         </div>
 
         {/* Art window. */}
-        <div className="relative mx-3 aspect-[4/3] overflow-hidden rounded-xl bg-slate-200 ring-1 ring-black/10 dark:bg-slate-800">
+        <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-xl bg-slate-200 ring-1 ring-black/10 dark:bg-slate-800">
           <SafeImage
             src={art ? resolveImageUrl(art) : null}
             thumbSrc={art ? resolveThumbUrl(art) : null}
             alt=""
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06] motion-reduce:transition-none"
-            fallback={<div aria-hidden className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tint}, #082e21)` }} />}
+            fallback={
+              <div aria-hidden className="absolute inset-0 overflow-hidden" style={{ background: `linear-gradient(135deg, ${tint}, #082e21)` }}>
+                <Icon className="absolute -end-4 -top-3 h-[85%] w-[55%] rotate-12 text-white/[0.12]" />
+              </div>
+            }
           />
           <span
             aria-hidden

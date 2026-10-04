@@ -42,7 +42,7 @@ export async function CreatorsSection({ creators, guides = [] }: { creators: Cre
       {creators.length > 0 ? (
         <ul className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
           {creators.map((creator) => (
-            <li key={creator.id} className="reveal-on-scroll w-[72vw] max-w-xs shrink-0 snap-start sm:w-auto sm:max-w-none">
+            <li key={creator.id} className="reveal-on-scroll w-[72vw] max-w-xs shrink-0 snap-start sm:w-auto sm:max-w-sm">
               <CreatorCollectible creator={creator} />
             </li>
           ))}

@@ -86,7 +86,7 @@ export function BoardingPass({
             <p className="mt-1 max-w-[11rem] truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">{destination}</p>
           </div>
         </div>
-        <dl className="grid grid-cols-4 gap-2 border-t border-slate-200/80 pt-3 dark:border-slate-800">
+        <dl className="flex justify-between gap-3 border-t border-slate-200/80 pt-3 dark:border-slate-800">
           {fields.map((f) => (
             <div key={f.label} className="min-w-0">
               <dt className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">{f.label}</dt>
