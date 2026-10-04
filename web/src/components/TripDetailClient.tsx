@@ -49,6 +49,7 @@ import { TripMapLoader } from "@/components/TripMapLoader";
 import { TripHero } from "@/components/trips/TripHero";
 import { TripTimeline } from "@/components/trips/TripTimeline";
 import { TripCostSummary } from "@/components/TripCostSummary";
+import { TripBudgetPanel } from "@/components/trips/TripBudgetPanel";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
 import { TripShareLink } from "@/components/trips/TripShareLink";
@@ -795,6 +796,8 @@ function MemberTripView({
       </div>
 
       <OfflinePackControl trip={itinerary} />
+
+      <TripBudgetPanel key={`${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
 
       <TripShareLink
         itineraryId={itinerary.id}

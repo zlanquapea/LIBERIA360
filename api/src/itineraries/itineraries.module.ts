@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { TripBudgetController } from "./trip-budget.controller";
+import { TripBudgetService } from "./trip-budget.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Itinerary } from "./entities/itinerary.entity";
 import { ItineraryCollaborator } from "./entities/itinerary-collaborator.entity";
@@ -33,11 +35,12 @@ import { TripPreviewController } from "./trip-preview.controller";
     TripChatModule,
   ],
   controllers: [
+    TripBudgetController,
     ItinerariesController,
     TripInvitationsController,
     TripPreviewController,
   ],
-  providers: [ItinerariesService],
+  providers: [ItinerariesService, TripBudgetService],
   exports: [ItinerariesService],
 })
 export class ItinerariesModule {}
