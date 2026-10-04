@@ -850,5 +850,12 @@
       "riceBread": "Un pain moelleux et sucré à la farine de riz et à la banane mûre écrasée.",
       "gingerBeer": "Fait maison, sans alcool et très piquant au gingembre frais."
     }
+  },
+  "placeCard": {
+    "new": "Nouveau",
+    "openNow": "Ouvert",
+    "ratingLabel": "Noté {rating} sur 5 ({count, plural, one {# avis} other {# avis}})",
+    "free": "Entrée gratuite",
+    "entry": "Entrée {price}"
   }
 }

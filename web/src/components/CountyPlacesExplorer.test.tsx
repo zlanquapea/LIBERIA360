@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithMessages as render } from '@/test/render-with-messages';
 import userEvent from '@testing-library/user-event';
 import { CountyPlacesExplorer } from './CountyPlacesExplorer';
 import type { Place } from '@/lib/types';

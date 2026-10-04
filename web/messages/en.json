@@ -850,5 +850,12 @@
       "riceBread": "A moist, sweet loaf made from rice flour and mashed ripe banana.",
       "gingerBeer": "Homemade, non-alcoholic and fiercely spicy with fresh ginger."
     }
+  },
+  "placeCard": {
+    "new": "New",
+    "openNow": "Open now",
+    "ratingLabel": "Rated {rating} out of 5 from {count, plural, one {# review} other {# reviews}}",
+    "free": "Free entry",
+    "entry": "{price} entry"
   }
 }

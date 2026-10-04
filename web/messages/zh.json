@@ -850,5 +850,12 @@
       "riceBread": "用米粉和熟香蕉泥做的湿润甜面包。",
       "gingerBeer": "自制、无酒精，用新鲜生姜做成，非常辣。"
     }
+  },
+  "placeCard": {
+    "new": "新上线",
+    "openNow": "营业中",
+    "ratingLabel": "评分 {rating}/5，共 {count} 条评价",
+    "free": "免费入场",
+    "entry": "门票 {price}"
   }
 }

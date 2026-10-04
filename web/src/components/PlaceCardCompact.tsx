@@ -1,76 +1,98 @@
 import Link from 'next/link';
-import { StarIcon } from '@heroicons/react/20/solid';
+import { MapPinIcon } from '@heroicons/react/20/solid';
 import type { Place, VerificationStatus } from '@/lib/types';
-import { gradientForCategory } from '@/lib/category-colors';
-import { formatRating } from '@/lib/format';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
-import { CategoryIcon } from '@/lib/icons';
 import { staggerDelay } from '@/lib/animation';
+import { placeLocation } from '@/lib/place-card';
+import { InteractiveCard } from './InteractiveCard';
 import { SafeImage } from './SafeImage';
 import { SaveIconButton } from './SaveIconButton';
-import { VerificationBadge } from './VerificationBadge';
+import { VerificationSeal } from './VerificationBadge';
+import { CategoryChip, OpenNow, PlaceBackdrop, PlaceRating } from './place-card-parts';
 
-// Compact grid card for Home's "Trending places" — just image, name,
-// city/town, category (in the same green used for the "Sponsored" and
-// discovery accents elsewhere), and rating. The fuller `PlaceCard`
-// (description, price, distance, verification badge) stays in use on
-// search/category/county listing pages, where that extra context is worth
-// the space; this one is deliberately terser so two can sit side by side
-// even on a narrow phone screen. `index` staggers the entrance fade — see
-// PlaceCard's own doc comment.
+// Photo-first discovery tile: the photo fills the card and everything a
+// visitor needs to decide (name, trust seal, where, rating, open now) sits
+// on a soft shadow at the bottom. Places without a photo get their
+// category's woven backdrop in the same shape, so a grid never looks
+// broken. `size="feature"` is the large lead tile of a grid (2 columns on
+// phones, 2×2 on desktop — see leadsWithFeature). `index` staggers the
+// entrance where scroll-driven reveal isn't supported.
 export function PlaceCardCompact({
   place,
   verificationStatus,
   index,
+  size = 'regular',
 }: {
   place: Place;
   verificationStatus?: VerificationStatus;
   index?: number;
+  size?: 'regular' | 'feature';
 }) {
-  const cover = place.images[0] ? resolveImageUrl(place.images[0]) : null;
-  const coverThumb = place.images[0] ? resolveThumbUrl(place.images[0]) : null;
+  const feature = size === 'feature';
+  const image = place.images[0];
+  const cover = image ? resolveImageUrl(image) : null;
+  // The lead tile is wide enough on desktop to need the full photo.
+  const coverThumb = image && !feature ? resolveThumbUrl(image) : null;
+  const status = verificationStatus ?? place.verificationStatus;
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900 ${index != null ? 'animate-fade-in-up' : ''}`}
+      className={`reveal-on-scroll min-w-0 ${feature ? 'col-span-2 lg:row-span-2' : ''}`}
       style={index != null ? staggerDelay(index) : undefined}
     >
-      <SaveIconButton slug={place.slug} placeId={place.id} className="absolute right-1.5 top-1.5 z-10" />
-      <Link href={`/places/${place.slug}`} className="flex flex-col">
-        <div className="h-32 overflow-hidden">
+      <InteractiveCard
+        className={`group relative isolate h-full overflow-hidden rounded-[1.5rem] bg-brand-950 shadow-card ring-1 ring-black/5 dark:ring-white/10 ${
+          feature ? 'aspect-[16/11] lg:aspect-auto lg:min-h-[28rem]' : 'aspect-[4/5]'
+        }`}
+      >
+        <Link
+          href={`/places/${place.slug}`}
+          className="absolute inset-0 block rounded-[inherit] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-sunset-300"
+        >
           <SafeImage
             src={cover}
             thumbSrc={coverThumb}
             alt=""
-            className="h-32 w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            fallback={
-              <div
-                aria-hidden
-                className="flex h-32 items-center justify-center text-4xl transition-transform duration-500 group-hover:scale-105"
-                style={{ backgroundImage: gradientForCategory(place.category.slug) }}
-              >
-                <CategoryIcon iconKey={place.category.icon} categorySlug={place.category.slug} className="h-8 w-8 text-white/90" />
-              </div>
-            }
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06] motion-reduce:transition-none"
+            fallback={<PlaceBackdrop category={place.category} className="transition-transform duration-[900ms] ease-out group-hover:scale-[1.06] motion-reduce:transition-none" />}
           />
-        </div>
-        <div className="flex flex-col gap-1.5 p-3">
-          <h3 className="flex min-w-0 flex-wrap items-center gap-1 font-display text-sm font-semibold leading-snug text-slate-900 dark:text-slate-50 group-hover:text-brand-700 dark:group-hover:text-brand-300">
-            <span className="min-w-0 truncate">{place.name}</span>
-            <VerificationBadge status={verificationStatus ?? place.verificationStatus} />
-          </h3>
-          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-            {place.city}, {place.county.name}
-          </p>
-          <p className="truncate text-xs font-medium uppercase tracking-wide text-accent-600 dark:text-accent-400">
-            {place.category.name}
-          </p>
-          <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            {place.reviewCount > 0 && <StarIcon aria-hidden className="h-3.5 w-3.5 text-gold-500" />}
-            {formatRating(place.rating, place.reviewCount)}
-          </span>
-        </div>
-      </Link>
+          {/* Shade top and bottom so the chip and the text read on any photo. */}
+          <span aria-hidden className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent" />
+          <span aria-hidden className="absolute inset-x-0 bottom-0 h-[72%] bg-gradient-to-t from-black/90 via-black/45 to-transparent" />
+
+          <div className="absolute start-3 top-3 max-w-[calc(100%-4.5rem)]">
+            <CategoryChip category={place.category} />
+          </div>
+
+          <div className={`absolute inset-x-0 bottom-0 flex flex-col gap-1.5 text-white ${feature ? 'p-5 sm:p-7' : 'p-3.5 sm:p-4'}`}>
+            <h3
+              className={`font-display font-bold leading-[1.12] tracking-tight drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)] ${
+                feature ? 'text-2xl sm:text-3xl lg:text-4xl' : 'line-clamp-2 text-[15px] sm:text-lg'
+              }`}
+            >
+              {place.name}
+              {status && (
+                <>
+                  {' '}
+                  <VerificationSeal status={status} tone="onDark" />
+                </>
+              )}
+            </h3>
+            <p className={`flex min-w-0 items-center gap-1 text-white/80 ${feature ? 'text-sm' : 'text-xs'}`}>
+              <MapPinIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{placeLocation(place)}</span>
+            </p>
+            {feature && place.description && (
+              <p className="line-clamp-2 max-w-xl text-sm leading-6 text-white/80">{place.description}</p>
+            )}
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <PlaceRating place={place} />
+              <OpenNow place={place} />
+            </div>
+          </div>
+        </Link>
+        <SaveIconButton slug={place.slug} placeId={place.id} tone="glass" className="absolute end-2.5 top-2.5 z-10" />
+      </InteractiveCard>
     </div>
   );
 }

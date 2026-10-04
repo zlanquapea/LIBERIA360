@@ -1441,3 +1441,49 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
     radial-gradient(120% 90% at 0% 100%, rgb(14 116 144 / 0.22), transparent 55%),
     linear-gradient(180deg, rgb(15 23 42 / 0.8), rgb(2 6 23 / 0.8));
 }
+
+/* Discovery cards (InteractiveCard): a slight 3D tilt toward the mouse,
+   a soft light that follows it, a lift on hover and a press on tap. */
+.lib-card {
+  --card-rx: 0deg;
+  --card-ry: 0deg;
+  --card-lift: 0px;
+  --card-scale: 1;
+  transform: perspective(1000px) rotateX(var(--card-rx)) rotateY(var(--card-ry)) translateY(var(--card-lift)) scale(var(--card-scale));
+  transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 450ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.lib-card:active { --card-scale: 0.97; transition-duration: 150ms; }
+.lib-card__glare {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  opacity: 0; transition: opacity 450ms ease;
+  background: radial-gradient(circle at var(--card-mx, 50%) var(--card-my, 0%), rgb(255 255 255 / 0.22), transparent 50%);
+  mix-blend-mode: soft-light;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lib-card:hover { --card-lift: -4px; box-shadow: 0 28px 50px -24px rgb(8 46 33 / 0.55), 0 10px 20px -12px rgb(0 0 0 / 0.25); }
+  .lib-card:hover .lib-card__glare { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-card { transform: none; transition: box-shadow 200ms ease; }
+  .lib-card__glare { display: none; }
+}
+
+/* Cards rise into place as they scroll into view. Browsers with
+   scroll-driven animations tie it to the scroll; others get a one-time
+   staggered fade on load. */
+@keyframes lib-reveal {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.reveal-on-scroll { animation: lib-reveal 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@supports (animation-timeline: view()) {
+  .reveal-on-scroll {
+    animation: lib-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll { animation: none; }
+}
