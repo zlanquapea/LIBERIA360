@@ -63,6 +63,7 @@ describe("GuidesService guide messaging", () => {
       {} as never,
       {} as never,
       {} as never,
+      { assertCanContact: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await expect(
@@ -144,6 +145,7 @@ describe("GuidesService experience publishing", () => {
       {} as never,
       {} as never,
       {} as never,
+      { assertCanContact: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await expect(

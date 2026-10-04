@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { SafetyService } from "../safety/safety.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -45,6 +46,7 @@ export class ConversationsService {
     @InjectRepository(FoodOrder)
     private readonly foodOrderRepo: Repository<FoodOrder>,
     private readonly notifications: NotificationsService,
+    private readonly safety: SafetyService,
   ) {}
 
   async list(userId: string) {
@@ -83,6 +85,7 @@ export class ConversationsService {
   }
 
   async createDirect(userId: string, dto: CreateConversationDto) {
+    await this.safety.assertCanContact(userId, [dto.participantId]);
     if (userId === dto.participantId)
       throw new ForbiddenException("You cannot message yourself");
     const existing = await this.findDirect(
@@ -265,6 +268,7 @@ export class ConversationsService {
     dto: SendConversationMessageDto,
   ) {
     const membership = await this.requireMember(userId, conversationId);
+    await this.safety.assertConversation(userId, conversationId);
     const body = dto.body?.trim() ?? "";
     const attachments = dto.attachments ?? [];
     if (!body && attachments.length === 0) {
@@ -384,6 +388,7 @@ export class ConversationsService {
     await this.requireMember(userId, message.conversationId);
     if (message.senderId !== userId)
       throw new ForbiddenException("You can only edit your own messages");
+    await this.safety.assertConversation(userId, message.conversationId);
     if (message.deletedAt)
       throw new ForbiddenException("Deleted messages cannot be edited");
     message.body = dto.body.trim();
@@ -415,6 +420,7 @@ export class ConversationsService {
     });
     if (!message) throw new NotFoundException("Message not found");
     await this.requireMember(userId, message.conversationId);
+    await this.safety.assertConversation(userId, message.conversationId);
     const reactions = message.reactions ?? {};
     const users = new Set(reactions[dto.emoji] ?? []);
     if (users.has(userId)) {

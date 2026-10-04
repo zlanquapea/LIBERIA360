@@ -1,11 +1,16 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { getModerationQueue } from '@/lib/admin-api';
-import type { ModerationQueue } from '@/lib/types';
-import { AdminPageHeader, EmptyState, LoadingState } from '@/components/admin-ui';
+import { SafetyReviewQueue } from "@/components/SafetyReviewQueue";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { getModerationQueue } from "@/lib/admin-api";
+import type { ModerationQueue } from "@/lib/types";
+import {
+  AdminPageHeader,
+  EmptyState,
+  LoadingState,
+} from "@/components/admin-ui";
 
 // Content > Content Reports — crowdsourced "still open?" freshness
 // reports, distinct from Moderation's user-reported reviews/events: this
@@ -30,10 +35,14 @@ export default function ContentReportsPage() {
         description="Places 3+ visitors independently reported as “no longer here” in the last 90 days."
       />
 
+      <SafetyReviewQueue />
       {!queue ? (
         <LoadingState />
       ) : queue.possiblyClosedPlaces.length === 0 ? (
-        <EmptyState title="Nothing flagged." description="No places have crossed the freshness-report threshold." />
+        <EmptyState
+          title="Nothing flagged."
+          description="No places have crossed the freshness-report threshold."
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {queue.possiblyClosedPlaces.map(({ place, noLongerHereCount }) => (
@@ -42,9 +51,12 @@ export default function ContentReportsPage() {
               className="flex items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-800 dark:bg-amber-900/20"
             >
               <div>
-                <p className="font-medium text-slate-900 dark:text-slate-50">{place.name}</p>
+                <p className="font-medium text-slate-900 dark:text-slate-50">
+                  {place.name}
+                </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {noLongerHereCount} report{noLongerHereCount === 1 ? '' : 's'} · {place.city}
+                  {noLongerHereCount} report{noLongerHereCount === 1 ? "" : "s"}{" "}
+                  · {place.city}
                 </p>
               </div>
               <Link

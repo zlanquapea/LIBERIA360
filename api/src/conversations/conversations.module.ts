@@ -1,3 +1,4 @@
+import { SafetyModule } from "../safety/safety.module";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { NotificationsModule } from "../notifications/notifications.module";
@@ -22,6 +23,7 @@ import { UnifiedInboxService } from "./unified-inbox.service.ts/unified-inbox.se
 
 @Module({
   imports: [
+    SafetyModule,
     TypeOrmModule.forFeature([
       Conversation,
       ConversationParticipant,

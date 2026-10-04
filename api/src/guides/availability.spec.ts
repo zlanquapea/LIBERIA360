@@ -66,6 +66,7 @@ it("checks for a competing confirmed booking inside the guide lock", async () =>
     {} as never,
     {} as never,
     {} as never,
+    { assertCanContact: jest.fn().mockResolvedValue(undefined) } as never,
   );
   await expect(
     service.respond("owner", booking.id, { status: "confirmed" } as never),

@@ -11,6 +11,7 @@ import {
   PhoneIcon,
   StopIcon,
 } from "@heroicons/react/24/outline";
+import { SafetyControls } from "@/components/SafetyControls";
 import { useAuth } from "@/hooks/useAuth";
 import {
   getConversation,
@@ -387,7 +388,10 @@ export function ConversationScreen({
       </div>
     );
   return (
-    <main ref={chatRef} className="messaging-chat fixed inset-x-0 top-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col overflow-hidden bg-white dark:bg-slate-950">
+    <main
+      ref={chatRef}
+      className="messaging-chat fixed inset-x-0 top-0 z-40 mx-auto flex h-[100dvh] w-full max-w-4xl flex-col overflow-hidden bg-white dark:bg-slate-950"
+    >
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-x border-slate-100 dark:border-slate-800">
         <header className="flex shrink-0 items-center gap-3 border-b border-slate-100 bg-white px-4 py-3 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
           <Link
@@ -583,6 +587,16 @@ export function ConversationScreen({
                     </button>
                   </div>
                 </div>
+                {!own && !message.deletedAt && (
+                  <div className="max-w-md">
+                    <SafetyControls
+                      key={`${user?.id}-${message.id}`}
+                      targetType="conversation_message"
+                      targetId={message.id}
+                      accountId={message.senderId}
+                    />
+                  </div>
+                )}
               </Fragment>
             );
           })}
@@ -675,7 +689,15 @@ export function ConversationScreen({
               </button>
             </div>
           )}
-          {!draft && !sending && !recording && conversation && <ConversationQuickReplies contextType={conversation.contextType} onSelect={text => { handleDraftChange(text); draftRef.current?.focus(); }} />}
+          {!draft && !sending && !recording && conversation && (
+            <ConversationQuickReplies
+              contextType={conversation.contextType}
+              onSelect={(text) => {
+                handleDraftChange(text);
+                draftRef.current?.focus();
+              }}
+            />
+          )}
           <div className="relative flex items-end gap-2">
             <button
               type="button"
@@ -758,4 +780,3 @@ export function ConversationScreen({
     </main>
   );
 }
-

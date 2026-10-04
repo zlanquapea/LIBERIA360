@@ -17,6 +17,7 @@ import {
   BookmarkIcon as BookmarkSolidIcon,
   HeartIcon as HeartSolidIcon,
 } from "@heroicons/react/24/solid";
+import { SafetyControls } from "@/components/SafetyControls";
 import { useAuth } from "@/hooks/useAuth";
 import { HttpError } from "@/lib/http";
 import {
@@ -140,6 +141,16 @@ export function CreatorPostCard({
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const hideBlocked = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === post.creator.id)
+        setDeleted(true);
+    };
+    window.addEventListener("liberia360:creator-blocked", hideBlocked);
+    return () =>
+      window.removeEventListener("liberia360:creator-blocked", hideBlocked);
+  }, [post.creator.id]);
 
   const articleRef = useRef<HTMLElement>(null);
   const [previewComment, setPreviewComment] =
@@ -640,6 +651,14 @@ export function CreatorPostCard({
           </div>
         </div>
 
+        <div className="px-4 sm:px-5">
+          <SafetyControls
+            key={`${user?.id ?? "guest"}-${post.id}`}
+            targetType="creator_post"
+            targetId={post.id}
+            creatorId={post.creator.id}
+          />
+        </div>
         {post.mediaType !== "text" && (
           <div className="px-4 pb-3 pt-3 sm:px-5">
             <PostCaption text={post.caption} />

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { SafetyService } from "../safety/safety.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
 import { BookingMessage } from "./entities/booking-message.entity";
@@ -21,6 +22,7 @@ export class BookingMessagesService {
     @InjectRepository(Booking)
     private readonly bookingRepo: Repository<Booking>,
     private readonly notificationsService: NotificationsService,
+    private readonly safety: SafetyService,
   ) {}
 
   async create(
@@ -29,6 +31,10 @@ export class BookingMessagesService {
     dto: CreateBookingMessageDto,
   ): Promise<BookingMessage> {
     const booking = await this.assertParticipant(userId, bookingId);
+    await this.safety.assertCanContact(userId, [
+      getOwnerUserId(booking),
+      booking.guestUserId,
+    ]);
 
     const message = await this.messageRepo.save(
       this.messageRepo.create({
@@ -93,6 +99,11 @@ export class BookingMessagesService {
     dto: UpdateBookingMessageDto,
   ): Promise<BookingMessage> {
     const message = await this.loadOwnMessage(userId, bookingId, messageId);
+    const booking = await this.assertParticipant(userId, bookingId);
+    await this.safety.assertCanContact(userId, [
+      getOwnerUserId(booking),
+      booking.guestUserId,
+    ]);
     if (message.deletedAt) {
       throw new ConflictException("This message was deleted");
     }

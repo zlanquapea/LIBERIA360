@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { SafetyService } from "../safety/safety.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
 import { FoodOrderMessage } from "./entities/food-order-message.entity";
@@ -19,6 +20,7 @@ export class FoodOrderMessagesService {
     @InjectRepository(FoodOrder)
     private readonly orderRepo: Repository<FoodOrder>,
     private readonly notificationsService: NotificationsService,
+    private readonly safety: SafetyService,
   ) {}
 
   async create(
@@ -27,6 +29,10 @@ export class FoodOrderMessagesService {
     dto: CreateFoodOrderMessageDto,
   ): Promise<FoodOrderMessage> {
     const order = await this.assertParticipant(userId, orderId);
+    await this.safety.assertCanContact(userId, [
+      getFoodOrderOwnerUserId(order),
+      order.buyerUserId,
+    ]);
 
     const message = await this.messageRepo.save(
       this.messageRepo.create({

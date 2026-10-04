@@ -15,6 +15,7 @@ it("distinguishes booking-backed reviews from community reviews without exposing
     {} as never,
     {} as never,
     {} as never,
+    { assertCanContact: jest.fn().mockResolvedValue(undefined) } as never,
   );
   const result = await service.getGuideReviews("guide");
   expect(result[0].verifiedBooking).toBe(true);

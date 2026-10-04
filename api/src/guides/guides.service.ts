@@ -8,6 +8,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { SafetyService } from "../safety/safety.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { randomUUID } from "crypto";
@@ -62,6 +63,7 @@ export class GuidesService {
     private readonly notificationsService: NotificationsService,
     @Inject(STORAGE_PROVIDER)
     private readonly storage: StorageProvider,
+    private readonly safety: SafetyService,
   ) {}
 
   async listGuides(query: QueryGuidesDto) {
@@ -367,6 +369,7 @@ export class GuidesService {
         "This traveler has not started a conversation",
       );
     }
+    await this.safety.assertCanContact(userId, [guide.userId, visitorId]);
     const message = await this.messageRepo.save(
       this.messageRepo.create({
         guideId,

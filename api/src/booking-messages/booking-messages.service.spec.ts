@@ -1,3 +1,4 @@
+import { SafetyService } from "../safety/safety.service";
 import {
   ConflictException,
   ForbiddenException,
@@ -54,6 +55,12 @@ describe("BookingMessagesService", () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: SafetyService,
+          useValue: {
+            assertCanContact: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         BookingMessagesService,
         { provide: getRepositoryToken(BookingMessage), useValue: messageRepo },
         { provide: getRepositoryToken(Booking), useValue: bookingRepo },

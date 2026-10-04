@@ -1,3 +1,4 @@
+import { SafetyModule } from "../safety/safety.module";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { FoodOrderMessage } from "./entities/food-order-message.entity";
@@ -8,6 +9,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
   imports: [
+    SafetyModule,
     TypeOrmModule.forFeature([FoodOrderMessage, FoodOrder]),
     NotificationsModule,
   ],

@@ -1,3 +1,4 @@
+import { SafetyService } from "../safety/safety.service";
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -48,6 +49,12 @@ describe("FoodOrderMessagesService", () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: SafetyService,
+          useValue: {
+            assertCanContact: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         FoodOrderMessagesService,
         {
           provide: getRepositoryToken(FoodOrderMessage),

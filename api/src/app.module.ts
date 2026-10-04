@@ -1,3 +1,4 @@
+import { SafetyModule } from "./safety/safety.module";
 import { CollectionsModule } from "./collections/collections.module";
 import { CreatorGuidesModule } from "./creator-guides/creator-guides.module";
 import { Module } from "@nestjs/common";
@@ -173,6 +174,7 @@ import { ConversationsModule } from "./conversations/conversations.module";
         };
       },
     }),
+    SafetyModule,
     CollectionsModule,
     HealthModule,
     PlacesModule,

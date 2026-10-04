@@ -63,6 +63,12 @@ export class CreatorFeedService {
       .leftJoinAndSelect("creator.county", "county")
       .where("post.status = :status", { status: CreatorPostStatus.PUBLISHED })
       .andWhere(
+        params.userId
+          ? "NOT EXISTS (SELECT 1 FROM user_blocks blocked WHERE blocked.blocker_id = :viewerId AND blocked.blocked_user_id = creator.user_id)"
+          : "1 = 1",
+        params.userId ? { viewerId: params.userId } : {},
+      )
+      .andWhere(
         params.creatorId ? "post.creator_id = :creatorId" : "1 = 1",
         params.creatorId ? { creatorId: params.creatorId } : {},
       )
