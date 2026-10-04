@@ -978,5 +978,23 @@
     "tripEyebrow": "اجعلها رحلة",
     "tripTitle": "يوم حول {name}",
     "tripBody": "أضفه إلى رحلة، ثم املأ اليوم بالطعام والإقامة والمعالم القريبة."
+  },
+  "eventPage": {
+    "addToCalendar": "أضف إلى التقويم",
+    "appleOutlook": "Apple / Outlook",
+    "ticketLabel": "تذكرتك",
+    "freeAdmission": "دخول مجاني",
+    "freeNote": "لا حاجة للدفع — احضر فقط.",
+    "andMoreGoing": "و{count} آخرون سيحضرون",
+    "isGoing": "سيحضر",
+    "allEvents": "كل الفعاليات",
+    "about": "عن الفعالية",
+    "where": "المكان",
+    "county": "مقاطعة {county}",
+    "directions": "الاتجاهات",
+    "ticketInfo": "تفاصيل التذاكر",
+    "photos": "الصور",
+    "organisedBy": "ينظّمها {name}",
+    "getTickets": "احصل على التذاكر"
   }
 }

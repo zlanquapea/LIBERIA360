@@ -978,5 +978,23 @@
     "tripEyebrow": "En faire un voyage",
     "tripTitle": "Une journée autour de {name}",
     "tripBody": "Ajoutez-le à un voyage, puis complétez la journée avec repas, hébergements et sites voisins."
+  },
+  "eventPage": {
+    "addToCalendar": "Ajouter au calendrier",
+    "appleOutlook": "Apple / Outlook",
+    "ticketLabel": "Votre billet",
+    "freeAdmission": "Entrée gratuite",
+    "freeNote": "Aucun paiement — venez simplement.",
+    "andMoreGoing": "et {count} autres participants",
+    "isGoing": "participe",
+    "allEvents": "Tous les événements",
+    "about": "À propos",
+    "where": "Où",
+    "county": "Comté de {county}",
+    "directions": "Itinéraire",
+    "ticketInfo": "Infos billets",
+    "photos": "Photos",
+    "organisedBy": "Organisé par {name}",
+    "getTickets": "Obtenir des billets"
   }
 }

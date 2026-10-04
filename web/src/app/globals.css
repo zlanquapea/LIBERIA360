@@ -852,7 +852,8 @@ html[data-splash-seen='1'] .splash-screen {
 
 /* Atlantic Signal ticketing surface: modern pass cards, warm paper panels, teal framing, and signal-yellow orientation cues. Visual-only refinement; business logic remains in the existing ticket components. */
 .ticket-page-shell,
-.ticket-page-state {
+.ticket-page-state,
+.ticket-purchase-shell {
   --ticket-ink: #082e21;
   --ticket-deep: #041f17;
   --ticket-paper: #f7f8f4;
@@ -865,7 +866,8 @@ html[data-splash-seen='1'] .splash-screen {
   color: #182f3e;
 }
 .dark .ticket-page-shell,
-.dark .ticket-page-state {
+.dark .ticket-page-state,
+.dark .ticket-purchase-shell {
   --ticket-paper: var(--surface-canvas);
   --ticket-warm: var(--surface-raised);
   --ticket-sea: var(--surface-subtle);

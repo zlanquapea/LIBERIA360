@@ -978,5 +978,23 @@
     "tripEyebrow": "安排行程",
     "tripTitle": "围绕 {name} 安排一天",
     "tripBody": "加入行程，再搭配附近的美食、住宿和景点。"
+  },
+  "eventPage": {
+    "addToCalendar": "添加到日历",
+    "appleOutlook": "Apple / Outlook",
+    "ticketLabel": "你的门票",
+    "freeAdmission": "免费入场",
+    "freeNote": "无需付款，直接到场即可。",
+    "andMoreGoing": "等 {count} 人参加",
+    "isGoing": "参加",
+    "allEvents": "全部活动",
+    "about": "活动介绍",
+    "where": "地点",
+    "county": "{county} 州",
+    "directions": "导航",
+    "ticketInfo": "票务说明",
+    "photos": "照片",
+    "organisedBy": "组织者：{name}",
+    "getTickets": "购票"
   }
 }

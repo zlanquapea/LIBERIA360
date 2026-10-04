@@ -978,5 +978,23 @@
     "tripEyebrow": "Make it a trip",
     "tripTitle": "Build a day around {name}",
     "tripBody": "Add it to a trip, then fill the day with nearby food, stays and sights."
+  },
+  "eventPage": {
+    "addToCalendar": "Add to calendar",
+    "appleOutlook": "Apple / Outlook",
+    "ticketLabel": "Your ticket",
+    "freeAdmission": "Free admission",
+    "freeNote": "No payment needed — just turn up.",
+    "andMoreGoing": "and {count} more going",
+    "isGoing": "is going",
+    "allEvents": "All events",
+    "about": "About this event",
+    "where": "Where",
+    "county": "{county} County",
+    "directions": "Get directions",
+    "ticketInfo": "Ticket details",
+    "photos": "Photos",
+    "organisedBy": "Organised by {name}",
+    "getTickets": "Get tickets"
   }
 }
