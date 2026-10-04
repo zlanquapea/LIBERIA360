@@ -39,15 +39,26 @@ function ProfileForm({ pharmacy, onSaved }: { pharmacy: Pharmacy; onSaved: (p: P
     // PharmaciesService.autoApproveForPlace's doc comment), so this stays
     // blank for those rather than ever being required.
     licenceNumber: pharmacy.licenceNumber ?? '',
+    acceptsCash: pharmacy.acceptsCash ?? true,
+    mtnMomoNumber: pharmacy.mtnMomoNumber ?? '',
+    orangeMoneyNumber: pharmacy.orangeMoneyNumber ?? '',
+    paymentNote: pharmacy.paymentNote ?? '',
   });
+  const takesPayment = form.acceptsCash || form.mtnMomoNumber.trim() !== '' || form.orangeMoneyNumber.trim() !== '';
   const [saving, setSaving] = useState(false),
     [error, setError] = useState(''),
     [saved, setSaved] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setSaved(false);
+    // Checked here as well as on the API so the pharmacist sees why before
+    // anything is sent: with no way to pay, nobody can order.
+    if (!takesPayment) {
+      setError('Turn on cash or add a mobile money number so customers can pay.');
+      return;
+    }
     setSaving(true);
     setError('');
-    setSaved(false);
     try {
       const updated = await savePharmacyProfile(pharmacy.id, {
         name: form.name,
@@ -68,6 +79,10 @@ function ProfileForm({ pharmacy, onSaved }: { pharmacy: Pharmacy; onSaved: (p: P
         deliveryEnabled: form.deliveryEnabled,
         deliveryFee: Number(form.deliveryFee),
         licenceNumber: form.licenceNumber || undefined,
+        acceptsCash: form.acceptsCash,
+        mtnMomoNumber: form.mtnMomoNumber.trim() || null,
+        orangeMoneyNumber: form.orangeMoneyNumber.trim() || null,
+        paymentNote: form.paymentNote.trim() || null,
       });
       onSaved(updated);
       setSaved(true);
@@ -193,6 +208,62 @@ function ProfileForm({ pharmacy, onSaved }: { pharmacy: Pharmacy; onSaved: (p: P
         />
         Delivery enabled
       </label>
+      <fieldset className="rounded-xl border border-slate-200 p-4 sm:col-span-2 dark:border-slate-800">
+        <legend className="px-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+          How customers pay
+        </legend>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Customers send mobile money to your merchant number and enter the transaction ID. You
+          confirm it on the Orders page before preparing the order.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex items-center gap-2 sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.acceptsCash}
+              onChange={(e) => setForm((f) => ({ ...f, acceptsCash: e.target.checked }))}
+            />
+            Accept cash on pickup or delivery
+          </label>
+          <label>
+            MTN MoMo merchant number
+            <input
+              type="tel"
+              inputMode="tel"
+              placeholder="e.g. 0886 000 111"
+              className="input mt-1 w-full"
+              value={form.mtnMomoNumber}
+              onChange={(e) => setForm((f) => ({ ...f, mtnMomoNumber: e.target.value }))}
+            />
+          </label>
+          <label>
+            Orange Money merchant number
+            <input
+              type="tel"
+              inputMode="tel"
+              placeholder="e.g. 0777 000 222"
+              className="input mt-1 w-full"
+              value={form.orangeMoneyNumber}
+              onChange={(e) => setForm((f) => ({ ...f, orangeMoneyNumber: e.target.value }))}
+            />
+          </label>
+          <label className="sm:col-span-2">
+            Note shown at checkout (optional)
+            <input
+              maxLength={300}
+              placeholder="e.g. Use your name as the payment reference"
+              className="input mt-1 w-full"
+              value={form.paymentNote}
+              onChange={(e) => setForm((f) => ({ ...f, paymentNote: e.target.value }))}
+            />
+          </label>
+        </div>
+        {!takesPayment && (
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+            Customers can&apos;t order until you accept at least one way to pay.
+          </p>
+        )}
+      </fieldset>
       <button className="btn-primary min-h-11 sm:col-span-2" disabled={saving}>
         {saving ? 'Saving…' : 'Save profile'}
       </button>
@@ -322,7 +393,7 @@ export default function PharmacyProfilePage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-xl font-bold text-slate-950 dark:text-slate-50">Profile</h2>
         <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-          Contact info, delivery settings, and storefront images.
+          Contact info, delivery, payments, and storefront images.
         </p>
         <ProfileForm pharmacy={pharmacy} onSaved={onPharmacyUpdated} />
       </section>

@@ -12,6 +12,8 @@ import { User } from "../../users/entities/user.entity";
 import {
   FulfillmentMethod,
   PaymentStatus,
+  PharmacyOrderPaymentStatus,
+  PharmacyPaymentMethod,
   PharmacyOrderStatus,
   PrescriptionDecision,
 } from "./pharmacy.enums";
@@ -117,6 +119,54 @@ export class PharmacyOrder {
   platformFee: number;
   @Column({ name: "final_total", type: "decimal", precision: 10, scale: 2 })
   finalTotal: number;
+  @Column({
+    name: "payment_method",
+    type: "enum",
+    enum: PharmacyPaymentMethod,
+    enumName: "pharmacy_order_payment_method",
+    default: PharmacyPaymentMethod.CASH,
+  })
+  paymentMethod: PharmacyPaymentMethod;
+  @Column({
+    name: "payment_status",
+    type: "enum",
+    enum: PharmacyOrderPaymentStatus,
+    enumName: "pharmacy_order_payment_status",
+    default: PharmacyOrderPaymentStatus.PAY_ON_COLLECTION,
+  })
+  paymentStatus: PharmacyOrderPaymentStatus;
+  // The customer's mobile money transaction ID.
+  @Column({
+    name: "payment_reference",
+    type: "varchar",
+    length: 80,
+    nullable: true,
+  })
+  paymentReference: string | null;
+  // The merchant number the customer was told to pay, snapshotted at
+  // checkout so a later change to the pharmacy's settings can't confuse
+  // which account an older order was paid to.
+  @Column({
+    name: "payment_account",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  paymentAccount: string | null;
+  @Column({
+    name: "contact_phone",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  contactPhone: string | null;
+  @Column({
+    name: "customer_note",
+    type: "varchar",
+    length: 500,
+    nullable: true,
+  })
+  customerNote: string | null;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
   @UpdateDateColumn({ name: "updated_at" }) updatedAt: Date;
 }
@@ -255,5 +305,29 @@ export class PharmacyReport {
     string | null;
   @Column({ type: "text" }) reason: string;
   @Column({ default: "open", length: 30 }) status: string;
+  @CreateDateColumn({ name: "created_at" }) createdAt: Date;
+}
+
+/**
+ * Messages on a pharmacy order between the customer and the pharmacy's
+ * staff ("Is the generic OK?", "Your rider is at the gate"). Any active
+ * staff member can answer for the pharmacy, so messages record whether
+ * they came from the pharmacy side rather than a single counterpart.
+ */
+@Entity("pharmacy_order_messages")
+export class PharmacyOrderMessage {
+  @PrimaryGeneratedColumn("uuid") id: string;
+  @Column({ name: "order_id" }) orderId: string;
+  @ManyToOne(() => PharmacyOrder, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "order_id" })
+  order: PharmacyOrder;
+  @Column({ name: "sender_user_id" }) senderUserId: string;
+  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "sender_user_id" })
+  sender: User;
+  @Column({ name: "from_pharmacy", default: false }) fromPharmacy: boolean;
+  @Column({ type: "text" }) body: string;
+  @Column({ name: "read_at", type: "timestamptz", nullable: true })
+  readAt: Date | null;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
 }

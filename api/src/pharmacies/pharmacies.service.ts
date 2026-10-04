@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Brackets, In, IsNull, Repository } from "typeorm";
@@ -37,11 +38,15 @@ import {
 } from "./entities/pharmacy.entity";
 import {
   FulfillmentMethod,
+  PHARMACY_PAYMENT_LABELS,
+  PharmacyOrderPaymentStatus,
   PharmacyOrderStatus,
+  PharmacyPaymentMethod,
   PharmacyStaffRole,
   PharmacyStatus,
   PrescriptionDecision,
 } from "./entities/pharmacy.enums";
+import { PharmacyNotifier, lrd, orderRef } from "./pharmacy-notifier";
 import {
   PharmacyInventory,
   PharmacyProduct,
@@ -135,6 +140,7 @@ export class PharmaciesService {
     private audits: Repository<PharmacyAuditLog>,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
     private readonly users: UsersService,
+    @Optional() private readonly notifier?: PharmacyNotifier,
   ) {}
 
   async directory(q: PharmacyQueryDto) {
@@ -356,6 +362,19 @@ export class PharmaciesService {
           pickupEnabled: dto.pickupEnabled,
           deliveryEnabled: dto.deliveryEnabled,
           deliveryFee: dto.deliveryFee,
+          // Payment settings: omitted means unchanged, like the images below.
+          ...(dto.acceptsCash !== undefined
+            ? { acceptsCash: dto.acceptsCash }
+            : {}),
+          ...(dto.mtnMomoNumber !== undefined
+            ? { mtnMomoNumber: dto.mtnMomoNumber?.trim() || null }
+            : {}),
+          ...(dto.orangeMoneyNumber !== undefined
+            ? { orangeMoneyNumber: dto.orangeMoneyNumber?.trim() || null }
+            : {}),
+          ...(dto.paymentNote !== undefined
+            ? { paymentNote: dto.paymentNote?.trim() || null }
+            : {}),
           // logoUrl/coverUrl and licenceNumber are all optional on the DTO
           // for the same reason: a caller updating unrelated fields sends a
           // PATCH built from what mine()/the dashboard list returned, which
@@ -372,6 +391,17 @@ export class PharmaciesService {
           ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
           ...(licenceProvided ? { licenceNumber: dto.licenceNumber } : {}),
         };
+        // With no way to pay, customers could never complete an order.
+        const effective = { ...current, ...patch };
+        if (
+          effective.acceptsCash === false &&
+          !effective.mtnMomoNumber &&
+          !effective.orangeMoneyNumber
+        ) {
+          throw new BadRequestException(
+            "Accept cash or add a mobile money number so customers can pay",
+          );
+        }
         await pharmacyRepo.update({ id }, patch);
         // Reset to pending only if the pharmacy is *still* approved — the
         // row lock above already guarantees `current.status` reflects the
@@ -863,6 +893,20 @@ export class PharmaciesService {
         !pharmacy.pickupEnabled
       )
         throw new BadRequestException("Pickup is unavailable");
+      const paymentMethod = dto.paymentMethod ?? PharmacyPaymentMethod.CASH;
+      const paymentAccount = paymentAccountFor(pharmacy, paymentMethod);
+      // Only an explicit "no" turns cash off (the column defaults to true).
+      if (
+        paymentMethod === PharmacyPaymentMethod.CASH &&
+        pharmacy.acceptsCash === false
+      )
+        throw new BadRequestException(
+          `${pharmacy.name} doesn't take cash — choose mobile money`,
+        );
+      if (paymentMethod !== PharmacyPaymentMethod.CASH && !paymentAccount)
+        throw new BadRequestException(
+          `${pharmacy.name} doesn't take ${PHARMACY_PAYMENT_LABELS[paymentMethod]}`,
+        );
 
       // Locked the same way — staff could otherwise change a product's
       // price, prescriptionRequired flag, or visibility between the cart
@@ -937,21 +981,54 @@ export class PharmaciesService {
         Number(pharmacy.deliveryFee),
       );
 
-      const order = await orderRepo.save(
-        orderRepo.create({
-          pharmacyId: pharmacy.id,
-          customerUserId: userId,
-          fulfillmentMethod: dto.fulfillmentMethod,
-          deliveryAddress: trimmedDeliveryAddress || null,
-          productSubtotal: subtotal,
-          deliveryFee: delivery,
-          platformFee: 0,
-          finalTotal: total,
-          status: requires
-            ? PharmacyOrderStatus.UNDER_REVIEW
-            : PharmacyOrderStatus.PENDING,
-        }),
-      );
+      // Mobile money: an ordinary order is paid at checkout (the customer
+      // sends the money, then gives us the transaction ID for staff to
+      // confirm). A prescription order is paid only after the pharmacist
+      // approves it, so the transaction ID is ignored here.
+      const paymentReference = dto.paymentReference?.trim() || null;
+      let paymentStatus = PharmacyOrderPaymentStatus.PAY_ON_COLLECTION;
+      if (paymentMethod !== PharmacyPaymentMethod.CASH) {
+        if (requires)
+          paymentStatus = PharmacyOrderPaymentStatus.AWAITING_PAYMENT;
+        else if (!paymentReference)
+          throw new BadRequestException(
+            `Enter the ${PHARMACY_PAYMENT_LABELS[paymentMethod]} transaction ID`,
+          );
+        else paymentStatus = PharmacyOrderPaymentStatus.AWAITING_VERIFICATION;
+      }
+
+      const order = await orderRepo
+        .save(
+          orderRepo.create({
+            pharmacyId: pharmacy.id,
+            customerUserId: userId,
+            fulfillmentMethod: dto.fulfillmentMethod,
+            deliveryAddress: trimmedDeliveryAddress || null,
+            productSubtotal: subtotal,
+            deliveryFee: delivery,
+            platformFee: 0,
+            finalTotal: total,
+            status: requires
+              ? PharmacyOrderStatus.UNDER_REVIEW
+              : PharmacyOrderStatus.PENDING,
+            paymentMethod,
+            paymentStatus,
+            paymentReference:
+              paymentStatus === PharmacyOrderPaymentStatus.AWAITING_VERIFICATION
+                ? paymentReference
+                : null,
+            paymentAccount,
+            contactPhone: dto.contactPhone?.trim() || null,
+            customerNote: dto.note?.trim() || null,
+          }),
+        )
+        .catch((error: unknown) => {
+          if ((error as { code?: string }).code === "23505")
+            throw new ConflictException(
+              "That transaction ID is already on another order. Check it, or message the pharmacy if you think this is a mistake.",
+            );
+          throw error;
+        });
       await itemRepo.save(
         lines.map((x) => Object.assign(x, { orderId: order.id })),
       );
@@ -1032,7 +1109,24 @@ export class PharmaciesService {
           this.audits,
         );
 
-    return this.orderDetail(order.id);
+    const placed = await this.orderDetail(order.id);
+    const what =
+      placed.status === PharmacyOrderStatus.UNDER_REVIEW
+        ? "with a prescription to review"
+        : placed.fulfillmentMethod === FulfillmentMethod.DELIVERY
+          ? "for delivery"
+          : "for pickup";
+    const pay =
+      placed.paymentStatus === PharmacyOrderPaymentStatus.AWAITING_VERIFICATION
+        ? ` Check ${PHARMACY_PAYMENT_LABELS[placed.paymentMethod]} transaction ${placed.paymentReference}.`
+        : "";
+    void this.notifier?.staffOf(
+      placed.pharmacyId,
+      "pharmacy_order.placed",
+      `New order ${orderRef(placed.id)}`,
+      `${lrd(placed.finalTotal)} ${what}.${pay}`,
+    );
+    return placed;
   }
   async customerOrders(userId: string) {
     const orders = await this.orders.find({
@@ -1506,6 +1600,17 @@ export class PharmaciesService {
       throw new ConflictException(
         "This order is for pickup, not delivery — mark it ready for pickup instead",
       );
+    // Mobile money orders are prepared only once the payment is confirmed.
+    if (
+      status === PharmacyOrderStatus.PREPARING &&
+      order.paymentMethod &&
+      order.paymentMethod !== PharmacyPaymentMethod.CASH &&
+      order.paymentStatus !== PharmacyOrderPaymentStatus.PAID
+    )
+      throw new ConflictException(
+        "Confirm the mobile money payment before preparing this order",
+      );
+    const paymentPatch = paymentAfterStatus(order, status);
 
     const run = async (
       orderRepo: Repository<PharmacyOrder>,
@@ -1525,9 +1630,12 @@ export class PharmaciesService {
       // untouched.
       const result = await orderRepo.update(
         { id: orderId, pharmacyId, status: fromStatus },
-        status === PharmacyOrderStatus.CANCELLED
-          ? { status, previousStatus: fromStatus }
-          : { status },
+        {
+          ...(status === PharmacyOrderStatus.CANCELLED
+            ? { status, previousStatus: fromStatus }
+            : { status }),
+          ...paymentPatch,
+        },
       );
       if (!result.affected)
         throw new ConflictException(
@@ -1571,6 +1679,17 @@ export class PharmaciesService {
     order.status = status;
     if (status === PharmacyOrderStatus.CANCELLED)
       order.previousStatus = fromStatus;
+    Object.assign(order, paymentPatch);
+    const update = STATUS_MESSAGES[status];
+    if (update)
+      void this.notifier?.customer(
+        order,
+        status === PharmacyOrderStatus.CANCELLED
+          ? "pharmacy_order.cancelled"
+          : "pharmacy_order.updated",
+        `${update.title} · ${orderRef(order.id)}`,
+        update.body(order),
+      );
     return order;
   }
   // Undoes a mistaken cancellation — the one thing transition() itself
@@ -1623,7 +1742,17 @@ export class PharmaciesService {
       // order's stock twice.
       const result = await orderRepo.update(
         { id: orderId, pharmacyId, status: PharmacyOrderStatus.CANCELLED },
-        { status: restoredStatus, previousStatus: null },
+        {
+          status: restoredStatus,
+          previousStatus: null,
+          // Money that was going to be refunded is now for a live order
+          // again; staff re-check it rather than assume it was received.
+          ...(order.paymentStatus === PharmacyOrderPaymentStatus.REFUND_DUE
+            ? {
+                paymentStatus: PharmacyOrderPaymentStatus.AWAITING_VERIFICATION,
+              }
+            : {}),
+        },
       );
       if (!result.affected)
         throw new ConflictException("This order is no longer cancelled");
@@ -1857,6 +1986,37 @@ export class PharmaciesService {
           this.prescriptions,
         );
 
+    if (orderId) {
+      const decided = await this.orders.findOneBy({ id: orderId });
+      if (decided) {
+        const notes = dto.notes?.trim();
+        const awaitingPay =
+          decided.paymentStatus === PharmacyOrderPaymentStatus.AWAITING_PAYMENT;
+        const [title, body] =
+          dto.decision === PrescriptionDecision.ACCEPTED
+            ? [
+                "Prescription approved",
+                awaitingPay
+                  ? `Pay ${lrd(decided.finalTotal)} by ${PHARMACY_PAYMENT_LABELS[decided.paymentMethod]} to ${decided.paymentAccount} and enter the transaction ID so we can prepare it.`
+                  : "The pharmacy will prepare your order next.",
+              ]
+            : dto.decision === PrescriptionDecision.REJECTED
+              ? [
+                  "Prescription not accepted",
+                  notes || "The pharmacist couldn't accept this prescription.",
+                ]
+              : [
+                  "The pharmacist has a question",
+                  notes || "Please check your prescription and resubmit it.",
+                ];
+        void this.notifier?.customer(
+          decided,
+          "pharmacy_order.updated",
+          `${title} · ${orderRef(decided.id)}`,
+          body,
+        );
+      }
+    }
     return review;
   }
   // Customer-facing upload — happens *before* checkout, so the cart can
@@ -2297,3 +2457,83 @@ export function calculatePharmacyTotals(
     total: subtotal + delivery + platformFee,
   };
 }
+
+/** Merchant number for a mobile money method, or null if not offered. */
+export function paymentAccountFor(
+  pharmacy: Pick<Pharmacy, "mtnMomoNumber" | "orangeMoneyNumber">,
+  method: PharmacyPaymentMethod,
+): string | null {
+  if (method === PharmacyPaymentMethod.MTN_MOMO)
+    return pharmacy.mtnMomoNumber?.trim() || null;
+  if (method === PharmacyPaymentMethod.ORANGE_MONEY)
+    return pharmacy.orangeMoneyNumber?.trim() || null;
+  return null;
+}
+
+/**
+ * What an order status change does to its payment: cash is paid when the
+ * order is handed over; mobile money already sent (or claimed) on an order
+ * that is cancelled or rejected is owed back.
+ */
+export function paymentAfterStatus(
+  order: Pick<PharmacyOrder, "paymentStatus">,
+  status: PharmacyOrderStatus,
+): Partial<Pick<PharmacyOrder, "paymentStatus">> {
+  if (
+    status === PharmacyOrderStatus.COMPLETED &&
+    order.paymentStatus === PharmacyOrderPaymentStatus.PAY_ON_COLLECTION
+  )
+    return { paymentStatus: PharmacyOrderPaymentStatus.PAID };
+  if (
+    (status === PharmacyOrderStatus.CANCELLED ||
+      status === PharmacyOrderStatus.REJECTED) &&
+    (order.paymentStatus === PharmacyOrderPaymentStatus.PAID ||
+      order.paymentStatus === PharmacyOrderPaymentStatus.AWAITING_VERIFICATION)
+  )
+    return { paymentStatus: PharmacyOrderPaymentStatus.REFUND_DUE };
+  return {};
+}
+
+const STATUS_MESSAGES: Partial<
+  Record<
+    PharmacyOrderStatus,
+    { title: string; body: (o: PharmacyOrder) => string }
+  >
+> = {
+  [PharmacyOrderStatus.ACCEPTED]: {
+    title: "Order accepted",
+    body: (o) =>
+      o.paymentStatus === PharmacyOrderPaymentStatus.AWAITING_VERIFICATION
+        ? "The pharmacy has your order and is checking your payment."
+        : "The pharmacy has your order.",
+  },
+  [PharmacyOrderStatus.PREPARING]: {
+    title: "Being prepared",
+    body: () => "The pharmacy is packing your medicines.",
+  },
+  [PharmacyOrderStatus.READY_FOR_PICKUP]: {
+    title: "Ready for pickup",
+    body: (o) =>
+      o.paymentStatus === PharmacyOrderPaymentStatus.PAY_ON_COLLECTION
+        ? `Your order is ready. Bring ${lrd(o.finalTotal)} in cash.`
+        : "Your order is ready to collect.",
+  },
+  [PharmacyOrderStatus.OUT_FOR_DELIVERY]: {
+    title: "On the way",
+    body: (o) =>
+      o.paymentStatus === PharmacyOrderPaymentStatus.PAY_ON_COLLECTION
+        ? `Your rider is on the way. Have ${lrd(o.finalTotal)} ready in cash.`
+        : "Your rider is on the way.",
+  },
+  [PharmacyOrderStatus.COMPLETED]: {
+    title: "Completed",
+    body: () => "Thanks for ordering. Tap to rate how it went.",
+  },
+  [PharmacyOrderStatus.CANCELLED]: {
+    title: "Order cancelled",
+    body: (o) =>
+      o.paymentStatus === PharmacyOrderPaymentStatus.REFUND_DUE
+        ? "The pharmacy cancelled this order. Your mobile money will be refunded."
+        : "The pharmacy cancelled this order.",
+  },
+};

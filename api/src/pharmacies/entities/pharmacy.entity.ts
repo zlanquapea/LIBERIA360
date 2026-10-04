@@ -76,6 +76,31 @@ export class Pharmacy {
     select: false,
   })
   licenceDocumentKey: string | null;
+  // Payment methods this pharmacy takes. Mobile money goes to these
+  // merchant numbers; customers submit the transaction ID and staff confirm.
+  @Column({ name: "accepts_cash", default: true }) acceptsCash: boolean;
+  @Column({
+    name: "mtn_momo_number",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  mtnMomoNumber: string | null;
+  @Column({
+    name: "orange_money_number",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  orangeMoneyNumber: string | null;
+  // e.g. "Send to the number in the name CarePoint Pharmacy Ltd."
+  @Column({
+    name: "payment_note",
+    type: "varchar",
+    length: 300,
+    nullable: true,
+  })
+  paymentNote: string | null;
   @Column({ name: "sponsored", default: false }) sponsored: boolean;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
   @UpdateDateColumn({ name: "updated_at" }) updatedAt: Date;

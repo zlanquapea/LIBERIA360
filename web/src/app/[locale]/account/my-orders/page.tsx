@@ -28,6 +28,12 @@ import {
   type PharmacyOrder,
 } from "@/lib/pharmacy-api";
 import type { FoodOrder } from "@/lib/types";
+import {
+  PharmacyOrderActions,
+  PharmacyOrderChat,
+  PharmacyOrderTracker,
+  PharmacyPaymentPanel,
+} from "@/components/pharmacy/PharmacyOrderParts";
 
 function statusBadgeClass(status: FoodOrder["status"]) {
   if (
@@ -86,32 +92,6 @@ const PHARMACY_STATUS_STYLES: Record<string, string> = {
   cancelled:
     "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
-// A simple 4-stop progress trail for the common, non-prescription happy
-// path (pending → accepted → preparing/dispatch → completed) — gives a
-// customer an at-a-glance sense of "how far along is this" instead of just
-// one status word. Not shown for a terminal order that never got there
-// (rejected/cancelled) — a broken progress bar reads worse than none.
-const HAPPY_PATH = ["pending", "accepted", "preparing", "completed"] as const;
-function happyPathIndex(status: string): number {
-  if (status === "under_review") return 0;
-  if (status === "ready_for_pickup" || status === "out_for_delivery") return 2;
-  return HAPPY_PATH.indexOf(status as (typeof HAPPY_PATH)[number]);
-}
-function PharmacyOrderProgress({ status }: { status: string }) {
-  const index = happyPathIndex(status);
-  if (index < 0) return null;
-  return (
-    <div className="mt-3 flex items-center gap-1.5" aria-hidden>
-      {HAPPY_PATH.map((step, i) => (
-        <span
-          key={step}
-          className={`h-1.5 flex-1 rounded-full ${i <= index ? "bg-brand-600 dark:bg-brand-400" : "bg-slate-200 dark:bg-slate-700"}`}
-        />
-      ))}
-    </div>
-  );
-}
-
 // Inline reply form for a pharmacy order whose prescription review came
 // back "clarification_requested" (see PharmaciesService.review()) —
 // without this the order just sat at "under_review" forever with no way
@@ -295,9 +275,11 @@ function PharmacyOrderCard({
   order: o,
   onResubmitted,
   onFeedbackSubmitted,
+  onChanged,
 }: {
   order: PharmacyOrder;
   onResubmitted: () => void;
+  onChanged: (order: PharmacyOrder) => void;
   onFeedbackSubmitted: (feedback: {
     rating: number;
     comment: string | null;
@@ -328,7 +310,7 @@ function PharmacyOrderCard({
         </span>
       </div>
       <div className="p-5">
-        <PharmacyOrderProgress status={o.status} />
+        <PharmacyOrderTracker order={o} />
         {o.items && o.items.length > 0 && (
           <ul className="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
             {o.items.map((item) => (
@@ -351,10 +333,18 @@ function PharmacyOrderCard({
           <span>Total</span>
           <span>L${Number(o.finalTotal).toFixed(2)}</span>
         </p>
+        <PharmacyPaymentPanel order={o} onChanged={onChanged} />
         {o.status === "under_review" &&
           o.latestReviewDecision === "clarification_requested" && (
             <ClarificationReply order={o} onResubmitted={onResubmitted} />
           )}
+        <PharmacyOrderChat
+          orderId={o.id}
+          unread={o.unreadMessages ?? 0}
+          side="customer"
+          title={`Message ${o.pharmacy?.name ?? "the pharmacy"}`}
+        />
+        <PharmacyOrderActions order={o} onChanged={onChanged} />
         {o.status === "cancelled" && (
           <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300">
             This order was cancelled. Contact the pharmacy if you believe this
@@ -548,6 +538,13 @@ export default function MyOrdersPage() {
                   <PharmacyOrderCard
                     order={entry.order}
                     onResubmitted={loadPharmacyOrders}
+                    onChanged={(changed) =>
+                      setPharmacyOrders((prev) =>
+                        prev.map((o) =>
+                          o.id === changed.id ? { ...o, ...changed } : o,
+                        ),
+                      )
+                    }
                     onFeedbackSubmitted={(feedback) =>
                       setPharmacyOrders((prev) =>
                         prev.map((o) =>

@@ -2,6 +2,9 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { StorageModule } from "../uploads/storage/storage.module";
 import { UsersModule } from "../users/users.module";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { PharmacyOrderFlowService } from "./pharmacy-order-flow.service";
+import { PharmacyNotifier } from "./pharmacy-notifier";
 import {
   AdminPharmaciesController,
   PharmaciesController,
@@ -28,6 +31,7 @@ import {
   PharmacyOrder,
   PharmacyOrderFeedback,
   PharmacyOrderItem,
+  PharmacyOrderMessage,
   PharmacyPayment,
   PharmacyReport,
   Prescription,
@@ -55,12 +59,14 @@ export const PHARMACY_ENTITIES = [
   PharmacyDelivery,
   PharmacyAuditLog,
   PharmacyReport,
+  PharmacyOrderMessage,
 ];
 @Module({
   imports: [
     TypeOrmModule.forFeature(PHARMACY_ENTITIES),
     StorageModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [
     PharmaciesController,
@@ -68,7 +74,7 @@ export const PHARMACY_ENTITIES = [
     PharmacyDashboardController,
     AdminPharmaciesController,
   ],
-  providers: [PharmaciesService],
+  providers: [PharmaciesService, PharmacyOrderFlowService, PharmacyNotifier],
   exports: [PharmaciesService],
 })
 export class PharmaciesModule {}

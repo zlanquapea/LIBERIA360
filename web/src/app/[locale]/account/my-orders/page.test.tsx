@@ -12,7 +12,7 @@ const mockSubmitPharmacyOrderFeedback = jest.fn();
 
 // jest.mock's module specifier is a plain string, not an import
 // declaration — the '@/...' alias only gets resolved by SWC's transform on
-// real import statements (see PharmacyShop.test.tsx's own note on this),
+// real import statements (jest.mock specifiers are not rewritten through the @/ alias),
 // so these need relative paths to resolve to the same modules page.tsx
 // imports via their '@/...' aliases.
 jest.mock("../../../../hooks/useAuth", () => ({

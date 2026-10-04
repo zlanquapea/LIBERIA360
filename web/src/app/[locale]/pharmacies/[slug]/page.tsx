@@ -1,50 +1,40 @@
-import { PageHeader } from "@/components/PageHeader";
-import { PharmacyShop } from "@/components/pharmacy/PharmacyShop";
+import { notFound } from "next/navigation";
+import { PharmacyStorefront } from "@/components/pharmacy/PharmacyStorefront";
 import {
   getPharmacy,
   getPharmacyCategories,
   getPharmacyProducts,
 } from "@/lib/pharmacy-api";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const p = await getPharmacy(slug).catch(() => null);
+  if (!p) return { title: "Pharmacy — LIBERIA360" };
+  return {
+    title: `${p.name} — order medicines online | LIBERIA360`,
+    description: `Order from ${p.name} in ${p.location}: pickup or delivery, pay with cash, MTN MoMo or Orange Money. A pharmacist checks every prescription.`,
+  };
+}
+
 export default async function PharmacyPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const p = await getPharmacy(slug);
+  const p = await getPharmacy(slug).catch(() => null);
+  if (!p) notFound();
   const [products, categories] = await Promise.all([
     getPharmacyProducts(p.id),
     getPharmacyCategories(),
   ]);
   return (
-    <main className="page-shell max-w-6xl">
-      <PageHeader
-        eyebrow="Verified pharmacy"
-        title={p.name}
-        description={`${p.address}, ${p.location} · ${p.telephone}`}
-      />
-      <section className="rounded-2xl bg-brand-900 p-5 text-white">
-        <h2 className="font-bold">Opening hours</h2>
-        <p className="text-sm">
-          {p.openingHours
-            ?.map((h) =>
-              h.isClosed
-                ? "Closed"
-                : `${h.opensAt?.slice(0, 5)}–${h.closesAt?.slice(0, 5)}`,
-            )
-            .join(" · ")}
-        </p>
-        <p className="mt-2 text-sm">
-          {p.deliveryEnabled ? "Delivery available" : "Delivery unavailable"} ·{" "}
-          {p.pickupEnabled ? "Pickup available" : "Pickup unavailable"}
-        </p>
-      </section>
-      <PharmacyShop pharmacy={p} products={products} categories={categories} />
-      <aside className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-        Prescription approval can only be made by an authorized pharmacy
-        employee, subject to local law. The platform does not provide diagnoses,
-        dosage advice, substitutions, or medical-validity decisions.
-      </aside>
+    <main className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8">
+      <PharmacyStorefront pharmacy={p} products={products} categories={categories} />
     </main>
   );
 }

@@ -2,13 +2,19 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { usePharmacyDashboard } from '@/components/PharmacyDashboardContext';
+import { CopyButton } from '@/components/menu/CartSheet';
+import { PharmacyOrderChat, PharmacyOrderHistory } from '@/components/pharmacy/PharmacyOrderParts';
 import {
   getPharmacyDashboardOrders,
+  markPharmacyRefunded,
   restorePharmacyOrder,
   reviewPharmacyPrescription,
   transitionPharmacyOrder,
+  verifyPharmacyPayment,
   type PharmacyOrder,
+  type PharmacyPaymentStatus,
 } from '@/lib/pharmacy-api';
+import { PAYMENT_LABELS } from '@/lib/pharmacy-ordering';
 
 const ORDER_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -70,6 +76,121 @@ function nextStatusesFor(order: PharmacyOrder): string[] {
     if (next === 'out_for_delivery') return order.fulfillmentMethod === 'delivery';
     return true;
   });
+}
+
+// Staff wording for each payment state (the customer sees friendlier copy
+// in PharmacyPaymentPanel).
+const PAYMENT_STAFF_COPY: Record<PharmacyPaymentStatus, string> = {
+  pay_on_collection: 'Collect cash on handover',
+  awaiting_payment: 'Waiting for the customer to pay',
+  awaiting_verification: 'Check your phone for this payment',
+  paid: 'Paid',
+  failed: 'Payment not found — customer asked to resend',
+  refund_due: 'Refund owed to the customer',
+  refunded: 'Refunded',
+};
+const PAYMENT_TONE: Record<PharmacyPaymentStatus, string> = {
+  pay_on_collection: 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+  awaiting_payment: 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+  awaiting_verification: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30',
+  paid: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30',
+  failed: 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30',
+  refund_due: 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30',
+  refunded: 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
+};
+
+/** Mobile money must be confirmed before the order can be prepared. */
+function awaitingMoney(order: PharmacyOrder) {
+  return order.paymentMethod != null && order.paymentMethod !== 'cash' && order.paymentStatus !== 'paid';
+}
+
+function PaymentBox({
+  order,
+  pharmacyId,
+  onChanged,
+}: {
+  order: PharmacyOrder;
+  pharmacyId: string;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  const method = order.paymentMethod;
+  const status = order.paymentStatus;
+  if (!method || !status) return null;
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true);
+    setError('');
+    try {
+      await action();
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update the payment.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className={`mt-3 rounded-xl border p-3 text-sm ${PAYMENT_TONE[status]}`}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="font-semibold text-slate-900 dark:text-slate-50">
+          {PAYMENT_LABELS[method]} · {PAYMENT_STAFF_COPY[status]}
+        </p>
+        <p className="font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+          L${Number(order.finalTotal).toFixed(2)}
+        </p>
+      </div>
+      {order.paymentReference && (
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
+          Transaction ID
+          <span className="break-all font-mono font-semibold text-slate-900 dark:text-slate-50">
+            {order.paymentReference}
+          </span>
+          <CopyButton value={order.paymentReference} label="transaction ID" />
+        </p>
+      )}
+      {order.paymentAccount && (
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sent to {order.paymentAccount}</p>
+      )}
+      {status === 'awaiting_verification' && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            disabled={busy}
+            onClick={() => run(() => verifyPharmacyPayment(pharmacyId, order.id, true))}
+            className="btn-primary min-h-9 disabled:opacity-50"
+          >
+            Payment received
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => run(() => verifyPharmacyPayment(pharmacyId, order.id, false))}
+            className="btn-secondary min-h-9 text-red-700 disabled:opacity-50"
+          >
+            Not found
+          </button>
+        </div>
+      )}
+      {status === 'refund_due' && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            disabled={busy}
+            onClick={() => run(() => markPharmacyRefunded(pharmacyId, order.id))}
+            className="btn-secondary min-h-9 disabled:opacity-50"
+          >
+            Mark refunded
+          </button>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Send the money back to the customer&apos;s number first.
+          </span>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="error-state mt-2">
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function ReviewForm({
@@ -206,7 +327,7 @@ export default function PharmacyOrdersPage() {
       <div>
         <h2 className="text-xl font-bold text-slate-950 dark:text-slate-50">Orders</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Newest first — accept, prepare, and dispatch orders as they come in.
+          Newest first — confirm payment, then prepare and hand over each order.
         </p>
       </div>
       {error && (
@@ -249,6 +370,34 @@ export default function PharmacyOrdersPage() {
                 ))}
               </ul>
             )}
+            {(o.contactPhone || o.deliveryAddress || o.customerNote) && (
+              <dl className="mt-3 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+                {o.contactPhone && (
+                  <>
+                    <dt className="text-slate-500 dark:text-slate-400">Phone</dt>
+                    <dd>
+                      <a href={`tel:${o.contactPhone.replace(/\s+/g, '')}`} className="font-semibold text-brand-700 underline dark:text-brand-300">
+                        {o.contactPhone}
+                      </a>
+                    </dd>
+                  </>
+                )}
+                {o.deliveryAddress && (
+                  <>
+                    <dt className="text-slate-500 dark:text-slate-400">Deliver to</dt>
+                    <dd className="break-words text-slate-800 dark:text-slate-200">{o.deliveryAddress}</dd>
+                  </>
+                )}
+                {o.customerNote && (
+                  <>
+                    <dt className="text-slate-500 dark:text-slate-400">Note</dt>
+                    <dd className="break-words text-slate-800 dark:text-slate-200">{o.customerNote}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+            <PaymentBox order={o} pharmacyId={pharmacyId} onChanged={reload} />
+            <PharmacyOrderHistory order={o} />
             {o.status === 'under_review' && o.prescriptionId && !isPharmacist && (
               <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                 Awaiting pharmacist review — only a pharmacist on staff can accept, reject, or
@@ -268,7 +417,7 @@ export default function PharmacyOrdersPage() {
                 {nextStatusesFor(o).map((next) => (
                   <button
                     key={next}
-                    disabled={transitioning === o.id}
+                    disabled={transitioning === o.id || (next === 'preparing' && awaitingMoney(o))}
                     onClick={() => transition(o.id, next)}
                     className={
                       next === 'cancelled'
@@ -283,6 +432,11 @@ export default function PharmacyOrdersPage() {
                         : `Mark ${ORDER_LABELS[next] ?? next}`}
                   </button>
                 ))}
+                {o.status === 'accepted' && awaitingMoney(o) && (
+                  <p className="basis-full text-xs text-slate-500 dark:text-slate-400">
+                    Confirm the mobile money payment before preparing this order.
+                  </p>
+                )}
               </div>
             )}
             {/* Undoes a mistaken cancellation — the one thing the button
@@ -310,6 +464,12 @@ export default function PharmacyOrdersPage() {
                 )}
               </div>
             )}
+            <PharmacyOrderChat
+              orderId={o.id}
+              unread={o.unreadMessages ?? 0}
+              side="pharmacy"
+              title="Message the customer"
+            />
           </li>
         ))}
       </ul>

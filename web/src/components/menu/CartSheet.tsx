@@ -44,7 +44,7 @@ const METHOD_DOT: Record<FoodPaymentMethod, string | null> = {
   orange_money: 'bg-orange-500',
 };
 
-function CopyButton({ value, label }: { value: string; label: string }) {
+export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -67,7 +67,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-function ChoiceCard({
+export function ChoiceCard({
   name,
   checked,
   onSelect,
