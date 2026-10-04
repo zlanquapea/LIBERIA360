@@ -1,5 +1,5 @@
-import sharp from "sharp";
-import { processUploadedImage } from "./image-processing";
+import sharp, { type Stats } from "sharp";
+import { cardCrop, processUploadedImage } from "./image-processing";
 
 async function makeTestImage(
   width: number,
@@ -49,13 +49,13 @@ describe("processUploadedImage", () => {
     expect(metadata.height).toBe(1200); // aspect ratio preserved
   });
 
-  it("downscales the thumbnail rendition to a 480px long edge", async () => {
+  it("downscales the card rendition to a 640px long edge", async () => {
     const input = await makeTestImage(4000, 3000);
     const result = await processUploadedImage(input);
 
     const metadata = await sharp(result.thumb.buffer).metadata();
-    expect(metadata.width).toBe(480);
-    expect(metadata.height).toBe(360); // aspect ratio preserved
+    expect(metadata.width).toBe(640);
+    expect(metadata.height).toBe(480); // aspect ratio preserved
   });
 
   it("never upscales an image smaller than the cap, in either rendition", async () => {
@@ -65,7 +65,7 @@ describe("processUploadedImage", () => {
     const fullMetadata = await sharp(result.full.buffer).metadata();
     expect(fullMetadata.width).toBe(300);
     expect(fullMetadata.height).toBe(225);
-    // 300px is below the 480px thumb cap too, so the thumbnail rendition
+    // 300px is below the 640px card cap too, so the thumbnail rendition
     // stays unscaled as well (see the next test for the case where it
     // isn't).
     const thumbMetadata = await sharp(result.thumb.buffer).metadata();
@@ -80,7 +80,7 @@ describe("processUploadedImage", () => {
     const fullMetadata = await sharp(result.full.buffer).metadata();
     expect(fullMetadata.width).toBe(1000); // below the 1600px full cap — untouched
     const thumbMetadata = await sharp(result.thumb.buffer).metadata();
-    expect(thumbMetadata.width).toBe(480); // above the 480px thumb cap — shrunk
+    expect(thumbMetadata.width).toBe(640); // above the 640px card cap — shrunk
   });
 
   it("rejects an image below the minimum dimension floor", async () => {
@@ -114,5 +114,80 @@ describe("processUploadedImage", () => {
     await expect(
       processUploadedImage(Buffer.from("not an image")),
     ).rejects.toThrow();
+  });
+
+  it("trims a panorama to 4:3 for cards but keeps the full photo whole", async () => {
+    const input = await makeTestImage(3200, 1000);
+    const result = await processUploadedImage(input);
+    const full = await sharp(result.full.buffer).metadata();
+    expect(full.width! / full.height!).toBeCloseTo(3.2, 1);
+    const thumb = await sharp(result.thumb.buffer).metadata();
+    expect(thumb.width! / thumb.height!).toBeCloseTo(4 / 3, 1);
+  });
+
+  it("keeps portrait photos portrait, trimming only very tall ones", async () => {
+    const portrait = await processUploadedImage(await makeTestImage(900, 1200));
+    const p = await sharp(portrait.thumb.buffer).metadata();
+    expect(p.height! > p.width!).toBe(true);
+    expect(p.width! / p.height!).toBeCloseTo(0.75, 2);
+
+    const tall = await processUploadedImage(await makeTestImage(600, 2000));
+    const t = await sharp(tall.thumb.buffer).metadata();
+    expect(t.width! / t.height!).toBeCloseTo(0.75, 1);
+  });
+
+  it("evens out a flat, low-contrast photo", async () => {
+    // Left half a little darker than the right: a dull, washed-out frame.
+    const flat = await sharp({
+      create: {
+        width: 400,
+        height: 300,
+        channels: 3,
+        background: { r: 120, g: 120, b: 120 },
+      },
+    })
+      .composite([
+        {
+          input: await sharp({
+            create: {
+              width: 200,
+              height: 300,
+              channels: 3,
+              background: { r: 140, g: 140, b: 140 },
+            },
+          })
+            .png()
+            .toBuffer(),
+          left: 200,
+          top: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+    const result = await processUploadedImage(flat);
+    const before = await sharp(flat).stats();
+    const after = await sharp(result.full.buffer).stats();
+    const spread = (st: Stats) => st.channels[0].max - st.channels[0].min;
+    expect(spread(after)).toBeGreaterThan(spread(before));
+  });
+
+  it("writes progressive JPEGs", async () => {
+    const result = await processUploadedImage(await makeTestImage(800, 600));
+    expect((await sharp(result.full.buffer).metadata()).isProgressive).toBe(
+      true,
+    );
+  });
+});
+
+describe("cardCrop", () => {
+  it("leaves photos within 3:4–4:3 alone", () => {
+    expect(cardCrop(4000, 3000)).toBeNull();
+    expect(cardCrop(3000, 4000)).toBeNull();
+    expect(cardCrop(1000, 1000)).toBeNull();
+  });
+
+  it("trims wide and tall images to the nearest card shape", () => {
+    expect(cardCrop(1600, 900)).toEqual({ width: 1200, height: 900 });
+    expect(cardCrop(900, 1600)).toEqual({ width: 900, height: 1200 });
   });
 });

@@ -104,19 +104,30 @@ describe('SafeImage', () => {
     // asserts is gone.
   });
 
-  // Regression test: the loading placeholder used to also carry
-  // `animate-pulse` — a continuously looping opacity animation — which
-  // across a page with many photos read as every image perpetually fading
-  // in and out. It's a static background color now, shed once loaded, with
-  // no animation class at any point.
-  it('shows a static (non-animated) skeleton background on the <img> itself while loading, then sheds it once loaded', () => {
+  // The loading placeholder once carried `animate-pulse`, which across a
+  // page of photos read as every image perpetually fading in and out. Now
+  // an image is simply transparent until decoded, then fades in once —
+  // never a looping animation.
+  it('fades in once loaded, with no looping animation at any point', () => {
     const { container } = render(<SafeImage src="https://example.com/full.jpg" alt="" fallback={FALLBACK} />);
     const img = container.querySelector('img')!;
-    expect(img.className).toMatch(/bg-slate-200/);
+    expect(img.className).toMatch(/opacity-0/);
+    expect(img.className).toMatch(/motion-reduce:transition-none/);
     expect(img.className).not.toMatch(/animate-pulse/);
 
     fireEvent.load(img);
-    expect(img.className).not.toMatch(/bg-slate-200/);
+    expect(img.className).toMatch(/opacity-100/);
     expect(img.className).not.toMatch(/animate-pulse/);
+  });
+
+  // Regression: an image that finished loading before React attached its
+  // onLoad (cached, or loaded during hydration) must not stay transparent.
+  it('shows an image that was already loaded when the component mounted', () => {
+    const complete = jest.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    const width = jest.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(640);
+    const { container } = render(<SafeImage src="https://example.com/full.jpg" alt="" fallback={FALLBACK} />);
+    expect(container.querySelector('img')!.className).toMatch(/opacity-100/);
+    complete.mockRestore();
+    width.mockRestore();
   });
 });

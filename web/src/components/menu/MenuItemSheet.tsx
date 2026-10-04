@@ -11,6 +11,7 @@ import type { MenuCurrency, MenuItem, MenuOptionGroup } from '@/lib/types';
 import { MenuSheet } from './MenuSheet';
 import { MenuTagBadges } from './MenuItemCard';
 import { MenuPrice } from './MenuPrice';
+import { DishNotes } from '@/components/DishNotes';
 
 function defaultSelections(item: MenuItem): CartSelection[] {
   // Pre-pick the first choice of a required pick-one group (usually the
@@ -204,6 +205,7 @@ export function MenuItemSheet({
             {item.servingSize && <span className="font-medium text-slate-500">· {item.servingSize}</span>}
           </div>
           {item.description && <p className="text-[15px] leading-6 text-slate-600 dark:text-slate-300">{item.description}</p>}
+          <DishNotes texts={[item.name, item.description]} variant="inline" />
           {item.containsAlcohol && (
             <p className="rounded-2xl bg-slate-100 px-4 py-3 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               Contains alcohol. You&apos;ll be asked to confirm you&apos;re 18 or older at checkout.

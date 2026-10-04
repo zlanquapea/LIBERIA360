@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 
 // Full/original rendition — hero images, galleries, lightboxes. Trimmed
 // down from 2000px: nothing in this app ever displays a photo wider than
@@ -13,7 +13,15 @@ const MAX_DIMENSION_PX = 1600;
 // card (as this app did before thumbnails existed) multiplied a
 // several-hundred-KB image by every card on the page — by far the
 // biggest single contributor to "images take a long time to show up".
-const THUMB_DIMENSION_PX = 480;
+const THUMB_DIMENSION_PX = 640;
+// Card renditions keep the photo's orientation but no wider than 4:3 (or
+// taller than 3:4): cards are roughly that shape, so a panorama or tall
+// screenshot is trimmed here around its most interesting region (sharp's
+// "attention" strategy) instead of being center-cropped by the browser,
+// which tends to cut off the subject. Ordinary phone photos (4:3, 3:4)
+// pass through uncropped.
+const MAX_CARD_ASPECT = 4 / 3;
+const MIN_CARD_ASPECT = 3 / 4;
 // Below this on either edge, a listing photo isn't useful for a gallery/hero
 // display and is more likely a broken/placeholder/tracking-pixel upload than
 // a real photo — reject it rather than silently store a 1x1px "image".
@@ -21,7 +29,7 @@ const MIN_DIMENSION_PX = 200;
 const JPEG_QUALITY = 78;
 // More aggressive than the full rendition's quality — safe because a small
 // on-screen size hides compression artifacts a full-size render wouldn't.
-const THUMB_JPEG_QUALITY = 68;
+const THUMB_JPEG_QUALITY = 70;
 
 export interface ImageRendition {
   buffer: Buffer;
@@ -72,39 +80,90 @@ export async function processUploadedImage(
   buffer: Buffer,
 ): Promise<ProcessedImage> {
   const metadata = await sharp(buffer).rotate().metadata();
-  if (
-    (metadata.width ?? 0) < MIN_DIMENSION_PX ||
-    (metadata.height ?? 0) < MIN_DIMENSION_PX
-  ) {
-    throw new ImageTooSmallError(metadata.width ?? 0, metadata.height ?? 0);
+  // .rotate() doesn't swap the reported dimensions; EXIF orientations 5–8
+  // are 90° turns.
+  const turned = (metadata.orientation ?? 1) >= 5;
+  const width = (turned ? metadata.height : metadata.width) ?? 0;
+  const height = (turned ? metadata.width : metadata.height) ?? 0;
+  if (width < MIN_DIMENSION_PX || height < MIN_DIMENSION_PX) {
+    throw new ImageTooSmallError(width, height);
   }
 
-  async function render(
-    maxDimension: number,
+  // A light, honest finish applied to every photo: exposure and contrast
+  // evened out (ignoring the darkest and brightest 1% so a few specks
+  // can't skew it), a touch more colour, and resize-aware sharpening. No
+  // filters or effects — a place should look like itself, just well shot.
+  function finish(pipeline: Sharp): Sharp {
+    return pipeline
+      .normalise({ lower: 1, upper: 99 })
+      .modulate({ saturation: 1.06 })
+      .sharpen({ sigma: 0.6 });
+  }
+
+  async function encode(
+    pipeline: Sharp,
     quality: number,
   ): Promise<ImageRendition> {
-    // A fresh sharp() per rendition, not one shared/cloned pipeline — the
-    // decode cost of a single already-in-memory image is trivial next to
-    // an upload request round-trip, and it keeps each rendition's
-    // resize/quality pipeline fully independent (no risk of one output's
-    // options leaking into the other's).
-    const output = await sharp(buffer)
-      .rotate()
-      .resize({
-        width: maxDimension,
-        height: maxDimension,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality })
+    const output = await pipeline
+      .jpeg({ quality, mozjpeg: true, progressive: true })
       .toBuffer();
     return { buffer: output, contentType: "image/jpeg", extension: "jpg" };
   }
 
-  const [full, thumb] = await Promise.all([
-    render(MAX_DIMENSION_PX, JPEG_QUALITY),
-    render(THUMB_DIMENSION_PX, THUMB_JPEG_QUALITY),
-  ]);
+  // A fresh sharp() per rendition keeps each pipeline independent.
+  const full = encode(
+    finish(
+      sharp(buffer).rotate().resize({
+        width: MAX_DIMENSION_PX,
+        height: MAX_DIMENSION_PX,
+        fit: "inside",
+        withoutEnlargement: true,
+      }),
+    ),
+    JPEG_QUALITY,
+  );
 
-  return { full, thumb };
+  // sharp applies one resize per pipeline, so the attention crop (when
+  // needed) runs first on its own, then the card-size resize.
+  const crop = cardCrop(width, height);
+  const cropped = crop
+    ? await sharp(buffer)
+        .rotate()
+        .resize({
+          width: crop.width,
+          height: crop.height,
+          fit: "cover",
+          position: sharp.strategy.attention,
+        })
+        .toBuffer()
+    : null;
+  const thumb = encode(
+    finish(
+      (cropped ? sharp(cropped) : sharp(buffer).rotate()).resize({
+        width: THUMB_DIMENSION_PX,
+        height: THUMB_DIMENSION_PX,
+        fit: "inside",
+        withoutEnlargement: true,
+      }),
+    ),
+    THUMB_JPEG_QUALITY,
+  );
+
+  return { full: await full, thumb: await thumb };
+}
+
+/** The crop that brings an image within the card aspect range, or null
+ * when it's already within it. */
+export function cardCrop(
+  width: number,
+  height: number,
+): { width: number; height: number } | null {
+  const aspect = width / height;
+  if (aspect > MAX_CARD_ASPECT) {
+    return { width: Math.round(height * MAX_CARD_ASPECT), height };
+  }
+  if (aspect < MIN_CARD_ASPECT) {
+    return { width, height: Math.round(width / MIN_CARD_ASPECT) };
+  }
+  return null;
 }

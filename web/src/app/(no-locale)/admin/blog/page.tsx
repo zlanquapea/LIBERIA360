@@ -199,6 +199,7 @@ function BlogPostForm({
         value={coverImage}
         onChange={setCoverImage}
         label="Cover image (optional)"
+        aspect="16:9"
         className="h-32 w-56"
       />
 

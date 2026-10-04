@@ -7,6 +7,7 @@ import {
   ViewfinderCircleIcon,
 } from '@heroicons/react/24/outline';
 import { HeroBackground } from '@/components/HeroBackground';
+import { LoneStar } from '@/components/LoneStar';
 
 export interface HeroStats {
   places: number;
@@ -38,7 +39,8 @@ export async function HomeHero({ weekendCount, stats }: { weekendCount: number; 
 
       <div className="relative mx-auto flex max-w-6xl flex-col gap-7">
         <div className="flex max-w-3xl flex-col gap-4">
-          <p className="w-fit rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-sunset-200 backdrop-blur-sm sm:text-xs">
+          <p className="flex w-fit items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-sunset-200 backdrop-blur-sm sm:text-xs">
+            <LoneStar className="h-3.5 w-3.5 text-white" />
             {t('eyebrow')}
           </p>
           <h1

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
+import { renderWithMessages } from "@/test/render-with-messages";
 import { RestaurantMenuOrdering } from "./RestaurantMenuOrdering";
 import type { Business, FoodOrder, MenuItem, MenuSettings } from "@/lib/types";
 
@@ -80,7 +81,7 @@ const settings: MenuSettings = {
 };
 
 function renderMenu(overrides: Partial<MenuSettings> = {}) {
-  return render(
+  return renderWithMessages(
     <RestaurantMenuOrdering
       business={business}
       items={[mojito, wings]}

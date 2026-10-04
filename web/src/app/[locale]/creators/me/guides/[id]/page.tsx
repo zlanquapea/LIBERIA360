@@ -14,6 +14,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
 import { BrandLoader } from '@/components/BrandLoader';
 import { GuideStatusBadge } from '@/components/creator-guides/GuideStatusBadge';
+import { PhotoEditor } from '@/components/PhotoEditor';
 import type { CreatorGuide, CreatorGuideInput, Place } from '@/lib/types';
 
 interface StopDraft {
@@ -88,7 +89,10 @@ export default function GuideEditorPage({ params }: { params: Promise<{ id: stri
     setStops(next);
   }
 
+  const [pendingCover, setPendingCover] = useState<File | null>(null);
+
   async function onCover(file: File | undefined) {
+    setPendingCover(null);
     if (!file || !token) return;
     setBusy('upload');
     setError(null);
@@ -234,7 +238,15 @@ export default function GuideEditorPage({ params }: { params: Promise<{ id: stri
             <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:border-brand-500 dark:border-slate-700 dark:text-slate-200">
               <PhotoIcon aria-hidden className="h-4 w-4" />
               {busy === 'upload' ? t('uploading') : coverImage ? t('replaceCover') : t('addCover')}
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => onCover(e.target.files?.[0])} />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(e) => {
+                  setPendingCover(e.target.files?.[0] ?? null);
+                  e.target.value = '';
+                }}
+              />
             </label>
           </div>
           <label className={label}>
@@ -381,6 +393,9 @@ export default function GuideEditorPage({ params }: { params: Promise<{ id: stri
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">{t('moderationNote')}</p>
       </form>
+      {pendingCover && (
+        <PhotoEditor file={pendingCover} defaultAspect="16:9" onDone={onCover} onCancel={() => setPendingCover(null)} />
+      )}
     </main>
   );
 }

@@ -93,7 +93,7 @@ export function BusinessEditForm({
         </p>
       )}
 
-      <SingleImageUploader token={token} value={logoImage} onChange={setLogoImage} label="Logo" className="h-24 w-24" />
+      <SingleImageUploader token={token} value={logoImage} onChange={setLogoImage} label="Logo" className="h-24 w-24" aspect="1:1" />
 
       <PhotoManager token={token} images={images} onChange={setImages} label="Photos (rooms, pool, storefront, menu…)" />
 

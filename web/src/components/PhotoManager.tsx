@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { uploadImage } from '@/lib/uploads-api';
+import type { AspectId } from '@/lib/photo-crop';
+import { PhotoEditor } from './PhotoEditor';
 import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
 import { SafeImage } from './SafeImage';
@@ -21,18 +23,24 @@ export function PhotoManager({
   onChange,
   label = 'Photos',
   maxPhotos = DEFAULT_MAX_PHOTOS,
+  aspect = '4:3',
 }: {
   token: string;
   images: string[];
   onChange: (next: string[]) => void;
   label?: string;
   maxPhotos?: number;
+  // The frame the editor suggests; listing photos show as 4:3 cards.
+  aspect?: AspectId;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFiles(files: FileList | null) {
+  // Chosen files wait here while each is framed in the editor.
+  const [queue, setQueue] = useState<File[]>([]);
+
+  function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const room = maxPhotos - images.length;
     if (room <= 0) {
@@ -40,21 +48,28 @@ export function PhotoManager({
       return;
     }
     setError(null);
+    setQueue(Array.from(files).slice(0, room));
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  async function upload(files: File[]) {
     setUploading(true);
     try {
-      const toUpload = Array.from(files).slice(0, room);
       const uploaded: string[] = [];
-      for (const file of toUpload) {
+      for (const file of files) {
         uploaded.push(await uploadImage(token, file));
       }
-      onChange([...images, ...uploaded]);
+      onChange([...imagesRef.current, ...uploaded]);
     } catch (err) {
       setError(err instanceof HttpError ? err.message : 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
     }
   }
+
+  // Latest list, so uploads that finish one by one append correctly.
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
 
   function remove(url: string) {
     onChange(images.filter((i) => i !== url));
@@ -113,6 +128,24 @@ export function PhotoManager({
         </label>
       )}
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+      {queue.length > 0 && (
+        <PhotoEditor
+          key={`${queue[0].name}-${queue.length}`}
+          file={queue[0]}
+          defaultAspect={aspect}
+          remaining={queue.length - 1}
+          onDone={(edited) => {
+            setQueue((q) => q.slice(1));
+            void upload([edited]);
+          }}
+          onSkipRest={() => {
+            const rest = queue;
+            setQueue([]);
+            void upload(rest);
+          }}
+          onCancel={() => setQueue([])}
+        />
+      )}
     </div>
   );
 }

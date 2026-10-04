@@ -35,7 +35,9 @@
     "privacy": "Privacy",
     "terms": "Terms",
     "footerNavigation": "Footer navigation",
-    "copyright": "© {year} LIBERIA360. Everything Liberia. One place."
+    "copyright": "© {year} LIBERIA360. Everything Liberia. One place.",
+    "madeFor": "Made for Liberia",
+    "phrasebook": "Liberian English"
   },
   "common": {
     "loading": "Loading…",
@@ -74,7 +76,9 @@
     "tryAgain": "Try again",
     "goHome": "Go home",
     "pageNotFoundTitle": "Page not found",
-    "pageNotFoundDescription": "Looks like this page wandered off the map. Let's get you back on the trail."
+    "pageNotFoundDescription": "Looks like this page wandered off the map. Let's get you back on the trail.",
+    "snapSaved": "Snap! Saved",
+    "lrdRateNote": "Estimate at US$1 = L${rate}, the rate on Travel info"
   },
   "home": {
     "eyebrow": "Everything Liberia. One place.",
@@ -634,7 +638,12 @@
     "seeAll": "See all",
     "entryPointsLabel": "Ways to start",
     "essentialsLabel": "Getting around and essentials",
-    "travelInfoHint": "Visas, currency and seasons"
+    "travelInfoHint": "Visas, currency and seasons",
+    "countyMapLabel": "Tile map of Liberia’s 15 counties, roughly where each one sits. Darker tiles have more places listed.",
+    "countyMapNote": "Not to scale: one tile per county.",
+    "countyMapSea": "Atlantic Ocean",
+    "countyMapNone": "None yet",
+    "countyMapMore": "More places"
   },
   "creatorGuides": {
     "eyebrow": "Local guides",
@@ -769,5 +778,77 @@
     "entry": "Entry {price}",
     "gettingThere": "Getting there: {notes}",
     "openLive": "Open the live trip"
+  },
+  "photoEditor": {
+    "title": "Frame your photo",
+    "shape": "Shape",
+    "aspect_original": "Original",
+    "aspect_4_3": "Card 4:3",
+    "aspect_16_9": "Wide 16:9",
+    "aspect_1_1": "Square",
+    "frameLabel": "Photo frame. Drag or use the arrow keys to position, plus and minus to zoom.",
+    "dragHint": "Drag to position. Use the slider to zoom in on what matters.",
+    "zoom": "Zoom",
+    "rotate": "Rotate 90°",
+    "previewCard": "On a card",
+    "previewCover": "As a cover",
+    "finishNote": "We'll even out the light and colour after upload — no filters, it will still look like the real place.",
+    "useOriginal": "Use original",
+    "usePhoto": "Use photo",
+    "useAndNext": "Use and next",
+    "saving": "Preparing…",
+    "cancel": "Cancel",
+    "skipRest": "Upload the remaining {count} as they are",
+    "loading": "Opening photo…",
+    "cantOpen": "This photo can't be previewed here, but you can still upload it as it is."
+  },
+  "liberia": {
+    "phraseOfTheDay": "Liberian English of the day",
+    "openPhrasebook": "Open the phrasebook",
+    "pageEyebrow": "Talk like you’re home",
+    "pageTitle": "Liberian English",
+    "pageIntro": "Everyday phrases you’ll hear from Monrovia to Harper, and the dishes you’ll meet on menus.",
+    "phrasesTitle": "Everyday phrases",
+    "today": "Today",
+    "dishesTitle": "Food words",
+    "dishesIntro": "Most dishes come over rice, and “small pepper” is still hot. Ask before you order.",
+    "usageNote": "Liberian English (Kolokwa) varies from county to county and generation to generation, and there’s no one right spelling. These are common ways to say and write it. Spotted something to add or fix? Let us know.",
+    "dishNotesTitle": "Liberian dishes here",
+    "whatIs": "What’s {dish}?",
+    "phrases": {
+      "howDaBody": "How are you? The everyday greeting.",
+      "bodyFine": "I’m doing well. The usual reply to “How da body?”",
+      "whatYouSaying": "What’s up? A casual hello between friends.",
+      "iComing": "I’ll be right back. Said as you leave, not as you arrive.",
+      "smallSmall": "Little by little; take it easy.",
+      "myPeople": "A warm hello to friends, or to a whole room.",
+      "holdYourFoot": "I’m begging you, please do me this favour.",
+      "youLie": "No way! Really? Surprise, not an accusation.",
+      "carryMe": "Take me to Waterside, Monrovia’s big market. “Carry” means take someone somewhere.",
+      "iDoneEat": "I’ve already eaten.",
+      "lehWeGo": "Let’s go.",
+      "thankYouOh": "Thank you so much. An “oh” at the end adds warmth to almost anything.",
+      "itNotEasy": "It’s tough. Said with a knowing nod about life, work or traffic.",
+      "oldMa": "A respectful way to greet an older woman or man.",
+      "pekin": "A child.",
+      "pehnPehn": "A motorbike taxi.",
+      "keke": "A three-wheeled motor taxi, a tuk-tuk.",
+      "snap": "The Liberian handshake: shake, slide back, and snap your middle fingers together. Liberia360 snaps when you save a place."
+    },
+    "dishes": {
+      "palmButter": "A rich red stew of palm-nut pulp, simmered with meat or fish and served over rice.",
+      "cassavaLeaf": "Cassava leaves pounded fine and cooked down with palm oil, meat or fish and hot pepper. Served over rice.",
+      "potatoGreens": "Sweet potato leaves cooked in oil with meat or fish and pepper, served over rice.",
+      "jollof": "Rice cooked in a spiced tomato sauce, often with chicken, beef or vegetables. Party food across West Africa.",
+      "fufu": "A soft, slightly sour dough of fermented cassava. Pinch off a piece and dip it in soup.",
+      "dumboy": "Boiled cassava pounded into a smooth, stretchy dough, swallowed rather than chewed, with pepper soup or palm butter.",
+      "torbogee": "A thick, spicy stew of bitter balls, palm oil, dried fish and hot pepper.",
+      "pepperSoup": "A light, fiery broth with fish or meat. Many swear by it for a cold, or the morning after.",
+      "palavaSauce": "Leafy greens cooked down with palm oil and meat or fish.",
+      "checkRice": "Rice cooked together with greens and okra, so it comes out speckled.",
+      "kala": "Fried dough balls, a little sweet. A street snack sold warm in the morning.",
+      "riceBread": "A moist, sweet loaf made from rice flour and mashed ripe banana.",
+      "gingerBeer": "Homemade, non-alcoholic and fiercely spicy with fresh ginger."
+    }
   }
 }

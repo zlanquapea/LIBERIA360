@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getMyBusinesses } from '@/lib/business-api';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { formatCost } from '@/lib/format';
+import { LrdHint } from './LrdHint';
 import { isOpenAt } from '@/lib/opening-hours';
 import { iconForAmenity } from '@/lib/amenities';
 import { ContactLink } from './ContactLink';
@@ -58,6 +59,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
   const website = effectiveBusiness?.website ?? place.website;
   const hours = effectiveBusiness?.openingHours ?? place.openingHours;
   const priceLabel = formatKeyFactsPrice(place, effectiveBusiness);
+  const priceUsd = keyFactsPriceUsd(place, effectiveBusiness);
   const amenities = effectiveBusiness?.servicesOffered ?? [];
   const isClaimed = effectiveBusiness != null;
   const verificationStatus = effectiveBusiness?.verificationStatus ?? place.verificationStatus;
@@ -203,7 +205,12 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Price guide</dt>
               <dd className="mt-0.5 text-slate-700 dark:text-slate-200">
-                {priceLabel ? priceLabel : <MissingFact label="Price not listed" isClaimed={isClaimed} business={effectiveBusiness} />}
+                {priceLabel ? (
+                  <>
+                    {priceLabel}
+                    {priceUsd && <LrdHint usd={priceUsd.min} usdMax={priceUsd.max} className="ms-2 text-xs" />}
+                  </>
+                ) : <MissingFact label="Price not listed" isClaimed={isClaimed} business={effectiveBusiness} />}
               </dd>
             </div>
           </dl>
@@ -269,6 +276,14 @@ function MissingFact({ label, isClaimed, business }: { label: string; isClaimed:
       )}
     </span>
   );
+}
+
+function keyFactsPriceUsd(place: Place, business: Business | null): { min: number | null; max: number | null } | null {
+  if (business?.priceRangeMin != null || business?.priceRangeMax != null) {
+    return { min: business.priceRangeMin ?? business.priceRangeMax ?? null, max: business.priceRangeMax ?? null };
+  }
+  if (place.estimatedCostEntry != null) return { min: place.estimatedCostEntry, max: null };
+  return null;
 }
 
 function formatKeyFactsPrice(place: Place, business: Business | null): string | null {

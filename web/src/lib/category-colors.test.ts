@@ -36,4 +36,10 @@ describe('gradientForCategory', () => {
     expect(gradient).toContain('linear-gradient');
     expect(gradient).toContain(colorForCategory('beaches'));
   });
+
+  it('layers the glow and woven texture over the colour', () => {
+    const gradient = gradientForCategory('beaches');
+    expect(gradient.startsWith('radial-gradient')).toBe(true);
+    expect(gradient.match(/repeating-linear-gradient/g)).toHaveLength(2);
+  });
 });

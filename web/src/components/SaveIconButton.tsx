@@ -1,5 +1,6 @@
 'use client';
 
+import { useSnap } from './SnapBurst';
 import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { useSavedPlaces } from '@/hooks/useSavedPlaces';
@@ -26,9 +27,11 @@ export function SaveIconButton({
 }) {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(slug);
+  const { snap, burst } = useSnap();
 
   function handleClick() {
     const nowSaved = toggle(slug, placeId);
+    if (nowSaved) snap();
     if (nowSaved && placeId) {
       recordAnalyticsEvent(placeId, 'save');
     }
@@ -40,13 +43,14 @@ export function SaveIconButton({
       onClick={handleClick}
       aria-pressed={saved}
       aria-label={saved ? 'Remove from saved places' : 'Save this place'}
-      className={`flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm transition-colors active:scale-90 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900 ${className}`}
+      className={`relative flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm transition-colors active:scale-90 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900 ${className}`}
     >
       {saved ? (
         <BookmarkIconSolid aria-hidden className="h-4 w-4 animate-pop text-gold-500" />
       ) : (
         <BookmarkIcon aria-hidden className="h-4 w-4" />
       )}
+      {burst}
     </button>
   );
 }

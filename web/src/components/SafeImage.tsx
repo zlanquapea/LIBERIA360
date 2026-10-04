@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Wraps a plain `<img>` (see `lib/images.ts`'s `resolveImageUrl` comment for
@@ -75,13 +75,29 @@ export function SafeImage({
   const firstAttempt = (src && (thumbSrc ?? src)) || null;
   const [current, setCurrent] = useState<string | null>(firstAttempt);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(firstAttempt ? 'loading' : 'error');
+  // Server-rendered and pre-hydration images stay visible (no JS, or an
+  // image that loaded before React attached its onLoad); only after mount
+  // does a still-loading image start transparent and fade in.
+  const [mounted, setMounted] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const el = imgRef.current;
+    if (el?.complete && el.naturalWidth > 0) setStatus('loaded');
+  }, []);
 
   // A new src/thumbSrc (e.g. the user replaces a photo) needs its own
   // fresh loading/error cycle — otherwise a previous error/loaded state
   // would stick around and either hide the new image or skip its
   // skeleton.
+  // Only a genuinely different image resets the state — on first render
+  // this must not undo the mount check above.
+  const shownKey = useRef(firstAttempt);
   useEffect(() => {
     const next = (src && (thumbSrc ?? src)) || null;
+    if (next === shownKey.current) return;
+    shownKey.current = next;
     setCurrent(next);
     setStatus(next ? 'loading' : 'error');
   }, [src, thumbSrc]);
@@ -106,11 +122,17 @@ export function SafeImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      ref={imgRef}
       src={current}
       alt={alt}
       loading={loading}
       decoding="async"
-      className={`${className ?? ''} ${status === 'loading' ? 'bg-slate-200 dark:bg-slate-800' : ''}`}
+      // Fades in once decoded instead of painting in line by line, over
+      // whatever background its container sets; instant for
+      // reduced-motion users.
+      className={`${className ?? ''} transition-opacity duration-500 ease-out motion-reduce:transition-none ${
+        status === 'loading' && mounted ? 'opacity-0' : 'opacity-100'
+      }`}
       onLoad={() => setStatus('loaded')}
       onError={handleError}
     />

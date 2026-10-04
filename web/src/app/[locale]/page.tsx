@@ -29,6 +29,7 @@ import { CreatorsSection } from '@/components/home/CreatorsSection';
 import { CountyExplorer } from '@/components/home/CountyExplorer';
 import { ContributeSection } from '@/components/home/ContributeSection';
 import { SectionHeading } from '@/components/home/SectionHeading';
+import { PhraseOfTheDay } from '@/components/home/PhraseOfTheDay';
 
 const POPULAR_LIMIT = 8;
 const WEEKEND_LIMIT = 8;
@@ -109,6 +110,8 @@ export default async function Home() {
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-14 px-4 py-10 sm:gap-16 sm:px-6 sm:py-14 lg:px-10">
         <CollectionsSection summaries={summaries} />
+
+        <PhraseOfTheDay />
 
         <WeekendSection
           events={weekendEvents.data}

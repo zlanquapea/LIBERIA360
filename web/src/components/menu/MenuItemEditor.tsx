@@ -287,6 +287,7 @@ export function MenuItemEditor({
             value={draft.image}
             onChange={(url) => set('image', url)}
             label="Photo"
+            aspect="1:1"
             className="h-24 w-24 shrink-0"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-3">

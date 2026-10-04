@@ -35,7 +35,9 @@
     "privacy": "隐私政策",
     "terms": "服务条款",
     "footerNavigation": "页脚导航",
-    "copyright": "© {year} LIBERIA360。畅游利比里亚，尽在此处。"
+    "copyright": "© {year} LIBERIA360。畅游利比里亚，尽在此处。",
+    "madeFor": "为利比里亚而做",
+    "phrasebook": "利比里亚英语"
   },
   "common": {
     "loading": "加载中…",
@@ -74,7 +76,9 @@
     "tryAgain": "重试",
     "goHome": "返回首页",
     "pageNotFoundTitle": "找不到页面",
-    "pageNotFoundDescription": "看起来这个页面偏离了地图。让我们带你回到正确的路线上。"
+    "pageNotFoundDescription": "看起来这个页面偏离了地图。让我们带你回到正确的路线上。",
+    "snapSaved": "啪！已收藏",
+    "lrdRateNote": "按旅行信息中的汇率估算：1 美元 = {rate} 利比里亚元"
   },
   "home": {
     "eyebrow": "畅游利比里亚，尽在此处。",
@@ -634,7 +638,12 @@
     "seeAll": "查看全部",
     "entryPointsLabel": "从这里开始",
     "essentialsLabel": "出行与必备",
-    "travelInfoHint": "签证、货币与季节"
+    "travelInfoHint": "签证、货币与季节",
+    "countyMapLabel": "利比里亚 15 个州的方块地图，位置大致对应实际地理。颜色越深，收录的地点越多。",
+    "countyMapNote": "非按比例绘制：每州一格。",
+    "countyMapSea": "大西洋",
+    "countyMapNone": "暂无",
+    "countyMapMore": "地点更多"
   },
   "creatorGuides": {
     "eyebrow": "本地指南",
@@ -769,5 +778,77 @@
     "entry": "门票 {price}",
     "gettingThere": "如何到达：{notes}",
     "openLive": "打开在线行程"
+  },
+  "photoEditor": {
+    "title": "调整照片构图",
+    "shape": "比例",
+    "aspect_original": "原图",
+    "aspect_4_3": "卡片 4:3",
+    "aspect_16_9": "宽幅 16:9",
+    "aspect_1_1": "方形",
+    "frameLabel": "照片取景框。拖动或用方向键调整位置，用加减号缩放。",
+    "dragHint": "拖动调整位置。用滑块放大重点。",
+    "zoom": "缩放",
+    "rotate": "旋转 90°",
+    "previewCard": "卡片效果",
+    "previewCover": "封面效果",
+    "finishNote": "上传后我们会均衡光线和色彩——不加滤镜，依然是地点的真实样子。",
+    "useOriginal": "使用原图",
+    "usePhoto": "使用照片",
+    "useAndNext": "使用并下一张",
+    "saving": "处理中…",
+    "cancel": "取消",
+    "skipRest": "其余 {count} 张按原样上传",
+    "loading": "正在打开照片…",
+    "cantOpen": "此照片无法在这里预览，但仍可按原样上传。"
+  },
+  "liberia": {
+    "phraseOfTheDay": "每日一句利比里亚英语",
+    "openPhrasebook": "打开常用语手册",
+    "pageEyebrow": "像当地人一样说话",
+    "pageTitle": "利比里亚英语",
+    "pageIntro": "从蒙罗维亚到哈珀都能听到的日常用语，以及菜单上常见的菜肴。",
+    "phrasesTitle": "日常用语",
+    "today": "今日",
+    "dishesTitle": "饮食词汇",
+    "dishesIntro": "大多数菜都配米饭，“small pepper”（少辣）照样很辣。点菜前先问问。",
+    "usageNote": "利比里亚英语（Kolokwa）因州和年龄层而异，也没有统一的拼写。这里列出的是常见的说法和写法。发现需要补充或更正的地方？请告诉我们。",
+    "dishNotesTitle": "这里的利比里亚菜",
+    "whatIs": "{dish} 是什么？",
+    "phrases": {
+      "howDaBody": "你好吗？日常问候语。",
+      "bodyFine": "我很好。对 “How da body?” 的常见回答。",
+      "whatYouSaying": "最近怎么样？朋友之间的随意招呼。",
+      "iComing": "我马上回来。离开时说，而不是到达时。",
+      "smallSmall": "一点一点地；慢慢来。",
+      "myPeople": "向朋友或在场所有人热情打招呼。",
+      "holdYourFoot": "求求你，帮我这个忙。",
+      "youLie": "不会吧！真的吗？表示惊讶，不是指责。",
+      "carryMe": "带我去 Waterside（蒙罗维亚的大市场）。“Carry” 意为带某人去某地。",
+      "iDoneEat": "我已经吃过了。",
+      "lehWeGo": "我们走吧。",
+      "thankYouOh": "非常感谢。句尾加个 “oh”，几乎什么话都更亲切。",
+      "itNotEasy": "不容易啊。谈到生活、工作或堵车时会意地说。",
+      "oldMa": "对年长女性或男性的尊称。",
+      "pekin": "小孩。",
+      "pehnPehn": "摩托出租车。",
+      "keke": "三轮机动出租车（嘟嘟车）。",
+      "snap": "利比里亚式握手：握手后往回滑，中指相扣打个响指。在 Liberia360 收藏地点时也会“响一下”。"
+    },
+    "dishes": {
+      "palmButter": "用棕榈果肉熬成的浓郁红色炖菜，加肉或鱼，配米饭。",
+      "cassavaLeaf": "木薯叶捣碎后与棕榈油、肉或鱼和辣椒一起炖煮，配米饭。",
+      "potatoGreens": "红薯叶用油与肉或鱼和辣椒一起烹制，配米饭。",
+      "jollof": "用香辣番茄酱汁煮的米饭，常加鸡肉、牛肉或蔬菜。西非各地的宴会菜。",
+      "fufu": "发酵木薯做成的柔软、微酸的面团。掐下一小块蘸汤吃。",
+      "dumboy": "煮熟的木薯捣成光滑有弹性的面团，配辣椒汤或棕榈酱，直接吞咽而不咀嚼。",
+      "torbogee": "用苦茄、棕榈油、鱼干和辣椒炖成的浓稠辣味炖菜。",
+      "pepperSoup": "清淡而火辣的鱼汤或肉汤。很多人说治感冒、解宿醉都靠它。",
+      "palavaSauce": "绿叶菜与棕榈油和肉或鱼一起炖煮。",
+      "checkRice": "米饭与绿叶菜和秋葵一起煮，煮好后带着斑点。",
+      "kala": "微甜的炸面球。早晨街头趁热卖的小吃。",
+      "riceBread": "用米粉和熟香蕉泥做的湿润甜面包。",
+      "gingerBeer": "自制、无酒精，用新鲜生姜做成，非常辣。"
+    }
   }
 }

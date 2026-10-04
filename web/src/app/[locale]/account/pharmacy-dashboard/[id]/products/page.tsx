@@ -98,6 +98,7 @@ function ProductForm({
           value={form.imageUrl ?? null}
           onChange={(url) => setForm((f) => ({ ...f, imageUrl: url ?? undefined }))}
           label="Product photo"
+          aspect="1:1"
           className="h-28 w-28"
         />
       </div>
