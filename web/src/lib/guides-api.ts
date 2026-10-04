@@ -115,13 +115,14 @@ export function applyAsGuide(token: string, input: GuideApplicationInput) {
 }
 
 export interface GuideBookingSummary {
+  guideResponse?: string | null;
   id: string;
   requestedDate: string;
   groupSize: number;
   status: string;
   paymentStatus: string;
   priceUsdSnapshot: number;
-  experience: { id: string; title: string; guide: { slug: string } };
+  experience: { id: string; title: string; meetingPointText?: string; guide: { slug: string } };
 }
 
 export function getMyGuideBookings(token: string) {

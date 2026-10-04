@@ -1,17 +1,18 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import { BellIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/hooks/useAuth';
-import { BrandLoader } from '@/components/BrandLoader';
+import Link from "next/link";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BellIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
+import { BrandLoader } from "@/components/BrandLoader";
 import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-} from '@/lib/notifications-api';
-import { formatRelativeTime } from '@/lib/format';
-import type { Notification, PaginatedNotifications } from '@/lib/types';
+} from "@/lib/notifications-api";
+import { formatRelativeTime } from "@/lib/format";
+import type { Notification, PaginatedNotifications } from "@/lib/types";
 
 // Full notification history (Section 8's "notification center") — the
 // bell in Header is the quick glance at the newest few; this page is
@@ -22,32 +23,58 @@ import type { Notification, PaginatedNotifications } from '@/lib/types';
 // admin/audit-log is.
 export default function NotificationsPage() {
   const { user, token, ready } = useAuth();
+  const [group, setGroup] = useState("");
+  const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [result, setResult] = useState<PaginatedNotifications | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resultOwner, setResultOwner] = useState("");
+  const requestId = useRef(0);
 
   const reload = useCallback(() => {
-    if (!token) return;
+    if (!token || !user) return;
+    const id = ++requestId.current;
     setLoading(true);
-    listNotifications(token, { page, limit: 20, unreadOnly })
-      .then(setResult)
-      .finally(() => setLoading(false));
-  }, [token, page, unreadOnly]);
+    listNotifications(token, { page, limit: 20, unreadOnly, group })
+      .then((value) => {
+        if (id === requestId.current) {
+          setResult(value);
+          setResultOwner(user.id);
+          setError("");
+        }
+      })
+      .catch(() => {
+        if (id === requestId.current)
+          setError("Could not load notifications. Please retry.");
+      })
+      .finally(() => {
+        if (id === requestId.current) setLoading(false);
+      });
+  }, [token, user?.id, page, unreadOnly, group]);
 
   useEffect(() => {
-    if (!ready || !token) {
-      if (ready) setLoading(false);
-      return;
+    if (ready && token) reload();
+    else if (ready) {
+      setResult(null);
+      setResultOwner("");
+      setLoading(false);
     }
-    reload();
+    return () => {
+      requestId.current += 1;
+    };
   }, [ready, token, reload]);
 
   async function handleMarkRead(notification: Notification) {
     if (!token || notification.read) return;
     setResult((prev) =>
       prev
-        ? { ...prev, data: prev.data.map((n) => (n.id === notification.id ? { ...n, read: true } : n)) }
+        ? {
+            ...prev,
+            data: prev.data.map((n) =>
+              n.id === notification.id ? { ...n, read: true } : n,
+            ),
+          }
         : prev,
     );
     try {
@@ -59,7 +86,11 @@ export default function NotificationsPage() {
 
   async function handleMarkAllRead() {
     if (!token) return;
-    setResult((prev) => (prev ? { ...prev, data: prev.data.map((n) => ({ ...n, read: true })) } : prev));
+    setResult((prev) =>
+      prev
+        ? { ...prev, data: prev.data.map((n) => ({ ...n, read: true })) }
+        : prev,
+    );
     try {
       await markAllNotificationsRead(token);
     } catch {
@@ -67,11 +98,13 @@ export default function NotificationsPage() {
     }
   }
 
-  if (!ready || (loading && !result)) {
+  if (!ready || (loading && (!result || resultOwner !== user?.id))) {
     return (
       <main className="flex min-h-[70vh] flex-col items-center justify-center gap-5 px-4">
         <BrandLoader />
-        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm font-medium tracking-wide text-slate-500 dark:text-slate-400">
+          Loading…
+        </p>
       </main>
     );
   }
@@ -79,8 +112,12 @@ export default function NotificationsPage() {
   if (!user || !token) {
     return (
       <main className="mx-auto flex max-w-sm flex-col gap-4 px-4 py-10 text-center">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Notifications</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Log in to see your notifications.</p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          Notifications
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Log in to see your notifications.
+        </p>
         <Link
           href="/login"
           className="mx-auto rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
@@ -91,12 +128,15 @@ export default function NotificationsPage() {
     );
   }
 
-  const hasUnread = (result?.data ?? []).some((n) => !n.read);
+  const currentResult = resultOwner === user.id ? result : null;
+  const hasUnread = (currentResult?.data ?? []).some((n) => !n.read);
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Notifications</h1>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
+          Notifications
+        </h1>
         {hasUnread && (
           <button
             type="button"
@@ -109,6 +149,34 @@ export default function NotificationsPage() {
         )}
       </div>
 
+      <NotificationPreferences key={user.id} />
+      <div
+        className="flex flex-wrap gap-2"
+        aria-label="Notification categories"
+      >
+        {["", "bookings", "messages", "trips", "creators"].map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={group === value}
+            onClick={() => {
+              setGroup(value);
+              setPage(1);
+            }}
+            className={`min-h-11 rounded-full border px-4 text-sm font-semibold capitalize ${group === value ? "bg-brand-700 text-white" : ""}`}
+          >
+            {value || "All activity"}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button type="button" className="min-h-11 underline" onClick={reload}>
+            Retry
+          </button>
+        </div>
+      )}
       <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
         <input
           type="checkbox"
@@ -122,14 +190,17 @@ export default function NotificationsPage() {
         Show unread only
       </label>
 
-      {!result || result.data.length === 0 ? (
+      {!currentResult || currentResult.data.length === 0 ? (
         <p className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-          <BellIcon aria-hidden className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+          <BellIcon
+            aria-hidden
+            className="h-6 w-6 text-slate-400 dark:text-slate-500"
+          />
           {unreadOnly ? "You're all caught up." : "Nothing here yet."}
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {result.data.map((notification) => (
+          {currentResult.data.map((notification) => (
             <NotificationListItem
               key={notification.id}
               notification={notification}
@@ -178,27 +249,40 @@ function NotificationListItem({
       <div className="flex items-start justify-between gap-3">
         <p
           className={`font-medium ${
-            notification.read ? 'text-slate-600 dark:text-slate-300' : 'text-slate-900 dark:text-slate-50'
+            notification.read
+              ? "text-slate-600 dark:text-slate-300"
+              : "text-slate-900 dark:text-slate-50"
           }`}
         >
           {notification.title}
         </p>
         {!notification.read && (
-          <span aria-hidden className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-flag-500" />
+          <span
+            aria-hidden
+            className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-flag-500"
+          />
         )}
       </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">{notification.body}</p>
-      <p className="text-xs text-slate-400 dark:text-slate-500">{formatRelativeTime(notification.createdAt)}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        {notification.body}
+      </p>
+      <p className="text-xs text-slate-400 dark:text-slate-500">
+        {formatRelativeTime(notification.createdAt)}
+      </p>
     </>
   );
   const className = `flex flex-col gap-1 rounded-xl border border-slate-200 dark:border-slate-800 p-3 text-sm transition-colors ${
-    notification.read ? '' : 'bg-brand-50/50 dark:bg-brand-900/10'
+    notification.read ? "" : "bg-brand-50/50 dark:bg-brand-900/10"
   }`;
 
   if (notification.link) {
     return (
       <li>
-        <Link href={notification.link} onClick={onMarkRead} className={`block ${className} hover:border-brand-400`}>
+        <Link
+          href={notification.link}
+          onClick={onMarkRead}
+          className={`block ${className} hover:border-brand-400`}
+        >
           {content}
         </Link>
       </li>
@@ -206,7 +290,11 @@ function NotificationListItem({
   }
   return (
     <li>
-      <button type="button" onClick={onMarkRead} className={`w-full text-left ${className} hover:border-brand-400`}>
+      <button
+        type="button"
+        onClick={onMarkRead}
+        className={`w-full text-left ${className} hover:border-brand-400`}
+      >
         {content}
       </button>
     </li>

@@ -1,7 +1,9 @@
+import { notificationGroups, NotificationGroup } from "../notification-groups";
 import { Transform, Type } from "class-transformer";
-import { IsBoolean, IsInt, IsOptional, Max, Min } from "class-validator";
+import { IsIn, IsBoolean, IsInt, IsOptional, Max, Min } from "class-validator";
 
 export class QueryNotificationsDto {
+  @IsOptional() @IsIn(notificationGroups) group?: NotificationGroup;
   @IsOptional()
   @Type(() => Number)
   @IsInt()

@@ -1,10 +1,16 @@
 import {
+  groupPrefixes,
+  notificationGroup,
+  NotificationGroup,
+} from "./notification-groups";
+import { NotificationPreferencesDto } from "./dto/notification-preferences.dto";
+import {
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Like, FindOperator, Repository } from "typeorm";
 import { Notification, NotificationType } from "./entities/notification.entity";
 import { PushService } from "../push/push.service";
 
@@ -41,6 +47,34 @@ export class NotificationsService {
     private readonly pushService: PushService,
   ) {}
 
+  async preferences(userId: string): Promise<NotificationPreferencesDto> {
+    const rows = await this.notificationRepo.manager.query(
+      "SELECT preferences FROM notification_preferences WHERE user_id = $1",
+      [userId],
+    );
+    return {
+      bookings: true,
+      messages: true,
+      trips: true,
+      creators: true,
+      ...rows[0]?.preferences,
+    };
+  }
+  async setPreferences(
+    userId: string,
+    preferences: NotificationPreferencesDto,
+  ) {
+    await this.notificationRepo.manager.query(
+      "INSERT INTO notification_preferences (user_id, preferences) VALUES ($1, $2::jsonb) ON CONFLICT (user_id) DO UPDATE SET preferences = EXCLUDED.preferences",
+      [userId, JSON.stringify(preferences)],
+    );
+    return preferences;
+  }
+  private async allowsPush(userId: string, type: string) {
+    const group = notificationGroup(type);
+    return !group || (await this.preferences(userId))[group];
+  }
+
   /** Notifies a single user — the common case (a booking's guest or
    * owner, a place/business submitter). Never throws: a notification that
    * fails to write should never fail the real action that triggered it,
@@ -56,7 +90,7 @@ export class NotificationsService {
           link: notificationInput.link ?? null,
         }),
       );
-      if (!input.skipPush) {
+      if (!input.skipPush && (await this.allowsPush(userId, input.type))) {
         void this.pushService
           .sendToUsers([userId], {
             title: input.title,
@@ -93,8 +127,15 @@ export class NotificationsService {
         ),
       );
       if (!input.skipPush) {
+        const allowed = await Promise.all(
+          userIds.map(async (id) =>
+            (await this.allowsPush(id, input.type)) ? id : null,
+          ),
+        );
+        const pushUserIds = allowed.filter((id): id is string => id !== null);
+        if (!pushUserIds.length) return;
         void this.pushService
-          .sendToUsers(userIds, {
+          .sendToUsers(pushUserIds, {
             title: input.title,
             body: input.body,
             url: input.link,
@@ -108,13 +149,26 @@ export class NotificationsService {
 
   async findForUser(
     userId: string,
-    params: { page?: number; limit?: number; unreadOnly?: boolean } = {},
+    params: {
+      page?: number;
+      limit?: number;
+      unreadOnly?: boolean;
+      group?: NotificationGroup;
+    } = {},
   ): Promise<PaginatedNotifications> {
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;
 
     const [data, total] = await this.notificationRepo.findAndCount({
-      where: params.unreadOnly ? { userId, read: false } : { userId },
+      where: params.group
+        ? groupPrefixes[params.group].map((prefix) => ({
+            userId,
+            ...(params.unreadOnly ? { read: false } : {}),
+            type: Like(prefix) as FindOperator<NotificationType>,
+          }))
+        : params.unreadOnly
+          ? { userId, read: false }
+          : { userId },
       order: { createdAt: "DESC" },
       skip: (page - 1) * limit,
       take: limit,

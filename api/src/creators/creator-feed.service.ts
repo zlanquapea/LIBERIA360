@@ -1,3 +1,5 @@
+import { Optional } from "@nestjs/common";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   ForbiddenException,
   Injectable,
@@ -41,6 +43,7 @@ export class CreatorFeedService {
     private readonly commentLikeRepo: Repository<CreatorPostCommentLike>,
     @InjectRepository(CreatorFollow)
     private readonly followRepo: Repository<CreatorFollow>,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
 
   async findPublicFeed(
@@ -330,6 +333,16 @@ export class CreatorFeedService {
       where: { id: comment.id },
       relations: ["user"],
     });
+    const postOwner = this.notifications
+      ? await this.creatorRepo.findOne({ where: { id: post.creatorId } })
+      : null;
+    if (postOwner?.userId && postOwner.userId !== userId)
+      await this.notifications?.create(postOwner.userId, {
+        type: "creator.comment",
+        title: "New comment on your post",
+        body: body.slice(0, 120),
+        link: `/creators/posts/${post.id}`,
+      });
     return this.serializeComment(saved);
   }
 
