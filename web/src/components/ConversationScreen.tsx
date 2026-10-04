@@ -11,7 +11,7 @@ import {
   PhoneIcon,
   StopIcon,
 } from "@heroicons/react/24/outline";
-import { SafetyControls } from "@/components/SafetyControls";
+import { MessageSafetyMenu } from "@/components/SafetyControls";
 import { useAuth } from "@/hooks/useAuth";
 import {
   getConversation,
@@ -490,7 +490,7 @@ export function ConversationScreen({
                   className={`group flex ${own ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`relative max-w-[85%] break-words [overflow-wrap:anywhere] rounded-2xl px-3 py-2 text-sm shadow-sm ${own ? "rounded-br-md bg-brand-800 text-white" : "rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"}`}
+                    className={`relative break-words [overflow-wrap:anywhere] rounded-2xl px-3 py-2 text-sm shadow-sm ${own ? "max-w-[85%] rounded-br-md bg-brand-800 text-white" : "max-w-[calc(100%-3rem)] rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100"}`}
                   >
                     {message.attachments?.map((attachment) => (
                       <div
@@ -586,17 +586,14 @@ export function ConversationScreen({
                       ❤️
                     </button>
                   </div>
-                </div>
-                {!own && !message.deletedAt && (
-                  <div className="max-w-md">
-                    <SafetyControls
+                  {!own && !message.deletedAt && (
+                    <MessageSafetyMenu
                       key={`${user?.id}-${message.id}`}
-                      targetType="conversation_message"
-                      targetId={message.id}
-                      accountId={message.senderId}
+                      messageId={message.id}
+                      senderId={message.senderId}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </Fragment>
             );
           })}

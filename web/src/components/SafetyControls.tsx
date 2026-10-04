@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  EllipsisHorizontalIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/http";
 
@@ -10,6 +14,120 @@ const panel =
   "rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "Unable to save. Please try again.";
+
+export function MessageSafetyMenu({
+  messageId,
+  senderId,
+}: {
+  messageId: string;
+  senderId: string;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, above: false });
+  const [safetyOpen, setSafetyOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (safetyOpen) dialogRef.current?.showModal();
+    else dialogRef.current?.close();
+  }, [safetyOpen]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const outside = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node))
+        setMenuOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [menuOpen]);
+  return (
+    <div ref={containerRef} className="relative ml-1 shrink-0 self-center">
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="More message actions"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        onClick={() => {
+          const rect = buttonRef.current?.getBoundingClientRect();
+          const row =
+            containerRef.current?.parentElement?.getBoundingClientRect();
+          if (rect && row)
+            setMenuPosition({
+              left:
+                Math.max(row.left, Math.min(rect.left, row.right - 192)) -
+                rect.left,
+              above: rect.top > 180,
+            });
+          setMenuOpen((value) => !value);
+        }}
+        className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 dark:text-slate-400 dark:hover:bg-slate-800"
+      >
+        <EllipsisHorizontalIcon aria-hidden className="h-5 w-5" />
+      </button>
+      {menuOpen && (
+        <div
+          role="menu"
+          aria-label="Message actions"
+          style={{ left: menuPosition.left }}
+          className={`absolute ${menuPosition.above ? "bottom-full" : "top-full"} z-30 w-48 rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900`}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              setSafetyOpen(true);
+            }}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <ShieldCheckIcon aria-hidden className="h-4 w-4" />
+            Safety options
+          </button>
+        </div>
+      )}
+      <dialog
+        ref={dialogRef}
+        aria-label="Message safety options"
+        onClose={() => {
+          setSafetyOpen(false);
+          buttonRef.current?.focus();
+        }}
+        className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl backdrop:bg-black/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-semibold">Safety options</h2>
+          <button
+            type="button"
+            onClick={() => setSafetyOpen(false)}
+            className="min-h-11 rounded-xl px-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+        {safetyOpen && (
+          <SafetyControls
+            expanded
+            targetType="conversation_message"
+            targetId={messageId}
+            accountId={senderId}
+          />
+        )}
+      </dialog>
+    </div>
+  );
+}
 
 export function SafetyControls({
   targetType,
