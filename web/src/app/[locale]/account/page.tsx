@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { BrandLoader } from "@/components/BrandLoader";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { BlockedAccounts } from "@/components/SafetyControls";
+import { GuideInsightsPanel } from "@/components/GuideInsightsPanel";
 import { GuideAvailabilityAlerts } from "@/components/GuideAvailabilityAlerts";
 import { DataSaverSetting } from "@/components/DataSaverSetting";
 import { ThemeSelector } from "@/components/ThemeSelector";
@@ -358,6 +359,7 @@ export default function AccountPage() {
       <ThemeSelector />
       <DataSaverSetting />
       <BlockedAccounts key={user.id} />
+      <GuideInsightsPanel key={`insights-${user.id}`} />
       <GuideAvailabilityAlerts key={user.id} />
 
       <PushNotificationToggle />

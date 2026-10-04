@@ -1,38 +1,48 @@
-'use client';
+"use client";
 
-import { useRef, useState } from 'react';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import { ArrowTopRightOnSquareIcon, CalendarDaysIcon, HomeIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/hooks/useAuth';
-import { getPlaces, getEvents, getCarListings } from '@/lib/api';
-import { addItineraryStop } from '@/lib/itinerary-api';
-import { formatCarCategory, formatCost, formatEventDateRange } from '@/lib/format';
-import { HttpError } from '@/lib/http';
-import type { Place, Event, CarListing } from '@/lib/types';
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import {
+  ArrowTopRightOnSquareIcon,
+  CalendarDaysIcon,
+  HomeIcon,
+  MapPinIcon,
+  TruckIcon,
+} from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
+import { getPlaces, getEvents, getCarListings } from "@/lib/api";
+import { addItineraryStop } from "@/lib/itinerary-api";
+import {
+  formatCarCategory,
+  formatCost,
+  formatEventDateRange,
+} from "@/lib/format";
+import { HttpError } from "@/lib/http";
+import type { Place, Event, CarListing } from "@/lib/types";
 
-type Tab = 'place' | 'stay' | 'event' | 'carListing';
+type Tab = "place" | "stay" | "event" | "carListing";
 
 type TabResult = Place | Event | CarListing;
 
 const TABS: { key: Tab; icon: typeof MapPinIcon }[] = [
-  { key: 'place', icon: MapPinIcon },
-  { key: 'stay', icon: HomeIcon },
-  { key: 'event', icon: CalendarDaysIcon },
-  { key: 'carListing', icon: TruckIcon },
+  { key: "place", icon: MapPinIcon },
+  { key: "stay", icon: HomeIcon },
+  { key: "event", icon: CalendarDaysIcon },
+  { key: "carListing", icon: TruckIcon },
 ];
 
 function resultTitle(tab: Tab, item: TabResult): string {
-  if (tab === 'carListing') return (item as CarListing).title;
+  if (tab === "carListing") return (item as CarListing).title;
   return (item as Place | Event).name;
 }
 
 function resultSubtitle(tab: Tab, item: TabResult): string | null {
-  if (tab === 'event') {
+  if (tab === "event") {
     const event = item as Event;
     return formatEventDateRange(event.startDate, event.endDate);
   }
-  if (tab === 'carListing') {
+  if (tab === "carListing") {
     const listing = item as CarListing;
     return `${formatCarCategory(listing.category)} · ${formatCost(listing.pricePerDay)}/day`;
   }
@@ -44,8 +54,8 @@ function resultSubtitle(tab: Tab, item: TabResult): string | null {
 // flow, opened in a new tab so browsing photos/reviews/pricing doesn't lose
 // this picker's search results, tab, and day selection.
 function resultHref(tab: Tab, item: TabResult): string {
-  if (tab === 'event') return `/events/${item.id}`;
-  if (tab === 'carListing') return `/car-rentals/${item.id}`;
+  if (tab === "event") return `/events/${item.id}`;
+  if (tab === "carListing") return `/car-rentals/${item.id}`;
   return `/places/${(item as Place).slug}`;
 }
 
@@ -57,14 +67,14 @@ function resultHref(tab: Tab, item: TabResult): string {
 // quick "add to trip" too (see CarListingCard), so someone can go explore
 // and add straight from there instead of coming back to search again.
 function browseAllHref(tab: Tab): string {
-  if (tab === 'event') return '/events';
-  if (tab === 'carListing') return '/car-rentals';
+  if (tab === "event") return "/events";
+  if (tab === "carListing") return "/car-rentals";
   // Explore's own filters are client-side state with no URL-driven initial
   // value (see ExploreMapClient), so it can't be handed a "hotels only"
   // starting point — /search's `type` query param can (see SearchPage),
   // and stays there scoped to the catalog this tab actually searches.
-  if (tab === 'stay') return '/search?type=hotel';
-  return '/explore';
+  if (tab === "stay") return "/search?type=hotel";
+  return "/explore";
 }
 
 // Owner or any collaborator can add a stop — searches the catalog by name
@@ -78,15 +88,22 @@ export function AddTripStop({
   itineraryId,
   durationDays,
   onAdded,
+  onSuggest,
 }: {
   itineraryId: string;
   durationDays: number;
   onAdded: () => void;
+  onSuggest?: (input: {
+    placeId?: string;
+    eventId?: string;
+    carListingId?: string;
+    day: number;
+  }) => Promise<void>;
 }) {
-  const t = useTranslations('trips');
+  const t = useTranslations("trips");
   const { token } = useAuth();
-  const [tab, setTab] = useState<Tab>('place');
-  const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<Tab>("place");
+  const [query, setQuery] = useState("");
   const [day, setDay] = useState(1);
   const [results, setResults] = useState<TabResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -119,16 +136,16 @@ export function AddTripStop({
     setError(null);
     try {
       const res =
-        tab === 'place'
+        tab === "place"
           ? await getPlaces({ q, limit: 5 })
-          : tab === 'stay'
-            ? await getPlaces({ q, type: 'hotel', limit: 5 })
-            : tab === 'event'
+          : tab === "stay"
+            ? await getPlaces({ q, type: "hotel", limit: 5 })
+            : tab === "event"
               ? await getEvents({ search: q, limit: 5 })
               : await getCarListings({ search: q, limit: 5 });
       if (searchTokenRef.current === searchToken) setResults(res.data);
     } catch {
-      if (searchTokenRef.current === searchToken) setError(t('searchFailed'));
+      if (searchTokenRef.current === searchToken) setError(t("searchFailed"));
     } finally {
       if (searchTokenRef.current === searchToken) setSearching(false);
     }
@@ -140,16 +157,17 @@ export function AddTripStop({
     setError(null);
     try {
       const input =
-        tab === 'place' || tab === 'stay'
+        tab === "place" || tab === "stay"
           ? { placeId: item.id, day }
-          : tab === 'event'
+          : tab === "event"
             ? { eventId: item.id, day }
             : { carListingId: item.id, day };
-      await addItineraryStop(token, itineraryId, input);
+      if (onSuggest) await onSuggest(input);
+      else await addItineraryStop(token, itineraryId, input);
       setResults((prev) => prev.filter((r) => r.id !== item.id));
       onAdded();
     } catch (err) {
-      setError(err instanceof HttpError ? err.message : t('couldNotAddPlace'));
+      setError(err instanceof HttpError ? err.message : t("couldNotAddPlace"));
     } finally {
       setAddingId(null);
     }
@@ -157,7 +175,9 @@ export function AddTripStop({
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('addAPlace')}</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+        {onSuggest ? "Suggest a place, event or car" : t("addAPlace")}
+      </p>
 
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map(({ key, icon: Icon }) => (
@@ -167,8 +187,8 @@ export function AddTripStop({
             onClick={() => switchTab(key)}
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
               tab === key
-                ? 'border-brand-600 bg-brand-600 text-white'
-                : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400'
+                ? "border-brand-600 bg-brand-600 text-white"
+                : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400"
             }`}
           >
             <Icon aria-hidden className="h-3.5 w-3.5" />
@@ -183,7 +203,7 @@ export function AddTripStop({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === "Enter") {
               e.preventDefault();
               search();
             }
@@ -197,7 +217,7 @@ export function AddTripStop({
           onClick={search}
           className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-brand-500 hover:text-brand-700 dark:hover:text-brand-300 disabled:opacity-60"
         >
-          {searching ? t('searching') : t('search')}
+          {searching ? t("searching") : t("search")}
         </button>
       </div>
 
@@ -220,17 +240,19 @@ export function AddTripStop({
               onClick={() => setDay(d)}
               className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                 day === d
-                  ? 'border-brand-600 bg-brand-600 text-white'
-                  : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400'
+                  ? "border-brand-600 bg-brand-600 text-white"
+                  : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand-400"
               }`}
             >
-              {t('dayChip', { day: d })}
+              {t("dayChip", { day: d })}
             </button>
           ))}
         </div>
       )}
 
-      {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+      {error && (
+        <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>
+      )}
 
       {results.length > 0 && (
         <ul className="flex flex-col gap-1.5">
@@ -245,11 +267,13 @@ export function AddTripStop({
                   href={resultHref(tab, item)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title={t('viewDetails')}
+                  title={t("viewDetails")}
                   className="group flex min-w-0 flex-1 items-center gap-1 text-sm"
                 >
                   <span className="min-w-0 truncate">
-                    <span className="truncate group-hover:underline">{resultTitle(tab, item)}</span>
+                    <span className="truncate group-hover:underline">
+                      {resultTitle(tab, item)}
+                    </span>
                     {subtitle && (
                       <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                         {subtitle}
@@ -267,7 +291,11 @@ export function AddTripStop({
                   onClick={() => add(item)}
                   className="shrink-0 rounded-full border border-brand-600 px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-60 dark:border-brand-400 dark:text-brand-300 dark:hover:bg-brand-950/30"
                 >
-                  {addingId === item.id ? t('adding') : t('addToDay', { day })}
+                  {addingId === item.id
+                    ? t("adding")
+                    : onSuggest
+                      ? "Suggest"
+                      : t("addToDay", { day })}
                 </button>
               </li>
             );

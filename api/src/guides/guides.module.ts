@@ -1,3 +1,5 @@
+import { GuideInsightsController } from "./guide-insights.controller";
+import { GuideInsightsService } from "./guide-insights.service";
 import { SafetyModule } from "../safety/safety.module";
 import { Module } from "@nestjs/common";
 import { AvailabilityAlertsController } from "./availability-alerts.controller";
@@ -31,8 +33,17 @@ import { GuideChatGateway } from "./guide-chat.gateway";
     AuthModule,
     StorageModule,
   ],
-  controllers: [AvailabilityAlertsController, GuidesController],
-  providers: [GuidesService, GuideChatGateway, AvailabilityAlertsService],
+  controllers: [
+    GuideInsightsController,
+    AvailabilityAlertsController,
+    GuidesController,
+  ],
+  providers: [
+    GuideInsightsService,
+    GuidesService,
+    GuideChatGateway,
+    AvailabilityAlertsService,
+  ],
   exports: [GuidesService],
 })
 export class GuidesModule {}
