@@ -2,12 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  ArrowDownTrayIcon,
   ArrowPathIcon,
+  BanknotesIcon,
   ChatBubbleLeftRightIcon,
-  CheckIcon,
+  DevicePhoneMobileIcon,
+  MapPinIcon,
   PaperAirplaneIcon,
-  XMarkIcon,
+  PhoneIcon,
+  ShoppingBagIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { OrderStepper } from '@/components/orders/OrderStepper';
+import { formatMoney } from '@/lib/currency';
 import { CopyButton } from '@/components/menu/CartSheet';
 import {
   cancelPharmacyOrder,
@@ -20,9 +28,9 @@ import {
 } from '@/lib/pharmacy-api';
 import {
   PAYMENT_LABELS,
-  PAYMENT_STATUS_COPY,
   TIMELINE_LABELS,
   money,
+  pharmacyPaymentBadge,
   saveCart,
   trackerSteps,
 } from '@/lib/pharmacy-ordering';
@@ -31,62 +39,107 @@ function errorText(e: unknown, fallback: string) {
   return e instanceof Error && e.message ? e.message : fallback;
 }
 
-/** Where the order is, step by step, with the time of each step so far. */
+/** Where the order is: the same labelled progress line as restaurant orders. */
 export function PharmacyOrderTracker({ order }: { order: PharmacyOrder }) {
   if (order.status === 'cancelled' || order.status === 'rejected') return null;
-  const steps = trackerSteps(order);
-  const timeOf = new Map<string, string>();
-  for (const entry of order.timeline ?? []) {
-    const key =
-      entry.key === 'rx_accepted' ? 'rx'
-        : entry.key === 'payment_confirmed' ? 'payment'
-        : entry.key === 'ready_for_pickup' || entry.key === 'out_for_delivery' ? 'handover'
-        : entry.key;
-    if (!timeOf.has(key)) timeOf.set(key, entry.at);
-  }
-  const time = (iso?: string) =>
-    iso ? new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
+  return <OrderStepper steps={trackerSteps(order)} />;
+}
 
+/** How the order reaches the customer and how it's paid, like FoodOrderDetails. */
+export function PharmacyOrderDetails({ order }: { order: PharmacyOrder }) {
+  const delivery = order.fulfillmentMethod === 'delivery';
+  const method = order.paymentMethod ?? 'cash';
+  const mobile = method !== 'cash';
+  const badge = pharmacyPaymentBadge(order);
   return (
-    <ol aria-label="Order progress" className="mt-4 flex flex-col">
-      {steps.map((step, i) => (
-        <li key={step.key} className="flex gap-3">
-          <div className="flex flex-col items-center">
-            <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                step.state === 'done'
-                  ? 'bg-emerald-600 text-white'
-                  : step.state === 'current'
-                    ? 'bg-white text-emerald-700 ring-2 ring-emerald-600 dark:bg-slate-900 dark:text-emerald-300'
-                    : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
-              }`}
+    <dl className="grid gap-2 rounded-2xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50 sm:grid-cols-2">
+      <div className="flex items-start gap-2">
+        <dt className="sr-only">Fulfillment</dt>
+        {delivery ? (
+          <TruckIcon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300" />
+        ) : (
+          <ShoppingBagIcon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300" />
+        )}
+        <dd className="min-w-0">
+          <p className="font-semibold text-slate-900 dark:text-slate-50">{delivery ? 'Delivery' : 'Pickup'}</p>
+          {delivery && order.deliveryAddress && (
+            <p className="flex items-start gap-1 text-slate-600 dark:text-slate-300">
+              <MapPinIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="break-words">{order.deliveryAddress}</span>
+            </p>
+          )}
+          {order.contactPhone && (
+            <a
+              href={`tel:${order.contactPhone.replace(/[^+0-9]/g, '')}`}
+              className="flex items-center gap-1 text-brand-700 hover:underline dark:text-brand-300"
             >
-              {step.state === 'done' ? <CheckIcon aria-hidden className="h-4 w-4" /> : i + 1}
+              <PhoneIcon aria-hidden className="h-4 w-4" />
+              {order.contactPhone}
+            </a>
+          )}
+        </dd>
+      </div>
+      <div className="flex items-start gap-2">
+        <dt className="sr-only">Payment</dt>
+        {mobile ? (
+          <DevicePhoneMobileIcon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300" />
+        ) : (
+          <BanknotesIcon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-700 dark:text-brand-300" />
+        )}
+        <dd className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900 dark:text-slate-50">
+            {PAYMENT_LABELS[method]}
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${badge.style}`}>{badge.label}</span>
+          </p>
+          {mobile && order.paymentReference && (
+            <p className="text-slate-600 dark:text-slate-300">
+              Transaction ID <span className="font-mono font-semibold">{order.paymentReference}</span>
+            </p>
+          )}
+          {mobile && order.paymentAccount && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">Sent to {order.paymentAccount}</p>
+          )}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+/** Line items and total, like FoodOrderLines. */
+export function PharmacyOrderLines({ order, className = '' }: { order: PharmacyOrder; className?: string }) {
+  const lrd = (n: number | string) => formatMoney(Number(n), 'LRD');
+  return (
+    <div className={className}>
+      <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+        {(order.items ?? []).map((item) => (
+          <li key={item.id} className="flex items-start justify-between gap-3 py-1.5">
+            <span className="min-w-0 text-slate-700 dark:text-slate-200">
+              <span className="font-semibold">{item.quantity} ×</span> {item.name}
+              {item.prescriptionRequired && (
+                <span className="block text-xs text-slate-500 dark:text-slate-400">Prescription medicine</span>
+              )}
             </span>
-            {i < steps.length - 1 && (
-              <span aria-hidden className={`w-0.5 flex-1 min-h-4 ${step.state === 'done' ? 'bg-emerald-600' : 'bg-slate-200 dark:bg-slate-700'}`} />
-            )}
-          </div>
-          <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2 pb-3">
-            <span
-              className={`text-sm ${
-                step.state === 'upcoming'
-                  ? 'text-slate-400'
-                  : step.state === 'current'
-                    ? 'font-bold text-slate-950 dark:text-slate-50'
-                    : 'font-medium text-slate-700 dark:text-slate-200'
-              }`}
-            >
-              {step.label}
-              {step.state === 'current' && <span className="sr-only"> (now)</span>}
-            </span>
-            {step.state === 'done' && time(timeOf.get(step.key)) && (
-              <span className="shrink-0 text-xs text-slate-400">{time(timeOf.get(step.key))}</span>
-            )}
-          </div>
-        </li>
-      ))}
-    </ol>
+            <span className="shrink-0 text-slate-500 dark:text-slate-400">{lrd(Number(item.unitPrice) * item.quantity)}</span>
+          </li>
+        ))}
+      </ul>
+      {order.fulfillmentMethod === 'delivery' && (
+        <div className="mt-1.5 flex flex-col gap-0.5 border-t border-slate-100 pt-1.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <span className="flex items-center justify-between">
+            <span>Subtotal</span>
+            <span>{lrd(order.productSubtotal)}</span>
+          </span>
+          <span className="flex items-center justify-between">
+            <span>Delivery</span>
+            <span>{Number(order.deliveryFee) > 0 ? lrd(order.deliveryFee) : 'Free'}</span>
+          </span>
+        </div>
+      )}
+      <div className="mt-1.5 flex items-center justify-between border-t border-slate-100 pt-1.5 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-50">
+        <span>Total</span>
+        <span>{lrd(order.finalTotal)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -122,29 +175,31 @@ export function PharmacyPaymentPanel({ order, onChanged }: { order: PharmacyOrde
   }
 
   if (!yourMove) {
-    const tone =
-      status === 'paid' || status === 'refunded'
-        ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200'
-        : status === 'refund_due' || status === 'failed'
-          ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'
-          : 'bg-slate-50 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200';
-    const waitingRx = method !== 'cash' && status === 'awaiting_payment' && order.status === 'under_review';
-    return (
-      <p className={`mt-3 rounded-2xl px-4 py-3 text-sm ${tone}`}>
-        <strong>{PAYMENT_LABELS[method]}</strong> ·{' '}
-        {waitingRx
-          ? 'You’ll pay once the pharmacist approves your prescription.'
-          : PAYMENT_STATUS_COPY[status]}
-        {status === 'awaiting_verification' && order.paymentReference && (
-          <span className="block text-xs opacity-80">Transaction {order.paymentReference}</span>
-        )}
-      </p>
-    );
+    const pharmacyName = order.pharmacy?.name ?? 'The pharmacy';
+    if (method !== 'cash' && status === 'awaiting_payment' && order.status === 'under_review')
+      return (
+        <p className="rounded-xl bg-sky-50 p-2.5 text-sm text-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
+          You&apos;ll pay by {PAYMENT_LABELS[method]} once the pharmacist approves your prescription.
+        </p>
+      );
+    if (status === 'awaiting_verification' && !closed)
+      return (
+        <p className="rounded-xl bg-amber-50 p-2.5 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          {pharmacyName} is checking your payment and will prepare your order once it arrives.
+        </p>
+      );
+    if (status === 'refund_due')
+      return (
+        <p className="rounded-xl bg-orange-50 p-2.5 text-sm text-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
+          A refund of your payment is due from the pharmacy. Message them if it doesn&apos;t arrive soon.
+        </p>
+      );
+    return null;
   }
 
   return (
-    <div className="mt-3 flex flex-col gap-3 rounded-3xl border-2 border-emerald-600 bg-emerald-50/60 p-4 dark:bg-emerald-950/20">
-      <p className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
+    <div className="flex flex-col gap-3 rounded-2xl border-2 border-brand-600 bg-brand-50/60 p-4 dark:bg-brand-950/20">
+      <p className="font-display text-base font-bold text-slate-950 dark:text-slate-50">
         {status === 'failed' ? 'Payment not found — try again' : 'Pay now to get your order prepared'}
       </p>
       <p className="text-sm text-slate-700 dark:text-slate-200">
@@ -184,13 +239,26 @@ export function PharmacyOrderChat({
   unread = 0,
   side,
   title,
+  open: controlledOpen,
+  onOpenChange,
+  showToggle = true,
 }: {
   orderId: string;
   unread?: number;
   side: 'customer' | 'pharmacy';
   title: string;
+  // Controlled when the toggle lives elsewhere (the order card's action row).
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showToggle?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = (next: boolean | ((o: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(open) : next;
+    setOwnOpen(value);
+    onOpenChange?.(value);
+  };
   const [messages, setMessages] = useState<PharmacyOrderMessage[] | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -244,7 +312,8 @@ export function PharmacyOrderChat({
   const mine = (m: PharmacyOrderMessage) => (side === 'pharmacy' ? m.fromPharmacy : !m.fromPharmacy);
 
   return (
-    <div className="mt-3">
+    <div className={showToggle ? 'mt-3' : ''}>
+      {showToggle && (
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -257,8 +326,9 @@ export function PharmacyOrderChat({
           <span className="rounded-full bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">{unseen}</span>
         )}
       </button>
+      )}
       {open && (
-        <div className="mt-2 flex flex-col gap-2 rounded-3xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
+        <div className={`${showToggle ? 'mt-2' : ''} flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60`}>
           <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
             {messages === null ? (
               <p className="text-sm text-slate-500">Loading…</p>
@@ -313,12 +383,31 @@ export function PharmacyOrderChat({
   );
 }
 
-/** "Order again" and "Cancel order" for the customer. */
-export function PharmacyOrderActions({ order, onChanged }: { order: PharmacyOrder; onChanged: (o: PharmacyOrder) => void }) {
+/**
+ * The card's action row, laid out like the restaurant card's: message the
+ * pharmacy, order again, cancel (with the same confirm dialog), receipt.
+ */
+export function PharmacyOrderActions({
+  order,
+  onChanged,
+  chatOpen,
+  onToggleChat,
+  unread = 0,
+  receiptUrl,
+}: {
+  order: PharmacyOrder;
+  onChanged: (o: PharmacyOrder) => void;
+  chatOpen: boolean;
+  onToggleChat: () => void;
+  unread?: number;
+  receiptUrl?: string;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<'cancel' | 'reorder' | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const cancellable = ['pending', 'under_review', 'accepted'].includes(order.status);
+  const paid = order.paymentStatus === 'paid' || order.paymentStatus === 'awaiting_verification';
 
   async function reorder() {
     setBusy('reorder');
@@ -344,57 +433,79 @@ export function PharmacyOrderActions({ order, onChanged }: { order: PharmacyOrde
 
   async function cancel() {
     setBusy('cancel');
-    setNote(null);
+    setCancelError(null);
     try {
       onChanged(await cancelPharmacyOrder(order.id));
       setConfirming(false);
     } catch (e) {
-      setNote(errorText(e, 'Could not cancel the order.'));
+      setCancelError(errorText(e, 'Could not cancel the order.'));
     } finally {
       setBusy(null);
     }
   }
 
   return (
-    <div className="mt-3 flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
+    <>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={onToggleChat}
+          aria-expanded={chatOpen}
+          className="flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+        >
+          <ChatBubbleLeftRightIcon aria-hidden className="h-4 w-4" />
+          Message the pharmacy
+          {unread > 0 && (
+            <span className="rounded-full bg-rose-600 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">{unread}</span>
+          )}
+        </button>
         <button
           type="button"
           onClick={reorder}
           disabled={busy !== null}
-          className="inline-flex min-h-10 items-center gap-2 rounded-full bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+          className="flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline disabled:opacity-60 dark:text-brand-300"
         >
           <ArrowPathIcon aria-hidden className="h-4 w-4" />
           {busy === 'reorder' ? 'Loading…' : 'Order again'}
         </button>
-        {cancellable && !confirming && (
+        {receiptUrl && (
+          <a href={receiptUrl} download className="flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
+            <ArrowDownTrayIcon aria-hidden className="h-4 w-4" />
+            Download receipt
+          </a>
+        )}
+        {cancellable && (
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-rose-300 hover:text-rose-700 dark:border-slate-700 dark:text-slate-200"
+            className="text-sm font-semibold text-red-600 hover:underline dark:text-red-400"
           >
-            <XMarkIcon aria-hidden className="h-4 w-4" />
             Cancel order
           </button>
         )}
       </div>
-      {confirming && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-rose-50 p-3 text-sm text-rose-900 dark:bg-rose-950/40 dark:text-rose-200">
-          <span className="flex-1">
-            Cancel this order?
-            {(order.paymentStatus === 'paid' || order.paymentStatus === 'awaiting_verification') &&
-              ' The pharmacy will refund your mobile money.'}
-          </span>
-          <button type="button" onClick={cancel} disabled={busy !== null} className="min-h-9 rounded-full bg-rose-600 px-4 font-semibold text-white hover:bg-rose-700">
-            {busy === 'cancel' ? 'Cancelling…' : 'Yes, cancel'}
-          </button>
-          <button type="button" onClick={() => setConfirming(false)} className="min-h-9 rounded-full px-3 font-semibold">
-            Keep it
-          </button>
-        </div>
-      )}
-      {note && <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">{note}</p>}
-    </div>
+      {note && <p role="alert" className="mt-2 text-sm text-amber-800 dark:text-amber-300">{note}</p>}
+      <ConfirmDialog
+        open={confirming}
+        title="Cancel this order?"
+        description={
+          paid
+            ? 'The pharmacy will be notified and will refund your mobile money.'
+            : "The pharmacy will be notified that you've cancelled."
+        }
+        confirmLabel="Cancel order"
+        cancelLabel="Keep order"
+        loadingLabel="Cancelling…"
+        isLoading={busy === 'cancel'}
+        error={cancelError}
+        onConfirm={cancel}
+        onCancel={() => {
+          if (busy === 'cancel') return;
+          setConfirming(false);
+          setCancelError(null);
+        }}
+      />
+    </>
   );
 }
 

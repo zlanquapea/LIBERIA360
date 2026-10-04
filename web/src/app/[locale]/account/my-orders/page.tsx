@@ -32,9 +32,15 @@ import {
   OrderPrescriptionNote,
   PharmacyOrderActions,
   PharmacyOrderChat,
+  PharmacyOrderDetails,
+  PharmacyOrderLines,
   PharmacyOrderTracker,
   PharmacyPaymentPanel,
 } from "@/components/pharmacy/PharmacyOrderParts";
+import {
+  PHARMACY_ORDER_STATUS_LABELS,
+  pharmacyStatusBadgeClass,
+} from "@/lib/pharmacy-ordering";
 
 function statusBadgeClass(status: FoodOrder["status"]) {
   if (
@@ -61,38 +67,6 @@ function statusBadgeClass(status: FoodOrder["status"]) {
 // that actually apply to it (a food order's restaurant thread vs. a
 // pharmacy order's prescription/receipt/feedback flow), but they now share
 // one chronological list, one loading state, and one empty state.
-const PHARMACY_STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  under_review: "Under review",
-  accepted: "Accepted",
-  preparing: "Preparing",
-  ready_for_pickup: "Ready for pickup",
-  out_for_delivery: "Out for delivery",
-  completed: "Completed",
-  rejected: "Rejected",
-  cancelled: "Cancelled",
-};
-// Same grouping as the pharmacy dashboard's own status pills — amber while
-// something needs to happen, blue/violet while it's actively moving,
-// emerald/red/slate once it's settled — kept in sync deliberately so a
-// customer and pharmacy staff describe the same order with the same color.
-const PHARMACY_STATUS_STYLES: Record<string, string> = {
-  pending:
-    "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  under_review:
-    "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
-  accepted: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
-  preparing: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
-  ready_for_pickup:
-    "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300",
-  out_for_delivery:
-    "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300",
-  completed:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300",
-  cancelled:
-    "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-};
 // Inline reply form for a pharmacy order whose prescription review came
 // back "clarification_requested" (see PharmaciesService.review()) —
 // without this the order just sat at "under_review" forever with no way
@@ -286,90 +260,98 @@ function PharmacyOrderCard({
     comment: string | null;
   }) => void;
 }) {
+  // Same layout as a restaurant order card: who, when and status; the
+  // progress line; how it arrives and how it's paid; the lines and total;
+  // then one row of actions.
+  const [chatOpen, setChatOpen] = useState(false);
+  const name = o.pharmacy?.name ?? "Pharmacy";
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800">
-        <div>
-          <h2 className="font-bold text-slate-900 dark:text-slate-50">
-            Order #{o.id.slice(0, 8).toUpperCase()}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {new Date(o.createdAt).toLocaleDateString(undefined, {
+    <article className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {o.pharmacy?.slug ? (
+            <Link
+              href={`/pharmacies/${o.pharmacy.slug}`}
+              className="font-display text-lg font-bold text-slate-950 hover:underline dark:text-slate-50"
+            >
+              {name}
+            </Link>
+          ) : (
+            <p className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
+              {name}
+            </p>
+          )}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {new Date(o.createdAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             })}{" "}
-            · {o.fulfillmentMethod === "delivery" ? "Delivery" : "Pickup"} ·
-            Pharmacy
-            {o.pharmacy?.name && ` · ${o.pharmacy.name}`}
+            · Pharmacy · Order #{o.id.slice(0, 8).toUpperCase()}
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${PHARMACY_STATUS_STYLES[o.status] ?? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold uppercase ${pharmacyStatusBadgeClass(o.status)}`}
         >
-          {PHARMACY_STATUS_LABELS[o.status] ?? o.status}
+          {PHARMACY_ORDER_STATUS_LABELS[o.status] ?? o.status}
         </span>
       </div>
-      <div className="p-5">
+
+      <div className="mt-4 flex flex-col gap-3">
         <PharmacyOrderTracker order={o} />
-        <OrderPrescriptionNote order={o} />
-        {o.items && o.items.length > 0 && (
-          <ul className="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
-            {o.items.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-3 py-2"
-              >
-                <span className="text-slate-700 dark:text-slate-300">
-                  {item.name}{" "}
-                  <span className="text-slate-400">× {item.quantity}</span>
-                </span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  L${(Number(item.unitPrice) * item.quantity).toFixed(2)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 font-bold text-slate-900 dark:border-slate-800 dark:text-slate-50">
-          <span>Total</span>
-          <span>L${Number(o.finalTotal).toFixed(2)}</span>
-        </p>
+        <PharmacyOrderDetails order={o} />
         <PharmacyPaymentPanel order={o} onChanged={onChanged} />
         {o.status === "under_review" &&
           o.latestReviewDecision === "clarification_requested" && (
             <ClarificationReply order={o} onResubmitted={onResubmitted} />
           )}
-        <PharmacyOrderChat
-          orderId={o.id}
-          unread={o.unreadMessages ?? 0}
-          side="customer"
-          title={`Message ${o.pharmacy?.name ?? "the pharmacy"}`}
-        />
-        <PharmacyOrderActions order={o} onChanged={onChanged} />
         {o.status === "cancelled" && (
-          <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-300">
-            This order was cancelled. Contact the pharmacy if you believe this
+          <p className="rounded-xl bg-slate-50 p-2.5 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
+            This order was cancelled. Message the pharmacy if you think this
             was a mistake.
           </p>
         )}
-        {o.status === "completed" && (
-          <>
-            <a
-              href={pharmacyOrderReceiptUrl(o.id)}
-              download
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
-            >
-              <ArrowDownTrayIcon aria-hidden className="h-4 w-4" />
-              Download receipt
-            </a>
-            <PharmacyFeedbackPrompt
-              order={o}
-              onSubmitted={onFeedbackSubmitted}
-            />
-          </>
+        {o.status === "rejected" && (
+          <p className="rounded-xl bg-red-50 p-2.5 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+            The pharmacist couldn&apos;t accept this order
+            {o.latestReviewNotes ? `: ${o.latestReviewNotes}` : "."}
+          </p>
         )}
       </div>
+
+      <OrderPrescriptionNote order={o} />
+      <PharmacyOrderLines order={o} className="mt-3" />
+
+      {o.customerNote && (
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          Note: {o.customerNote}
+        </p>
+      )}
+
+      <PharmacyOrderActions
+        order={o}
+        onChanged={onChanged}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen((open) => !open)}
+        unread={chatOpen ? 0 : (o.unreadMessages ?? 0)}
+        receiptUrl={
+          o.status === "completed" ? pharmacyOrderReceiptUrl(o.id) : undefined
+        }
+      />
+      {chatOpen && (
+        <div className="mt-3">
+          <PharmacyOrderChat
+            orderId={o.id}
+            side="customer"
+            title={`Message ${name}`}
+            open
+            showToggle={false}
+          />
+        </div>
+      )}
+      {o.status === "completed" && (
+        <PharmacyFeedbackPrompt order={o} onSubmitted={onFeedbackSubmitted} />
+      )}
     </article>
   );
 }

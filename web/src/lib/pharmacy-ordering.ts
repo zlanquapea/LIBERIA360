@@ -147,7 +147,7 @@ export function trackerSteps(order: Pick<PharmacyOrder, 'status' | 'fulfillmentM
   const mobile = order.paymentMethod && order.paymentMethod !== 'cash';
   const delivery = order.fulfillmentMethod === 'delivery';
   const steps: Array<{ key: string; label: string; done: boolean }> = [
-    { key: 'placed', label: 'Order placed', done: true },
+    { key: 'placed', label: 'Placed', done: true },
   ];
   const statusRank: Record<string, number> = {
     pending: 0,
@@ -159,22 +159,26 @@ export function trackerSteps(order: Pick<PharmacyOrder, 'status' | 'fulfillmentM
     completed: 4,
   };
   const rank = statusRank[order.status] ?? 0;
-  if (rx) steps.push({ key: 'rx', label: 'Pharmacist checks prescription', done: rank >= 1 });
-  else steps.push({ key: 'accepted', label: 'Pharmacy accepts', done: rank >= 1 });
+  if (rx) steps.push({ key: 'rx', label: 'Rx checked', done: rank >= 1 });
+  else steps.push({ key: 'accepted', label: 'Confirmed', done: rank >= 1 });
   if (mobile)
     steps.push({
       key: 'payment',
-      label: 'Payment confirmed',
+      label: 'Paid',
       done: order.paymentStatus === 'paid' || order.paymentStatus === 'refunded' || rank >= 2,
     });
-  steps.push({ key: 'preparing', label: 'Being prepared', done: rank >= 2 });
-  steps.push({ key: 'handover', label: delivery ? 'On the way' : 'Ready to collect', done: rank >= 3 });
-  steps.push({ key: 'completed', label: delivery ? 'Delivered' : 'Collected', done: rank >= 4 });
+  steps.push({ key: 'preparing', label: 'Preparing', done: rank >= 2 });
+  steps.push({ key: 'handover', label: delivery ? 'On the way' : 'Ready', done: rank >= 3 });
+  steps.push({ key: 'completed', label: delivery ? 'Delivered' : 'Picked up', done: rank >= 4 });
+  // Like the restaurant tracker, the step the order has reached is the
+  // highlighted one; the order's finished only once it's completed.
   const firstOpen = steps.findIndex((s) => !s.done);
+  const reached = firstOpen < 0 ? steps.length - 1 : firstOpen - 1;
+  const finished = order.status === 'completed';
   return steps.map((s, i) => ({
     key: s.key,
     label: s.label,
-    state: s.done ? 'done' : i === firstOpen ? 'current' : 'upcoming',
+    state: i === reached && !finished ? 'current' : s.done ? 'done' : 'upcoming',
   }));
 }
 
@@ -187,6 +191,48 @@ export const PAYMENT_STATUS_COPY: Record<PharmacyPaymentStatus, string> = {
   refund_due: 'Refund on the way',
   refunded: 'Refunded',
 };
+
+/** Order status in the same words the restaurant orders use. */
+export const PHARMACY_ORDER_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  under_review: 'Checking prescription',
+  accepted: 'Confirmed',
+  preparing: 'Preparing',
+  ready_for_pickup: 'Ready',
+  out_for_delivery: 'Out for delivery',
+  completed: 'Completed',
+  rejected: 'Declined',
+  cancelled: 'Cancelled',
+};
+
+/** Same colours as the restaurant order badge. */
+export function pharmacyStatusBadgeClass(status: string) {
+  if (['accepted', 'preparing', 'ready_for_pickup', 'out_for_delivery'].includes(status))
+    return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
+  if (status === 'pending' || status === 'under_review')
+    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
+  if (status === 'rejected') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
+  return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+}
+
+/** Short payment badge, matching the restaurant one ("Cash · Paid"). */
+export const PHARMACY_PAYMENT_BADGES: Record<PharmacyPaymentStatus, { label: string; style: string }> = {
+  pay_on_collection: { label: 'Pay on delivery', style: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+  awaiting_payment: { label: 'Not paid yet', style: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+  awaiting_verification: { label: 'Payment being verified', style: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
+  paid: { label: 'Paid', style: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' },
+  failed: { label: 'Payment not found', style: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200' },
+  refund_due: { label: 'Refund due', style: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' },
+  refunded: { label: 'Refunded', style: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200' },
+};
+
+export function pharmacyPaymentBadge(order: Pick<PharmacyOrder, 'paymentStatus' | 'fulfillmentMethod'>) {
+  const status = order.paymentStatus ?? 'pay_on_collection';
+  const badge = PHARMACY_PAYMENT_BADGES[status];
+  if (status === 'pay_on_collection' && order.fulfillmentMethod !== 'delivery')
+    return { ...badge, label: 'Pay at pickup' };
+  return badge;
+}
 
 export const TIMELINE_LABELS: Record<string, string> = {
   placed: 'Order placed',
