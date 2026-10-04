@@ -857,5 +857,54 @@
     "ratingLabel": "Noté {rating} sur 5 ({count, plural, one {# avis} other {# avis}})",
     "free": "Entrée gratuite",
     "entry": "Entrée {price}"
+  },
+  "eventTicket": {
+    "live": "En direct",
+    "today": "Aujourd’hui",
+    "tomorrow": "Demain",
+    "inDays": "Dans {count} jours",
+    "admitOne": "Entrée",
+    "free": "Gratuit",
+    "from": "Dès {price}",
+    "going": "{count} participants",
+    "interested": "{count} intéressés"
+  },
+  "boardingPass": {
+    "title": "Carte d’embarquement",
+    "date": "Date",
+    "days": "Jours",
+    "travellers": "Voyageurs",
+    "seats": "Places",
+    "flexible": "Flexible",
+    "open": "Ouvert",
+    "full": "Complet",
+    "left": "{count} restantes",
+    "anywhere": "Liberia",
+    "organizer": "Organisé par {name}",
+    "communityTrip": "Voyage communautaire"
+  },
+  "featuredCard": {
+    "featured": "À la une",
+    "explore": "Découvrir"
+  },
+  "carCard": {
+    "seats": "Places",
+    "gearbox": "Boîte",
+    "fuel": "Carburant",
+    "driver": "Chauffeur",
+    "driverYes": "Oui",
+    "driverNo": "Seul",
+    "instantBook": "Réservation immédiate",
+    "delivery": "Livraison",
+    "perDay": "/jour",
+    "perHour": "ou {price}/h",
+    "view": "Voir"
+  },
+  "creatorCard": {
+    "followers": "Abonnés",
+    "rating": "Note",
+    "years": "Années",
+    "verified": "Créateur vérifié",
+    "featured": "À la une"
   }
 }

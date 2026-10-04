@@ -857,5 +857,54 @@
     "ratingLabel": "Rated {rating} out of 5 from {count, plural, one {# review} other {# reviews}}",
     "free": "Free entry",
     "entry": "{price} entry"
+  },
+  "eventTicket": {
+    "live": "Live now",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays": "In {count} days",
+    "admitOne": "Admit one",
+    "free": "Free",
+    "from": "From {price}",
+    "going": "{count} going",
+    "interested": "{count} interested"
+  },
+  "boardingPass": {
+    "title": "Boarding pass",
+    "date": "Date",
+    "days": "Days",
+    "travellers": "Travellers",
+    "seats": "Seats",
+    "flexible": "Flexible",
+    "open": "Open",
+    "full": "Full",
+    "left": "{count} left",
+    "anywhere": "Liberia",
+    "organizer": "Organised by {name}",
+    "communityTrip": "Community trip"
+  },
+  "featuredCard": {
+    "featured": "Featured",
+    "explore": "Explore"
+  },
+  "carCard": {
+    "seats": "Seats",
+    "gearbox": "Gearbox",
+    "fuel": "Fuel",
+    "driver": "Driver",
+    "driverYes": "Yes",
+    "driverNo": "Self",
+    "instantBook": "Instant Book",
+    "delivery": "Delivery",
+    "perDay": "/day",
+    "perHour": "or {price}/hr",
+    "view": "View"
+  },
+  "creatorCard": {
+    "followers": "Followers",
+    "rating": "Rating",
+    "years": "Years",
+    "verified": "Verified creator",
+    "featured": "Featured"
   }
 }

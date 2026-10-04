@@ -857,5 +857,54 @@
     "ratingLabel": "评分 {rating}/5，共 {count} 条评价",
     "free": "免费入场",
     "entry": "门票 {price}"
+  },
+  "eventTicket": {
+    "live": "正在进行",
+    "today": "今天",
+    "tomorrow": "明天",
+    "inDays": "{count} 天后",
+    "admitOne": "入场券",
+    "free": "免费",
+    "from": "{price} 起",
+    "going": "{count} 人参加",
+    "interested": "{count} 人感兴趣"
+  },
+  "boardingPass": {
+    "title": "登机牌",
+    "date": "日期",
+    "days": "天数",
+    "travellers": "旅行者",
+    "seats": "名额",
+    "flexible": "灵活",
+    "open": "开放",
+    "full": "已满",
+    "left": "剩 {count} 个",
+    "anywhere": "利比里亚",
+    "organizer": "组织者：{name}",
+    "communityTrip": "社区行程"
+  },
+  "featuredCard": {
+    "featured": "精选",
+    "explore": "探索"
+  },
+  "carCard": {
+    "seats": "座位",
+    "gearbox": "变速箱",
+    "fuel": "燃料",
+    "driver": "司机",
+    "driverYes": "可选",
+    "driverNo": "自驾",
+    "instantBook": "即时预订",
+    "delivery": "送车上门",
+    "perDay": "/天",
+    "perHour": "或 {price}/小时",
+    "view": "查看"
+  },
+  "creatorCard": {
+    "followers": "粉丝",
+    "rating": "评分",
+    "years": "年经验",
+    "verified": "认证创作者",
+    "featured": "精选"
   }
 }

@@ -107,11 +107,12 @@ export function FeaturedPlacementsCarousel({
               ref={(el) => {
                 cardEls.current[i] = el;
               }}
-              className="w-72 shrink-0 snap-start sm:w-80"
+              className="w-[86%] shrink-0 snap-center sm:w-[32rem] lg:w-[38rem]"
             >
               <FeaturedDestinationCard
                 place={placement.place}
                 verificationStatus={placement.verificationStatus}
+                active={i === activeIndex}
               />
             </div>
           ))}

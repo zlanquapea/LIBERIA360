@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithMessages as render } from "@/test/render-with-messages";
 import { CarListingCard } from "./CarListingCard";
 import type { CarListing } from "@/lib/types";
 
@@ -100,7 +101,7 @@ describe("CarListingCard", () => {
     expect(loginLink).toHaveAttribute("href", expect.stringMatching(/^\/login\?next=/));
   });
 
-  it("shows Instant Book and Delivery available pills when the listing opts in", () => {
+  it("shows Instant Book and Delivery pills when the listing opts in", () => {
     render(
       <CarListingCard
         listing={{
@@ -111,22 +112,32 @@ describe("CarListingCard", () => {
       />,
     );
     expect(screen.getByText(/instant book/i)).toBeInTheDocument();
-    expect(screen.getByText(/delivery available/i)).toBeInTheDocument();
+    expect(screen.getByText(/^delivery$/i)).toBeInTheDocument();
   });
 
   it("omits the pills entirely for a plain listing with neither feature", () => {
     render(<CarListingCard listing={LISTING} />);
     expect(screen.queryByText(/instant book/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/delivery available/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^delivery$/i)).not.toBeInTheDocument();
   });
 
-  it("shows a not-yet-rated rating line until the listing has reviews", () => {
+  it("calls an unreviewed listing New rather than Not yet rated", () => {
     render(<CarListingCard listing={LISTING} />);
-    expect(screen.getByText(/not yet rated/i)).toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+    expect(screen.queryByText(/not yet rated/i)).not.toBeInTheDocument();
   });
 
   it("shows the numeric rating and review count once reviewed", () => {
     render(<CarListingCard listing={{ ...LISTING, rating: 4.5, reviewCount: 3 }} />);
-    expect(screen.getByText(/4\.5 \(3 reviews\)/i)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Rated 4.5 out of 5 from 3 reviews" })).toBeInTheDocument();
+  });
+
+  it("shows the spec cluster and the day rate readout", () => {
+    render(<CarListingCard listing={LISTING} />);
+    for (const label of ["Seats", "Gearbox", "Fuel", "Driver"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+    expect(screen.getByText(String(LISTING.seats))).toBeInTheDocument();
+    expect(screen.getByText("/day")).toBeInTheDocument();
   });
 });
