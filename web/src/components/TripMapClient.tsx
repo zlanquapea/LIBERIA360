@@ -23,11 +23,11 @@ const DAY_COLORS = [
   '#dc2626',
 ];
 
-function dayPinIcon(day: number) {
+function dayPinIcon(day: number, label: number = day) {
   const color = DAY_COLORS[(day - 1) % DAY_COLORS.length];
   return L.divIcon({
     className: '',
-    html: `<div style="background:${color}" class="flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-md">${day}</div>`,
+    html: `<div style="background:${color}" class="flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white shadow-md">${label}</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16],
@@ -47,7 +47,9 @@ function stopTitle(stop: ItineraryStopDetail): string {
 // latitude/longitude at all (only a county + free-text pickup location),
 // so a car-rental stop never gets a pin here. See this component's own
 // TripMapLoader for the "nothing to plot" gate.
-export function TripMapClient({ stops }: { stops: ItineraryStopDetail[] }) {
+// `numbered` labels each pin with its position in the route (stop.order + 1)
+// instead of its day — for a guide whose stops are numbered on the page.
+export function TripMapClient({ stops, numbered = false }: { stops: ItineraryStopDetail[]; numbered?: boolean }) {
   const t = useTranslations('trips');
   const pins = stops
     .map((stop) => {
@@ -73,7 +75,7 @@ export function TripMapClient({ stops }: { stops: ItineraryStopDetail[] }) {
           <Marker
             key={`${stop.day}-${stop.order}-${itemId}`}
             position={coords}
-            icon={dayPinIcon(stop.day)}
+            icon={dayPinIcon(stop.day, numbered ? stop.order + 1 : stop.day)}
           >
             <Popup>
               <div className="flex flex-col gap-1">

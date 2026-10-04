@@ -1654,3 +1654,49 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
   .lib-journal__cover, .lib-journal__snap { transition: none; }
   .lib-journal:hover .lib-journal__cover, [dir="rtl"] .lib-journal:hover .lib-journal__cover { transform: none; }
 }
+
+/* County locator: the current county's tile breathes a soft halo so the
+   eye finds it on the small map. */
+.lib-locator-pulse { position: relative; }
+.lib-locator-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 rgb(249 115 22 / 0.55);
+  animation: lib-locator-pulse 2.4s ease-out infinite;
+}
+@keyframes lib-locator-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(249 115 22 / 0.55); }
+  70%, 100% { box-shadow: 0 0 0 10px rgb(249 115 22 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-locator-pulse::after { animation: none; }
+}
+
+/* Guide journal page: the same ruled paper as the guide card's cover,
+   used for the header spread and each journal entry, plus ink stamps for
+   the at-a-glance facts. */
+.lib-paper {
+  background-color: #fbf5e6;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgb(120 160 190 / 0.16) 31px 32px);
+}
+:root.dark .lib-paper, .dark .lib-paper {
+  background-color: rgb(30 41 59);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgb(148 163 184 / 0.1) 31px 32px);
+}
+.lib-stamp {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid rgb(194 65 12 / 0.75);
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(194 65 12);
+  transform: rotate(-1.5deg);
+}
+.lib-stamp:nth-child(even) { transform: rotate(1.2deg); }
+:root.dark .lib-stamp, .dark .lib-stamp { color: rgb(253 186 116); border-color: rgb(253 186 116 / 0.6); }

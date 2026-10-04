@@ -1,36 +1,28 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import {
-  CalendarDaysIcon,
-  ChatBubbleLeftRightIcon,
-  ClockIcon,
-  EnvelopeIcon,
-  GlobeAltIcon,
-  MapPinIcon,
-  PaperAirplaneIcon,
-  PhoneIcon,
-} from '@heroicons/react/24/outline';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { ArrowRightIcon, EnvelopeIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { ApiError, getBusinessBySlug, getBusinessContent, getMenuItems, getMenuSettings, getReviews } from '@/lib/api';
 import { colorForCategory } from '@/lib/category-colors';
-import { formatBusinessContentType, formatBusinessType, formatCost, formatRating } from '@/lib/format';
-import { absoluteImageUrl, resolveImageUrl } from '@/lib/images';
+import { formatBusinessContentType } from '@/lib/format';
+import { absoluteImageUrl, galleryImages, resolveImageUrl } from '@/lib/images';
 import { DEFAULT_OG_IMAGE, absoluteUrl } from '@/lib/site';
-import { directionsLink, whatsappLink } from '@/lib/contact';
-import { VerificationBadge } from '@/components/VerificationBadge';
-import { VerificationTrustInfo } from '@/components/VerificationTrustInfo';
+import { directionsLink } from '@/lib/contact';
+import { KIND_CAPS, placeKind } from '@/lib/place-kind';
 import { PlaceGallery } from '@/components/PlaceGallery';
 import { PlaceMiniMapLoader } from '@/components/PlaceMiniMapLoader';
+import { PlaceKeyFacts } from '@/components/PlaceKeyFacts';
 import { SafeImage } from '@/components/SafeImage';
 import { ReviewsSection } from '@/components/ReviewsSection';
-import { ReportButton } from '@/components/ReportButton';
-import { ShareMenu } from '@/components/ShareMenu';
-import { SaveButton } from '@/components/SaveButton';
-import { StickyBookingBar } from '@/components/StickyBookingBar';
 import { MenuPreviewSection } from '@/components/MenuPreviewSection';
+import { PlaceIdentity } from '@/components/place/PlaceIdentity';
+import { PlaceAtAGlance } from '@/components/place/PlaceAtAGlance';
+import { EssentialHeader } from '@/components/place/EssentialHeader';
+import { EssentialDetails } from '@/components/place/EssentialDetails';
+import { VisitorPhotos } from '@/components/place/VisitorPhotos';
 import { businessHasMenu } from '@/lib/menu';
 import { JsonLd } from '@/components/JsonLd';
 import { businessJsonLd } from '@/lib/structured-data';
-import type { BusinessContent } from '@/lib/types';
+import type { BusinessContent, Place } from '@/lib/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -66,60 +58,35 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-function Section({ eyebrow, title, children }: { eyebrow?: string; title: string; children: React.ReactNode }) {
+function SectionCard({ id, eyebrow, title, action, children }: { id?: string; eyebrow?: string; title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-      {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{eyebrow}</p>}
-      <h2 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{title}</h2>
+    <section id={id} className="flex scroll-mt-4 flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{eyebrow}</p>}
+          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{title}</h2>
+        </div>
+        {action}
+      </div>
       {children}
     </section>
   );
 }
 
-function formatValidityWindow(validFrom: string | null, validUntil: string | null): string | null {
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-  if (validFrom && validUntil) {
-    return `${new Date(validFrom).toLocaleDateString('en-US', opts)} – ${new Date(validUntil).toLocaleDateString('en-US', opts)}`;
-  }
-  if (validUntil) return `Through ${new Date(validUntil).toLocaleDateString('en-US', opts)}`;
-  if (validFrom) return `From ${new Date(validFrom).toLocaleDateString('en-US', opts)}`;
-  return null;
+function validityDates(item: BusinessContent, locale: string): { from: string | null; until: string | null } {
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  return {
+    from: item.validFrom ? fmt.format(new Date(item.validFrom)) : null,
+    until: item.validUntil ? fmt.format(new Date(item.validUntil)) : null,
+  };
 }
 
-function UpdateCard({ item }: { item: BusinessContent }) {
-  const validity = formatValidityWindow(item.validFrom, item.validUntil);
-  const cover = item.images[0] ? resolveImageUrl(item.images[0]) : null;
-
-  return (
-    <article className="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-      {cover && (
-        <SafeImage
-          src={cover}
-          alt=""
-          className="h-40 w-full rounded-xl object-cover"
-          fallback={<div aria-hidden className="h-40 w-full rounded-xl bg-slate-200 dark:bg-slate-700" />}
-        />
-      )}
-      <span className="w-fit rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
-        {formatBusinessContentType(item.type)}
-      </span>
-      <h3 className="font-semibold text-slate-950 dark:text-slate-50">{item.title}</h3>
-      <p className="whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-200">{item.body}</p>
-      {validity && <p className="text-xs text-slate-500 dark:text-slate-400">{validity}</p>}
-      {item.externalLink && (
-        <a
-          href={item.externalLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-fit text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
-        >
-          Learn more
-        </a>
-      )}
-    </article>
-  );
-}
-
+// A business profile, shaped by the same "what kind of place is this?"
+// rules as a place page (see lib/place-kind): a clinic, bank or transport
+// operator opens on the call-first essentials header with no booking or
+// trip prompts; a hotel, restaurant or shop opens on its photos and an
+// at-a-glance strip. On top of that come what only a claimed business
+// has — its menu, its own offers and announcements, email and videos.
 export default async function BusinessProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -131,242 +98,165 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
     notFound();
   }
 
-  const reviewsResult = await getReviews(business.linkedPlaceId, { limit: 20 });
-  const contentResult = await getBusinessContent(business.id, { limit: 20 });
-  // Only restaurants (and other food-and-dining types) get a Menu section
-  // on the public profile — see MenuItemsManager's gate in
-  // BusinessClaimSection for the owner-side counterpart. Skipping the
-  // fetch entirely for every other business type avoids a pointless
-  // network round-trip that would always come back empty.
+  const [t, tk, tp, locale] = await Promise.all([
+    getTranslations('businessPage'),
+    getTranslations('placeKind'),
+    getTranslations('placeDetail'),
+    getLocale(),
+  ]);
+  const [reviewsResult, contentResult] = await Promise.all([
+    getReviews(business.linkedPlaceId, { limit: 20 }),
+    getBusinessContent(business.id, { limit: 20 }),
+  ]);
+  // Only food-and-drink businesses have a menu; skip the fetch for the rest.
   const [menuItems, menuSettings] = businessHasMenu(business.type)
     ? await Promise.all([getMenuItems(business.id), getMenuSettings(business.id)])
     : [[], null];
-  const linkedPlace = business.linkedPlace;
-  const gallery = (business.images.length > 0 ? business.images : linkedPlace.images).map(resolveImageUrl);
-  const location = `${linkedPlace.city}, ${linkedPlace.county.name} County`;
-  const hasPriceRange = business.priceRangeMin != null || business.priceRangeMax != null;
-  const priceRange = hasPriceRange
-    ? `${formatCost(business.priceRangeMin)}${business.priceRangeMax != null ? ` – ${formatCost(business.priceRangeMax)}` : ''}`
-    : null;
 
-  // Keep directions primary and contact and booking actions compact.
-  const actionClass =
-    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2';
-  const mutedActionClass =
-    `${actionClass} border border-slate-200 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30`;
+  const linked = business.linkedPlace;
+  // The business's own name, story and photos lead; the linked place
+  // supplies location, hours and practical details.
+  const place: Place = {
+    ...linked,
+    name: business.name,
+    description: business.description || linked.description,
+  };
+  const kind = placeKind(linked, business);
+  const caps = KIND_CAPS[kind];
+  const essential = kind === 'health' || kind === 'service';
+  const verification = business.verificationStatus;
+  const gallery = galleryImages(linked.images, business.images);
+  const updates = contentResult.data;
 
   return (
-    <main className="detail-page mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
+    <main className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <JsonLd data={businessJsonLd(business)} />
 
-      <PlaceGallery
-        images={gallery}
-        categorySlug={linkedPlace.category.slug}
-        categoryIcon={linkedPlace.category.icon}
-        alt={business.name}
-      />
-
-      <header className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-        <div className="flex flex-col items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{formatBusinessType(business.type)}</p>
-            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 sm:text-3xl">
-              <span>{business.name}</span>
-              <VerificationBadge status={business.verificationStatus} />
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <ShareMenu placeName={business.name} />
-          </div>
-        </div>
-
-        <p className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
-          <MapPinIcon aria-hidden className="h-4 w-4 text-sky-500" />
-          {location}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
-          <span className="font-semibold text-slate-950 dark:text-slate-50">{formatRating(linkedPlace.rating, linkedPlace.reviewCount)}</span>
-          <span className="text-slate-300 dark:text-slate-600">•</span>
-          <span>{formatBusinessType(business.type)}</span>
-        </div>
-
-        {linkedPlace.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {linkedPlace.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </header>
-
-      <section className="flex flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-      <h2 className="sr-only">Plan your visit</h2>
-        <div className="detail-actions grid grid-cols-3 gap-2">
-          <a
-            href={directionsLink(linkedPlace.latitude, linkedPlace.longitude)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${actionClass} col-span-3 bg-brand-800 text-white hover:bg-brand-900`}
-          >
-            <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
-            Get directions
-          </a>
-          {business.phone ? (
-            <a href={`tel:${business.phone}`} className={mutedActionClass}>
-              <PhoneIcon aria-hidden className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-              Call
-            </a>
-          ) : (
-            <span className={mutedActionClass} title="No phone number is listed yet.">
-              <PhoneIcon aria-hidden className="h-5 w-5 text-slate-400" />
-              Call
-            </span>
-          )}
-          {business.whatsapp ? (
-            <a
-              href={whatsappLink(business.whatsapp)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={mutedActionClass}
-            >
-              <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              WhatsApp
-            </a>
-          ) : (
-            <span className={mutedActionClass} title="No WhatsApp number is listed yet.">
-              <ChatBubbleLeftRightIcon aria-hidden className="h-5 w-5 text-slate-400" />
-              WhatsApp
-            </span>
-          )}
-          <Link href={`/businesses/${business.slug}/book`} className={mutedActionClass}>
-            Book
-          </Link>
-
-          <SaveButton
-            slug={linkedPlace.slug}
-            placeId={linkedPlace.id}
-            className="min-h-11 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-          {business.email && (
-            <a href={`mailto:${business.email}`} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30">
-              <EnvelopeIcon aria-hidden className="h-4 w-4" />
-              Email
-            </a>
-          )}
-          {business.website && (
-            <a href={business.website} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-brand-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:text-brand-300 dark:hover:bg-brand-950/30">
-              <GlobeAltIcon aria-hidden className="h-4 w-4" />
-              Visit website
-            </a>
-          )}
-        </div>
-
-        <div className="grid gap-4 border-t border-slate-100 pt-4 dark:border-slate-800 sm:grid-cols-[1fr_auto] sm:items-start">
+      {essential ? (
+        <>
+          <EssentialHeader place={place} kind={kind} business={business} verificationStatus={verification} />
+          <EssentialDetails place={place} business={business} />
+        </>
+      ) : (
+        <>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-slate-950 dark:text-slate-50">Listing information</span>
-              <VerificationBadge status={business.verificationStatus} />
-            </div>
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              {business.openingHours && (
-                <div className="flex items-start gap-2">
-                  <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Hours</dt>
-                    <dd className="mt-0.5 text-slate-700 dark:text-slate-200">{business.openingHours}</dd>
-                  </div>
-                </div>
-              )}
-              {priceRange && (
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Price guide</dt>
-                  <dd className="mt-0.5 text-slate-700 dark:text-slate-200">{priceRange}</dd>
-                </div>
-              )}
-            </dl>
+            <PlaceGallery images={gallery} categorySlug={linked.category.slug} categoryIcon={linked.category.icon} alt={business.name} />
+            <PlaceIdentity place={place} kind={kind} verificationStatus={verification} hoursText={business.openingHours ?? linked.openingHours} />
           </div>
-          {business.servicesOffered.length > 0 && (
-            <div className="sm:max-w-xs">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Services listed</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {business.servicesOffered.map((service) => (
-                  <span key={service} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {service}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          <PlaceAtAGlance place={place} kind={kind} business={business} menuCount={menuItems.length} menuSettings={menuSettings} />
+        </>
+      )}
 
-        <VerificationTrustInfo status={business.verificationStatus} verifiedAt={business.verifiedAt} />
+      {!essential && (
+        <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} currency={menuSettings?.currency} settings={menuSettings} />
+      )}
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-          <span>See something that needs correcting?</span>
-          <ReportButton targetType="business" targetId={business.id} label="Report an update" />
-        </div>
-      </section>
+      <PlaceKeyFacts place={place} business={business} kind={kind} />
 
-      <StickyBookingBar business={business} name={business.name} />
+      {/* Offers and announcements are time-sensitive — they sit high. */}
+      {updates.length > 0 && (
+        <SectionCard eyebrow={t('updatesEyebrow')} title={t('updatesTitle')}>
+          <div className="-mx-5 flex snap-x gap-4 overflow-x-auto px-5 pb-1 sm:-mx-7 sm:px-7">
+            {updates.map((item) => {
+              const cover = item.images[0] ? resolveImageUrl(item.images[0]) : null;
+              const { from, until } = validityDates(item, locale);
+              const validity =
+                from && until ? `${from} – ${until}` : until ? t('through', { date: until }) : from ? t('from', { date: from }) : null;
+              return (
+                <article key={item.id} className="flex w-72 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50 sm:w-80">
+                  <div className="relative aspect-[16/9] overflow-hidden" style={cover ? undefined : { backgroundColor: colorForCategory(linked.category.slug) }}>
+                    {cover && <SafeImage src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" fallback={null} />}
+                    <span className="absolute start-3 top-3 rounded-full bg-sunset-500 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow">
+                      {formatBusinessContentType(item.type)}
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 p-4">
+                    <h3 className="font-display text-lg font-bold leading-snug text-slate-950 dark:text-slate-50">{item.title}</h3>
+                    <p className="line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-200">{item.body}</p>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                      {validity ? <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{validity}</p> : <span />}
+                      {item.externalLink && (
+                        <a href={item.externalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
+                          {t('learnMore')}
+                          <ArrowRightIcon aria-hidden className="h-3.5 w-3.5 rtl:-scale-x-100" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
 
-      <Section eyebrow="Discover the business" title="About this business">
-        <p className="max-w-3xl leading-8 text-slate-700 dark:text-slate-200">{business.description || linkedPlace.description}</p>
-      </Section>
-
-      <MenuPreviewSection
-        items={menuItems}
-        menuHref={`/businesses/${business.slug}/menu`}
-        currency={menuSettings?.currency}
-        settings={menuSettings}
-      />
-
-      <Section eyebrow="Find your way" title="Location">
-        <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
-          <PlaceMiniMapLoader
-            latitude={linkedPlace.latitude}
-            longitude={linkedPlace.longitude}
-            color={colorForCategory(linkedPlace.category.slug)}
-            icon={linkedPlace.category.icon}
-            categorySlug={linkedPlace.category.slug}
-          />
-        </div>
-      </Section>
-
-      {(gallery.length > 0 || business.videos.length > 0) && (
-        <Section eyebrow="See more" title="Gallery & videos">
-          {business.videos.length > 0 && (
-            <ul className="flex flex-col gap-1.5">
-              {business.videos.map((url) => (
-                <li key={url}>
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="break-all text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
-                    {url}
-                  </a>
-                </li>
+      <SectionCard id="about" eyebrow={t('aboutEyebrow')} title={t('aboutTitle', { name: business.name })}>
+        <p className="max-w-3xl whitespace-pre-line leading-8 text-slate-700 dark:text-slate-200">{place.description}</p>
+        {!essential && business.servicesOffered.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{t('services')}</p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {business.servicesOffered.map((service) => (
+                <li key={service} className="rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-800 dark:bg-brand-950/40 dark:text-brand-200">{service}</li>
               ))}
             </ul>
-          )}
-        </Section>
-      )}
-
-      {contentResult.data.length > 0 && (
-        <Section eyebrow="From the business" title="Updates">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {contentResult.data.map((item) => (
-              <UpdateCard key={item.id} item={item} />
-            ))}
           </div>
-        </Section>
+        )}
+        {business.email && (
+          <a href={`mailto:${business.email}`} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-brand-950/30">
+            <EnvelopeIcon aria-hidden className="h-4 w-4" />
+            {t('email')}
+          </a>
+        )}
+      </SectionCard>
+
+      <SectionCard
+        eyebrow={tp('findYourWay')}
+        title={tp('location')}
+        action={
+          <a href={directionsLink(linked.latitude, linked.longitude)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800">
+            {tk('directions')}
+            <ArrowRightIcon aria-hidden className="h-4 w-4 rtl:-scale-x-100" />
+          </a>
+        }
+      >
+        <p className="text-sm text-slate-600 dark:text-slate-300">{linked.city.trim()}, {linked.county.name} County</p>
+        <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
+          <PlaceMiniMapLoader latitude={linked.latitude} longitude={linked.longitude} color={colorForCategory(linked.category.slug)} icon={linked.category.icon} categorySlug={linked.category.slug} />
+        </div>
+        {linked.transportNotes && <p className="whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{linked.transportNotes}</p>}
+      </SectionCard>
+
+      {essential && gallery.length > 1 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-50">{tk('photos')}</h2>
+          <PlaceGallery images={gallery} categorySlug={linked.category.slug} categoryIcon={linked.category.icon} alt={business.name} />
+        </section>
       )}
 
-      <Section eyebrow="Visitor notes" title="Reviews">
+      {business.videos.length > 0 && (
+        <SectionCard eyebrow={t('videosEyebrow')} title={t('videosTitle')}>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {business.videos.map((url, i) => (
+              <li key={url}>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-slate-800 dark:hover:bg-brand-950/30">
+                  <PlayCircleIcon aria-hidden className="h-8 w-8 shrink-0 text-sunset-600" />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-slate-900 dark:text-slate-50">{t('video', { n: i + 1 })}</span>
+                    <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{url}</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
+
+      {!essential && caps.stories && <VisitorPhotos reviews={reviewsResult.data} />}
+
+      <SectionCard eyebrow={essential ? tk('experiencesEyebrow') : tp('visitorNotes')} title={tp('reviews')}>
         <ReviewsSection placeId={business.linkedPlaceId} initialReviews={reviewsResult.data} />
-      </Section>
+      </SectionCard>
     </main>
   );
 }

@@ -34,10 +34,10 @@ function TripMapFallback() {
   );
 }
 
-export function TripMapLoader({ stops }: { stops: ItineraryStopDetail[] }) {
+export function TripMapLoader({ stops, numbered = false }: { stops: ItineraryStopDetail[]; numbered?: boolean }) {
   return (
     <MapFallbackBoundary fallback={<TripMapFallback />}>
-      <TripMapClient stops={stops} />
+      <TripMapClient stops={stops} numbered={numbered} />
     </MapFallbackBoundary>
   );
 }
