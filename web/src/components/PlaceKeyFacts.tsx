@@ -16,6 +16,7 @@ import { getMyBusinesses } from '@/lib/business-api';
 import { directionsLink, whatsappLink } from '@/lib/contact';
 import { formatCost } from '@/lib/format';
 import { LrdHint } from './LrdHint';
+import { HoursStatus } from './place/HoursStatus';
 import { isOpenAt } from '@/lib/opening-hours';
 import { iconForAmenity } from '@/lib/amenities';
 import { ContactLink } from './ContactLink';
@@ -27,12 +28,17 @@ import { VerificationBadge } from './VerificationBadge';
 import { VerificationTrustInfo } from './VerificationTrustInfo';
 import { PlaceProvenance } from './place/PlaceProvenance';
 import type { Business, Place } from '@/lib/types';
+import { KIND_CAPS, type PlaceKind } from '@/lib/place-kind';
 
 // Place-profile actions and trust facts. This component deliberately keeps
 // every button data-backed: directions use the required coordinates, contact
 // actions appear only when a verified contact exists, and booking is a
 // request-to-book flow for an approved/owner-visible business.
-export function PlaceKeyFacts({ place, business }: { place: Place; business: Business | null }) {
+export function PlaceKeyFacts({ place, business, kind = 'destination' }: { place: Place; business: Business | null; kind?: PlaceKind }) {
+  const caps = KIND_CAPS[kind];
+  // Health and service pages already put Call/Directions/Save first in
+  // their header, so this panel keeps only the listing facts there.
+  const showActions = kind !== 'health' && kind !== 'service';
   const t = useTranslations('placeDetail');
   const { user, token, ready } = useAuth();
   const [ownBusiness, setOwnBusiness] = useState<Business | null>(null);
@@ -83,16 +89,18 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
     <>
     <section className="flex flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-6">
       <h2 className="sr-only">Plan your visit</h2>
-        <div className="detail-actions grid grid-cols-3 gap-2">
+        {showActions && (
+        <div className="flex flex-col gap-2">
         <a
           href={directionsLink(place.latitude, place.longitude)}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${actionClass} col-span-3 bg-brand-800 text-white hover:bg-brand-900`}
+          className={`${actionClass} min-h-12 bg-brand-800 text-white hover:bg-brand-900`}
         >
           <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
           Get directions
         </a>
+        <div className="grid grid-cols-2 gap-2 sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
 
         {phone ? (
           <ContactLink
@@ -128,31 +136,34 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
           </a>
         )}
 
-        {effectiveBusiness ? (
-          <Link href={`/businesses/${effectiveBusiness.slug}/book`} className={mutedActionClass}>
-            Book
-          </Link>
-        ) : (
-          <Link
-            href="#claim"
-            className={mutedActionClass}
-            title="Booking requests become available when a business claims this listing."
-          >
-            <CalendarDaysIcon aria-hidden className="h-5 w-5" />
-            Book
-          </Link>
-        )}
+        {caps.booking &&
+          (effectiveBusiness ? (
+            <Link href={`/businesses/${effectiveBusiness.slug}/book`} className={mutedActionClass}>
+              Book
+            </Link>
+          ) : (
+            <Link
+              href="#claim"
+              className={mutedActionClass}
+              title="Booking requests become available when a business claims this listing."
+            >
+              <CalendarDaysIcon aria-hidden className="h-5 w-5" />
+              Book
+            </Link>
+          ))}
 
 
 
         <SaveButton
           slug={place.slug}
           placeId={place.id}
-          className="min-h-11 w-full justify-center rounded-2xl border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
+          className="min-h-11 w-full justify-center rounded-xl border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:border-brand-400 hover:bg-brand-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-brand-950/30"
         />
 
-        <MarkVisitedButton placeId={place.id} className={mutedActionClass} />
+        {caps.visited && <MarkVisitedButton placeId={place.id} className={mutedActionClass} />}
+        </div>
       </div>
+        )}
 
       {website && (
         <ContactLink
@@ -174,6 +185,8 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
             <VerificationBadge status={verificationStatus} />
           </div>
 
+          {/* Health and service pages show hours in their own header and table. */}
+          {showActions && (
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div className="flex items-start gap-2">
               <ClockIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
@@ -193,6 +206,10 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
                       </span>
                     )}
                     {hours}
+                  </dd>
+                ) : place.structuredHours?.length ? (
+                  <dd className="mt-1">
+                    <HoursStatus hours={place.structuredHours} />
                   </dd>
                 ) : (
                   <dd className="mt-0.5">
@@ -214,6 +231,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
               </dd>
             </div>
           </dl>
+          )}
         </div>
 
         {amenities.length > 0 && (
@@ -252,7 +270,7 @@ export function PlaceKeyFacts({ place, business }: { place: Place; business: Bus
         <ReportButton targetType="place" targetId={place.id} label={t('reportIncorrect')} />
       </div>
     </section>
-    {effectiveBusiness && (
+    {effectiveBusiness && caps.booking && (
       <StickyBookingBar business={effectiveBusiness} name={place.name} />
     )}
     </>

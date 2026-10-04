@@ -4,10 +4,12 @@ import type { Place } from '@/lib/types';
 
 // Amenities, accessibility and transport notes — only what's documented.
 // Renders nothing at all for a place with none of them.
-export async function PlaceGoodToKnow({ place }: { place: Place }) {
+// `showTransport={false}` when PlaceVisitPlan already covers getting there.
+export async function PlaceGoodToKnow({ place, showTransport = true }: { place: Place; showTransport?: boolean }) {
   const t = await getTranslations('placeDetail');
   const amenities = place.amenities ?? [];
-  if (amenities.length === 0 && !place.accessibilityNotes && !place.transportNotes) return null;
+  const transport = showTransport ? place.transportNotes : null;
+  if (amenities.length === 0 && !place.accessibilityNotes && !transport) return null;
 
   return (
     <section
@@ -43,10 +45,10 @@ export async function PlaceGoodToKnow({ place }: { place: Place }) {
             <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{place.accessibilityNotes}</p>
           </div>
         )}
-        {place.transportNotes && (
+        {transport && (
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('gettingThereHeading')}</h3>
-            <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{place.transportNotes}</p>
+            <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{transport}</p>
           </div>
         )}
       </div>

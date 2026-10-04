@@ -16,17 +16,9 @@ import {
 } from "@/lib/api";
 import { getPharmacyByPlace } from "@/lib/pharmacy-api";
 import { colorForCategory } from "@/lib/category-colors";
-import {
-  estimateTravelTime,
-  formatCost,
-  formatDistance,
-  formatPlaceType,
-  formatRating,
-  formatVisitLength,
-} from "@/lib/format";
+import { formatCost } from "@/lib/format";
 import { absoluteImageUrl, galleryImages } from "@/lib/images";
 import { DEFAULT_OG_IMAGE, absoluteUrl } from "@/lib/site";
-import { VerificationBadge } from "@/components/VerificationBadge";
 import { PlaceCardCompact } from "@/components/PlaceCardCompact";
 import { PlaceGallery } from "@/components/PlaceGallery";
 import { PlaceMiniMapLoader } from "@/components/PlaceMiniMapLoader";
@@ -35,7 +27,6 @@ import { MenuPreviewSection } from "@/components/MenuPreviewSection";
 import { suggestBusinessType } from "@/lib/business-categories";
 import { businessHasMenu } from "@/lib/menu";
 import { PharmacyPreviewSection } from "@/components/PharmacyPreviewSection";
-import { ShareMenu } from "@/components/ShareMenu";
 import { AddToTripButton } from "@/components/AddToTripButton";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { BusinessClaimSection } from "@/components/BusinessClaimSection";
@@ -46,19 +37,17 @@ import { PlaceGoodToKnow } from "@/components/place/PlaceGoodToKnow";
 import { VisitorPhotos } from "@/components/place/VisitorPhotos";
 import { PlaceInGuides } from "@/components/creator-guides/PlaceInGuides";
 import { distanceKm } from "@/lib/geo";
+import { directionsLink } from "@/lib/contact";
+import { KIND_CAPS, NEARBY_KINDS, placeKind } from "@/lib/place-kind";
+import { PlaceIdentity } from "@/components/place/PlaceIdentity";
+import { PlaceAtAGlance } from "@/components/place/PlaceAtAGlance";
+import { EssentialHeader } from "@/components/place/EssentialHeader";
+import { EssentialDetails } from "@/components/place/EssentialDetails";
+import { PlaceVisitPlan } from "@/components/place/PlaceVisitPlan";
+import { LoneStar } from "@/components/LoneStar";
 import { JsonLd } from "@/components/JsonLd";
 import { placeJsonLd } from "@/lib/structured-data";
-import type { Place, PlaceType } from "@/lib/types";
 
-// Keys into placeDetail.nearby* — see NEARBY_TYPE_LABELS's usage below.
-// lib/format.ts's own formatPlaceType() (used as this map's fallback) is
-// not yet translated — a broader, cross-cutting change deferred past this
-// phase since it's called from many components beyond this page.
-const NEARBY_TYPE_LABEL_KEYS: Partial<Record<PlaceType, string>> = {
-  hotel: "nearbyAccommodation",
-  restaurant: "nearbyRestaurants",
-  activity_provider: "nearbyTourGuides",
-};
 
 
 export async function generateMetadata({
@@ -145,91 +134,79 @@ export default async function PlaceProfilePage({
         distanceKm({ lat: place.latitude, lng: place.longitude }, { lat: a.latitude, lng: a.longitude }) -
         distanceKm({ lat: place.latitude, lng: place.longitude }, { lat: b.latitude, lng: b.longitude }),
     );
-  const hasAnyCost =
-    place.estimatedCostEntry != null || place.estimatedCostGuide != null || place.estimatedCostTransport != null;
-  const nearbyByType = groupByType(nearby);
+  const kind = placeKind(place, business, Boolean(pharmacy));
+  const caps = KIND_CAPS[kind];
+  const essential = kind === "health" || kind === "service";
+  const verification = business?.verificationStatus ?? place.verificationStatus;
+  const hoursText = business?.openingHours ?? place.openingHours;
+  const nearbyGroups = NEARBY_KINDS[kind]
+    .map((k) => ({ kind: k, places: nearby.filter((p) => placeKind(p) === k).slice(0, 10) }))
+    .filter((group) => group.places.length > 0);
+  const tk = await getTranslations("placeKind");
 
-  const travelTime = estimateTravelTime(place.distanceFromMonroviaKm);
-  const distance = formatDistance(place.distanceFromMonroviaKm);
-  const visitLength = formatVisitLength(place.recommendedVisitLength);
+  const location = (
+    <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{t("findYourWay")}</p>
+          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{t("location")}</h2>
+        </div>
+        <a
+          href={directionsLink(place.latitude, place.longitude)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800"
+        >
+          {tk("directions")}
+          <ArrowRightIcon aria-hidden className="h-4 w-4 rtl:-scale-x-100" />
+        </a>
+      </div>
+      <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
+        <PlaceMiniMapLoader
+          latitude={place.latitude}
+          longitude={place.longitude}
+          color={colorForCategory(place.category.slug)}
+          icon={place.category.icon}
+          categorySlug={place.category.slug}
+        />
+      </div>
+      {essential && place.transportNotes ? (
+        <p className="whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{place.transportNotes}</p>
+      ) : (
+        !place.transportNotes && <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{t("gettingThere")}</p>
+      )}
+    </section>
+  );
 
   return (
-    <main className="detail-page mx-auto flex max-w-6xl flex-col gap-5 bg-slate-50/70 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10 dark:bg-slate-950/20">
+    <main className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-5 sm:gap-7 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
       <JsonLd data={placeJsonLd(place)} />
       <PlaceViewTracker place={place} />
 
-      <PlaceGallery
-        images={galleryImages(place.images, business?.images)}
-        categorySlug={place.category.slug}
-        categoryIcon={place.category.icon}
-        alt={place.name}
-      />
-
-      <header className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-        <div className="flex flex-col items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-              {formatPlaceType(place.type)}
-            </p>
-            <h1 className="flex min-w-0 flex-wrap items-center gap-2 font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-slate-50 sm:text-3xl">
-              <span>{place.name}</span>
-              <VerificationBadge
-                status={
-                  business?.verificationStatus ?? place.verificationStatus
-                }
-              />
-            </h1>
+      {essential ? (
+        <>
+          <EssentialHeader place={place} kind={kind} business={business} verificationStatus={verification} />
+          <EssentialDetails place={place} business={business} />
+          {pharmacy && <PharmacyPreviewSection pharmacy={pharmacy} />}
+          {location}
+        </>
+      ) : (
+        <>
+          <div>
+            <PlaceGallery
+              images={galleryImages(place.images, business?.images)}
+              categorySlug={place.category.slug}
+              categoryIcon={place.category.icon}
+              alt={place.name}
+            />
+            <PlaceIdentity place={place} kind={kind} verificationStatus={verification} hoursText={hoursText} />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <AddToTripButton contentType="place" itemId={place.id} itemName={place.name} />
-            <ShareMenu placeName={place.name} />
-          </div>
-        </div>
+          <PlaceAtAGlance place={place} kind={kind} business={business} menuCount={menuItems.length} menuSettings={menuSettings} />
+        </>
+      )}
 
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-          {t("cityCounty", { city: place.city, county: place.county.name })}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-700 dark:text-slate-200">
-          <span className="font-semibold text-slate-950 dark:text-slate-50">
-            {formatRating(place.rating, place.reviewCount)}
-          </span>
-          {distance && (
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-          )}
-          {distance && <span>{distance}</span>}
-          {travelTime && (
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-          )}
-          {travelTime && <span>{travelTime}</span>}
-          {visitLength && (
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-          )}
-          {visitLength && <span>{visitLength}</span>}
-        </div>
-
-        {place.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {place.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </header>
-
-      <PlaceKeyFacts place={place} business={business} />
-
-      {/* Right after the action row (directions/call/book/website), not
-          buried below "About this place" — a visitor who's already
-          decided this is the right pharmacy/restaurant is here to order,
-          and shouldn't have to scroll past a description to find out
-          that's even possible. */}
-      {business && (
+      {/* For food, the menu is why people came: straight after the facts. */}
+      {business && !essential && (
         <MenuPreviewSection
           items={menuItems}
           menuHref={`/businesses/${business.slug}/menu`}
@@ -238,11 +215,7 @@ export default async function PlaceProfilePage({
         />
       )}
 
-      {pharmacy && <PharmacyPreviewSection pharmacy={pharmacy} />}
-
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-5">
-        <PlaceFreshnessPrompt placeId={place.id} />
-      </div>
+      <PlaceKeyFacts place={place} business={business} kind={kind} />
 
       <section
         id="about"
@@ -254,70 +227,13 @@ export default async function PlaceProfilePage({
         <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
           {t("aboutThisPlace")}
         </h2>
-        <p className="mt-4 max-w-3xl leading-8 text-slate-700 dark:text-slate-200">
+        <p className="mt-4 max-w-3xl whitespace-pre-line leading-8 text-slate-700 dark:text-slate-200">
           {place.description}
         </p>
-        <DishNotes texts={[place.name, place.description]} className="mt-5" />
+        {!essential && <DishNotes texts={[place.name, place.description]} className="mt-5" />}
       </section>
 
-      <PlaceGoodToKnow place={place} />
-
-      <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-            {t("findYourWay")}
-          </p>
-          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-            {t("location")}
-          </h2>
-        </div>
-        <div className="h-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-72">
-          <PlaceMiniMapLoader
-            latitude={place.latitude}
-            longitude={place.longitude}
-            color={colorForCategory(place.category.slug)}
-            icon={place.category.icon}
-            categorySlug={place.category.slug}
-          />
-        </div>
-        {!place.transportNotes && (
-          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-            {t("gettingThere")}
-          </p>
-        )}
-      </section>
-
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-          {t("budgetPlanning")}
-        </p>
-        <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-          {t("estimatedCost")}
-        </h2>
-        {hasAnyCost ? (
-          <>
-        <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">
-          <CostItem
-            label={t("costEntry")}
-            value={formatCost(place.estimatedCostEntry)}
-          />
-          <CostItem
-            label={t("costGuide")}
-            value={formatCost(place.estimatedCostGuide)}
-          />
-          <CostItem
-            label={t("costTransport")}
-            value={formatCost(place.estimatedCostTransport)}
-          />
-        </dl>
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t("pricesNote")}</p>
-          </>
-        ) : (
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{t("noPricesListed")}</p>
-        )}
-      </section>
-
-      {place.activities && place.activities.length > 0 && (
+      {kind === "destination" && place.activities && place.activities.length > 0 && (
         <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
@@ -329,29 +245,18 @@ export default async function PlaceProfilePage({
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {place.activities.map((activity) => (
-              <li
-                key={activity.id}
-                className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800"
-              >
+              <li key={activity.id} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="font-semibold text-slate-950 dark:text-slate-50">
-                    {activity.name}
-                  </p>
+                  <p className="font-semibold text-slate-950 dark:text-slate-50">{activity.name}</p>
                   <p className="whitespace-nowrap text-sm font-semibold text-brand-700 dark:text-brand-300">
                     {formatCost(activity.price)}
                   </p>
                 </div>
                 {activity.description && (
-                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {activity.description}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{activity.description}</p>
                 )}
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  {[
-                    activity.duration,
-                    activity.difficulty,
-                    activity.guideRequired ? t("guideRequired") : null,
-                  ]
+                  {[activity.duration, activity.difficulty, activity.guideRequired ? t("guideRequired") : null]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -361,34 +266,39 @@ export default async function PlaceProfilePage({
         </section>
       )}
 
-      <section id="claim" className="scroll-mt-4">
-        <BusinessClaimSection
-          placeId={place.id}
-          suggestedType={suggestBusinessType(place)}
-          initialBusiness={business}
-        />
-      </section>
+      {caps.visitCosts && <PlaceVisitPlan place={place} />}
 
-      <PlaceInGuides guides={guidesResult.data} />
+      {!essential && <PlaceGoodToKnow place={place} showTransport={!caps.visitCosts} />}
 
-      <VisitorPhotos reviews={reviewsResult.data} />
+      {!essential && location}
+
+      {essential && place.images.length > 1 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-50">{tk("photos")}</h2>
+          <PlaceGallery
+            images={galleryImages(place.images, business?.images)}
+            categorySlug={place.category.slug}
+            categoryIcon={place.category.icon}
+            alt={place.name}
+          />
+        </section>
+      )}
+
+      {caps.stories && <PlaceInGuides guides={guidesResult.data} />}
+
+      {!essential && <VisitorPhotos reviews={reviewsResult.data} />}
 
       <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
-            {t("visitorNotes")}
+            {essential ? tk("experiencesEyebrow") : t("visitorNotes")}
           </p>
-          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">
-            {t("reviews")}
-          </h2>
+          <h2 className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{t("reviews")}</h2>
         </div>
-        <ReviewsSection
-          placeId={place.id}
-          initialReviews={reviewsResult.data}
-        />
+        <ReviewsSection placeId={place.id} initialReviews={reviewsResult.data} />
       </section>
 
-      {publicTripsResult.data.length > 0 && (
+      {caps.stories && publicTripsResult.data.length > 0 && (
         <section className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -415,8 +325,8 @@ export default async function PlaceProfilePage({
         </section>
       )}
 
-      {Object.keys(nearbyByType).length > 0 && (
-        <section className="flex flex-col gap-4">
+      {nearbyGroups.length > 0 && (
+        <section className="flex flex-col gap-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
               {t("keepExploring")}
@@ -425,17 +335,12 @@ export default async function PlaceProfilePage({
               {t("nearbyInCounty", { county: place.county.name })}
             </h2>
           </div>
-          {Object.entries(nearbyByType).map(([type, places]) => (
-            <div key={type} className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                {(() => {
-                  const labelKey = NEARBY_TYPE_LABEL_KEYS[type as PlaceType];
-                  return labelKey ? t(labelKey) : formatPlaceType(type as PlaceType);
-                })()}
-              </h3>
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                {places.map((nearbyPlace) => (
-                  <div key={nearbyPlace.id} className="w-44 shrink-0 sm:w-48">
+          {nearbyGroups.map((group) => (
+            <div key={group.kind} className="flex flex-col gap-2">
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">{tk(`nearby_${group.kind}`)}</h3>
+              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+                {group.places.map((nearbyPlace) => (
+                  <div key={nearbyPlace.id} className="w-44 shrink-0 snap-start sm:w-48">
                     <PlaceCardCompact place={nearbyPlace} />
                   </div>
                 ))}
@@ -445,36 +350,36 @@ export default async function PlaceProfilePage({
         </section>
       )}
 
-      <section className="border-t border-slate-200 pt-5 dark:border-slate-800">
-        <Link
-          href="/trips/new"
-          className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
-        >
-          {t("planTripWithPlace")}
-        </Link>
+      {caps.trips && (kind === "destination" || kind === "shop") && (
+        <section className="relative overflow-hidden rounded-[2rem] bg-brand-950 p-6 text-white sm:p-8">
+          <LoneStar className="pointer-events-none absolute -end-8 -top-10 h-48 w-48 text-white/[0.06]" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-sunset-300">{tk("tripEyebrow")}</p>
+              <h2 className="mt-1 font-display text-2xl font-black sm:text-3xl">{tk("tripTitle", { name: place.name })}</h2>
+              <p className="mt-1 max-w-xl text-sm text-white/75">{tk("tripBody")}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Link
+                href="/trips/new"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-bold text-brand-900 hover:bg-sunset-100"
+              >
+                {t("planTripWithPlace")}
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section id="claim" className="scroll-mt-4">
+        <BusinessClaimSection
+          placeId={place.id}
+          suggestedType={suggestBusinessType(place)}
+          initialBusiness={business}
+        />
       </section>
+
+      <PlaceFreshnessPrompt placeId={place.id} />
     </main>
   );
-}
-
-function CostItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-950/40">
-      <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        {label}
-      </dt>
-      <dd className="mt-1 font-semibold text-slate-950 dark:text-slate-50">
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-function groupByType(places: Place[]): Partial<Record<PlaceType, Place[]>> {
-  const groups: Partial<Record<PlaceType, Place[]>> = {};
-  for (const place of places) {
-    if (place.type === "attraction" || place.type === "nature_site") continue; // "nearby" here means services, not more sights
-    (groups[place.type] ??= []).push(place);
-  }
-  return groups;
 }
