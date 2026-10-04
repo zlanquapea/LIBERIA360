@@ -50,6 +50,7 @@ import { TripHero } from "@/components/trips/TripHero";
 import { TripTimeline } from "@/components/trips/TripTimeline";
 import { TripCostSummary } from "@/components/TripCostSummary";
 import { TripBudgetPanel } from "@/components/trips/TripBudgetPanel";
+import { TripPackingPanel } from "@/components/trips/TripPackingPanel";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
 import { TripShareLink } from "@/components/trips/TripShareLink";
@@ -798,6 +799,7 @@ function MemberTripView({
       <OfflinePackControl trip={itinerary} />
 
       <TripBudgetPanel key={`${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
+      <TripPackingPanel key={`${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
 
       <TripShareLink
         itineraryId={itinerary.id}
