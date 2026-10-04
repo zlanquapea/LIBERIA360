@@ -258,6 +258,10 @@ export class PlacesService {
         categorySlug: query.category,
       });
     }
+    if (query.amenity)
+      qb.andWhere(":amenity = ANY(place.amenities)", {
+        amenity: query.amenity,
+      });
     if (query.tag) {
       qb.andWhere(":tag = ANY(place.tags)", { tag: query.tag });
     }

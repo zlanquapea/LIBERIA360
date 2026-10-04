@@ -1,5 +1,6 @@
 "use client";
 
+import { BookingNextStep } from "./BookingNextStep";
 import { BookingProgress } from "./BookingProgress";
 import { useState } from "react";
 import Link from "next/link";
@@ -227,7 +228,21 @@ export function BookingDetailModal({
           </div>
 
           <BookingProgress status={booking.status} />
-          <p className="text-sm text-slate-500 dark:text-slate-400">Cancellation terms vary by provider. Check the listing or confirm the terms in Messages before cancelling; cancellation does not automatically guarantee a refund.</p>
+          <BookingNextStep
+            status={booking.status}
+            hosting={!!selected.showGuest}
+            date={booking.requestedEndDate || booking.requestedDate}
+          />
+          {booking.pickupLocation && (
+            <p className="rounded-xl border p-3 text-sm">
+              <strong>Pickup location:</strong> {booking.pickupLocation}
+            </p>
+          )}
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Cancellation terms vary by provider. Check the listing or confirm
+            the terms in Messages before cancelling; cancellation does not
+            automatically guarantee a refund.
+          </p>
 
           {canRespond && onResponded && (
             <OwnerResponseForm bookingId={booking.id} onDone={onResponded} />
@@ -396,4 +411,3 @@ export function OwnerResponseForm({
     </div>
   );
 }
-

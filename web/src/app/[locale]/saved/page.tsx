@@ -153,6 +153,7 @@ export default function SavedPage() {
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10">
+      <Link href="/collections" className="flex min-h-14 items-center justify-between rounded-2xl border border-slate-200 p-4 font-semibold dark:border-slate-700">Organize & share collections <span aria-hidden>→</span></Link>
       <SavedPostsSection />
 
       <SavedGuidesSection />
@@ -201,3 +202,4 @@ export default function SavedPage() {
     </main>
   );
 }
+

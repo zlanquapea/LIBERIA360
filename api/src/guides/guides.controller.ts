@@ -1,3 +1,4 @@
+import { GuideAvailabilityDto } from "./dto/guide-availability.dto";
 import {
   BadRequestException,
   Body,
@@ -71,6 +72,26 @@ export class GuidesController {
     @Body() dto: UpdateGuideProfileDto,
   ) {
     return this.guidesService.updateMyDetails(user.id, dto);
+  }
+
+  @Get("guides/me/availability")
+  @UseGuards(JwtAuthGuard)
+  myAvailability(@CurrentUser() user: User) {
+    return this.guidesService.myAvailability(user.id);
+  }
+
+  @Patch("guides/me/availability")
+  @UseGuards(JwtAuthGuard)
+  saveAvailability(
+    @CurrentUser() user: User,
+    @Body() dto: GuideAvailabilityDto,
+  ) {
+    return this.guidesService.saveAvailability(user.id, dto);
+  }
+
+  @Get("experiences/:id/availability")
+  availability(@Param("id") id: string) {
+    return this.guidesService.experienceAvailability(id);
   }
 
   @Get("guides/messages")

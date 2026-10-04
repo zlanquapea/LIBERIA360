@@ -64,6 +64,7 @@ export default async function SearchPage({
     openNow: openNow || undefined,
     priceMin,
     priceMax,
+    amenity: first(params.amenity),
   };
 
   // The place filters still scope places. Cross-category discovery is shown
@@ -177,6 +178,7 @@ export default async function SearchPage({
     if (openNow) p.set("openNow", "true");
     if (priceMinRaw !== undefined) p.set("priceMin", priceMinRaw);
     if (priceMaxRaw !== undefined) p.set("priceMax", priceMaxRaw);
+    if (first(params.amenity)) p.set("amenity", first(params.amenity)!);
     p.set("page", String(targetPage));
     return `/search?${p.toString()}`;
   }
@@ -273,7 +275,7 @@ export default async function SearchPage({
             type ||
             openNow ||
             priceMinRaw !== undefined ||
-            priceMaxRaw !== undefined,
+            priceMaxRaw !== undefined || !!first(params.amenity),
           )}
           t={t}
         />

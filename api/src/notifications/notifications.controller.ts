@@ -1,4 +1,6 @@
+import { NotificationPreferencesDto } from "./dto/notification-preferences.dto";
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -30,6 +32,18 @@ export class NotificationsController {
   @Get()
   findMine(@CurrentUser() user: User, @Query() query: QueryNotificationsDto) {
     return this.notificationsService.findForUser(user.id, query);
+  }
+
+  @Get("preferences")
+  preferences(@CurrentUser() user: User) {
+    return this.notificationsService.preferences(user.id);
+  }
+  @Patch("preferences")
+  setPreferences(
+    @CurrentUser() user: User,
+    @Body() dto: NotificationPreferencesDto,
+  ) {
+    return this.notificationsService.setPreferences(user.id, dto);
   }
 
   @Get("unread-count")

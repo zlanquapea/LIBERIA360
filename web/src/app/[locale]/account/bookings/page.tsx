@@ -1,5 +1,7 @@
 "use client";
 
+import { BookingNextStep } from "@/components/BookingNextStep";
+import { bookingPeriod } from "@/lib/booking-next-step";
 import { BookingProgress } from "@/components/BookingProgress";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -56,6 +58,7 @@ export default function BookingsPage() {
   const [guideBookings, setGuideBookings] = useState<GuideBookingSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"mine" | "hosting">("mine");
+  const [period, setPeriod] = useState("all");
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState(false);
@@ -200,20 +203,39 @@ export default function BookingsPage() {
       : hosting;
   const guides = view === "mine" ? guideBookings : [];
   const all = [...rows.map(({ booking }) => booking), ...guides];
-  const matches = (status: string, title: string) =>
+  const matches = (status: string, title: string, date: string) =>
+    (period === "all" ||
+      bookingPeriod(status, date, new Date().toISOString().slice(0, 10)) ===
+        period) &&
     (filter === "all" || status === filter) &&
     title.toLowerCase().includes(query.trim().toLowerCase());
   const visible = rows.filter(({ booking }) =>
-    matches(booking.status, counterpartName(booking, view === "hosting")),
+    matches(
+      booking.status,
+      counterpartName(booking, view === "hosting"),
+      booking.requestedEndDate || booking.requestedDate,
+    ),
   );
   const visibleGuides = guides.filter((booking) =>
-    matches(booking.status, booking.experience.title),
+    matches(booking.status, booking.experience.title, booking.requestedDate),
   );
   const hasHosting =
     businesses.length > 0 || !!creator || carListings.length > 0;
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-28 pt-6 sm:px-6 sm:pt-10">
+      <label className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold">
+        Booking timeline
+        <select
+          className="min-h-11 rounded-xl border bg-white px-4 dark:bg-slate-900"
+          value={period}
+          onChange={(event) => setPeriod(event.target.value)}
+        >
+          <option value="all">All bookings</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="history">Past & ended</option>
+        </select>
+      </label>
       <header className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 p-6 text-white sm:p-9">
         <div
           aria-hidden
@@ -476,7 +498,30 @@ export default function BookingsPage() {
                   · {booking.paymentStatus}
                 </span>
               </p>
-              <div className="mt-4"><BookingProgress status={booking.status} tracksCompletion /></div>
+              <div className="mt-4 space-y-3">
+                <BookingProgress status={booking.status} tracksCompletion />
+                <BookingNextStep
+                  status={booking.status}
+                  date={booking.requestedDate}
+                />
+              </div>
+              {booking.experience.meetingPointText && (
+                <p className="mt-3 text-sm">
+                  <strong>Meeting point:</strong>{" "}
+                  {booking.experience.meetingPointText}
+                </p>
+              )}
+              {booking.guideResponse && (
+                <p className="mt-3 rounded-xl border p-3 text-sm">
+                  <strong>Guide response:</strong> {booking.guideResponse}
+                </p>
+              )}
+              <Link
+                className="mt-3 min-h-11 py-2 text-sm font-semibold underline"
+                href={`/guides/${booking.experience.guide.slug}`}
+              >
+                Contact your guide
+              </Link>
               <Link
                 href={`/experiences/${booking.experience.id}`}
                 className="mt-5 flex min-h-11 items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-brand-800 dark:border-slate-800 dark:text-brand-200"
@@ -498,4 +543,3 @@ export default function BookingsPage() {
     </main>
   );
 }
-

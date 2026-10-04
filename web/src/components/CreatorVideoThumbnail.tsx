@@ -1,5 +1,6 @@
 "use client";
 
+import { useDataSaver } from "@/hooks/useDataSaver";
 import { useEffect, useRef, useState } from "react";
 
 export function CreatorVideoThumbnail({
@@ -13,6 +14,7 @@ export function CreatorVideoThumbnail({
   label: string;
   autoplayOnView?: boolean;
 }) {
+  const dataSaver = useDataSaver();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(Boolean(poster));
@@ -40,8 +42,8 @@ export function CreatorVideoThumbnail({
     setSlowConnection(
       Boolean(
         connection?.saveData ||
-          connection?.effectiveType === "slow-2g" ||
-          connection?.effectiveType === "2g",
+        connection?.effectiveType === "slow-2g" ||
+        connection?.effectiveType === "2g",
       ),
     );
   }, []);
@@ -74,7 +76,7 @@ export function CreatorVideoThumbnail({
       video.removeEventListener("loadedmetadata", seekToOpeningFrame);
       video.removeEventListener("seeked", showFirstFrame);
     };
-  }, [poster, src]);
+  }, [poster, src, dataSaver]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -119,7 +121,7 @@ export function CreatorVideoThumbnail({
       video.currentTime = 0;
       setPlaying(false);
     };
-  }, [autoplayOnView, reducedMotion]);
+  }, [autoplayOnView, reducedMotion, dataSaver]);
 
   const retryVisiblePlayback = () => {
     if (!autoplayOnView || reducedMotion || !isVisibleRef.current) return;
@@ -142,6 +144,23 @@ export function CreatorVideoThumbnail({
       retryVisiblePlayback();
     }
   };
+
+  if (dataSaver)
+    return (
+      <div className="relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-slate-950 text-white">
+        {poster && (
+          <img
+            src={poster}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
+        <span className="relative rounded-full bg-black/65 px-4 py-2 text-sm font-semibold">
+          Tap to open video
+        </span>
+      </div>
+    );
 
   return (
     <div

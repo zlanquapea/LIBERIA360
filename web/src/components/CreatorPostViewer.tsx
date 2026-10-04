@@ -1,5 +1,6 @@
 "use client";
 
+import { useDataSaver } from "@/hooks/useDataSaver";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -24,6 +25,7 @@ import {
 import type { CreatorPost, CreatorPostComment } from "@/lib/types";
 import { ShareMenu } from "./ShareMenu";
 import { VerificationBadge } from "./VerificationBadge";
+import { SafeImage } from "./SafeImage";
 import { CreatorVideoThumbnail } from "./CreatorVideoThumbnail";
 
 function formatCount(value: number): string {
@@ -149,7 +151,11 @@ function ViewerActions({
           onPointerLeave={endHold}
           onContextMenu={(event) => event.preventDefault()}
           aria-pressed={liked}
-          aria-label={liked ? "Unlike post. Hold to send hearts" : "Like post. Hold to send hearts"}
+          aria-label={
+            liked
+              ? "Unlike post. Hold to send hearts"
+              : "Like post. Hold to send hearts"
+          }
           className={itemClass}
         >
           {liked ? (
@@ -165,7 +171,10 @@ function ViewerActions({
             {!isRail && " Like"}
           </span>
         </button>
-        <div className="pointer-events-none absolute bottom-1/2 left-1/2 z-40 h-2 w-2" aria-hidden="true">
+        <div
+          className="pointer-events-none absolute bottom-1/2 left-1/2 z-40 h-2 w-2"
+          aria-hidden="true"
+        >
           {floatingHearts.map((heartId, index) => (
             <HeartSolidIcon
               key={heartId}
@@ -292,6 +301,7 @@ function DirectVideoViewer({
   onEnded?: () => void;
   onDoubleTap?: () => void;
 }) {
+  const dataSaver = useDataSaver();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -303,7 +313,12 @@ function DirectVideoViewer({
     if (!video) return;
     setLoadError(false);
     setLoaded(false);
-    video.preload = preload;
+    video.preload = dataSaver ? "none" : preload;
+    if (dataSaver) {
+      video.pause();
+      setPlaying(false);
+      return;
+    }
     if (!active) {
       video.pause();
       video.currentTime = 0;
@@ -321,7 +336,7 @@ function DirectVideoViewer({
       video.pause();
       video.currentTime = 0;
     };
-  }, [active, preload]);
+  }, [active, preload, dataSaver]);
 
   function togglePlay() {
     const video = videoRef.current;
@@ -363,12 +378,14 @@ function DirectVideoViewer({
       <video
         ref={videoRef}
         src={post.mediaUrl}
-        preload={preload}
-        poster={post.thumbnailUrl ?? creatorVideoPosterUrl(post.mediaUrl) ?? undefined}
+        preload={dataSaver ? "none" : preload}
+        poster={
+          post.thumbnailUrl ?? creatorVideoPosterUrl(post.mediaUrl) ?? undefined
+        }
         muted
         loop={false}
         playsInline
-        autoPlay={active}
+        autoPlay={active && !dataSaver}
         controls={false}
         aria-label={`${post.creator.name}'s video post`}
         onClick={togglePlay}
@@ -380,7 +397,7 @@ function DirectVideoViewer({
           setPlaying(false);
         }}
         onCanPlay={() => {
-          if (active && videoRef.current?.paused) {
+          if (active && !dataSaver && videoRef.current?.paused) {
             void videoRef.current.play().then(
               () => setPlaying(true),
               () => setPlaying(false),
@@ -394,13 +411,19 @@ function DirectVideoViewer({
         onPause={() => setPlaying(false)}
         className="h-full w-full object-contain"
       />
-      {!loaded && !loadError && (
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm" role="status">
+      {!dataSaver && !loaded && !loadError && (
+        <span
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm"
+          role="status"
+        >
           Loading video…
         </span>
       )}
       {loadError && (
-        <div className="absolute inset-x-6 top-1/2 flex -translate-y-1/2 flex-col items-center gap-3 text-center" role="alert">
+        <div
+          className="absolute inset-x-6 top-1/2 flex -translate-y-1/2 flex-col items-center gap-3 text-center"
+          role="alert"
+        >
           <p className="rounded-full bg-black/65 px-4 py-2 text-xs font-semibold text-white">
             This video could not be loaded.
           </p>
@@ -440,6 +463,8 @@ function DirectVideoViewer({
 }
 
 function EmbedVideoViewer({ post }: { post: CreatorPost }) {
+  const dataSaver = useDataSaver();
+  const [requested, setRequested] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const embedUrl = creatorVideoEmbedUrl(post.mediaUrl);
   const poster = creatorVideoPosterUrl(post.mediaUrl);
@@ -457,6 +482,17 @@ function EmbedVideoViewer({ post }: { post: CreatorPost }) {
       </div>
     );
   }
+
+  if (dataSaver && !requested)
+    return (
+      <button
+        type="button"
+        onClick={() => setRequested(true)}
+        className="flex h-full w-full items-center justify-center bg-black p-6 text-lg font-bold text-white"
+      >
+        Tap to load video
+      </button>
+    );
 
   return (
     <div className="relative flex h-full w-full items-center justify-center bg-black">
@@ -536,7 +572,9 @@ export function CreatorPostViewer({
   const [commentDraft, setCommentDraft] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
-  const [loadedComments, setLoadedComments] = useState<CreatorPostComment[] | null>(null);
+  const [loadedComments, setLoadedComments] = useState<
+    CreatorPostComment[] | null
+  >(null);
   const reelStageRef = useRef<HTMLDivElement>(null);
   const navigationLockRef = useRef(false);
 
@@ -544,15 +582,22 @@ export function CreatorPostViewer({
     () => (videoPosts.length > 0 ? videoPosts : [post]),
     [post, videoPosts],
   );
-  const currentIndex = Math.max(0, playlist.findIndex((item) => item.id === post.id));
-  const windowStart = Math.max(0, Math.min(currentIndex - 1, playlist.length - 3));
+  const currentIndex = Math.max(
+    0,
+    playlist.findIndex((item) => item.id === post.id),
+  );
+  const windowStart = Math.max(
+    0,
+    Math.min(currentIndex - 1, playlist.length - 3),
+  );
   const reelWindow = playlist.slice(windowStart, windowStart + 3);
 
   useEffect(() => {
     if (mode !== "video" || !reelStageRef.current) return;
     const localIndex = Math.max(0, currentIndex - windowStart);
     setActiveIndex(localIndex);
-    reelStageRef.current.scrollTop = reelStageRef.current.clientHeight * localIndex;
+    reelStageRef.current.scrollTop =
+      reelStageRef.current.clientHeight * localIndex;
     navigationLockRef.current = false;
   }, [currentIndex, mode, post.id, reelWindow.length, windowStart]);
 
@@ -586,7 +631,10 @@ export function CreatorPostViewer({
     if (nextVisibleIndex === 0 && currentIndex > 0) {
       navigationLockRef.current = true;
       onPrevious?.();
-    } else if (nextVisibleIndex === reelWindow.length - 1 && currentIndex < playlist.length - 1) {
+    } else if (
+      nextVisibleIndex === reelWindow.length - 1 &&
+      currentIndex < playlist.length - 1
+    ) {
       navigationLockRef.current = true;
       onNext?.();
     }
@@ -687,35 +735,40 @@ export function CreatorPostViewer({
       className="creator-video-viewer fixed inset-0 z-[2000] flex min-h-[100dvh] flex-col overscroll-contain bg-black text-white"
     >
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <div ref={reelStageRef} onScroll={handleReelScroll} className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain" aria-live="polite">
-        {reelWindow.map((item) => (
-          (() => {
-            const isActive = item.id === post.id;
-            return (
-              <div
-                key={item.id}
-                data-reel-post-id={item.id}
-                className="creator-video-snap-slide creator-video-reel-slide"
-              >
-                {isDirectVideoFile(item.mediaUrl) ? (
-                  <DirectVideoViewer
-                    post={item}
-                    active={isActive}
-                    preload={isActive ? "auto" : "metadata"}
-                    onDoubleTap={isActive ? handleDoubleTap : undefined}
-                    onEnded={
-                      isActive && currentIndex < playlist.length - 1
-                        ? onNext
-                        : undefined
-                    }
-                  />
-                ) : (
-                  <EmbedVideoViewer post={item} />
-                )}
-              </div>
-            );
-          })()
-        ))}
+        <div
+          ref={reelStageRef}
+          onScroll={handleReelScroll}
+          className="creator-video-snap-stage h-full overflow-y-auto overscroll-contain"
+          aria-live="polite"
+        >
+          {reelWindow.map((item) =>
+            (() => {
+              const isActive = item.id === post.id;
+              return (
+                <div
+                  key={item.id}
+                  data-reel-post-id={item.id}
+                  className="creator-video-snap-slide creator-video-reel-slide"
+                >
+                  {isDirectVideoFile(item.mediaUrl) ? (
+                    <DirectVideoViewer
+                      post={item}
+                      active={isActive}
+                      preload={isActive ? "auto" : "metadata"}
+                      onDoubleTap={isActive ? handleDoubleTap : undefined}
+                      onEnded={
+                        isActive && currentIndex < playlist.length - 1
+                          ? onNext
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <EmbedVideoViewer post={item} />
+                  )}
+                </div>
+              );
+            })(),
+          )}
         </div>
         {heartBurstId > 0 && (
           <div
@@ -795,45 +848,122 @@ export function CreatorPostViewer({
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-white/10">
               <div>
                 <h2 className="text-base font-bold">Comments</h2>
-                <p className="text-xs text-slate-500 dark:text-white/55">{formatCount(loadedComments?.length ?? commentCount)} comments</p>
+                <p className="text-xs text-slate-500 dark:text-white/55">
+                  {formatCount(loadedComments?.length ?? commentCount)} comments
+                </p>
               </div>
-              <button type="button" onClick={() => setCommentsOpen(false)} aria-label="Close comments" className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-white/70 dark:hover:bg-white/10">
+              <button
+                type="button"
+                onClick={() => setCommentsOpen(false)}
+                aria-label="Close comments"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-white/70 dark:hover:bg-white/10"
+              >
                 <XMarkIcon aria-hidden className="h-6 w-6" />
               </button>
             </div>
             <div className="min-h-24 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm">
               {commentsLoading ? (
-                <p className="py-6 text-center text-slate-500 dark:text-white/60">Loading comments…</p>
+                <p className="py-6 text-center text-slate-500 dark:text-white/60">
+                  Loading comments…
+                </p>
               ) : visibleComments.length === 0 ? (
-                <p className="py-6 text-center text-slate-500 dark:text-white/60">Be the first to comment on this Reel.</p>
-              ) : visibleComments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-900/50 dark:text-brand-200">
-                    {(comment.user?.name?.trim().charAt(0) || "L").toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold">{comment.user?.name?.trim() || "LIBERIA360 member"}</p>
-                    <p className="break-words text-slate-700 dark:text-white/80">{comment.body}</p>
-                    <p className="mt-1 text-xs text-slate-400">{timeAgo(comment.createdAt)}</p>
-                    <div className="mt-2 flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-white/60">
-                      <button type="button" onClick={() => void handleViewerCommentLike(comment.id)} aria-pressed={Boolean(comment.viewerLiked)} className={comment.viewerLiked ? "text-rose-600 dark:text-rose-400" : "hover:text-rose-600 dark:hover:text-rose-400"}>
-                        {comment.viewerLiked ? "Liked" : "Like"} · {comment.likeCount}
-                      </button>
-                      <button type="button" onClick={() => { setReplyingTo(comment.id); onCommentReply?.(comment.id); }} className="hover:text-brand-700 dark:hover:text-brand-300">
-                        Reply
-                      </button>
+                <p className="py-6 text-center text-slate-500 dark:text-white/60">
+                  Be the first to comment on this Reel.
+                </p>
+              ) : (
+                visibleComments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-900/50 dark:text-brand-200">
+                      {(
+                        comment.user?.name?.trim().charAt(0) || "L"
+                      ).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {comment.user?.name?.trim() || "LIBERIA360 member"}
+                      </p>
+                      <p className="break-words text-slate-700 dark:text-white/80">
+                        {comment.body}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {timeAgo(comment.createdAt)}
+                      </p>
+                      <div className="mt-2 flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-white/60">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleViewerCommentLike(comment.id)
+                          }
+                          aria-pressed={Boolean(comment.viewerLiked)}
+                          className={
+                            comment.viewerLiked
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "hover:text-rose-600 dark:hover:text-rose-400"
+                          }
+                        >
+                          {comment.viewerLiked ? "Liked" : "Like"} ·{" "}
+                          {comment.likeCount}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyingTo(comment.id);
+                            onCommentReply?.(comment.id);
+                          }}
+                          className="hover:text-brand-700 dark:hover:text-brand-300"
+                        >
+                          Reply
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
             <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] dark:border-white/10">
               <div className="flex items-end gap-2">
                 <div className="min-w-0 flex-1">
-                  {replyingTo && <p className="mb-1 flex items-center justify-between px-2 text-xs text-brand-700 dark:text-brand-300"><span>Replying to comment</span><button type="button" onClick={() => setReplyingTo(null)} className="font-semibold">Cancel</button></p>}
-                  <textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} rows={1} maxLength={1000} placeholder={replyingTo ? "Write a reply…" : "Write a comment…"} aria-label={replyingTo ? "Write a reply" : "Write a comment"} className="min-h-11 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:text-sm dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45" />
+                  {replyingTo && (
+                    <p className="mb-1 flex items-center justify-between px-2 text-xs text-brand-700 dark:text-brand-300">
+                      <span>Replying to comment</span>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        className="font-semibold"
+                      >
+                        Cancel
+                      </button>
+                    </p>
+                  )}
+                  <textarea
+                    value={commentDraft}
+                    onChange={(event) => setCommentDraft(event.target.value)}
+                    rows={1}
+                    maxLength={1000}
+                    placeholder={
+                      replyingTo ? "Write a reply…" : "Write a comment…"
+                    }
+                    aria-label={
+                      replyingTo ? "Write a reply" : "Write a comment"
+                    }
+                    className="min-h-11 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:text-sm dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-white/45"
+                  />
                 </div>
-                <button type="button" onClick={() => { if (!commentDraft.trim()) return; void handleViewerCommentSubmit(commentDraft.trim(), replyingTo ?? undefined); setCommentsOpen(false); setCommentDraft(""); setReplyingTo(null); }} disabled={!commentDraft.trim()} className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!commentDraft.trim()) return;
+                    void handleViewerCommentSubmit(
+                      commentDraft.trim(),
+                      replyingTo ?? undefined,
+                    );
+                    setCommentsOpen(false);
+                    setCommentDraft("");
+                    setReplyingTo(null);
+                  }}
+                  disabled={!commentDraft.trim()}
+                  className="min-h-11 rounded-2xl bg-brand-700 px-4 text-sm font-bold text-white disabled:opacity-40"
+                >
                   Post
                 </button>
               </div>
@@ -867,7 +997,8 @@ export function CreatorPostViewerImagePreview({
       className="group relative block aspect-[4/3] w-full overflow-hidden bg-slate-100 dark:bg-slate-800"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <SafeImage
+        fallback={<span className="text-sm text-slate-500">Photo unavailable</span>}
         src={post.mediaUrl}
         alt={`${post.creator.name}'s photo post`}
         loading="lazy"
@@ -893,12 +1024,12 @@ export function CreatorPostViewerVideoPreview({
       className="group relative block aspect-[4/5] w-full overflow-hidden bg-slate-950"
     >
       {isDirectVideoFile(post.mediaUrl) ? (
-          <CreatorVideoThumbnail
-            src={post.mediaUrl}
-            poster={poster}
-            label={`Open ${post.creator.name}'s video post`}
-            autoplayOnView
-          />
+        <CreatorVideoThumbnail
+          src={post.mediaUrl}
+          poster={poster}
+          label={`Open ${post.creator.name}'s video post`}
+          autoplayOnView
+        />
       ) : poster ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

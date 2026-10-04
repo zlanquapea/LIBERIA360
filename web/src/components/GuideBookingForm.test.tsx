@@ -5,6 +5,14 @@ jest.mock("../hooks/useAuth", () => ({ useAuth: () => ({ token: "token" }) }));
 jest.mock("../lib/guides-api", () => ({
   requestGuideBooking: jest.fn().mockResolvedValue({}),
 }));
+jest.mock("../lib/http", () => ({
+  apiRequest: jest.fn().mockResolvedValue({
+    enabled: false,
+    weekdays: [0, 1, 2, 3, 4, 5, 6],
+    blockedDates: [],
+    bookedDates: [],
+  }),
+}));
 beforeEach(() => jest.clearAllMocks());
 it("reviews and edits details before sending exactly one booking request", async () => {
   render(<GuideBookingForm experienceId="experience-1" maxGroupSize={5} />);
@@ -33,14 +41,35 @@ it("reviews and edits details before sending exactly one booking request", async
     note: undefined,
   });
 });
-it("rejects a past date before review or sending", () => {
+it("rejects a past date before review or sending", async () => {
   const { container } = render(
     <GuideBookingForm experienceId="experience-1" maxGroupSize={5} />,
   );
+  await screen.findByText(/already-booked dates are unavailable/i);
   fireEvent.change(screen.getByLabelText("Date"), {
     target: { value: "2000-01-01" },
   });
   fireEvent.submit(container.querySelector("form")!);
   expect(screen.getByRole("alert")).toBeInTheDocument();
+  expect(requestGuideBooking).not.toHaveBeenCalled();
+});
+
+it("rejects a date that is already booked before sending", async () => {
+  const { apiRequest } = await import("../lib/http");
+  (apiRequest as jest.Mock).mockResolvedValueOnce({
+    enabled: false,
+    weekdays: [],
+    blockedDates: [],
+    bookedDates: ["2099-12-10"],
+  });
+  const { container } = render(
+    <GuideBookingForm experienceId="experience-1" maxGroupSize={5} />,
+  );
+  await screen.findByText(/already-booked dates are unavailable/i);
+  fireEvent.change(screen.getByLabelText("Date"), {
+    target: { value: "2099-12-10" },
+  });
+  fireEvent.submit(container.querySelector("form")!);
+  expect(await screen.findByRole("alert")).toHaveTextContent("unavailable");
   expect(requestGuideBooking).not.toHaveBeenCalled();
 });

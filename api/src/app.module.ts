@@ -1,3 +1,4 @@
+import { CollectionsModule } from "./collections/collections.module";
 import { CreatorGuidesModule } from "./creator-guides/creator-guides.module";
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
@@ -172,6 +173,7 @@ import { ConversationsModule } from "./conversations/conversations.module";
         };
       },
     }),
+    CollectionsModule,
     HealthModule,
     PlacesModule,
     CreatorGuidesModule,

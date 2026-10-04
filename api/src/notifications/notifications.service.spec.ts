@@ -8,6 +8,7 @@ import { PushService } from "../push/push.service";
 describe("NotificationsService", () => {
   let service: NotificationsService;
   let repo: {
+    manager: { query: jest.Mock };
     save: jest.Mock;
     create: jest.Mock;
     findAndCount: jest.Mock;
@@ -19,6 +20,7 @@ describe("NotificationsService", () => {
 
   beforeEach(async () => {
     repo = {
+      manager: { query: jest.fn().mockResolvedValue([]) },
       save: jest.fn((data) => Promise.resolve(data)),
       create: jest.fn((data) => data),
       findAndCount: jest.fn().mockResolvedValue([[], 0]),
@@ -39,6 +41,43 @@ describe("NotificationsService", () => {
     service = module.get(NotificationsService);
   });
 
+  it("keeps in-app activity while respecting push preferences", async () => {
+    repo.manager.query.mockResolvedValue([
+      { preferences: { messages: false } },
+    ]);
+    await service.create("user-1", {
+      type: "guide.message",
+      title: "Message",
+      body: "Hello",
+    });
+    expect(repo.save).toHaveBeenCalled();
+    expect(pushService.sendToUsers).not.toHaveBeenCalled();
+  });
+  it("filters categories inside the account-scoped paginated query", async () => {
+    await service.findForUser("user-1", {
+      group: "messages",
+      unreadOnly: true,
+    });
+    expect(repo.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: [
+          expect.objectContaining({
+            userId: "user-1",
+            read: false,
+            type: expect.anything(),
+          }),
+        ],
+      }),
+    );
+  });
+  it("does not suppress security push alerts with category preferences", async () => {
+    await service.create("user-1", {
+      type: "admin.failed_login_alert",
+      title: "Security",
+      body: "Alert",
+    });
+    expect(pushService.sendToUsers).toHaveBeenCalled();
+  });
   describe("create", () => {
     it("saves a notification for the given user", async () => {
       await service.create("user-1", {

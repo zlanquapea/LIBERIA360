@@ -1,5 +1,5 @@
-import type { Notification, PaginatedNotifications } from './types';
-import { apiRequest, authHeader } from './http';
+import type { Notification, PaginatedNotifications } from "./types";
+import { apiRequest, authHeader } from "./http";
 
 // The general in-app notification center (Header's bell, shared by
 // regular users and admins alike — see Notification's own doc comment on
@@ -10,6 +10,7 @@ export interface ListNotificationsParams {
   page?: number;
   limit?: number;
   unreadOnly?: boolean;
+  group?: string;
 }
 
 export function listNotifications(
@@ -17,33 +18,40 @@ export function listNotifications(
   params: ListNotificationsParams = {},
 ): Promise<PaginatedNotifications> {
   const search = new URLSearchParams();
-  if (params.page) search.set('page', String(params.page));
-  if (params.limit) search.set('limit', String(params.limit));
-  if (params.unreadOnly) search.set('unreadOnly', 'true');
+  if (params.page) search.set("page", String(params.page));
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.unreadOnly) search.set("unreadOnly", "true");
+  if (params.group) search.set("group", params.group);
   const qs = search.toString();
-  return apiRequest<PaginatedNotifications>(`/notifications${qs ? `?${qs}` : ''}`, {
-    headers: authHeader(token),
-  });
+  return apiRequest<PaginatedNotifications>(
+    `/notifications${qs ? `?${qs}` : ""}`,
+    {
+      headers: authHeader(token),
+    },
+  );
 }
 
 // Polled by NotificationBell — a lightweight count-only endpoint so
 // polling every account/admin page doesn't pull the full feed each time.
 export function getUnreadNotificationCount(token: string): Promise<number> {
-  return apiRequest<{ count: number }>('/notifications/unread-count', {
+  return apiRequest<{ count: number }>("/notifications/unread-count", {
     headers: authHeader(token),
   }).then((result) => result.count);
 }
 
-export function markNotificationRead(token: string, id: string): Promise<Notification> {
+export function markNotificationRead(
+  token: string,
+  id: string,
+): Promise<Notification> {
   return apiRequest<Notification>(`/notifications/${id}/read`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: authHeader(token),
   });
 }
 
 export async function markAllNotificationsRead(token: string): Promise<void> {
-  await apiRequest<void>('/notifications/read-all', {
-    method: 'POST',
+  await apiRequest<void>("/notifications/read-all", {
+    method: "POST",
     headers: authHeader(token),
   });
 }

@@ -22,6 +22,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { BrandLoader } from "@/components/BrandLoader";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { DataSaverSetting } from "@/components/DataSaverSetting";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { AccountSecurity } from "@/components/AccountSecurity";
@@ -36,11 +37,6 @@ import {
 import { getCategories, getCounties } from "@/lib/api";
 import { formatTravelerType } from "@/lib/format";
 import { HttpError } from "@/lib/http";
-import {
-  normalizePhoneInput,
-  phoneInputError,
-  PHONE_INPUT_HINT,
-} from "@/lib/phone-validation";
 import type { AuthUser, Category, County, TravelerType } from "@/lib/types";
 
 // Account screen — shows the signed-in profile, or prompts to log in.
@@ -344,6 +340,7 @@ export default function AccountPage() {
       <AccountSecurity />
 
       <ThemeSelector />
+      <DataSaverSetting />
 
       <PushNotificationToggle />
 
@@ -382,7 +379,6 @@ function ProfileEditor({ user }: { user: AuthUser }) {
   const [travelerType, setTravelerType] = useState<TravelerType | "">(
     user.travelerType ?? "",
   );
-  const [phone, setPhone] = useState(user.phone ?? "");
   const [interests, setInterests] = useState<string[]>(user.interests ?? []);
   const [homeCountyId, setHomeCountyId] = useState(user.homeCounty?.id ?? "");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -408,17 +404,11 @@ function ProfileEditor({ user }: { user: AuthUser }) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const phoneError = phoneInputError(phone);
-    if (phoneError) {
-      setError(phoneError);
-      return;
-    }
     setSubmitting(true);
     setError(null);
     setSuccess(false);
     try {
       await updateProfile({
-        phone: phone.trim() ? normalizePhoneInput(phone)! : "",
         travelerType: travelerType || undefined,
         interests,
         homeCountyId: homeCountyId || undefined,
@@ -463,25 +453,6 @@ function ProfileEditor({ user }: { user: AuthUser }) {
       <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
         Traveler type
         <TravelerTypeSelect value={travelerType} onChange={setTravelerType} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
-        Phone number
-        <input
-          type="tel"
-          value={phone}
-          maxLength={40}
-          onChange={(event) => setPhone(event.target.value)}
-          aria-invalid={Boolean(phoneInputError(phone))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-slate-700 dark:bg-slate-950"
-        />
-        <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-          {PHONE_INPUT_HINT}
-        </span>
-        {phoneInputError(phone) && (
-          <span className="text-xs font-normal text-rose-600" role="alert">
-            {phoneInputError(phone)}
-          </span>
-        )}
       </label>
       {counties.length > 0 && (
         <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
