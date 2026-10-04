@@ -1,6 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useDataSaver } from "@/hooks/useDataSaver";
+import { resolveThumbUrl } from "@/lib/images";
+import { useEffect, useState } from "react";
 
 /**
  * Wraps a plain `<img>` (see `lib/images.ts`'s `resolveImageUrl` comment for
@@ -60,7 +62,7 @@ export function SafeImage({
   alt,
   className,
   fallback,
-  loading = 'lazy',
+  loading = "lazy",
 }: {
   src: string | null | undefined;
   /** Small rendition to try first — see the component doc comment. Falls
@@ -70,36 +72,41 @@ export function SafeImage({
   alt: string;
   className?: string;
   fallback: React.ReactNode;
-  loading?: 'lazy' | 'eager';
+  loading?: "lazy" | "eager";
 }) {
-  const firstAttempt = (src && (thumbSrc ?? src)) || null;
+  const dataSaver = useDataSaver();
+  const preferredThumb =
+    thumbSrc ?? (dataSaver && src ? resolveThumbUrl(src) : null);
+  const firstAttempt = (src && (preferredThumb ?? src)) || null;
   const [current, setCurrent] = useState<string | null>(firstAttempt);
-  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(firstAttempt ? 'loading' : 'error');
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    firstAttempt ? "loading" : "error",
+  );
 
   // A new src/thumbSrc (e.g. the user replaces a photo) needs its own
   // fresh loading/error cycle — otherwise a previous error/loaded state
   // would stick around and either hide the new image or skip its
   // skeleton.
   useEffect(() => {
-    const next = (src && (thumbSrc ?? src)) || null;
+    const next = (src && (preferredThumb ?? src)) || null;
     setCurrent(next);
-    setStatus(next ? 'loading' : 'error');
-  }, [src, thumbSrc]);
+    setStatus(next ? "loading" : "error");
+  }, [src, preferredThumb]);
 
   function handleError() {
     // The thumbnail failed — retry once with the full-size image before
     // giving up to the caller's fallback UI (see the component doc
     // comment). Only fires when thumbSrc was actually the one that just
     // failed and src is a genuinely different URL to retry.
-    if (current === thumbSrc && src && src !== current) {
+    if (current === preferredThumb && src && src !== current) {
       setCurrent(src);
-      setStatus('loading');
+      setStatus("loading");
       return;
     }
-    setStatus('error');
+    setStatus("error");
   }
 
-  if (!current || status === 'error') {
+  if (!current || status === "error") {
     return <>{fallback}</>;
   }
 
@@ -110,8 +117,8 @@ export function SafeImage({
       alt={alt}
       loading={loading}
       decoding="async"
-      className={`${className ?? ''} ${status === 'loading' ? 'bg-slate-200 dark:bg-slate-800' : ''}`}
-      onLoad={() => setStatus('loaded')}
+      className={`${className ?? ""} ${status === "loading" ? "bg-slate-200 dark:bg-slate-800" : ""}`}
+      onLoad={() => setStatus("loaded")}
       onError={handleError}
     />
   );
