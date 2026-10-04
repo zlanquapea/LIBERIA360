@@ -35,7 +35,9 @@
     "privacy": "Confidentialité",
     "terms": "Conditions",
     "footerNavigation": "Navigation du pied de page",
-    "copyright": "© {year} LIBERIA360. Tout le Liberia. En un seul endroit."
+    "copyright": "© {year} LIBERIA360. Tout le Liberia. En un seul endroit.",
+    "madeFor": "Fait pour le Liberia",
+    "phrasebook": "Anglais libérien"
   },
   "common": {
     "loading": "Chargement…",
@@ -74,7 +76,9 @@
     "tryAgain": "Réessayer",
     "goHome": "Retour à l'accueil",
     "pageNotFoundTitle": "Page introuvable",
-    "pageNotFoundDescription": "On dirait que cette page s'est égarée hors des sentiers battus. Revenons sur le bon chemin."
+    "pageNotFoundDescription": "On dirait que cette page s'est égarée hors des sentiers battus. Revenons sur le bon chemin.",
+    "snapSaved": "Snap ! Enregistré",
+    "lrdRateNote": "Estimation à 1 US$ = {rate} L$, le taux indiqué dans Infos voyage"
   },
   "home": {
     "eyebrow": "Tout le Liberia. En un seul endroit.",
@@ -634,7 +638,12 @@
     "seeAll": "Tout voir",
     "entryPointsLabel": "Par où commencer",
     "essentialsLabel": "Se déplacer et l'essentiel",
-    "travelInfoHint": "Visas, monnaie et saisons"
+    "travelInfoHint": "Visas, monnaie et saisons",
+    "countyMapLabel": "Carte en tuiles des 15 comtés du Liberia, placés approximativement. Plus la tuile est foncée, plus il y a de lieux.",
+    "countyMapNote": "Pas à l’échelle : une tuile par comté.",
+    "countyMapSea": "Océan Atlantique",
+    "countyMapNone": "Aucun",
+    "countyMapMore": "Plus de lieux"
   },
   "creatorGuides": {
     "eyebrow": "Guides locaux",
@@ -769,5 +778,84 @@
     "entry": "Entrée {price}",
     "gettingThere": "Comment s'y rendre : {notes}",
     "openLive": "Ouvrir le voyage en ligne"
+  },
+  "photoEditor": {
+    "title": "Cadrer votre photo",
+    "shape": "Format",
+    "aspect_original": "Original",
+    "aspect_4_3": "Carte 4:3",
+    "aspect_16_9": "Large 16:9",
+    "aspect_1_1": "Carré",
+    "frameLabel": "Cadre photo. Faites glisser ou utilisez les flèches pour positionner, plus et moins pour zoomer.",
+    "dragHint": "Faites glisser pour positionner. Utilisez le curseur pour zoomer sur l'essentiel.",
+    "zoom": "Zoom",
+    "rotate": "Pivoter de 90°",
+    "previewCard": "Sur une carte",
+    "previewCover": "En couverture",
+    "finishNote": "Nous équilibrons la lumière et les couleurs après l'envoi — sans filtre, le lieu reste fidèle.",
+    "useOriginal": "Utiliser l'original",
+    "usePhoto": "Utiliser la photo",
+    "useAndNext": "Utiliser et suivante",
+    "saving": "Préparation…",
+    "cancel": "Annuler",
+    "skipRest": "Envoyer les {count} restantes telles quelles",
+    "loading": "Ouverture de la photo…",
+    "cantOpen": "Cette photo ne peut pas être prévisualisée ici, mais vous pouvez l'envoyer telle quelle."
+  },
+  "liberia": {
+    "phraseOfTheDay": "L’expression libérienne du jour",
+    "openPhrasebook": "Ouvrir le guide",
+    "pageEyebrow": "Parlez comme chez vous",
+    "pageTitle": "Anglais libérien",
+    "pageIntro": "Les expressions du quotidien, de Monrovia à Harper, et les plats que vous verrez sur les menus.",
+    "phrasesTitle": "Expressions du quotidien",
+    "today": "Aujourd’hui",
+    "dishesTitle": "Le vocabulaire de la table",
+    "dishesIntro": "La plupart des plats se servent sur du riz, et « small pepper » reste piquant. Demandez avant de commander.",
+    "usageNote": "L’anglais libérien (kolokwa) varie selon les comtés et les générations, et il n’existe pas d’orthographe unique. Voici des façons courantes de le dire et de l’écrire. Une expression à ajouter ou corriger ? Dites-le-nous.",
+    "dishNotesTitle": "Plats libériens ici",
+    "whatIs": "Qu’est-ce que le {dish} ?",
+    "phrases": {
+      "howDaBody": "Comment ça va ? La salutation de tous les jours.",
+      "bodyFine": "Ça va bien. La réponse habituelle à « How da body? ».",
+      "whatYouSaying": "Quoi de neuf ? Un salut décontracté entre amis.",
+      "iComing": "Je reviens tout de suite. Se dit en partant, pas en arrivant.",
+      "smallSmall": "Petit à petit ; doucement.",
+      "myPeople": "Un salut chaleureux aux amis, ou à toute l’assemblée.",
+      "holdYourFoot": "Je t’en supplie, rends-moi ce service.",
+      "youLie": "Pas possible ! Vraiment ? De la surprise, pas une accusation.",
+      "carryMe": "Emmène-moi à Waterside, le grand marché de Monrovia. « Carry » veut dire emmener quelqu’un quelque part.",
+      "iDoneEat": "J’ai déjà mangé.",
+      "lehWeGo": "Allons-y.",
+      "thankYouOh": "Merci beaucoup. Un « oh » final rend presque tout plus chaleureux.",
+      "itNotEasy": "C’est dur. Se dit d’un air entendu à propos de la vie, du travail ou des embouteillages.",
+      "oldMa": "Une façon respectueuse de saluer une femme ou un homme âgé.",
+      "pekin": "Un enfant.",
+      "pehnPehn": "Un moto-taxi.",
+      "keke": "Un taxi motorisé à trois roues, un tuk-tuk.",
+      "snap": "La poignée de main libérienne : on se serre la main, on glisse et on fait claquer les majeurs. Liberia360 claque des doigts quand vous enregistrez un lieu."
+    },
+    "dishes": {
+      "palmButter": "Un riche ragoût rouge de pulpe de noix de palme, mijoté avec de la viande ou du poisson et servi sur du riz.",
+      "cassavaLeaf": "Feuilles de manioc pilées finement et mijotées avec de l’huile de palme, de la viande ou du poisson et du piment. Servi sur du riz.",
+      "potatoGreens": "Feuilles de patate douce cuites à l’huile avec de la viande ou du poisson et du piment, servies sur du riz.",
+      "jollof": "Riz cuit dans une sauce tomate épicée, souvent avec du poulet, du bœuf ou des légumes. Le plat des fêtes en Afrique de l’Ouest.",
+      "fufu": "Une pâte douce et légèrement acidulée de manioc fermenté. On en pince un morceau qu’on trempe dans la soupe.",
+      "dumboy": "Manioc bouilli pilé en une pâte lisse et élastique, qu’on avale sans mâcher, avec une pepper soup ou du palm butter.",
+      "torbogee": "Un ragoût épais et épicé de « bitter balls », huile de palme, poisson séché et piment.",
+      "pepperSoup": "Un bouillon léger et très pimenté, au poisson ou à la viande. Réputé contre le rhume, ou les lendemains de fête.",
+      "palavaSauce": "Légumes-feuilles mijotés avec de l’huile de palme et de la viande ou du poisson.",
+      "checkRice": "Riz cuit avec des légumes-feuilles et du gombo, qui lui donnent un aspect moucheté.",
+      "kala": "Beignets de pâte frits, légèrement sucrés. Vendus chauds dans la rue le matin.",
+      "riceBread": "Un pain moelleux et sucré à la farine de riz et à la banane mûre écrasée.",
+      "gingerBeer": "Fait maison, sans alcool et très piquant au gingembre frais."
+    }
+  },
+  "placeCard": {
+    "new": "Nouveau",
+    "openNow": "Ouvert",
+    "ratingLabel": "Noté {rating} sur 5 ({count, plural, one {# avis} other {# avis}})",
+    "free": "Entrée gratuite",
+    "entry": "Entrée {price}"
   }
 }

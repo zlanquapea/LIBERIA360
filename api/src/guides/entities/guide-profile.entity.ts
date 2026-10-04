@@ -1,4 +1,4 @@
-import type { GuideAvailability } from '../availability';
+import type { GuideAvailability } from "../availability";
 import {
   Column,
   CreateDateColumn,
@@ -15,7 +15,11 @@ import { GuideType, GuideVerificationStatus } from "./guide.enums";
 
 @Entity("guide_profiles")
 export class GuideProfile {
-  @Column({ type: 'jsonb', default: () => `' {"enabled":false,"weekdays":[0,1,2,3,4,5,6],"blockedDates":[],"version":0}'::jsonb` })
+  @Column({
+    type: "jsonb",
+    default: () =>
+      `' {"enabled":false,"weekdays":[0,1,2,3,4,5,6],"blockedDates":[],"version":0}'::jsonb`,
+  })
   availability: GuideAvailability;
 
   @PrimaryGeneratedColumn("uuid")

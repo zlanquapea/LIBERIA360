@@ -38,3 +38,43 @@ export function VerificationBadge({ status, compact = false }: { status: Verific
     </span>
   );
 }
+
+const SEAL_TONE: Record<'onDark' | 'onLight', Partial<Record<VerificationStatus, string>>> = {
+  onDark: {
+    verified: 'text-brand-300',
+    recommended: 'text-amber-300',
+    official: 'text-white',
+    eco_certified: 'text-emerald-300',
+    community_favorite: 'text-rose-300',
+  },
+  onLight: {
+    verified: 'text-brand-600 dark:text-brand-400',
+    recommended: 'text-amber-500',
+    official: 'text-slate-700 dark:text-slate-200',
+    eco_certified: 'text-emerald-600 dark:text-emerald-400',
+    community_favorite: 'text-rose-500',
+  },
+};
+
+/** The badge as a quiet seal beside a name, the way people already read
+ * verified accounts: icon only, named for screen readers and on hover.
+ * The white dot behind keeps the check crisp over a photo. */
+export function VerificationSeal({
+  status,
+  tone = 'onLight',
+  className = 'h-[1.05em] w-[1.05em]',
+}: {
+  status: VerificationStatus;
+  tone?: 'onDark' | 'onLight';
+  className?: string;
+}) {
+  const config = BADGE_CONFIG[status];
+  if (!config) return null;
+  const Icon = config.icon;
+  return (
+    <span role="img" aria-label={config.label} title={config.label} className={`relative inline-flex shrink-0 align-[-0.12em] ${className}`}>
+      <span aria-hidden className="absolute inset-[22%] rounded-full bg-white" />
+      <Icon aria-hidden className={`relative h-full w-full ${SEAL_TONE[tone][status] ?? ''}`} />
+    </span>
+  );
+}

@@ -1391,3 +1391,99 @@ body:has(.messaging-chat) #main-content > footer { display: none; }
 /* Menu sheets (components/menu/MenuSheet.tsx). */
 @keyframes menu-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes menu-sheet-up { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+
+/* "Snap!" — the save moment, after the Liberian handshake that ends in a
+   finger snap. Six short rays burst from the button and a small label
+   floats up; nothing loops, and reduced-motion users see only the label. */
+.snap-burst { position: absolute; inset: 0; pointer-events: none; }
+.snap-burst__ray {
+  position: absolute; left: 50%; top: 50%; width: 2px; height: 8px; margin: -4px 0 0 -1px;
+  border-radius: 9999px; background: rgb(237 91 18);
+  transform: rotate(var(--snap-angle)) translateY(-10px) scaleY(0.4); opacity: 0;
+  animation: snap-ray 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.snap-burst__label {
+  /* Below the button and aligned to its start edge, so it stays inside
+     a card's rounded, overflow-hidden corner. */
+  position: absolute; inset-inline-start: 6px; top: 100%; margin-top: 6px; transform: translateY(-4px);
+  white-space: nowrap; border-radius: 9999px; background: rgb(8 46 33); color: white;
+  padding: 2px 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; opacity: 0;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+  animation: snap-label 900ms ease-out forwards;
+}
+@keyframes snap-ray {
+  0% { opacity: 0; transform: rotate(var(--snap-angle)) translateY(-10px) scaleY(0.4); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--snap-angle)) translateY(-22px) scaleY(1); }
+}
+@keyframes snap-label {
+  0% { opacity: 0; transform: translateY(-4px); }
+  20%, 70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .snap-burst__ray { display: none; }
+  .snap-burst__label { animation: snap-label-still 900ms steps(1, end) forwards; transform: none; }
+  @keyframes snap-label-still { 0%, 99% { opacity: 1; } 100% { opacity: 0; } }
+}
+
+
+/* County tile map: a hint of sea along the coast (bottom-left), land
+   paper everywhere else. */
+.lib-tilemap {
+  background:
+    radial-gradient(120% 90% at 0% 100%, rgb(14 116 144 / 0.14), transparent 55%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.9), rgb(248 250 252 / 0.9));
+}
+:root.dark .lib-tilemap,
+.dark .lib-tilemap {
+  background:
+    radial-gradient(120% 90% at 0% 100%, rgb(14 116 144 / 0.22), transparent 55%),
+    linear-gradient(180deg, rgb(15 23 42 / 0.8), rgb(2 6 23 / 0.8));
+}
+
+/* Discovery cards (InteractiveCard): a slight 3D tilt toward the mouse,
+   a soft light that follows it, a lift on hover and a press on tap. */
+.lib-card {
+  --card-rx: 0deg;
+  --card-ry: 0deg;
+  --card-lift: 0px;
+  --card-scale: 1;
+  transform: perspective(1000px) rotateX(var(--card-rx)) rotateY(var(--card-ry)) translateY(var(--card-lift)) scale(var(--card-scale));
+  transition: transform 450ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 450ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.lib-card:active { --card-scale: 0.97; transition-duration: 150ms; }
+.lib-card__glare {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+  opacity: 0; transition: opacity 450ms ease;
+  background: radial-gradient(circle at var(--card-mx, 50%) var(--card-my, 0%), rgb(255 255 255 / 0.22), transparent 50%);
+  mix-blend-mode: soft-light;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lib-card:hover { --card-lift: -4px; box-shadow: 0 28px 50px -24px rgb(8 46 33 / 0.55), 0 10px 20px -12px rgb(0 0 0 / 0.25); }
+  .lib-card:hover .lib-card__glare { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-card { transform: none; transition: box-shadow 200ms ease; }
+  .lib-card__glare { display: none; }
+}
+
+/* Cards rise into place as they scroll into view. Browsers with
+   scroll-driven animations tie it to the scroll; others get a one-time
+   staggered fade on load. */
+@keyframes lib-reveal {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.reveal-on-scroll { animation: lib-reveal 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@supports (animation-timeline: view()) {
+  .reveal-on-scroll {
+    animation: lib-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll { animation: none; }
+}

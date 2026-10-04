@@ -76,7 +76,15 @@ export function colorForCounty(slug: string): string {
 // app's navy-tinted, deep-shadow "premium" surfaces elsewhere. Pulling
 // both stops back toward the source hue keeps the same white-icon-on-
 // gradient contrast while reading as rich color instead of a tint.
+/** The backdrop for a card or gallery with no photo yet: the category
+ * colour, a soft sun-glow, and a faint diagonal weave that nods to
+ * Liberian country cloth — so an empty card still looks deliberate. */
 export function gradientForCategory(slug: string): string {
   const hex = colorForCategory(slug);
-  return `linear-gradient(to bottom right, color-mix(in srgb, ${hex} 82%, white), color-mix(in srgb, ${hex} 88%, black))`;
+  return [
+    'radial-gradient(circle at 82% 14%, rgb(255 255 255 / 0.24), transparent 42%)',
+    'repeating-linear-gradient(135deg, rgb(255 255 255 / 0.07) 0 2px, transparent 2px 12px)',
+    'repeating-linear-gradient(45deg, rgb(0 0 0 / 0.05) 0 2px, transparent 2px 12px)',
+    `linear-gradient(to bottom right, color-mix(in srgb, ${hex} 82%, white), color-mix(in srgb, ${hex} 88%, black))`,
+  ].join(', ');
 }

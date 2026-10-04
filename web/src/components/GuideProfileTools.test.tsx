@@ -126,7 +126,7 @@ describe("GuideProfileTools experience publishing", () => {
 
     resolvePublish(CREATED_EXPERIENCE);
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(/now published/i),
+      expect(screen.getByText(/now published/i)).toHaveAttribute("role", "status"),
     );
   });
 

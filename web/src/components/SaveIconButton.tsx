@@ -1,5 +1,6 @@
 'use client';
 
+import { useSnap } from './SnapBurst';
 import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { useSavedPlaces } from '@/hooks/useSavedPlaces';
@@ -19,34 +20,46 @@ export function SaveIconButton({
   slug,
   placeId,
   className = '',
+  tone = 'solid',
 }: {
   slug: string;
   placeId?: string;
   className?: string;
+  /** `glass` sits over a full-bleed photo. */
+  tone?: 'solid' | 'glass';
 }) {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(slug);
+  const { snap, burst } = useSnap();
 
   function handleClick() {
     const nowSaved = toggle(slug, placeId);
+    if (nowSaved) snap();
     if (nowSaved && placeId) {
       recordAnalyticsEvent(placeId, 'save');
     }
   }
 
+  // The snap burst needs a positioned parent. Cards already place this
+  // button with `absolute`; adding `relative` too would override it.
   return (
     <button
       type="button"
       onClick={handleClick}
       aria-pressed={saved}
       aria-label={saved ? 'Remove from saved places' : 'Save this place'}
-      className={`flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm transition-colors active:scale-90 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900 ${className}`}
+      className={`${/\babsolute\b/.test(className) ? '' : 'relative'} flex items-center justify-center rounded-full transition-[background-color,transform] active:scale-90 ${
+        tone === 'glass'
+          ? 'h-9 w-9 bg-black/25 text-white ring-1 ring-white/30 backdrop-blur-md before:absolute before:-inset-1 before:content-[""] hover:bg-black/45'
+          : 'h-8 w-8 bg-white/90 text-slate-500 shadow-sm backdrop-blur-sm hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-900'
+      } ${className}`}
     >
       {saved ? (
-        <BookmarkIconSolid aria-hidden className="h-4 w-4 animate-pop text-gold-500" />
+        <BookmarkIconSolid aria-hidden className={`h-4 w-4 animate-pop ${tone === 'glass' ? 'text-gold-400' : 'text-gold-500'}`} />
       ) : (
-        <BookmarkIcon aria-hidden className="h-4 w-4" />
+        <BookmarkIcon aria-hidden className={tone === 'glass' ? 'h-[18px] w-[18px]' : 'h-4 w-4'} />
       )}
+      {burst}
     </button>
   );
 }

@@ -5,6 +5,8 @@ import { uploadImage } from '@/lib/uploads-api';
 import { resolveImageUrl } from '@/lib/images';
 import { HttpError } from '@/lib/http';
 import { SafeImage } from './SafeImage';
+import { PhotoEditor } from './PhotoEditor';
+import type { AspectId } from '@/lib/photo-crop';
 
 // Single-value counterpart to PhotoManager (which manages a `string[]`
 // gallery) — profileImage/coverImage are one-URL fields, not a list, so
@@ -17,18 +19,24 @@ export function SingleImageUploader({
   onChange,
   label,
   className = 'h-28 w-28',
+  aspect = 'original',
 }: {
   token: string;
   value: string | null;
   onChange: (url: string | null) => void;
   label: string;
   className?: string;
+  // The frame the editor suggests (e.g. 1:1 for a profile photo).
+  aspect?: AspectId;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [pending, setPending] = useState<File | null>(null);
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
+    setPending(null);
     setError(null);
     setUploading(true);
     try {
@@ -76,12 +84,18 @@ export function SingleImageUploader({
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             disabled={uploading}
-            onChange={(e) => handleFile(e.target.files?.[0])}
+            onChange={(e) => {
+              setPending(e.target.files?.[0] ?? null);
+              e.target.value = '';
+            }}
             className="hidden"
           />
         </label>
       )}
       {error && <p className="text-xs text-flag-700 dark:text-flag-300">{error}</p>}
+      {pending && (
+        <PhotoEditor file={pending} defaultAspect={aspect} onDone={handleFile} onCancel={() => setPending(null)} />
+      )}
     </div>
   );
 }

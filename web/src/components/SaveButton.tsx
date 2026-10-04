@@ -1,5 +1,6 @@
 'use client';
 
+import { useSnap } from './SnapBurst';
 import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { useSavedPlaces } from '@/hooks/useSavedPlaces';
@@ -14,9 +15,11 @@ import { recordAnalyticsEvent } from '@/lib/analytics-api';
 export function SaveButton({ slug, placeId, className = '' }: { slug: string; placeId?: string; className?: string }) {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(slug);
+  const { snap, burst } = useSnap();
 
   function handleClick() {
     const nowSaved = toggle(slug, placeId);
+    if (nowSaved) snap();
     if (nowSaved && placeId) {
       recordAnalyticsEvent(placeId, 'save');
     }
@@ -27,7 +30,7 @@ export function SaveButton({ slug, placeId, className = '' }: { slug: string; pl
       type="button"
       onClick={handleClick}
       aria-pressed={saved}
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
+      className={`relative inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
         saved ? 'border-transparent bg-gold-500 text-white' : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand-500'
       } ${className}`}
     >
@@ -37,6 +40,7 @@ export function SaveButton({ slug, placeId, className = '' }: { slug: string; pl
         <BookmarkIcon aria-hidden className="h-4 w-4" />
       )}
       {saved ? 'Saved' : 'Save'}
+      {burst}
     </button>
   );
 }

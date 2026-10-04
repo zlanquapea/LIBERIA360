@@ -12,7 +12,11 @@ import {
   Max,
   Min,
 } from "class-validator";
-import { PLACE_AMENITIES, PlaceAmenity, PlaceType } from "../entities/place.enums";
+import {
+  PLACE_AMENITIES,
+  PlaceAmenity,
+  PlaceType,
+} from "../entities/place.enums";
 
 // "popular" ranks by view count over the trailing 7 days (see
 // PLACE_TRENDING_WINDOW_DAYS in places.service.ts) — Home's "Discover this

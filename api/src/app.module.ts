@@ -1,4 +1,4 @@
-import { CollectionsModule } from './collections/collections.module';
+import { CollectionsModule } from "./collections/collections.module";
 import { CreatorGuidesModule } from "./creator-guides/creator-guides.module";
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";

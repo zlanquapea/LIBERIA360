@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DishNotes } from "@/components/DishNotes";
 import { notFound } from "next/navigation";
 import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { getTranslations } from "next-intl/server";
@@ -256,6 +257,7 @@ export default async function PlaceProfilePage({
         <p className="mt-4 max-w-3xl leading-8 text-slate-700 dark:text-slate-200">
           {place.description}
         </p>
+        <DishNotes texts={[place.name, place.description]} className="mt-5" />
       </section>
 
       <PlaceGoodToKnow place={place} />

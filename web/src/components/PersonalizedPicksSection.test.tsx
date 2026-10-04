@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithMessages as render } from "@/test/render-with-messages";
 import { PersonalizedPicksSection } from "./PersonalizedPicksSection";
 import type { AuthUser } from "@/lib/types";
 

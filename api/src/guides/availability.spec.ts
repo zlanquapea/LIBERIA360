@@ -10,12 +10,7 @@ it("rejects impossible, past, blocked and non-working dates", () => {
     weekdays: [1],
     blockedDates: ["2026-10-12"],
   };
-  for (const date of [
-    "2026-02-31",
-    "2026-10-03",
-    "2026-10-04",
-    "2026-10-12",
-  ])
+  for (const date of ["2026-02-31", "2026-10-03", "2026-10-04", "2026-10-12"])
     expect(() => assertGuideDate(date, schedule, [], today)).toThrow();
   expect(() =>
     assertGuideDate("2026-10-05", schedule, [], today),
@@ -30,12 +25,7 @@ it("keeps unscheduled guides request-based but excludes confirmed dates", () => 
     assertGuideDate("2026-10-06", defaultAvailability, [], today),
   ).not.toThrow();
   expect(() =>
-    assertGuideDate(
-      "2026-10-06",
-      defaultAvailability,
-      ["2026-10-06"],
-      today,
-    ),
+    assertGuideDate("2026-10-06", defaultAvailability, ["2026-10-06"], today),
   ).toThrow();
 });
 
@@ -61,9 +51,7 @@ it("checks for a competing confirmed booking inside the guide lock", async () =>
       .fn()
       .mockReturnValueOnce(repo)
       .mockReturnValueOnce(guideRepo),
-    query: jest
-      .fn()
-      .mockResolvedValue([{ id: "another-confirmed-booking" }]),
+    query: jest.fn().mockResolvedValue([{ id: "another-confirmed-booking" }]),
   };
   const service = new GuidesService(
     {} as never,

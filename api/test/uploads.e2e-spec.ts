@@ -169,6 +169,9 @@ describe("Uploads (e2e)", () => {
 
     const metadata = await sharp(thumbPath).metadata();
     expect(metadata.format).toBe("jpeg");
-    expect(metadata.width).toBe(480);
+    // 3000×2000 is wider than 4:3, so the card crop trims it to 4:3 and
+    // the thumbnail comes out at the 640px card size.
+    expect(metadata.width).toBe(640);
+    expect(metadata.height).toBe(480);
   });
 });

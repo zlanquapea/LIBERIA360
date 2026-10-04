@@ -17,6 +17,7 @@ import {
 import { summarizeCollections, weekendWindow, withoutShown } from '@/lib/home-discovery';
 import { resolveImageUrl, resolveThumbUrl } from '@/lib/images';
 import { gradientForCategory } from '@/lib/category-colors';
+import { leadsWithFeature } from '@/lib/place-card';
 import { PlaceCardCompact } from '@/components/PlaceCardCompact';
 import { AdvertisementBanner } from '@/components/AdvertisementBanner';
 import { FeaturedPlacementsCarousel } from '@/components/FeaturedPlacementsCarousel';
@@ -29,8 +30,11 @@ import { CreatorsSection } from '@/components/home/CreatorsSection';
 import { CountyExplorer } from '@/components/home/CountyExplorer';
 import { ContributeSection } from '@/components/home/ContributeSection';
 import { SectionHeading } from '@/components/home/SectionHeading';
+import { PhraseOfTheDay } from '@/components/home/PhraseOfTheDay';
 
-const POPULAR_LIMIT = 8;
+// Nine lets the grid lead with one large tile and still end flush: 2 + 8
+// cells on phones, 4 + 8 on desktop.
+const POPULAR_LIMIT = 9;
 const WEEKEND_LIMIT = 8;
 const CREATORS_LIMIT = 6;
 const TRIPS_LIMIT = 6;
@@ -110,6 +114,8 @@ export default async function Home() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-14 px-4 py-10 sm:gap-16 sm:px-6 sm:py-14 lg:px-10">
         <CollectionsSection summaries={summaries} />
 
+        <PhraseOfTheDay />
+
         <WeekendSection
           events={weekendEvents.data}
           upcoming={upcomingEvents}
@@ -157,7 +163,13 @@ export default async function Home() {
             />
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {popularFresh.map((place, i) => (
-                <PlaceCardCompact key={place.id} place={place} verificationStatus={verificationByPlaceId.get(place.id)} index={i} />
+                <PlaceCardCompact
+                  key={place.id}
+                  place={place}
+                  verificationStatus={verificationByPlaceId.get(place.id)}
+                  index={i}
+                  size={i === 0 && leadsWithFeature(popularFresh.length) ? 'feature' : 'regular'}
+                />
               ))}
             </div>
           </section>

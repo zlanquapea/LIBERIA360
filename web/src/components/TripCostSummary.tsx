@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { formatCost } from '@/lib/format';
 import { costBreakdown } from '@/lib/trip-checks';
+import { LrdHint } from './LrdHint';
 import type { ItineraryStopDetail } from '@/lib/types';
 
 // A rough trip-level estimate from the prices listed on each stop: a
@@ -19,6 +20,7 @@ export function TripCostSummary({ stops }: { stops: ItineraryStopDetail[] }) {
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm">
       <p className="font-medium text-slate-900 dark:text-slate-50">
         {t('estimatedCost', { amount: formatCost(known) })}
+        <LrdHint usd={known} className="ms-2 text-xs font-normal" />
       </p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{t('estimatedCostDisclaimer')}</p>
       {unpriced.length > 0 && (

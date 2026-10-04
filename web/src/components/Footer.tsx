@@ -3,6 +3,7 @@
 import NextLink from "next/link";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { LiberiaFlag } from "./LoneStar";
 
 // Sits at the bottom of the scrollable content area, above BottomNav's
 // sticky tab bar (see app/layout.tsx) — the one place in this mobile-first
@@ -37,6 +38,12 @@ export function Footer() {
           >
             {t("addPlace")}
           </Link>
+          <Link
+            href="/liberian-english"
+            className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
+          >
+            {t("phrasebook")}
+          </Link>
           <NextLink
             href="/privacy"
             className="hover:text-brand-700 hover:underline dark:hover:text-brand-200"
@@ -52,7 +59,13 @@ export function Footer() {
         </nav>
       </div>
       <div className="mx-auto mt-6 max-w-7xl border-t border-slate-200 pt-5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:px-2">
-        {t("copyright", { year: new Date().getFullYear() })}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span>{t("copyright", { year: new Date().getFullYear() })}</span>
+          <span className="inline-flex items-center gap-2 font-medium">
+            <LiberiaFlag className="h-3.5 w-auto" />
+            {t("madeFor")}
+          </span>
+        </div>
       </div>
     </footer>
   );

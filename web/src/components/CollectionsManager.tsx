@@ -75,7 +75,7 @@ function LiveSharedCollection() {
     <section className="mb-6 rounded-2xl border border-emerald-400 p-5">
       <h2 className="text-xl font-bold">{shared.name}</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Shared collection · reflects the owner's latest saved changes when
+        Shared collection · reflects the owner&apos;s latest saved changes when
         opened
       </p>
       <ul className="mt-4 space-y-3">
