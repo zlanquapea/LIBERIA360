@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { CollectionsManager } from "./CollectionsManager";
+import { DeviceCollectionsManager as CollectionsManager } from "./DeviceCollectionsManager";
 let mockUser = { id: "owner" };
 jest.mock("../hooks/useAuth", () => ({
   useAuth: () => ({ user: mockUser, ready: true }),

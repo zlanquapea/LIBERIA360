@@ -1,291 +1,461 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/http";
 import {
   collectionItem,
-  collectionShareUrl,
   readSharedCollection,
   type SavedCollection,
 } from "@/lib/collections";
-
+import { DeviceCollectionsManager } from "./DeviceCollectionsManager";
+type AccountCollection = SavedCollection & {
+  version: number;
+  shareToken: string | null;
+};
+const input =
+  "min-h-12 w-full min-w-0 rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700";
+const button =
+  "min-h-11 rounded-xl border border-slate-300 px-4 py-2 font-semibold disabled:opacity-50 dark:border-slate-700";
 export function CollectionsManager() {
   const { user, ready } = useAuth();
-  const key = `liberia360:collections:${user?.id ?? "guest"}`;
-  const [collections, setCollections] = useState<SavedCollection[]>([]);
-  const [loadedKey, setLoadedKey] = useState("");
+  return (
+    <>
+      {ready && <LiveSharedCollection />}
+      {!ready ? (
+        <p role="status">Loading collections…</p>
+      ) : user ? (
+        <AccountCollections key={user.id} userId={user.id} />
+      ) : (
+        <>
+          <p className="mb-4 text-sm">
+            <Link className="underline" href="/login?next=/collections">
+              Sign in
+            </Link>{" "}
+            to sync collections across devices.
+          </p>
+          <DeviceCollectionsManager />
+        </>
+      )}
+    </>
+  );
+}
+function LiveSharedCollection() {
   const [shared, setShared] = useState<SavedCollection | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    const token = new URLSearchParams(window.location.search).get("share");
+    if (!token) return;
+    apiRequest<Omit<SavedCollection, "id">>(
+      `/collections/shared/${encodeURIComponent(token)}`,
+      { cache: "no-store" },
+    )
+      .then((row) => {
+        if (alive) setShared({ ...row, id: "shared" });
+      })
+      .catch(() => {
+        if (alive)
+          setError(
+            "This collection is unavailable or its owner has stopped sharing it.",
+          );
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (error)
+    return (
+      <p role="alert" className="mb-6">
+        {error}
+      </p>
+    );
+  if (!shared) return null;
+  return (
+    <section className="mb-6 rounded-2xl border border-emerald-400 p-5">
+      <h2 className="text-xl font-bold">{shared.name}</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Shared collection · reflects the owner's latest saved changes when
+        opened
+      </p>
+      <ul className="mt-4 space-y-3">
+        {shared.items.map((item) => (
+          <li key={item.path}>
+            <Link
+              className="block break-words rounded-xl border p-3"
+              href={item.path}
+            >
+              {item.title} →
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+function AccountCollections({ userId }: { userId: string }) {
+  const [rows, setRows] = useState<AccountCollection[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [selected, setSelected] = useState("");
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
-  const [selected, setSelected] = useState("");
-  const [notice, setNotice] = useState("");
+  const [imports, setImports] = useState<SavedCollection[]>([]);
   const [shareUrl, setShareUrl] = useState("");
+  const mounted = useRef(true);
   useEffect(() => {
-    if (!ready) return;
-    setLoadedKey("");
-    setCollections([]);
-    setSelected("");
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  async function load() {
+    setError("");
     try {
-      const data = JSON.parse(localStorage.getItem(key) || "[]");
-      if (Array.isArray(data))
-        setCollections(
-          data.slice(0, 30).flatMap((raw) => {
+      const result = await apiRequest<AccountCollection[]>("/collections", {
+        cache: "no-store",
+      });
+      if (mounted.current) {
+        setRows(result);
+        setLoaded(true);
+      }
+    } catch {
+      if (mounted.current)
+        setError(
+          "Could not load your account collections. Check your connection and retry.",
+        );
+    }
+  }
+  useEffect(() => {
+    void load();
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem(`liberia360:collections:${userId}`) || "[]",
+      );
+      const local = Array.isArray(stored)
+        ? stored.slice(0, 30).flatMap((raw) => {
             const checked = readSharedCollection(
               encodeURIComponent(JSON.stringify(raw)),
             );
             return checked && typeof raw.id === "string"
               ? [{ ...checked, id: raw.id }]
               : [];
-          }),
-        );
+          })
+        : [];
+      const legacy = window.location.hash
+        ? readSharedCollection(window.location.hash)
+        : null;
+      setImports(
+        legacy ? [...local, { ...legacy, id: crypto.randomUUID() }] : local,
+      );
     } catch {
-      setNotice("Saved collections could not be read on this device.");
+      /* Device data stays untouched if unreadable. */
     }
-    setLoadedKey(key);
-    const readHash = () => {
-      const hash = window.location.hash;
-      setShared(hash ? readSharedCollection(hash) : null);
-      if (hash && !readSharedCollection(hash))
-        setNotice("This shared collection link is invalid.");
-    };
-    readHash();
-    window.addEventListener("hashchange", readHash);
-    return () => window.removeEventListener("hashchange", readHash);
-  }, [key, ready]);
-  function save(next: SavedCollection[]) {
-    if (loadedKey !== key) return;
+  }, [userId]);
+  async function save(
+    row: SavedCollection & { version?: number; shareToken?: string | null },
+    shared?: boolean,
+  ) {
+    const saved = await apiRequest<AccountCollection>(
+      `/collections/${row.id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          name: row.name,
+          items: row.items,
+          version: row.version ?? 0,
+          ...(shared === undefined ? {} : { shared }),
+        }),
+      },
+    );
+    if (mounted.current) {
+      setRows((previous) => [
+        ...previous.filter((value) => value.id !== saved.id),
+        saved,
+      ]);
+      setSelected(saved.id);
+      setNotice("Saved to your account.");
+    }
+    return saved;
+  }
+  async function run(action: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
-      localStorage.setItem(key, JSON.stringify(next));
-      setCollections(next);
-      setNotice("Collection saved on this device.");
-    } catch {
-      setNotice("Could not save. Device storage may be full or unavailable.");
+      await action();
+    } catch (err) {
+      if (mounted.current)
+        setError(
+          err instanceof Error ? err.message : "Could not save. Please retry.",
+        );
+    } finally {
+      if (mounted.current) setBusy(false);
     }
   }
-  const active = collections.find((item) => item.id === selected);
-  if (!ready || loadedKey !== key)
-    return <p role="status">Loading collections…</p>;
+  const active = rows.find((row) => row.id === selected);
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        Keep places, posts and experiences together. Collections are saved on
-        this device. Shared links contain a snapshot; later edits need a new
-        link.
+    <div className="space-y-5">
+      <p className="text-sm text-slate-500">
+        Your collections sync across devices when you sign in. Collections are
+        private until you enable sharing. Anyone with a shared link can view it.
       </p>
-      {notice && (
-        <p
-          role="status"
-          className="rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800"
-        >
-          {notice}
-        </p>
-      )}
-      {shared && (
-        <section className="rounded-2xl border border-emerald-300 p-5">
-          <h2 className="text-xl font-bold">{shared.name}</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Shared collection · read-only snapshot
-          </p>
-          <ul className="mt-3 space-y-2">
-            {shared.items.map((item) => (
-              <li key={item.path}>
-                <Link
-                  className="block rounded-xl border border-slate-200 p-3 dark:border-slate-700"
-                  href={item.path}
-                >
-                  {item.title} →
-                </Link>
-              </li>
-            ))}
-          </ul>
+      {error && (
+        <div role="alert" className="rounded-xl border border-rose-300 p-4">
+          <p>{error}</p>
           <button
             type="button"
-            disabled={collections.length >= 30}
-            className="mt-4 min-h-11 rounded-full bg-brand-700 px-4 font-semibold text-white disabled:opacity-50"
-            onClick={() => {
-              const copy = { ...shared, id: crypto.randomUUID() };
-              save([...collections, copy]);
-              setSelected(copy.id);
-            }}
+            className={button + " mt-2"}
+            disabled={busy}
+            onClick={() => void load()}
           >
-            Save my own copy
+            Reload collections
           </button>
-        </section>
+        </div>
       )}
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!name.trim() || collections.length >= 30) return;
-          const created = {
-            id: crypto.randomUUID(),
-            name: name.trim(),
-            items: [],
-          };
-          save([...collections, created]);
-          setSelected(created.id);
-          setName("");
-        }}
-      >
-        <input
-          aria-label="New collection name"
-          required
-          maxLength={80}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Weekend ideas, places to visit…"
-          className="min-h-12 min-w-0 flex-1 rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700"
-        />
-        <button
-          disabled={collections.length >= 30}
-          className="min-h-12 rounded-xl bg-brand-700 px-4 font-semibold text-white disabled:opacity-50"
-        >
-          Create collection
-        </button>
-      </form>
-      <label className="block text-sm font-semibold">
-        Your collections
-        <select
-          className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
-          value={selected}
-          onChange={(event) => {
-            setSelected(event.target.value);
-            setShareUrl("");
-          }}
-        >
-          <option value="">Choose a collection</option>
-          {collections.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name} ({item.items.length})
-            </option>
-          ))}
-        </select>
-      </label>
-      {active && (
-        <section className="space-y-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
-          <h2 className="text-xl font-bold">{active.name}</h2>
+      {notice && <p role="status">{notice}</p>}
+      {!loaded ? (
+        <p role="status">
+          {error ? "Waiting to reconnect." : "Loading your collections…"}
+        </p>
+      ) : (
+        <fieldset disabled={busy} className="min-w-0 space-y-5">
+          {imports.length > 0 && (
+            <section className="rounded-xl border p-4">
+              <p>
+                {imports.length} existing device or snapshot collection(s) are
+                available to import. Your originals will be kept.
+              </p>
+              <button
+                className={button + " mt-3"}
+                type="button"
+                onClick={() =>
+                  void run(async () => {
+                    for (const item of imports) {
+                      if (rows.some((row) => row.id === item.id)) continue;
+                      await save(item);
+                    }
+                    setImports([]);
+                    setNotice("Collections imported to your account.");
+                  })
+                }
+              >
+                Import existing collections
+              </button>
+            </section>
+          )}
           <form
-            className="space-y-3"
+            className="flex flex-wrap gap-2"
             onSubmit={(event) => {
               event.preventDefault();
-              const item = collectionItem(title, url);
-              if (!item) {
-                setNotice(
-                  "Paste a Liberia360 place, creator post, or experience link.",
-                );
-                return;
-              }
-              if (
-                active.items.some((existing) => existing.path === item.path)
-              ) {
-                setNotice("This item is already in the collection.");
-                return;
-              }
-              if (active.items.length >= 30) {
-                setNotice("Each collection holds up to 30 items.");
-                return;
-              }
-              save(
-                collections.map((collection) =>
-                  collection.id === active.id
-                    ? { ...collection, items: [...collection.items, item] }
-                    : collection,
-                ),
-              );
-              setTitle("");
-              setUrl("");
-              setShareUrl("");
+              if (!name.trim()) return;
+              void run(async () => {
+                await save({
+                  id: crypto.randomUUID(),
+                  name: name.trim(),
+                  items: [],
+                });
+                setName("");
+              });
             }}
           >
             <input
-              aria-label="Item name"
-              maxLength={100}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Item name (optional)"
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700"
-            />
-            <input
-              aria-label="Listing or post link"
+              className={input + " flex-1"}
               required
-              value={url}
-              maxLength={500}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="Paste a Liberia360 link"
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700"
+              maxLength={80}
+              aria-label="New collection name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Weekend ideas, places to visit…"
             />
-            <button className="min-h-11 rounded-full bg-brand-700 px-4 font-semibold text-white">
-              Add to collection
+            <button className={button} disabled={rows.length >= 30}>
+              Create collection
             </button>
           </form>
-          <ul className="space-y-2">
-            {active.items.map((item) => (
-              <li
-                key={item.path}
-                className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800"
+          <label className="block font-semibold">
+            Your collections
+            <select
+              className={input + " mt-2 dark:bg-slate-900"}
+              value={selected}
+              onChange={(e) => {
+                setSelected(e.target.value);
+                setShareUrl("");
+              }}
+            >
+              <option value="">Choose a collection</option>
+              {rows.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.name} ({row.items.length})
+                </option>
+              ))}
+            </select>
+          </label>
+          {active && (
+            <section className="space-y-4 rounded-2xl border p-4">
+              <h2 className="break-words text-xl font-bold">{active.name}</h2>
+              <form
+                className="space-y-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const item = collectionItem(title, url);
+                  if (!item) {
+                    setError(
+                      "Paste a Liberia360 place, creator post, or experience link.",
+                    );
+                    return;
+                  }
+                  if (
+                    active.items.some((existing) => existing.path === item.path)
+                  ) {
+                    setError("This item is already in the collection.");
+                    return;
+                  }
+                  void run(async () => {
+                    await save({ ...active, items: [...active.items, item] });
+                    setTitle("");
+                    setUrl("");
+                  });
+                }}
               >
-                <Link
-                  className="min-w-0 flex-1 break-words font-medium"
-                  href={item.path}
-                >
-                  {item.title} →
-                </Link>
+                <input
+                  className={input}
+                  aria-label="Item name"
+                  maxLength={100}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Item name (optional)"
+                />
+                <input
+                  className={input}
+                  aria-label="Listing or post link"
+                  required
+                  maxLength={500}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste a Liberia360 link"
+                />
+                <button disabled={active.items.length >= 30} className={button}>
+                  Add to collection
+                </button>
+              </form>
+              <ul className="space-y-2">
+                {active.items.map((item) => (
+                  <li
+                    className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800"
+                    key={item.path}
+                  >
+                    <Link
+                      className="min-w-0 flex-1 break-words"
+                      href={item.path}
+                    >
+                      {item.title} →
+                    </Link>
+                    <button
+                      type="button"
+                      className={button}
+                      aria-label={`Remove ${item.title}`}
+                      onClick={() =>
+                        void run(() =>
+                          save({
+                            ...active,
+                            items: active.items.filter(
+                              (value) => value.path !== item.path,
+                            ),
+                          }),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm">
+                {active.shareToken
+                  ? "Sharing enabled. Edits appear the next time someone opens the link."
+                  : "Private collection. Enabling sharing makes its name and items visible to anyone with the link."}
+              </p>
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  aria-label={`Remove ${item.title}`}
-                  className="min-h-11 px-2 text-sm text-rose-600 dark:text-rose-300"
+                  className={button}
+                  onClick={() =>
+                    void run(async () => {
+                      const saved = active.shareToken
+                        ? active
+                        : await save(active, true);
+                      const link = `${window.location.origin}/collections?share=${saved.shareToken}`;
+                      setShareUrl(link);
+                      try {
+                        await navigator.clipboard.writeText(link);
+                        setNotice("Share link copied.");
+                      } catch {
+                        setNotice("Copy the share link below.");
+                      }
+                    })
+                  }
+                >
+                  {active.shareToken
+                    ? "Copy live share link"
+                    : "Enable sharing & copy link"}
+                </button>
+                {active.shareToken && (
+                  <button
+                    type="button"
+                    className={button}
+                    onClick={() =>
+                      void run(async () => {
+                        await save(active, false);
+                        setShareUrl("");
+                        setNotice(
+                          "Sharing stopped. The old link no longer works.",
+                        );
+                      })
+                    }
+                  >
+                    Stop sharing
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={button + " text-rose-600"}
                   onClick={() => {
-                    save(
-                      collections.map((collection) =>
-                        collection.id === active.id
-                          ? {
-                              ...collection,
-                              items: collection.items.filter(
-                                (value) => value.path !== item.path,
-                              ),
-                            }
-                          : collection,
-                      ),
-                    );
-                    setShareUrl("");
+                    if (
+                      !window.confirm(
+                        `Delete “${active.name}” from your account?`,
+                      )
+                    )
+                      return;
+                    void run(async () => {
+                      await apiRequest(`/collections/${active.id}`, {
+                        method: "DELETE",
+                      });
+                      setRows(rows.filter((row) => row.id !== active.id));
+                      setSelected("");
+                      setShareUrl("");
+                      setNotice("Collection deleted.");
+                    });
                   }}
                 >
-                  Remove
+                  Delete collection
                 </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className="min-h-11 rounded-full border border-slate-300 px-4 font-semibold dark:border-slate-700"
-            onClick={async () => {
-              try {
-                const link = collectionShareUrl(active, window.location.origin);
-                setShareUrl(link);
-                await navigator.clipboard.writeText(link);
-                setNotice("Share link copied.");
-              } catch (error) {
-                setNotice(
-                  error instanceof Error && error.message.includes("too large")
-                    ? error.message
-                    : "Copy the share link below.",
-                );
-              }
-            }}
-          >
-            Copy share link
-          </button>
-          {shareUrl && (
-            <input
-              aria-label="Collection share link"
-              readOnly
-              value={shareUrl}
-              onFocus={(event) => event.target.select()}
-              className="min-h-11 w-full rounded-xl border border-slate-300 bg-transparent p-3 text-xs dark:border-slate-700"
-            />
+              </div>
+              {shareUrl && (
+                <input
+                  className={input}
+                  aria-label="Collection share link"
+                  readOnly
+                  value={shareUrl}
+                  onFocus={(e) => e.target.select()}
+                />
+              )}
+            </section>
           )}
-        </section>
+        </fieldset>
       )}
     </div>
   );
