@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import {
   DocumentDuplicateIcon,
@@ -791,27 +797,6 @@ function MemberTripView({
           </p>
         )}
 
-        <div className="mt-4">
-          <TripDetailsEditor
-            value={{
-              startingLocation: itinerary.startingLocation,
-              transportMode: itinerary.transportMode,
-              pace: itinerary.pace,
-              budgetBand: itinerary.budgetBand,
-            }}
-            editable={canEdit}
-            onSave={async (input) => {
-              if (!token) return;
-              await updateTripDetails(token, itinerary.id, input);
-              reload();
-            }}
-          />
-        </div>
-
-        <div className="mt-3">
-          <TripCostSummary stops={itinerary.stops} />
-        </div>
-
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <div className="h-10 w-10">
             <ShareMenu placeName={itinerary.title} contentType="trip" />
@@ -835,104 +820,159 @@ function MemberTripView({
         )}
       </div>
 
-      <OfflinePackControl trip={itinerary} />
+      <TripWorkspaceNav />
 
-      <TripBudgetPanel
-        key={`${itinerary.id}-${user?.id}`}
-        tripId={itinerary.id}
-      />
-      <TripVotingPanel
-        key={`votes-${itinerary.id}-${user?.id}`}
-        tripId={itinerary.id}
-        durationDays={itinerary.durationDays}
-        onAdded={reload}
-      />
-      <TripPackingPanel
-        key={`${itinerary.id}-${user?.id}`}
-        tripId={itinerary.id}
-      />
-      <TripActivityPanel key={`activity-${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
-
-      <TripShareLink
-        itineraryId={itinerary.id}
-        shareToken={itinerary.shareToken}
-        isOwner={isOwner}
-        token={token}
-        onChange={reload}
-      />
-
-      <TripPeoplePanel
-        itineraryId={itinerary.id}
-        admin={itinerary.admin}
-        collaborators={itinerary.collaborators}
-        collaboratorRoles={itinerary.collaboratorRoles}
-        isOwner={isOwner}
-        onChange={reload}
-      />
-
-      <Link
-        href={`/messages/context?type=trip&id=${itinerary.id}`}
-        className="flex min-h-12 items-center justify-center rounded-full bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
+      <TripWorkspaceSection
+        id="trip-overview"
+        eyebrow="01 · Overview"
+        title="Your trip at a glance"
+        description="Review the plan, route, travel setup, and offline access before you go."
       >
-        Open trip conversation in Messages
-      </Link>
-
-      {tripHasMapPins(itinerary.stops) && (
-        <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-80">
-          <TripMapLoader stops={itinerary.stops} />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
+          <TripDetailsEditor
+            value={{
+              startingLocation: itinerary.startingLocation,
+              transportMode: itinerary.transportMode,
+              pace: itinerary.pace,
+              budgetBand: itinerary.budgetBand,
+            }}
+            editable={canEdit}
+            onSave={async (input) => {
+              if (!token) return;
+              await updateTripDetails(token, itinerary.id, input);
+              reload();
+            }}
+          />
+          <TripCostSummary stops={itinerary.stops} />
         </div>
-      )}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
+          <TripPlanChecks
+            stops={itinerary.stops}
+            durationDays={itinerary.durationDays}
+            transportMode={itinerary.transportMode}
+            pace={itinerary.pace}
+            startDate={itinerary.startDate}
+            endDate={itinerary.endDate}
+          />
+          <OfflinePackControl trip={itinerary} />
+        </div>
+        {tripHasMapPins(itinerary.stops) && (
+          <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-800 sm:h-80">
+            <TripMapLoader stops={itinerary.stops} />
+          </div>
+        )}
+      </TripWorkspaceSection>
 
-      <TripPlanChecks
-        stops={itinerary.stops}
-        durationDays={itinerary.durationDays}
-        transportMode={itinerary.transportMode}
-        pace={itinerary.pace}
-        startDate={itinerary.startDate}
-        endDate={itinerary.endDate}
-      />
-
-      <ItineraryStops
-        stops={itinerary.stops}
-        durationDays={itinerary.durationDays}
-        onReorder={
-          canEdit
-            ? async (itemId, position) => {
-                if (!token) return;
-                await updateItineraryStop(token, itinerary.id, itemId, {
-                  position,
-                });
-                reload();
-              }
-            : undefined
-        }
-        onRemove={
-          canEdit
-            ? async (itemId) => {
-                if (!token) return;
-                await removeItineraryStop(token, itinerary.id, itemId);
-                reload();
-              }
-            : undefined
-        }
-        onMove={
-          canEdit
-            ? async (itemId, day) => {
-                if (!token) return;
-                await updateItineraryStop(token, itinerary.id, itemId, { day });
-                reload();
-              }
-            : undefined
-        }
-      />
-
-      {canEdit && (
-        <AddTripStop
-          itineraryId={itinerary.id}
+      <TripWorkspaceSection
+        id="trip-plan"
+        eyebrow="02 · Plan"
+        title="Build the itinerary together"
+        description="Add places, events, or rentals, arrange them by day, and let the group vote on what belongs."
+      >
+        <ItineraryStops
+          stops={itinerary.stops}
+          durationDays={itinerary.durationDays}
+          onReorder={
+            canEdit
+              ? async (itemId, position) => {
+                  if (!token) return;
+                  await updateItineraryStop(token, itinerary.id, itemId, {
+                    position,
+                  });
+                  reload();
+                }
+              : undefined
+          }
+          onRemove={
+            canEdit
+              ? async (itemId) => {
+                  if (!token) return;
+                  await removeItineraryStop(token, itinerary.id, itemId);
+                  reload();
+                }
+              : undefined
+          }
+          onMove={
+            canEdit
+              ? async (itemId, day) => {
+                  if (!token) return;
+                  await updateItineraryStop(token, itinerary.id, itemId, {
+                    day,
+                  });
+                  reload();
+                }
+              : undefined
+          }
+        />
+        {canEdit && (
+          <AddTripStop
+            itineraryId={itinerary.id}
+            durationDays={itinerary.durationDays}
+            onAdded={reload}
+          />
+        )}
+        <TripVotingPanel
+          key={`votes-${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
           durationDays={itinerary.durationDays}
           onAdded={reload}
         />
-      )}
+      </TripWorkspaceSection>
+
+      <TripWorkspaceSection
+        id="trip-tools"
+        eyebrow="03 · Trip tools"
+        title="Stay organized"
+        description="Keep spending and packing in one place, with private lists for each traveler."
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <TripBudgetPanel
+            key={`${itinerary.id}-${user?.id}`}
+            tripId={itinerary.id}
+          />
+          <TripPackingPanel
+            key={`${itinerary.id}-${user?.id}`}
+            tripId={itinerary.id}
+          />
+        </div>
+      </TripWorkspaceSection>
+
+      <TripWorkspaceSection
+        id="trip-collaboration"
+        eyebrow="04 · Collaboration"
+        title="Keep everyone in sync"
+        description="See what changed, manage people, share a view-only link, or open the trip conversation."
+      >
+        <TripActivityPanel
+          key={`activity-${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
+        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TripPeoplePanel
+            itineraryId={itinerary.id}
+            admin={itinerary.admin}
+            collaborators={itinerary.collaborators}
+            collaboratorRoles={itinerary.collaboratorRoles}
+            isOwner={isOwner}
+            onChange={reload}
+          />
+          <div className="flex flex-col gap-4">
+            <TripShareLink
+              itineraryId={itinerary.id}
+              shareToken={itinerary.shareToken}
+              isOwner={isOwner}
+              token={token}
+              onChange={reload}
+            />
+            <Link
+              href={`/messages/context?type=trip&id=${itinerary.id}`}
+              className="flex min-h-12 items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
+            >
+              Open trip conversation in Messages
+            </Link>
+          </div>
+        </div>
+      </TripWorkspaceSection>
 
       <ConfirmDialog
         open={confirmingCancel}
@@ -970,6 +1010,67 @@ function MemberTripView({
         }}
       />
     </main>
+  );
+}
+
+function TripWorkspaceNav() {
+  const links = [
+    ["trip-overview", "Overview"],
+    ["trip-plan", "Plan"],
+    ["trip-tools", "Tools"],
+    ["trip-collaboration", "People & updates"],
+  ] as const;
+  return (
+    <nav
+      aria-label="Trip sections"
+      className="sticky top-2 z-10 -mx-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/95"
+    >
+      <div className="flex min-w-max gap-1">
+        {links.map(([id, label], index) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-300 dark:hover:bg-brand-950/40 dark:hover:text-brand-200 sm:px-4 sm:text-sm"
+          >
+            <span className="me-1 text-[10px] text-brand-700 dark:text-brand-300">
+              0{index + 1}
+            </span>
+            {label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function TripWorkspaceSection({
+  id,
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-20 space-y-4">
+      <div className="px-1">
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+          {eyebrow}
+        </p>
+        <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+          {title}
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {description}
+        </p>
+      </div>
+      {children}
+    </section>
   );
 }
 
