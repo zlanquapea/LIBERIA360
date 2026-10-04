@@ -21,7 +21,7 @@ export async function EssentialDetails({ place, business }: { place: Place; busi
   const hoursText = business?.openingHours ?? place.openingHours;
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card sm:p-7 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="flex items-center gap-2 font-display text-xl font-bold text-slate-950 dark:text-slate-50">
           <ClockIcon aria-hidden className="h-6 w-6 text-brand-600 dark:text-brand-400" />

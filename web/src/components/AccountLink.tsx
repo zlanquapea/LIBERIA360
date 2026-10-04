@@ -27,10 +27,11 @@ export function AccountLink() {
     return (
       <Link
         href="/login"
-        className="flex items-center gap-1.5 rounded-full border border-white/30 bg-white/5 px-3 py-1.5 text-sm text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+        className="flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/30 bg-white/5 px-2.5 py-1.5 text-sm sm:px-3 text-white/90 transition-colors hover:border-white hover:bg-white hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
       >
-        <UserCircleIcon aria-hidden className="h-4 w-4" />
-        {t('logIn')}
+        <UserCircleIcon aria-hidden className="h-4 w-4 shrink-0" />
+        {/* Icon-only on the narrowest phones so the header never overflows. */}
+        <span className="max-[339px]:sr-only">{t('logIn')}</span>
       </Link>
     );
   }

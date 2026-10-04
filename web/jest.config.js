@@ -13,6 +13,10 @@ const customJestConfig = {
   // `npm run test:e2e`) — Jest's default testMatch would otherwise also
   // pick up its *.spec.ts files and fail trying to run them as unit tests.
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/e2e/'],
+  // next/jest rewrites `@/` in import statements, but not the specifier
+  // passed to jest.mock()/jest.requireActual(), so a test mocking
+  // "@/lib/..." couldn't resolve it. Map the alias for Jest itself.
+  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
   // i18n (Sep 2026, Phase 2): next-intl's main entry point (and its
   // use-intl dependency) ship ESM-only builds, which trips Jest's default
   // node_modules exclusion — see next.config.js's transpilePackages for

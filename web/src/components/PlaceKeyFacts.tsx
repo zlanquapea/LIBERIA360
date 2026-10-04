@@ -100,7 +100,7 @@ export function PlaceKeyFacts({ place, business, kind = 'destination' }: { place
           <PaperAirplaneIcon aria-hidden className="h-5 w-5 -rotate-45" />
           Get directions
         </a>
-        <div className="grid grid-cols-2 gap-2 sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
+        <div className="grid grid-cols-2 gap-2 sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
 
         {phone ? (
           <ContactLink

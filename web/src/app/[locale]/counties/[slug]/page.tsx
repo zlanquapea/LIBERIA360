@@ -133,7 +133,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
             backgroundImage: `linear-gradient(100deg, rgb(2 6 23 / 0.92) 0%, rgb(2 6 23 / 0.7) 45%, rgb(2 6 23 / 0.25) 100%), linear-gradient(to top, color-mix(in srgb, ${tint} 55%, transparent), transparent 60%)`,
           }}
         />
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 pb-10 pt-6 sm:px-6 sm:pb-14 sm:pt-8 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-end lg:px-10">
+        <div className="mx-auto grid grid-cols-1 max-w-6xl gap-8 px-4 pb-10 pt-6 sm:px-6 sm:pb-14 sm:pt-8 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-end lg:px-10">
           <div className="flex min-w-0 flex-col gap-4">
             <nav aria-label={t('breadcrumb')} className="flex items-center gap-1 text-sm text-white/60">
               <Link href="/counties" className="hover:text-white">
@@ -152,7 +152,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
               </span>
               <p className="text-xs font-bold uppercase tracking-[0.24em] text-gold-300">{t('eyebrow')}</p>
             </div>
-            <h1 className="font-display text-5xl font-extrabold leading-[0.95] tracking-tight sm:text-7xl">
+            <h1 className="font-display text-[2.5rem] font-extrabold leading-[0.95] tracking-tight [overflow-wrap:anywhere] sm:text-7xl">
               {county.name}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/75">
@@ -216,8 +216,8 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
 
         {events.length > 0 && (
           <section id="events" aria-labelledby="events-title" className="scroll-mt-32">
-            <div className="flex items-end justify-between gap-4">
-              <div>
+            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-sunset-700 dark:text-sunset-300">{t('eventsEyebrow')}</p>
                 <h2 id="events-title" className="mt-1 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">
                   {t('eventsTitle', { county: county.name })}
@@ -241,7 +241,7 @@ export default async function CountyDetailPage({ params }: { params: Promise<{ s
             desktop they live in the sticky sidebar instead. */}
         <CountySafetyPanel county={county} headingId="before-you-go-mobile" className="flex lg:hidden" />
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_21rem]">
           <section id="all-places" aria-labelledby="all-title" className="min-w-0 scroll-mt-32">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-300">{t('allEyebrow')}</p>
             <h2 id="all-title" className="mb-5 mt-1 font-display text-3xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">

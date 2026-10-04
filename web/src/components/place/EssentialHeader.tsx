@@ -62,7 +62,7 @@ export function EssentialHeader({
       <div className="flex flex-col gap-5 p-5 sm:p-7">
         <div className="flex gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 font-display text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl dark:text-white">
+            <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 font-display text-[1.65rem] font-black leading-tight tracking-tight text-slate-950 [overflow-wrap:anywhere] sm:text-4xl dark:text-white">
               <span>{place.name}</span>
               <VerificationBadge status={verificationStatus} />
             </h1>
@@ -92,7 +92,8 @@ export function EssentialHeader({
           {phone ? (
             <ContactLink placeId={place.id} href={`tel:${phone}`} className={`${button} ${primary}`}>
               <PhoneIcon aria-hidden className="h-5 w-5" />
-              {t('callNumber', { phone })}
+              {/* Non-breaking spaces keep the number on one line. */}
+              {t('callNumber', { phone: phone.replace(/ /g, '\u00a0') })}
             </ContactLink>
           ) : (
             <a href="#claim" className={`${button} border-2 border-dashed border-slate-300 text-slate-500 dark:border-slate-700`}>

@@ -253,10 +253,9 @@ export default async function EventDetailPage({
           <div className="max-w-3xl">
             <p className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-sunset-200">
               {formatEventCategory(event.category)}
-              <span aria-hidden>·</span>
-              <span className="text-white/80">{price.free ? tt("free") : tt("from", { price: formatCost(price.from) })}</span>
+              <span className="rounded-full bg-white/15 px-2.5 py-0.5 tracking-[0.12em] text-white/90 ring-1 ring-inset ring-white/20">{price.free ? tt("free") : tt("from", { price: formatCost(price.from) })}</span>
             </p>
-            <h1 className="mt-2 font-display text-4xl font-black leading-[1.02] tracking-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.45)] sm:text-5xl lg:text-6xl">
+            <h1 className="mt-2 font-display text-[2rem] font-black leading-[1.05] tracking-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.45)] [overflow-wrap:anywhere] sm:text-5xl lg:text-6xl">
               {event.name}
             </h1>
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/85 sm:text-base">
@@ -273,7 +272,7 @@ export default async function EventDetailPage({
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
         <div className="order-2 flex min-w-0 flex-col gap-6 lg:order-1">
           <EventOwnerActions event={event} />
 

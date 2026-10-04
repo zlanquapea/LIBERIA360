@@ -42,11 +42,17 @@ export function PlaceGallery({
   categorySlug,
   categoryIcon,
   alt,
+  overlapped = false,
 }: {
   images: string[];
   categorySlug: string;
   categoryIcon: string | null;
   alt: string;
+  // True when a card is pulled up over the bottom of the gallery (the place
+  // page's name card). The thumbnail strip is dropped — the card would sit
+  // on top of it — and the dots move up out of the covered band. Swipe,
+  // arrows, dots and the full-screen viewer still reach every photo.
+  overlapped?: boolean;
 }) {
   const [active, setActive] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -193,7 +199,7 @@ export function PlaceGallery({
               <ChevronRightIcon aria-hidden className="h-5 w-5" />
             </button>
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+            <div className={`pointer-events-none absolute inset-x-0 flex justify-center gap-1.5 ${overlapped ? 'bottom-20 sm:bottom-28' : 'bottom-3'}`}>
               {images.map((image, index) => (
                 <button
                   key={image}
@@ -211,7 +217,7 @@ export function PlaceGallery({
         )}
       </div>
 
-      {images.length > 1 && (
+      {!overlapped && images.length > 1 && (
         <div className="flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {images.map((img, i) => (
             <button

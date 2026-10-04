@@ -198,6 +198,7 @@ export default async function PlaceProfilePage({
               categorySlug={place.category.slug}
               categoryIcon={place.category.icon}
               alt={place.name}
+              overlapped
             />
             <PlaceIdentity place={place} kind={kind} verificationStatus={verification} hoursText={hoursText} />
           </div>
