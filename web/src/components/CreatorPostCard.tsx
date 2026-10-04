@@ -12,6 +12,7 @@ import {
   GlobeAltIcon,
   HeartIcon,
   TrashIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import {
   BookmarkIcon as BookmarkSolidIcon,
@@ -131,6 +132,12 @@ export function CreatorPostCard({
   const [busy, setBusy] = useState<"like" | "save" | null>(null);
   const [commentLikeBusy, setCommentLikeBusy] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
+  const safetyDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (safetyOpen) safetyDialogRef.current?.showModal();
+    else safetyDialogRef.current?.close();
+  }, [safetyOpen]);
   const [menuPlacement, setMenuPlacement] = useState<"above" | "below">(
     "below",
   );
@@ -617,7 +624,7 @@ export function CreatorPostCard({
                   <div
                     role="menu"
                     aria-label="Post actions"
-                    className={`absolute right-0 z-30 w-40 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ${menuPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"}`}
+                    className={`absolute right-0 z-30 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ${menuPlacement === "above" ? "bottom-full mb-2" : "top-full mt-2"}`}
                   >
                     <button
                       type="button"
@@ -637,6 +644,20 @@ export function CreatorPostCard({
                       <TrashIcon aria-hidden className="h-4 w-4" />
                       Delete
                     </button>
+                    {user && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setSafetyOpen(true);
+                        }}
+                        className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+                      >
+                        <ShieldCheckIcon aria-hidden className="h-4 w-4" />
+                        Safety options
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -651,14 +672,35 @@ export function CreatorPostCard({
           </div>
         </div>
 
-        <div className="px-4 sm:px-5">
-          <SafetyControls
-            key={`${user?.id ?? "guest"}-${post.id}`}
-            targetType="creator_post"
-            targetId={post.id}
-            creatorId={post.creator.id}
-          />
-        </div>
+        <dialog
+          ref={safetyDialogRef}
+          aria-label="Post safety options"
+          onClose={() => {
+            setSafetyOpen(false);
+            overflowButtonRef.current?.focus();
+          }}
+          className="m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl backdrop:bg-black/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold">Safety options</h2>
+            <button
+              type="button"
+              onClick={() => setSafetyOpen(false)}
+              className="min-h-11 rounded-xl px-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Close
+            </button>
+          </div>
+          {safetyOpen && (
+            <SafetyControls
+              expanded
+              key={`${user?.id ?? "guest"}-${post.id}`}
+              targetType="creator_post"
+              targetId={post.id}
+              creatorId={post.creator.id}
+            />
+          )}
+        </dialog>
         {post.mediaType !== "text" && (
           <div className="px-4 pb-3 pt-3 sm:px-5">
             <PostCaption text={post.caption} />

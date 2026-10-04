@@ -17,12 +17,14 @@ export function SafetyControls({
   creatorId,
   accountId,
   onBlocked,
+  expanded = false,
 }: {
   targetType: "creator_post" | "conversation_message";
   targetId: string;
   creatorId?: string;
   accountId?: string;
   onBlocked?: () => void;
+  expanded?: boolean;
 }) {
   const { user } = useAuth();
   const [reason, setReason] = useState("spam");
@@ -70,8 +72,11 @@ export function SafetyControls({
     }
   }
   return (
-    <details className="my-1 text-xs">
-      <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-3 text-slate-500 dark:text-slate-400">
+    <details open={expanded || undefined} className="my-1 text-xs">
+      <summary
+        hidden={expanded}
+        className="min-h-11 cursor-pointer rounded-xl px-3 py-3 text-slate-500 dark:text-slate-400"
+      >
         Safety options
       </summary>
       <div className={`${panel} space-y-3`}>
