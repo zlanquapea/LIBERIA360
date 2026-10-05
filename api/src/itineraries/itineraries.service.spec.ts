@@ -170,7 +170,14 @@ describe("ItinerariesService (collaboration)", () => {
       getMany: jest.fn().mockResolvedValue([]),
     };
     itineraryRepo = {
-      manager: { transaction: jest.fn(async (fn) => fn({ save: (_entity: unknown, data: unknown) => itineraryRepo.save(data), query: jest.fn().mockResolvedValue([]) })) },
+      manager: {
+        transaction: jest.fn(async (fn) =>
+          fn({
+            save: (_entity: unknown, data: unknown) => itineraryRepo.save(data),
+            query: jest.fn().mockResolvedValue([]),
+          }),
+        ),
+      },
       findOne: jest.fn().mockResolvedValue(makeItinerary()),
       save: jest.fn((data) => data),
       create: jest.fn((data) => data),

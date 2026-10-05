@@ -40,12 +40,11 @@ export type RxStep = { key: string; label: string; state: 'done' | 'current' | '
 export function rxSteps(rx: Pick<EPrescription, 'status' | 'pharmacy'>): RxStep[] {
   const order = ['issued', 'sent', 'preparing', 'ready', 'dispensed'];
   const at = rx.status === 'ordered' ? 2 : Math.max(0, order.indexOf(rx.status));
-  const where = rx.pharmacy?.name ?? 'the pharmacy';
   const steps = [
-    { key: 'issued', label: 'Prescribed by your doctor' },
-    { key: 'sent', label: `Sent to ${where}` },
-    { key: 'preparing', label: rx.status === 'ordered' ? `Ordered from ${where}` : 'Being prepared' },
-    { key: 'ready', label: 'Ready to collect' },
+    { key: 'issued', label: 'Prescribed' },
+    { key: 'sent', label: 'Sent' },
+    { key: 'preparing', label: rx.status === 'ordered' ? 'Ordered' : 'Preparing' },
+    { key: 'ready', label: 'Ready' },
     { key: 'dispensed', label: 'Collected' },
   ];
   return steps.map((s, i) => ({

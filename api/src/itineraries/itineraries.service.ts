@@ -1299,7 +1299,14 @@ export class ItinerariesService {
     itinerary.stops = [...itinerary.stops, newStop];
     const saved = await this.itineraryRepo.manager.transaction(async (m) => {
       const result = await m.save(Itinerary, itinerary);
-      await recordTripActivity(m,itineraryId,userId,"added",this.stopItemTitle(kind,item),`trip-stop-${itemId}`);
+      await recordTripActivity(
+        m,
+        itineraryId,
+        userId,
+        "added",
+        this.stopItemTitle(kind, item),
+        `trip-stop-${itemId}`,
+      );
       return result;
     });
     // So everyone on the trip sees a new car/place/event land, not just

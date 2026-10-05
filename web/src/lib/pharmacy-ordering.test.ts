@@ -45,17 +45,24 @@ describe('pharmacy ordering', () => {
   it('shows prescription and payment steps only when they apply', () => {
     const cash = trackerSteps({ status: 'preparing', fulfillmentMethod: 'pickup', paymentMethod: 'cash', paymentStatus: 'pay_on_collection', prescriptionId: null });
     expect(cash.map((s) => s.key)).toEqual(['placed', 'accepted', 'preparing', 'handover', 'completed']);
-    expect(cash.find((s) => s.key === 'handover')?.state).toBe('current');
+    expect(cash.find((s) => s.key === 'preparing')?.state).toBe('current');
+    expect(cash.find((s) => s.key === 'handover')?.state).toBe('upcoming');
 
     const rxMomo = trackerSteps({ status: 'accepted', fulfillmentMethod: 'delivery', paymentMethod: 'mtn_momo', paymentStatus: 'awaiting_payment', prescriptionId: 'rx' });
     expect(rxMomo.map((s) => [s.key, s.state])).toEqual([
       ['placed', 'done'],
-      ['rx', 'done'],
-      ['payment', 'current'],
+      ['rx', 'current'],
+      ['payment', 'upcoming'],
       ['preparing', 'upcoming'],
       ['handover', 'upcoming'],
       ['completed', 'upcoming'],
     ]);
+  });
+
+  it('marks every step done once the order is completed', () => {
+    const done = trackerSteps({ status: 'completed', fulfillmentMethod: 'delivery', paymentMethod: 'mtn_momo', paymentStatus: 'paid', prescriptionId: null });
+    expect(done.every((s) => s.state === 'done')).toBe(true);
+    expect(done.map((s) => s.label)).toEqual(['Placed', 'Confirmed', 'Paid', 'Preparing', 'On the way', 'Delivered']);
   });
 
   it('saves and restores a cart per pharmacy', () => {

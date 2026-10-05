@@ -12,7 +12,7 @@ describe('prescriptions', () => {
   it('tracks a counter prescription', () => {
     const steps = rxSteps({ status: 'ready', pharmacy: { name: 'CarePoint' } as never });
     expect(steps.map((s) => s.state)).toEqual(['done', 'done', 'done', 'current', 'upcoming']);
-    expect(steps[1].label).toBe('Sent to CarePoint');
+    expect(steps.map((s) => s.label)).toEqual(['Prescribed', 'Sent', 'Preparing', 'Ready', 'Collected']);
     expect(rxSteps({ status: 'dispensed', pharmacy: null }).every((s) => s.state === 'done')).toBe(true);
   });
 
