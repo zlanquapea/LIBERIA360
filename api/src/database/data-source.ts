@@ -40,6 +40,7 @@ import { PHARMACY_ENTITIES } from "../pharmacies/pharmacies.module";
 import { CLINIC_ENTITIES } from "../clinics/clinics.module";
 import { STAY_ENTITIES } from "../stays/stays.module";
 import { RENTAL_ENTITIES } from "../rentals/rentals.module";
+import { GROUP_TRIP_ENTITIES } from "../group-trips/group-trips.module";
 import { EventNotificationDelivery } from "../event-notifications/entities/event-notification-delivery.entity";
 import { GuideProfile } from "../guides/entities/guide-profile.entity";
 import { Experience } from "../guides/entities/experience.entity";
@@ -103,6 +104,7 @@ export const AppDataSource = new DataSource({
     ...CLINIC_ENTITIES,
     ...STAY_ENTITIES,
     ...RENTAL_ENTITIES,
+    ...GROUP_TRIP_ENTITIES,
     EventNotificationDelivery,
     GuideProfile,
     Experience,

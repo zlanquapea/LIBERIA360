@@ -558,7 +558,13 @@
     "canView": "يمكنه العرض",
     "accessFor": "صلاحية {name}",
     "viewOnlyNotice": "يمكنك عرض هذه الرحلة دون تعديل الخطة. اطلب من {name} صلاحية التعديل.",
-    "theOrganizer": "المنظم"
+    "theOrganizer": "المنظم",
+    "filterAllTrips": "كل الرحلات",
+    "filterOrganised": "رحلات منظمة",
+    "filterFree": "مجانية",
+    "filterPaid": "مدفوعة",
+    "groupTripsTitle": "رحلات جماعية",
+    "groupTripsSubtitle": "احجز مكانًا في رحلة منظمة، أو اطلب الانضمام إلى رحلة يخطط لها مسافرون، أو"
   },
   "saved": {
     "yourCollection": "مجموعتك",

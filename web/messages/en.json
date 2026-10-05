@@ -558,7 +558,13 @@
     "canView": "Can view",
     "accessFor": "Access for {name}",
     "viewOnlyNotice": "You can view this trip but not change the plan. Ask {name} for edit access.",
-    "theOrganizer": "the organizer"
+    "theOrganizer": "the organizer",
+    "filterAllTrips": "All trips",
+    "filterOrganised": "Organised trips",
+    "filterFree": "Free",
+    "filterPaid": "Paid",
+    "groupTripsTitle": "Group trips",
+    "groupTripsSubtitle": "Book a spot on an organised trip, ask to join one travellers are planning, or"
   },
   "saved": {
     "yourCollection": "Your collection",

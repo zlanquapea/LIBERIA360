@@ -21,6 +21,7 @@ import { UsersService } from "../users/users.service";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { TripChatService } from "../trip-chat/trip-chat.service";
+import { GroupTripsService } from "../group-trips/group-trips.service";
 import { ConfigService } from "@nestjs/config";
 import {
   BudgetBand,
@@ -156,6 +157,7 @@ describe("ItinerariesService (collaboration)", () => {
   };
   let notificationsService: { create: jest.Mock };
   let tripChatService: { postSystemMessage: jest.Mock };
+  let groupTripsService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     publicTripsQueryBuilder = {
@@ -246,6 +248,13 @@ describe("ItinerariesService (collaboration)", () => {
     tripChatService = {
       postSystemMessage: jest.fn().mockResolvedValue(undefined),
     };
+    groupTripsService = {
+      hostingFor: jest.fn().mockResolvedValue(null),
+      hostingForMany: jest.fn().mockResolvedValue(new Map()),
+      isHosted: jest.fn().mockResolvedValue(false),
+      onTripCancelled: jest.fn().mockResolvedValue(undefined),
+      assertDeletable: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -270,6 +279,7 @@ describe("ItinerariesService (collaboration)", () => {
         { provide: MailService, useValue: mailService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: TripChatService, useValue: tripChatService },
+        { provide: GroupTripsService, useValue: groupTripsService },
         {
           provide: ConfigService,
           useValue: {
@@ -367,6 +377,16 @@ describe("ItinerariesService (collaboration)", () => {
     it("lets the owner delete the trip", async () => {
       await service.deleteTrip(OWNER_ID, ITINERARY_ID);
       expect(itineraryRepo.delete).toHaveBeenCalledWith({ id: ITINERARY_ID });
+    });
+
+    it("won't delete an organised trip people have booked", async () => {
+      groupTripsService.assertDeletable.mockRejectedValue(
+        new ConflictException("Travellers have booked this trip"),
+      );
+      await expect(
+        service.deleteTrip(OWNER_ID, ITINERARY_ID),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(itineraryRepo.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -1603,6 +1623,17 @@ describe("ItinerariesService (collaboration)", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it("sends people to book a spot on an organised trip", async () => {
+      itineraryRepo.findOne.mockResolvedValue(
+        makeItinerary({ visibility: TripVisibility.PUBLIC }),
+      );
+      groupTripsService.isHosted.mockResolvedValue(true);
+      await expect(
+        service.requestToJoin(STRANGER_ID, ITINERARY_ID),
+      ).rejects.toThrow("book a spot");
+      expect(joinRequestRepo.save).not.toHaveBeenCalled();
+    });
+
     it("rejects someone who already has a pending request", async () => {
       itineraryRepo.findOne.mockResolvedValue(
         makeItinerary({ visibility: TripVisibility.PUBLIC }),
@@ -1754,6 +1785,13 @@ describe("ItinerariesService (collaboration)", () => {
       await service.cancelTrip(OWNER_ID, ITINERARY_ID);
       expect(itineraryRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ cancelledAt: expect.any(Date) }),
+      );
+    });
+
+    it("ends every booking on an organised trip", async () => {
+      await service.cancelTrip(OWNER_ID, ITINERARY_ID);
+      expect(groupTripsService.onTripCancelled).toHaveBeenCalledWith(
+        ITINERARY_ID,
       );
     });
   });

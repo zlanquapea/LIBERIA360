@@ -558,7 +558,13 @@
     "canView": "Peut consulter",
     "accessFor": "Accès de {name}",
     "viewOnlyNotice": "Vous pouvez consulter ce voyage mais pas modifier le plan. Demandez l'accès en modification à {name}.",
-    "theOrganizer": "l'organisateur"
+    "theOrganizer": "l'organisateur",
+    "filterAllTrips": "Tous les voyages",
+    "filterOrganised": "Voyages organisés",
+    "filterFree": "Gratuits",
+    "filterPaid": "Payants",
+    "groupTripsTitle": "Voyages de groupe",
+    "groupTripsSubtitle": "Réservez une place dans un voyage organisé, demandez à rejoindre un voyage que d'autres planifient, ou"
   },
   "saved": {
     "yourCollection": "Votre collection",

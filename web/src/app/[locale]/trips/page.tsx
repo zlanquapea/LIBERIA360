@@ -198,6 +198,25 @@ export default function TripsPage() {
         </div>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/trips/new?host=1"
+          className="flex flex-col gap-1 rounded-3xl bg-slate-950 p-4 text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+        >
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-gold-300">Organisers</span>
+          <span className="font-display text-lg font-black">Host a group trip</span>
+          <span className="text-sm text-white/75">Free or paid. Sell spots, take cash, MoMo or Orange Money, run the bus roll call.</span>
+        </Link>
+        <Link
+          href="/account/trip-bookings"
+          className="flex flex-col gap-1 rounded-3xl border border-slate-200 bg-white p-4 transition hover:border-brand-400 dark:border-slate-800 dark:bg-slate-900"
+        >
+          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">Travellers</span>
+          <span className="font-display text-lg font-black text-slate-950 dark:text-slate-50">My trip bookings</span>
+          <span className="text-sm text-slate-600 dark:text-slate-300">Your spots and tickets on group trips.</span>
+        </Link>
+      </div>
+
       {successMessage && <SuccessBanner>{successMessage}</SuccessBanner>}
 
       {loadError ? (

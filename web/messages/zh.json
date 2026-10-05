@@ -558,7 +558,13 @@
     "canView": "可查看",
     "accessFor": "{name} 的权限",
     "viewOnlyNotice": "你可以查看此行程，但不能修改计划。请向 {name} 申请编辑权限。",
-    "theOrganizer": "组织者"
+    "theOrganizer": "组织者",
+    "filterAllTrips": "全部行程",
+    "filterOrganised": "组团行程",
+    "filterFree": "免费",
+    "filterPaid": "付费",
+    "groupTripsTitle": "团体行程",
+    "groupTripsSubtitle": "预订组团行程的名额，申请加入其他旅行者规划的行程，或"
   },
   "saved": {
     "yourCollection": "您的收藏",

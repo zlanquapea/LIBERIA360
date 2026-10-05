@@ -2,6 +2,7 @@ import { getPublicTrip } from '@/lib/itinerary-api';
 import { absoluteImageUrl } from '@/lib/images';
 import { DEFAULT_OG_IMAGE, absoluteUrl } from '@/lib/site';
 import { TripDetailClient } from '@/components/TripDetailClient';
+import { dateRange, priceLabel } from '@/lib/group-trips';
 
 // Server wrapper so a shared trip link gets a real preview card (title +
 // description) when pasted into Facebook/WhatsApp/X/etc — those crawlers
@@ -18,7 +19,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     return { title: 'Trip — LIBERIA360' };
   }
   const title = `${trip.title} — LIBERIA360`;
-  const description = trip.description ?? undefined;
+  // An organised trip's link preview reads like its poster: when, how
+  // much, and how many spots are left.
+  const h = trip.hosting;
+  const description = h
+    ? [
+        h.tagline,
+        `${dateRange(trip.startDate, trip.endDate)} · ${priceLabel(h)}${h.isFree ? '' : ' per person'} · ${h.spotsLeft > 0 ? `${h.spotsLeft} spots left` : 'fully booked'}`,
+        trip.description,
+      ]
+        .filter(Boolean)
+        .join(' — ')
+    : (trip.description ?? undefined);
   const url = absoluteUrl(`/trips/${trip.id}`);
   const coverPath = trip.coverImage ?? trip.destination?.images[0] ?? null;
   const image = (coverPath ? absoluteImageUrl(coverPath) : null) ?? DEFAULT_OG_IMAGE;
@@ -41,7 +53,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TripDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ view?: string }>;
+}) {
   const { id } = await params;
-  return <TripDetailClient id={id} />;
+  const { view } = await searchParams;
+  return <TripDetailClient id={id} publicView={view === 'public'} />;
 }

@@ -19,6 +19,7 @@ import { UsersModule } from "../users/users.module";
 import { MailModule } from "../mail/mail.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { TripChatModule } from "../trip-chat/trip-chat.module";
+import { GroupTripsModule } from "../group-trips/group-trips.module";
 import { ItinerariesService } from "./itineraries.service";
 import { ItinerariesController } from "./itineraries.controller";
 import { TripInvitationsController } from "./trip-invitations.controller";
@@ -39,6 +40,7 @@ import { TripPreviewController } from "./trip-preview.controller";
     MailModule,
     NotificationsModule,
     TripChatModule,
+    GroupTripsModule,
   ],
   controllers: [
     TripActivityController,

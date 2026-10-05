@@ -997,6 +997,50 @@ export interface ItineraryDetail extends Omit<Itinerary, "stops"> {
   // What the signed-in viewer may do, and each collaborator's access.
   myRole: "owner" | CollaboratorRole;
   collaboratorRoles: Record<string, CollaboratorRole>;
+  // Set when the trip is an organised one people book spots on.
+  hosting?: TripHosting | null;
+}
+
+// api/src/group-trips — an organised group trip, free or paid: price per
+// person, spots, what's included, activities, where the bus leaves from,
+// who's running it and how to pay. Spot counts are live.
+export type TripPaymentMethod = "cash" | "mtn_momo" | "orange_money";
+
+export interface TripOrganiser {
+  name: string;
+  logo: string | null;
+}
+
+export interface TripHosting {
+  open: boolean;
+  tagline: string | null;
+  price: number;
+  currency: "USD" | "LRD";
+  isFree: boolean;
+  depositAmount: number | null;
+  balanceDueDate: string | null;
+  bookingDeadline: string | null;
+  spots: number;
+  spotsBooked: number;
+  spotsHeld: number;
+  spotsLeft: number;
+  waitlisted: number;
+  maxPerBooking: number;
+  requireApproval: boolean;
+  includes: string[];
+  excludes: string[];
+  activities: string[];
+  meetingPoint: string | null;
+  departureTime: string | null;
+  organisers: TripOrganiser[];
+  gallery: string[];
+  goodToKnow: string | null;
+  contactPhone: string | null;
+  cashEnabled: boolean;
+  mtnMomoNumber: string | null;
+  orangeMoneyNumber: string | null;
+  accountName: string | null;
+  paymentOptions: Array<{ method: TripPaymentMethod; account: string | null }>;
 }
 
 // GET /itineraries/public and GET /itineraries/public/:id — what a
@@ -1023,6 +1067,9 @@ export interface PublicTripSummary {
   // Lets a stranger's "Request to Join" button show remaining spots and
   // disable itself once the trip is full.
   maxParticipants: number | null;
+  // An organised trip's price, spots and what's included — null for a
+  // trip people ask to join instead.
+  hosting?: TripHosting | null;
   // Set only for a curated starter itinerary — groups /trip-ideas cards
   // (e.g. "Beach getaway", "Culture & heritage"). Null on a regular
   // community trip.

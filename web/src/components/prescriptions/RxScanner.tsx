@@ -11,7 +11,13 @@ export function codeFromScan(text: string) {
 }
 
 /** Opens the camera and reports the first QR code it reads. */
-export function RxScanner({ onCode }: { onCode: (code: string) => void }) {
+export function RxScanner({
+  onCode,
+  unavailableMessage = "The camera isn't available. Type the code from the prescription instead.",
+}: {
+  onCode: (code: string) => void;
+  unavailableMessage?: string;
+}) {
   const readerId = useId().replace(/:/g, '');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [open, setOpen] = useState(false);
@@ -58,7 +64,7 @@ export function RxScanner({ onCode }: { onCode: (code: string) => void }) {
       );
     } catch {
       await stop();
-      setError("The camera isn't available. Type the code from the prescription instead.");
+      setError(unavailableMessage);
     }
   }
 
