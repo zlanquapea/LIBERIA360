@@ -55,6 +55,21 @@ export class Clinic {
   @ManyToOne(() => Pharmacy, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "pharmacy_id" })
   pharmacy: Pharmacy | null;
+  // Where patients send online-consultation fees.
+  @Column({
+    name: "mtn_momo_number",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  mtnMomoNumber: string | null;
+  @Column({
+    name: "orange_money_number",
+    type: "varchar",
+    length: 40,
+    nullable: true,
+  })
+  orangeMoneyNumber: string | null;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
   @UpdateDateColumn({ name: "updated_at" }) updatedAt: Date;
 }
@@ -113,6 +128,26 @@ export class DoctorProfile {
   verifiedAt: Date | null;
   @Column({ name: "verified_by_user_id", type: "uuid", nullable: true })
   verifiedByUserId: string | null;
+  // Online consultations: null fee means the doctor doesn't offer them.
+  @Column({
+    name: "consult_fee",
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v == null ? null : Number(v)),
+    },
+  })
+  consultFee: number | null;
+  // The clinic the doctor consults for; patients pay that clinic.
+  @Column({ name: "consult_clinic_id", type: "uuid", nullable: true })
+  consultClinicId: string | null;
+  @ManyToOne(() => Clinic, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "consult_clinic_id" })
+  consultClinic: Clinic | null;
+  @Column({ name: "available_now", default: false }) availableNow: boolean;
   @CreateDateColumn({ name: "created_at" }) createdAt: Date;
   @UpdateDateColumn({ name: "updated_at" }) updatedAt: Date;
 }

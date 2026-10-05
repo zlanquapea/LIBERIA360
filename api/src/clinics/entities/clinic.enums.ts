@@ -49,3 +49,39 @@ export const OPEN_PRESCRIPTION_STATUSES = [
 
 /** How long an e-prescription stays valid. */
 export const PRESCRIPTION_VALID_DAYS = 30;
+
+/**
+ * requested  patient asked and paid; waiting for the doctor
+ * active     the doctor confirmed payment and is consulting
+ * completed  the doctor closed it with advice
+ * declined   the doctor couldn't take it
+ * cancelled  the patient withdrew before it started
+ */
+export enum ConsultationStatus {
+  REQUESTED = "requested",
+  ACTIVE = "active",
+  COMPLETED = "completed",
+  DECLINED = "declined",
+  CANCELLED = "cancelled",
+}
+
+export enum ConsultationPaymentMethod {
+  MTN_MOMO = "mtn_momo",
+  ORANGE_MONEY = "orange_money",
+}
+
+export enum ConsultationPaymentStatus {
+  AWAITING_VERIFICATION = "awaiting_verification",
+  PAID = "paid",
+  FAILED = "failed",
+  REFUND_DUE = "refund_due",
+  REFUNDED = "refunded",
+}
+
+/** How the doctor closed the consultation. */
+export enum ConsultationOutcome {
+  ADVICE = "advice",
+  PRESCRIPTION = "prescription",
+  VISIT_CLINIC = "visit_clinic",
+  EMERGENCY = "emergency",
+}

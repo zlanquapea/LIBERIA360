@@ -226,6 +226,8 @@ export class ClinicsService {
         coverUrl: dto.coverUrl || null,
         licenceNumber: dto.licenceNumber?.trim() || null,
         pharmacyId,
+        mtnMomoNumber: dto.mtnMomoNumber?.trim() || null,
+        orangeMoneyNumber: dto.orangeMoneyNumber?.trim() || null,
         status: ClinicStatus.PENDING,
       }),
     );
@@ -260,6 +262,12 @@ export class ClinicsService {
       ...(dto.about !== undefined ? { about: dto.about?.trim() || null } : {}),
       ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl || null } : {}),
       ...(dto.coverUrl !== undefined ? { coverUrl: dto.coverUrl || null } : {}),
+      ...(dto.mtnMomoNumber !== undefined
+        ? { mtnMomoNumber: dto.mtnMomoNumber?.trim() || null }
+        : {}),
+      ...(dto.orangeMoneyNumber !== undefined
+        ? { orangeMoneyNumber: dto.orangeMoneyNumber?.trim() || null }
+        : {}),
     };
     if (dto.pharmacyId !== undefined)
       patch.pharmacyId = dto.pharmacyId

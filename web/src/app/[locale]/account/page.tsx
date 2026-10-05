@@ -19,6 +19,7 @@ import {
   LifebuoyIcon,
   UserCircleIcon,
   BuildingOffice2Icon,
+  ChatBubbleLeftRightIcon,
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -124,6 +125,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         label: "My Orders",
         description: "Track your food & pharmacy orders",
         icon: ShoppingBagIcon,
+      },
+      {
+        href: "/account/consultations",
+        label: "My Consultations",
+        description: "Talk to a doctor by chat or voice note",
+        icon: ChatBubbleLeftRightIcon,
       },
       {
         href: "/account/prescriptions",

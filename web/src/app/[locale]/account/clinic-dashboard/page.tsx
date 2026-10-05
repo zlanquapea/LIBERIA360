@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowRightIcon, BuildingOffice2Icon, CheckBadgeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowRightIcon,
+  BuildingOffice2Icon,
+  ChatBubbleLeftRightIcon,
+  CheckBadgeIcon,
+  ChevronRightIcon,
+  PlusIcon,
+} from '@heroicons/react/24/outline';
 import { SignedInGate } from '@/components/prescriptions/SignedInGate';
 import { ClinicProfileForm } from '@/components/prescriptions/ClinicProfileForm';
 import { DoctorProfileForm } from '@/components/prescriptions/DoctorProfileForm';
@@ -33,6 +40,24 @@ function ClinicList() {
       </div>
 
       <DoctorProfileForm />
+
+      {clinics && clinics.length > 0 && (
+        <Link
+          href="/account/clinic-dashboard/consultations"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-300 dark:border-slate-800 dark:bg-slate-900"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <ChatBubbleLeftRightIcon aria-hidden className="h-6 w-6 shrink-0 text-brand-600" />
+            <span className="min-w-0">
+              <span className="block font-bold text-slate-950 dark:text-slate-50">Online consultations</span>
+              <span className="block text-sm text-slate-500 dark:text-slate-400">
+                Check payments, chat with patients and send prescriptions.
+              </span>
+            </span>
+          </span>
+          <ChevronRightIcon aria-hidden className="h-5 w-5 shrink-0 text-slate-400" />
+        </Link>
+      )}
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">

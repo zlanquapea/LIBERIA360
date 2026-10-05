@@ -18,6 +18,8 @@ import {
   ValidateNested,
 } from "class-validator";
 import {
+  ConsultationOutcome,
+  ConsultationPaymentMethod,
   ClinicStaffRole,
   ClinicStatus,
   DoctorVerificationStatus,
@@ -38,6 +40,15 @@ export class ClinicProfileDto {
   // Attach the pharmacy this clinic sends prescriptions to. The caller must
   // manage that pharmacy. null detaches it.
   @IsOptional() @IsUUID() pharmacyId?: string | null;
+  // Where patients pay online-consultation fees. null clears.
+  @IsOptional()
+  @IsString()
+  @Matches(PHONE_PATTERN, PHONE_MESSAGE)
+  mtnMomoNumber?: string | null;
+  @IsOptional()
+  @IsString()
+  @Matches(PHONE_PATTERN, PHONE_MESSAGE)
+  orangeMoneyNumber?: string | null;
 }
 
 export class AssignClinicStaffDto {
@@ -103,6 +114,8 @@ export class IssuePrescriptionDto {
   // Send straight to the clinic's attached pharmacy so it's packed while the
   // patient walks over.
   @IsOptional() @IsBoolean() sendToPharmacy?: boolean;
+  // Written during an online consultation: the patient comes from it.
+  @IsOptional() @IsUUID() consultationId?: string;
 }
 
 export class CancelPrescriptionDto {
@@ -123,4 +136,59 @@ export class PrescriptionCodeDto {
 
 export class CounterStatusDto {
   @IsIn(["preparing", "ready"]) status: "preparing" | "ready";
+}
+
+export class DoctorConsultSettingsDto {
+  // null (or omitted) means the doctor doesn't take online consultations.
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  consultFee?: number | null;
+  @IsOptional() @IsUUID() consultClinicId?: string | null;
+  @IsBoolean() availableNow: boolean;
+}
+
+export class RequestConsultationDto {
+  @IsUUID() doctorId: string;
+  @IsOptional() @IsString() @Length(2, 150) patientName?: string;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(130)
+  patientAge?: number;
+  @IsString() @Length(10, 2000) reason: string;
+  @IsOptional() @IsString() @Length(1, 60) symptomsSince?: string;
+  // The emergency signs the patient ticked. Any one stops the booking.
+  @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) redFlags: string[];
+  @IsBoolean() noRedFlagsConfirmed: boolean;
+  @IsEnum(ConsultationPaymentMethod) paymentMethod: ConsultationPaymentMethod;
+  @IsString() @Length(4, 80) paymentReference: string;
+}
+
+export class ConsultationPaymentDto {
+  @IsString() @Length(4, 80) paymentReference: string;
+}
+
+export class VerifyConsultationPaymentDto {
+  @IsBoolean() received: boolean;
+}
+
+export class DeclineConsultationDto {
+  @IsString() @Length(3, 500) reason: string;
+}
+
+export class CompleteConsultationDto {
+  @IsEnum(ConsultationOutcome) outcome: ConsultationOutcome;
+  @IsString() @Length(5, 3000) summary: string;
+}
+
+export class ConsultationMessageDto {
+  @IsString() @Length(1, 2000) body: string;
+}
+
+export class VoiceNoteDto {
+  @Type(() => Number) @IsInt() @Min(1) @Max(180) seconds: number;
 }
