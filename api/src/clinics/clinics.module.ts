@@ -19,6 +19,13 @@ import {
   PharmacyPrescriptionsController,
 } from "./clinics.controller";
 import { ClinicsService } from "./clinics.service";
+import { ConsultationsController } from "./consultations.controller";
+import { ConsultationsService } from "./consultations.service";
+import { StorageModule } from "../uploads/storage/storage.module";
+import {
+  Consultation,
+  ConsultationMessage,
+} from "./entities/consultation.entity";
 import { EPrescriptionsService } from "./e-prescriptions.service";
 import { Clinic, ClinicStaff, DoctorProfile } from "./entities/clinic.entity";
 import {
@@ -27,6 +34,8 @@ import {
 } from "./entities/e-prescription.entity";
 
 export const CLINIC_ENTITIES = [
+  Consultation,
+  ConsultationMessage,
   Clinic,
   ClinicStaff,
   DoctorProfile,
@@ -50,6 +59,7 @@ export const CLINIC_ENTITIES = [
     ]),
     UsersModule,
     NotificationsModule,
+    StorageModule,
   ],
   controllers: [
     ClinicsController,
@@ -57,8 +67,9 @@ export const CLINIC_ENTITIES = [
     EPrescriptionsController,
     PharmacyPrescriptionsController,
     AdminClinicsController,
+    ConsultationsController,
   ],
-  providers: [ClinicsService, EPrescriptionsService],
+  providers: [ClinicsService, EPrescriptionsService, ConsultationsService],
   exports: [EPrescriptionsService],
 })
 export class ClinicsModule {}

@@ -43,6 +43,7 @@ web/blob-report/
 
 # Local-disk upload storage (dev/demo only — see api/src/uploads)
 api/uploads/
+api/private-uploads/
 
 # PWA generated files (web/public/sw.js is hand-written and committed — see api/README.md)
 web/public/workbox-*.js

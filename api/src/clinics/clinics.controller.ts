@@ -24,6 +24,7 @@ import {
   ClinicProfileDto,
   ClinicVerificationDto,
   CounterStatusDto,
+  DoctorConsultSettingsDto,
   DoctorProfileDto,
   DoctorVerificationDto,
   IssuePrescriptionDto,
@@ -31,6 +32,7 @@ import {
   PrescriptionCodeDto,
   SendPrescriptionDto,
 } from "./dto/clinic.dto";
+import { ConsultationsService } from "./consultations.service";
 import { EPrescriptionsService } from "./e-prescriptions.service";
 
 const uuid = new ParseUUIDPipe();
@@ -55,6 +57,7 @@ export class ClinicDashboardController {
   constructor(
     private readonly clinics: ClinicsService,
     private readonly rx: EPrescriptionsService,
+    private readonly consultations: ConsultationsService,
   ) {}
 
   @Get() mine(@CurrentUser() u: User) {
@@ -69,6 +72,12 @@ export class ClinicDashboardController {
   }
   @Get("doctor-profile") doctorProfile(@CurrentUser() u: User) {
     return this.clinics.myDoctorProfile(u.id);
+  }
+  @Put("doctor-profile/consults") saveConsultSettings(
+    @CurrentUser() u: User,
+    @Body() dto: DoctorConsultSettingsDto,
+  ) {
+    return this.consultations.saveConsultSettings(u.id, dto);
   }
   @Put("doctor-profile") saveDoctorProfile(
     @CurrentUser() u: User,

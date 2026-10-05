@@ -30,6 +30,8 @@ const clinic: MyClinic = {
   pharmacy: { id: 'ph-1', name: 'CarePoint', slug: 'carepoint', address: '', location: '', telephone: '', approved: true },
   myRole: 'doctor',
   canPrescribe: true,
+  mtnMomoNumber: null,
+  orangeMoneyNumber: null,
 };
 
 beforeEach(() => {
@@ -82,6 +84,25 @@ describe('PrescriptionWriter', () => {
     fireEvent.submit(screen.getByRole('button', { name: 'Issue prescription' }).closest('form')!);
     expect(await screen.findByRole('alert')).toHaveTextContent('Add the name of medicine 1');
     expect(issue).not.toHaveBeenCalled();
+  });
+
+  it('writes for the consultation patient without looking anyone up', async () => {
+    issue.mockResolvedValue({
+      id: 'rx-2', code: 'WXYZ-2345', status: 'issued', expired: false, issuedAt: new Date().toISOString(), expiresAt: new Date().toISOString(),
+      dispensedAt: null, clinic: null, doctor: null, pharmacy: null, pharmacyOrderId: null, patientName: 'Comfort Doe',
+      patientAge: 34, patientPhone: null, hasPatientAccount: true, notesForPharmacist: null, cancelledReason: null, itemCount: 1, items: [], full: true,
+    });
+    render(<PrescriptionWriter clinic={clinic} consultation={{ id: 'c-1', patientName: 'Comfort Doe', patientAge: 34 }} />);
+    expect(screen.queryByPlaceholderText(/0886 123 456/)).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Full name' })).toHaveValue('Comfort Doe');
+    fireEvent.change(screen.getByPlaceholderText(/Search the pharmacy shelf/), { target: { value: 'Paracetamol 500mg' } });
+    fireEvent.change(screen.getByPlaceholderText('1 tablet 3 times a day'), { target: { value: '2 tablets 3 times a day' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Quantity' }), { target: { value: '18' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Issue prescription' }));
+    await waitFor(() => expect(issue).toHaveBeenCalled());
+    expect(issue.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ consultationId: 'c-1', patientUserId: undefined, patientName: 'Comfort Doe', patientAge: 34 }),
+    );
   });
 });
 

@@ -34,6 +34,7 @@ import {
   publicDoctor,
   publicPharmacy,
 } from "./clinics.service";
+import { ConsultationsService } from "./consultations.service";
 import { controlledMedicine } from "./controlled-medicines";
 import { IssuePrescriptionDto } from "./dto/clinic.dto";
 import { Clinic, DoctorProfile } from "./entities/clinic.entity";
@@ -139,6 +140,7 @@ export class EPrescriptionsService {
     private readonly users: UsersService,
     private readonly config: ConfigService<AppConfig, true>,
     @Optional() private readonly notifications?: NotificationsService,
+    @Optional() private readonly consultations?: ConsultationsService,
   ) {}
 
   // ── Serialization ───────────────────────────────────────────────────
@@ -252,6 +254,10 @@ export class EPrescriptionsService {
           `${item.medicine} is a controlled medicine. Write a paper prescription for it.`,
         );
     }
+    // Written during an online consultation: the patient is that consult's.
+    const consult = dto.consultationId
+      ? await this.consultationFor(userId, clinicId, dto.consultationId)
+      : null;
     if (dto.patientUserId && !(await this.users.findById(dto.patientUserId)))
       throw new BadRequestException("That patient account no longer exists");
 
@@ -293,7 +299,7 @@ export class EPrescriptionsService {
         clinicId,
         doctorProfileId: doctor.id,
         doctorUserId: userId,
-        patientUserId: dto.patientUserId ?? null,
+        patientUserId: consult?.patientUserId ?? dto.patientUserId ?? null,
         patientName: dto.patientName.trim(),
         patientPhone: dto.patientPhone?.trim() || null,
         patientAge: dto.patientAge ?? null,
@@ -316,6 +322,12 @@ export class EPrescriptionsService {
         ),
       }),
     );
+    if (consult)
+      await this.consultations!.attachPrescription(
+        consult.id,
+        userId,
+        saved.id,
+      );
     const rx = (await this.load({ id: saved.id }, true))!;
     if (rx.patientUserId)
       void this.notify(
@@ -329,6 +341,24 @@ export class EPrescriptionsService {
       );
     if (sendTo) void this.notifyPharmacy(sendTo.id, rx);
     return this.withQr(rx);
+  }
+
+  private async consultationFor(
+    userId: string,
+    clinicId: string,
+    consultationId: string,
+  ) {
+    if (!this.consultations)
+      throw new BadRequestException("Online consultations aren't available");
+    const consult = await this.consultations.patientForPrescription(
+      userId,
+      consultationId,
+    );
+    if (consult.clinicId !== clinicId)
+      throw new BadRequestException(
+        "Write it from the clinic the consultation is with",
+      );
+    return consult;
   }
 
   async clinicPrescriptions(userId: string, clinicId: string) {

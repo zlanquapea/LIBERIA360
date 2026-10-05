@@ -141,9 +141,12 @@ function MedicineField({
 
 export function PrescriptionWriter({
   clinic,
+  consultation,
   onIssued,
 }: {
   clinic: MyClinic;
+  /** Written during an online consultation: the patient is already known. */
+  consultation?: { id: string; patientName: string; patientAge: number | null };
   onIssued?: (rx: EPrescription) => void;
 }) {
   const presetsId = useId();
@@ -151,9 +154,9 @@ export function PrescriptionWriter({
   const [searching, setSearching] = useState(false);
   const [match, setMatch] = useState<{ id: string; name: string } | null>(null);
   const [lookedUp, setLookedUp] = useState(false);
-  const [patientName, setPatientName] = useState('');
+  const [patientName, setPatientName] = useState(consultation?.patientName ?? '');
   const [patientPhone, setPatientPhone] = useState('');
-  const [patientAge, setPatientAge] = useState('');
+  const [patientAge, setPatientAge] = useState(consultation?.patientAge?.toString() ?? '');
   const [lines, setLines] = useState<Line[]>([blankLine()]);
   const [notes, setNotes] = useState('');
   const pharmacy = clinic.pharmacy?.approved ? clinic.pharmacy : null;
@@ -198,7 +201,8 @@ export function PrescriptionWriter({
     setBusy(true);
     try {
       const rx = await issuePrescription(clinic.id, {
-        patientUserId: match?.id,
+        consultationId: consultation?.id,
+        patientUserId: consultation ? undefined : match?.id,
         patientName: patientName.trim(),
         patientPhone: patientPhone.trim() || undefined,
         patientAge: patientAge ? Number(patientAge) : undefined,
@@ -228,9 +232,9 @@ export function PrescriptionWriter({
     setContact('');
     setMatch(null);
     setLookedUp(false);
-    setPatientName('');
+    setPatientName(consultation?.patientName ?? '');
     setPatientPhone('');
-    setPatientAge('');
+    setPatientAge(consultation?.patientAge?.toString() ?? '');
     setLines([blankLine()]);
     setNotes('');
     setSendNow(Boolean(pharmacy));
@@ -262,6 +266,13 @@ export function PrescriptionWriter({
     <form onSubmit={submit} className="flex flex-col gap-5">
       <fieldset className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
         <legend className="px-1 text-sm font-bold text-slate-900 dark:text-slate-50">Patient</legend>
+        {consultation ? (
+          <p className="flex items-center gap-1.5 text-sm text-brand-700 dark:text-brand-300">
+            <UserIcon aria-hidden className="h-4 w-4" />
+            From this consultation. It goes straight to their LIBERIA360 app.
+          </p>
+        ) : (
+        <>
         <div className="flex flex-col gap-2 sm:flex-row">
           <label className="min-w-0 flex-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
             Find their LIBERIA360 account by phone or email
@@ -298,6 +309,8 @@ export function PrescriptionWriter({
               ? `${match.name} has an account. The prescription goes to their app.`
               : 'No account found. They can still use the printed QR code at any pharmacy.'}
           </p>
+        )}
+        </>
         )}
         <div className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-[1fr_1fr_6rem]">
           <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">

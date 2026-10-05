@@ -28,7 +28,10 @@ export default async function ClinicsPage() {
           ready by the time you reach the counter.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link href="/account/prescriptions" className="rounded-full bg-gold-300 px-5 py-2.5 text-sm font-bold text-brand-950 hover:bg-gold-200">
+          <Link href="/consult" className="rounded-full bg-gold-300 px-5 py-2.5 text-sm font-bold text-brand-950 hover:bg-gold-200">
+            Talk to a doctor online
+          </Link>
+          <Link href="/account/prescriptions" className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-bold text-white ring-1 ring-inset ring-white/30 hover:bg-white/20">
             My prescriptions
           </Link>
           <Link href="/pharmacies" className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-bold text-white ring-1 ring-inset ring-white/30 hover:bg-white/20">

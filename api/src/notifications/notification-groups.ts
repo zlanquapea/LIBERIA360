@@ -11,7 +11,8 @@ export function notificationGroup(type: string): NotificationGroup | null {
     type.startsWith("booking.") ||
     type.startsWith("food_order.") ||
     type.startsWith("pharmacy_order.") ||
-    type.startsWith("prescription.")
+    type.startsWith("prescription.") ||
+    type.startsWith("consultation.")
   )
     return "bookings";
   if (type.startsWith("trip.")) return "trips";
@@ -19,7 +20,13 @@ export function notificationGroup(type: string): NotificationGroup | null {
   return null;
 }
 export const groupPrefixes: Record<NotificationGroup, string[]> = {
-  bookings: ["booking.%", "food_order.%", "pharmacy_order.%", "prescription.%"],
+  bookings: [
+    "booking.%",
+    "food_order.%",
+    "pharmacy_order.%",
+    "prescription.%",
+    "consultation.%",
+  ],
   messages: ["%message%"],
   trips: ["trip.%"],
   creators: ["creator.%"],

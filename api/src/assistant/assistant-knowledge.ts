@@ -1250,7 +1250,10 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     answer:
       "On supported mobile pages, go to the top of the page and pull down to refresh current content without closing the LIBERIA360 app. Release after the refresh indicator appears. Avoid starting the gesture inside a map, gallery, chat composer, or another inner scroll area; those areas keep their own touch behavior.",
     actionIds: ["home"],
-    followUps: ["How do I use LIBERIA360 as a Home Screen app?", "What can I do on LIBERIA360?"],
+    followUps: [
+      "How do I use LIBERIA360 as a Home Screen app?",
+      "What can I do on LIBERIA360?",
+    ],
   },
   {
     id: "support-safety",

@@ -22,6 +22,8 @@ export function ClinicProfileForm({
     about: clinic?.about ?? '',
     licenceNumber: clinic?.licenceNumber ?? '',
     pharmacyId: clinic?.pharmacyId ?? '',
+    mtnMomoNumber: clinic?.mtnMomoNumber ?? '',
+    orangeMoneyNumber: clinic?.orangeMoneyNumber ?? '',
   });
   const [pharmacies, setPharmacies] = useState<PharmacySummary[]>([]);
   const [busy, setBusy] = useState(false);
@@ -52,6 +54,8 @@ export function ClinicProfileForm({
         about: form.about || null,
         licenceNumber: form.licenceNumber || undefined,
         pharmacyId: form.pharmacyId || null,
+        mtnMomoNumber: form.mtnMomoNumber.trim() || null,
+        orangeMoneyNumber: form.orangeMoneyNumber.trim() || null,
       });
       setSaved(true);
     } catch (err) {
@@ -104,6 +108,21 @@ export function ClinicProfileForm({
           over. You can only attach a pharmacy you manage on LIBERIA360.
         </span>
       </label>
+      <fieldset className="grid gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800 sm:col-span-2 sm:grid-cols-2">
+        <legend className="px-1 text-sm font-bold text-slate-900 dark:text-slate-50">Online consultation payments</legend>
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          MTN MoMo number
+          <input type="tel" inputMode="tel" placeholder="0886 000 000" className="input mt-1 w-full" {...field('mtnMomoNumber')} />
+        </label>
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+          Orange Money number
+          <input type="tel" inputMode="tel" placeholder="0777 000 000" className="input mt-1 w-full" {...field('orangeMoneyNumber')} />
+        </label>
+        <span className="text-xs text-slate-500 dark:text-slate-400 sm:col-span-2">
+          Patients pay consultation fees to these numbers. Your doctors can offer online consultations once at least
+          one is set.
+        </span>
+      </fieldset>
       <label className="text-sm font-medium text-slate-700 dark:text-slate-200 sm:col-span-2">
         About the clinic (optional)
         <textarea rows={3} maxLength={2000} placeholder="Services, opening times, languages spoken" className="input mt-1 w-full" {...field('about')} />

@@ -61,6 +61,8 @@ export type MyClinic = {
   pharmacy: PharmacySummary | null;
   myRole: ClinicStaffRole;
   canPrescribe: boolean;
+  mtnMomoNumber: string | null;
+  orangeMoneyNumber: string | null;
 };
 export type ClinicProfileInput = {
   name: string;
@@ -72,6 +74,8 @@ export type ClinicProfileInput = {
   coverUrl?: string | null;
   licenceNumber?: string;
   pharmacyId?: string | null;
+  mtnMomoNumber?: string | null;
+  orangeMoneyNumber?: string | null;
 };
 export type DoctorProfile = {
   id: string;
@@ -83,6 +87,9 @@ export type DoctorProfile = {
   verificationStatus: DoctorVerificationStatus;
   verificationNotes: string | null;
   verifiedAt: string | null;
+  consultFee: number | null;
+  consultClinicId: string | null;
+  availableNow: boolean;
 };
 export type ClinicStaffMember = {
   userId: string;
@@ -150,6 +157,7 @@ export type PrescriptionItemInput = {
   productId?: string;
 };
 export type IssuePrescriptionInput = {
+  consultationId?: string;
   patientUserId?: string;
   patientName: string;
   patientPhone?: string;

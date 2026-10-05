@@ -126,7 +126,11 @@ function Prescriptions() {
           <Link href="/clinics" className="font-semibold text-brand-700 underline">
             partner clinic
           </Link>{' '}
-          writes you one, it appears here.
+          writes you one, it appears here. No time to go in?{' '}
+          <Link href="/consult" className="font-semibold text-brand-700 underline">
+            Talk to a doctor online
+          </Link>
+          .
         </p>
       )}
       {open.map((rx) => (

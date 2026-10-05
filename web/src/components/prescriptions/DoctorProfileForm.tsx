@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { CheckBadgeIcon } from '@heroicons/react/24/solid';
-import { getDoctorProfile, saveDoctorProfile, type DoctorProfile } from '@/lib/clinic-api';
+import {
+  getDoctorProfile,
+  getMyClinics,
+  saveDoctorProfile,
+  type DoctorProfile,
+  type MyClinic,
+} from '@/lib/clinic-api';
+import { saveConsultSettings } from '@/lib/consultations-api';
+import { formatMoney } from '@/lib/currency';
 import { DOCTOR_STATUS_COPY } from './clinic-labels';
 
 /**
@@ -110,6 +118,148 @@ export function DoctorProfileForm({ onSaved }: { onSaved?: (p: DoctorProfile) =>
           </div>
         </form>
       )}
+      {profile?.verificationStatus === 'verified' && !open && (
+        <ConsultSettings profile={profile} onSaved={(p) => setProfile(p)} />
+      )}
     </section>
+  );
+}
+
+/** Fee, clinic and "available now" for online consultations. */
+function ConsultSettings({ profile, onSaved }: { profile: DoctorProfile; onSaved: (p: DoctorProfile) => void }) {
+  const [clinics, setClinics] = useState<MyClinic[] | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [fee, setFee] = useState(profile.consultFee?.toString() ?? '');
+  const [clinicId, setClinicId] = useState(profile.consultClinicId ?? '');
+  const [availableNow, setAvailableNow] = useState(profile.availableNow);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getMyClinics()
+      .then((all) => {
+        const usable = all.filter((c) => c.status === 'approved' && c.myRole !== 'front_desk');
+        setClinics(usable);
+        setClinicId((id) => id || usable[0]?.id || '');
+      })
+      .catch(() => setClinics([]));
+  }, []);
+
+  const offering = profile.consultFee != null;
+  const chosen = clinics?.find((c) => c.id === clinicId);
+  const takesMoney = Boolean(chosen?.mtnMomoNumber || chosen?.orangeMoneyNumber);
+
+  async function save(next: { consultFee: number | null; availableNow: boolean }) {
+    setBusy(true);
+    setError('');
+    try {
+      await saveConsultSettings({ ...next, consultClinicId: next.consultFee == null ? null : clinicId || null });
+      onSaved({
+        ...profile,
+        consultFee: next.consultFee,
+        consultClinicId: next.consultFee == null ? null : clinicId,
+        availableNow: next.consultFee == null ? false : next.availableNow,
+      });
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!clinics) return null;
+  return (
+    <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-slate-950 dark:text-slate-50">Online consultations</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {offering
+              ? `${formatMoney(profile.consultFee!, 'LRD')} per consultation${chosen ? `, paid to ${chosen.name}` : ''}.`
+              : 'Patients can book you for a chat or voice-note consultation and pay by mobile money.'}
+          </p>
+        </div>
+        {offering && !editing && (
+          <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={profile.availableNow}
+              disabled={busy}
+              onChange={(e) => void save({ consultFee: profile.consultFee, availableNow: e.target.checked })}
+              className="h-5 w-5 accent-brand-600"
+            />
+            Available now
+          </label>
+        )}
+      </div>
+      {!editing ? (
+        <button type="button" onClick={() => setEditing(true)} className="btn-secondary mt-3 min-h-10">
+          {offering ? 'Change fee or clinic' : 'Offer online consultations'}
+        </button>
+      ) : clinics.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          You need to work at an approved clinic first.
+        </p>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save({ consultFee: Number(fee), availableNow: true });
+          }}
+          className="mt-3 grid gap-3 sm:grid-cols-2"
+        >
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Fee (LRD)
+            <input required type="number" min={0} max={100000} inputMode="numeric" value={fee} onChange={(e) => setFee(e.target.value)} className="input mt-1 w-full" />
+          </label>
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Paid to
+            <select value={clinicId} onChange={(e) => setClinicId(e.target.value)} className="input mt-1 w-full">
+              {clinics.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {chosen && !takesMoney && (
+            <p className="text-sm text-amber-800 dark:text-amber-200 sm:col-span-2">
+              {chosen.name} hasn&apos;t added an MTN MoMo or Orange Money number yet. A clinic admin can add one in
+              the clinic details.
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="error-state sm:col-span-2">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
+            <button disabled={busy || !takesMoney} className="btn-primary min-h-11">
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+            {offering && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void save({ consultFee: null, availableNow: false })}
+                className="btn-secondary min-h-11"
+              >
+                Stop offering
+              </button>
+            )}
+            <button type="button" onClick={() => setEditing(false)} className="btn-secondary min-h-11">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+      {error && !editing && (
+        <p role="alert" className="error-state mt-2">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
