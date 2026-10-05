@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation';
+import { RoomsPreview } from '@/components/stays/RoomsPreview';
+import { getStayForBusiness } from '@/lib/stays-server';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowRightIcon, EnvelopeIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
 import { ApiError, getBusinessBySlug, getBusinessContent, getMenuItems, getMenuSettings, getReviews } from '@/lib/api';
@@ -112,6 +114,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
   const [menuItems, menuSettings] = businessHasMenu(business.type)
     ? await Promise.all([getMenuItems(business.id), getMenuSettings(business.id)])
     : [[], null];
+  const stay = await getStayForBusiness(business);
 
   const linked = business.linkedPlace;
   // The business's own name, story and photos lead; the linked place
@@ -146,6 +149,8 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
           <PlaceAtAGlance place={place} kind={kind} business={business} menuCount={menuItems.length} menuSettings={menuSettings} />
         </>
       )}
+
+      {stay && <RoomsPreview stay={stay} bookHref={`/businesses/${business.slug}/book`} />}
 
       {!essential && (
         <MenuPreviewSection items={menuItems} menuHref={`/businesses/${business.slug}/menu`} currency={menuSettings?.currency} settings={menuSettings} />

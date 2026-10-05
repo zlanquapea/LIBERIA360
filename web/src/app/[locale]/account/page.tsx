@@ -20,6 +20,7 @@ import {
   UserCircleIcon,
   BuildingOffice2Icon,
   ChatBubbleLeftRightIcon,
+  HomeModernIcon,
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -125,6 +126,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         label: "My Orders",
         description: "Track your food & pharmacy orders",
         icon: ShoppingBagIcon,
+      },
+      {
+        href: "/account/stays",
+        label: "My Stays",
+        description: "Hotel and lodge rooms you've booked",
+        icon: HomeModernIcon,
       },
       {
         href: "/account/consultations",

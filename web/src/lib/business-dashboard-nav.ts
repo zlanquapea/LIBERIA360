@@ -5,12 +5,15 @@ import {
   ChartBarIcon,
   ClipboardDocumentListIcon,
   HomeIcon,
+  HomeModernIcon,
+  KeyIcon,
   MapPinIcon,
   MegaphoneIcon,
   ShoppingBagIcon,
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { businessHasMenu } from './menu';
+import { businessHasRooms } from './stays';
 import type { Business } from './types';
 
 export interface BusinessDashboardNavItem {
@@ -47,6 +50,20 @@ export const BUSINESS_DASHBOARD_NAV: BusinessDashboardNavItem[] = [
     segment: 'orders',
     icon: ShoppingBagIcon,
     show: (b) => businessHasMenu(b.type),
+  },
+  {
+    key: 'front-desk',
+    label: 'Front desk',
+    segment: 'front-desk',
+    icon: KeyIcon,
+    show: (b) => businessHasRooms(b.type),
+  },
+  {
+    key: 'rooms',
+    label: 'Rooms & rates',
+    segment: 'rooms',
+    icon: HomeModernIcon,
+    show: (b) => businessHasRooms(b.type),
   },
   { key: 'bookings', label: 'Bookings', segment: 'bookings', icon: CalendarDaysIcon },
   { key: 'content', label: 'Updates', segment: 'content', icon: MegaphoneIcon },
