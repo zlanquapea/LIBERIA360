@@ -394,17 +394,23 @@ export function Liberia360Assistant() {
           role="dialog"
           aria-label="LIBERIA360 Assistant"
           aria-modal="false"
-          className="fixed inset-x-3 bottom-[calc(5.35rem+env(safe-area-inset-bottom))] z-[70] flex max-h-[min(70vh,38rem)] min-h-[27rem] flex-col overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem] lg:bottom-6 dark:border-slate-700 dark:bg-slate-900"
+          className="fixed inset-x-3 bottom-[calc(5.35rem+env(safe-area-inset-bottom))] z-[70] flex max-h-[min(78vh,42rem)] min-h-[27rem] flex-col overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-[0_24px_80px_rgba(4,31,23,0.28)] ring-1 ring-brand-950/5 sm:inset-x-auto sm:right-5 sm:w-[25rem] lg:bottom-6 dark:border-slate-700/80 dark:bg-slate-900 dark:shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
         >
-          <header className="flex items-center gap-3 bg-gradient-to-r from-brand-950 via-brand-900 to-brand-800 px-4 py-3 text-white">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gold-300 bg-brand-950 shadow-inner">
-              <SparklesIcon aria-hidden className="h-5 w-5 text-gold-300" />
+          <header className="relative flex items-center gap-3 overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 px-4 py-3.5 text-white">
+            <span className="pointer-events-none absolute -right-8 -top-12 h-32 w-32 rounded-full bg-gold-300/15 blur-2xl" />
+            <span className="pointer-events-none absolute -bottom-16 left-16 h-28 w-28 rounded-full bg-brand-400/20 blur-2xl" />
+            <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gold-200/70 bg-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] backdrop-blur-sm">
+              <SparklesIcon aria-hidden className="h-5 w-5 text-gold-200" />
+              <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-brand-900 bg-emerald-400" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate font-display text-sm font-bold">
-                LIBERIA360 Assistant
-              </h2>
-              <p className="text-[11px] text-white/75">Your guide to the platform</p>
+              <div className="flex items-center gap-2">
+                <h2 className="truncate font-display text-[15px] font-bold tracking-tight">
+                  LIBERIA360 Assistant
+                </h2>
+                <span className="rounded-full bg-emerald-300/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-200">Live</span>
+              </div>
+              <p className="mt-0.5 text-[11px] text-white/70">Your friendly guide to Liberia</p>
             </div>
             <button
               type="button"
@@ -424,15 +430,19 @@ export function Liberia360Assistant() {
             </button>
           </header>
 
-          <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-800">
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="border-b border-slate-100 bg-gradient-to-b from-white to-brand-50/40 px-3.5 py-3 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
+            <div className="mb-2 flex items-center gap-2 px-0.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Try asking</p>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {QUICK_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => void sendMessage(prompt)}
                   disabled={loading}
-                  className="min-h-10 shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3 text-xs font-semibold text-brand-900 transition-colors hover:border-brand-400 hover:bg-brand-100 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-700 dark:bg-brand-950 dark:text-brand-100"
+                  className="min-h-9 shrink-0 rounded-xl border border-brand-200/80 bg-white px-3 text-xs font-semibold text-brand-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-50 hover:shadow-md disabled:cursor-wait disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-brand-700 dark:bg-slate-800 dark:text-brand-100 dark:hover:bg-brand-950"
                 >
                   {prompt}
                 </button>
@@ -443,25 +453,31 @@ export function Liberia360Assistant() {
           <div
             aria-live="polite"
             aria-busy={loading}
-            className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-3 py-4 dark:bg-slate-950"
+            className="flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(218,179,55,0.08),transparent_34%),linear-gradient(180deg,#f8faf9_0%,#f1f5f3_100%)] px-3 py-4 dark:bg-[radial-gradient(circle_at_top_left,rgba(218,179,55,0.08),transparent_34%),linear-gradient(180deg,#101c18_0%,#07100d_100%)]"
           >
             {messages.map((message) => (
               <article
                 key={message.id}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex items-end gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
+                {message.role === "assistant" && (
+                  <span className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-800 to-brand-950 text-gold-200 shadow-sm">
+                    <SparklesIcon aria-hidden className="h-3.5 w-3.5" />
+                  </span>
+                )}
                 <div
-                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
+                  className={`max-w-[86%] rounded-[1.25rem] px-3.5 py-3 text-sm leading-relaxed shadow-sm ${
                     message.role === "user"
-                      ? "rounded-br-md bg-brand-900 text-white"
-                      : "rounded-bl-md border border-slate-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      ? "rounded-br-md bg-gradient-to-br from-brand-700 to-brand-950 text-white shadow-brand-900/15"
+                      : "rounded-bl-md border border-slate-200/90 bg-white text-slate-800 shadow-[0_4px_16px_rgba(4,31,23,0.06)] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
                   {message.role === "assistant" && message.id !== "welcome" && (
                     <div className="mt-2.5 border-t border-slate-100 pt-2 dark:border-slate-700">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-medium text-slate-400">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                           {message.source === "knowledge" ? "LIBERIA360 Guide" : "LIBERIA360 Assistant"}
                         </span>
                         <div className="flex items-center gap-1.5">
@@ -469,7 +485,7 @@ export function Liberia360Assistant() {
                             type="button"
                             onClick={() => void submitFeedback(message, "helpful")}
                             disabled={Boolean(message.feedback)}
-                            className={`min-h-8 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${message.feedback === "helpful" ? "bg-green-100 text-green-800" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                            className={`min-h-8 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${message.feedback === "helpful" ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
                             aria-label="Mark this answer helpful"
                           >
                             {message.feedback === "helpful" ? "Helpful ✓" : "Helpful"}
@@ -478,7 +494,7 @@ export function Liberia360Assistant() {
                             type="button"
                             onClick={() => void submitFeedback(message, "not_helpful")}
                             disabled={Boolean(message.feedback)}
-                            className={`min-h-8 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${message.feedback === "not_helpful" ? "bg-amber-100 text-amber-800" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                            className={`min-h-8 rounded-lg px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${message.feedback === "not_helpful" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
                             aria-label="Mark this answer not helpful"
                           >
                             {message.feedback === "not_helpful" ? "Not helpful ✓" : "Not helpful"}
@@ -547,9 +563,9 @@ export function Liberia360Assistant() {
 
           <form
             onSubmit={handleSubmit}
-            className="border-t border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+            className="border-t border-slate-200/80 bg-white/95 p-3.5 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
           >
-            <div className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-slate-50 p-1.5 pl-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-brand-900">
+            <div className="flex items-end gap-2 rounded-2xl border border-slate-300/90 bg-slate-50 p-1.5 pl-3 shadow-inner transition-all focus-within:border-brand-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:bg-slate-900 dark:focus-within:ring-brand-900">
               <input
                 ref={inputRef}
                 value={input}
@@ -563,13 +579,13 @@ export function Liberia360Assistant() {
                 type="submit"
                 disabled={loading || input.trim().length < 2}
                 aria-label="Send message"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-600 text-white shadow-sm transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 dark:disabled:bg-slate-700"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-amber-500 text-brand-950 shadow-[0_6px_16px_rgba(218,179,55,0.3)] transition-all hover:-translate-y-0.5 hover:from-gold-300 hover:to-amber-400 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none disabled:text-slate-500 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 dark:disabled:bg-slate-700"
               >
                 <ArrowUpIcon aria-hidden className="h-5 w-5 stroke-2" />
               </button>
             </div>
-            <p className="mt-1.5 text-center text-[10px] text-slate-400">
-              Automated guide • Do not share passwords or payment details
+            <p className="mt-2 text-center text-[10px] text-slate-400">
+              Automated guide <span className="mx-1 text-slate-300">•</span> Never share passwords or payment details
             </p>
           </form>
         </section>
@@ -588,17 +604,18 @@ export function Liberia360Assistant() {
         aria-controls="liberia360-assistant-panel"
         title={detailPage ? "LIBERIA360 Assistant" : "LIBERIA360 Assistant — drag to move"}
         tabIndex={open ? -1 : 0}
-        className={`${detailPage ? "relative mx-auto mb-28 mt-6" : "fixed"} z-[80] flex h-[58px] w-[58px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-300 bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white shadow-[0_10px_30px_rgba(8,46,33,0.35)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
+        className={`${detailPage ? "relative mx-auto mb-28 mt-6" : "fixed"} z-[80] flex h-[62px] w-[62px] touch-none select-none items-center justify-center rounded-full border-2 border-gold-200 bg-gradient-to-br from-brand-700 via-brand-900 to-brand-950 text-white shadow-[0_12px_34px_rgba(8,46,33,0.42)] transition-[box-shadow,opacity,transform] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/60 motion-reduce:transform-none ${
           detailPage || position
             ? ""
             : "right-4 bottom-[calc(8.75rem+env(safe-area-inset-bottom))] lg:bottom-[calc(5.6rem+env(safe-area-inset-bottom))]"
         } ${
           open
             ? "pointer-events-none scale-90 opacity-0"
-            : "opacity-100 hover:scale-105 hover:shadow-[0_14px_34px_rgba(8,46,33,0.45)] active:scale-95"
+            : "opacity-100 hover:scale-105 hover:shadow-[0_16px_40px_rgba(8,46,33,0.5)] active:scale-95"
         }`}
         style={launcherStyle}
       >
+        {!open && <span className="pointer-events-none absolute inset-[-6px] rounded-full border border-gold-300/40 motion-safe:animate-pulse" />}
         {open ? (
           <XMarkIcon aria-hidden className="h-7 w-7" />
         ) : (
