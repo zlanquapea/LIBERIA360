@@ -54,6 +54,8 @@ import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { TripChatService } from "../trip-chat/trip-chat.service";
+import { GroupTripsService } from "../group-trips/group-trips.service";
+import { HostedTrip } from "../group-trips/entities/hosted-trip.entity";
 import { AppConfig } from "../config/configuration";
 import { generateToken, hashToken, hashesMatch } from "../auth/token-hash";
 
@@ -149,7 +151,13 @@ export interface ItineraryResponse extends Omit<Itinerary, "stops"> {
   // What the caller may do, and each collaborator's access.
   myRole: "owner" | CollaboratorRole;
   collaboratorRoles: Record<string, CollaboratorRole>;
+  // Set when the trip is an organised one people book spots on.
+  hosting: TripHosting | null;
 }
+
+export type TripHosting = NonNullable<
+  Awaited<ReturnType<GroupTripsService["hostingFor"]>>
+>;
 
 /** GET /itineraries/public and GET /itineraries/public/:id — what a
  * stranger (signed in or not) gets to see about a PUBLIC trip: enough to
@@ -181,6 +189,9 @@ export interface PublicTripSummary {
   // a stranger's "Request to Join" button show "3/6 spots filled" and
   // disable itself once requestToJoin would 409 anyway.
   maxParticipants: number | null;
+  // An organised trip's price, spots and what's included — null for a
+  // trip people ask to join instead.
+  hosting: TripHosting | null;
   createdAt: Date;
   // Set only on a curated "Trip Ideas" template (see
   // ItinerariesService.setFeaturedTemplate) — null on every ordinary
@@ -295,6 +306,7 @@ export class ItinerariesService {
     private readonly mailService: MailService,
     private readonly notificationsService: NotificationsService,
     private readonly tripChatService: TripChatService,
+    private readonly groupTrips: GroupTripsService,
     private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
@@ -575,6 +587,7 @@ export class ItinerariesService {
    * owner-only action here: inviting, cancelling an invitation, ...). */
   async deleteTrip(userId: string, itineraryId: string): Promise<void> {
     await this.getOwned(userId, itineraryId);
+    await this.groupTrips.assertDeletable(itineraryId);
     await this.itineraryRepo.delete({ id: itineraryId });
   }
 
@@ -1477,8 +1490,11 @@ export class ItinerariesService {
     // Who's asking; defaults to the owner (e.g. right after creating).
     viewerUserId: string = itinerary.userId,
   ): Promise<ItineraryResponse> {
-    const owner = await this.usersService.findById(itinerary.userId);
-    const roles = await this.collaboratorRoles(itinerary.id);
+    const [owner, roles, hosting] = await Promise.all([
+      this.usersService.findById(itinerary.userId),
+      this.collaboratorRoles(itinerary.id),
+      this.groupTrips.hostingFor(itinerary.id),
+    ]);
     const myRole =
       viewerUserId === itinerary.userId
         ? ("owner" as const)
@@ -1492,6 +1508,7 @@ export class ItinerariesService {
       collaborators,
       admin: owner ? toPublicUser(owner) : null,
       status: this.computeTripStatus(itinerary),
+      hosting,
     };
   }
 
@@ -1586,10 +1603,15 @@ export class ItinerariesService {
 
   private async toPublicSummary(
     itinerary: Itinerary,
+    // Already looked up for a whole page of trips, when there is one.
+    hostings?: Map<string, TripHosting>,
   ): Promise<PublicTripSummary> {
-    const [owner, participantCount] = await Promise.all([
+    const [owner, participantCount, hosting] = await Promise.all([
       this.usersService.findById(itinerary.userId),
       this.collaboratorRepo.count({ where: { itineraryId: itinerary.id } }),
+      hostings
+        ? (hostings.get(itinerary.id) ?? null)
+        : this.groupTrips.hostingFor(itinerary.id),
     ]);
     return {
       id: itinerary.id,
@@ -1606,6 +1628,7 @@ export class ItinerariesService {
       // should count the admin too.
       participantCount: participantCount + 1,
       maxParticipants: itinerary.maxParticipants,
+      hosting,
       createdAt: itinerary.createdAt,
       featuredCategory: itinerary.featuredCategory,
     };
@@ -1651,9 +1674,26 @@ export class ItinerariesService {
         destinationPlaceId: query.destinationPlaceId,
       });
     }
+    // Organised trips (free or paid) — soonest departure first, since
+    // "what's leaving next" is how people shop for them.
+    if (query.hosted || query.price) {
+      qb.innerJoin(HostedTrip, "hosting", "hosting.itinerary_id = itinerary.id")
+        .orderBy("itinerary.startDate", "ASC", "NULLS LAST")
+        .addOrderBy("itinerary.createdAt", "DESC");
+      if (query.price === "free") qb.andWhere("hosting.price = 0");
+      if (query.price === "paid") qb.andWhere("hosting.price > 0");
+    }
+    if (query.county) {
+      qb.andWhere("county.slug = :county", { county: query.county });
+    }
 
     const [rows, total] = await qb.getManyAndCount();
-    const data = await Promise.all(rows.map((r) => this.toPublicSummary(r)));
+    const hostings = await this.groupTrips.hostingForMany(
+      rows.map((r) => r.id),
+    );
+    const data = await Promise.all(
+      rows.map((r) => this.toPublicSummary(r, hostings)),
+    );
     return {
       data,
       meta: {
@@ -1829,6 +1869,11 @@ export class ItinerariesService {
     if (itinerary.userId === userId) {
       throw new BadRequestException("You already own this trip");
     }
+    if (await this.groupTrips.isHosted(itineraryId)) {
+      throw new BadRequestException(
+        "This is an organised trip — book a spot instead.",
+      );
+    }
     const existingCollaborator = await this.collaboratorRepo.findOne({
       where: { itineraryId, userId },
     });
@@ -1988,6 +2033,7 @@ export class ItinerariesService {
     const itinerary = await this.getOwned(userId, itineraryId);
     itinerary.cancelledAt = new Date();
     await this.itineraryRepo.save(itinerary);
+    await this.groupTrips.onTripCancelled(itineraryId);
     await this.tripChatService.postSystemMessage(
       itineraryId,
       "This trip has been cancelled.",

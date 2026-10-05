@@ -52,6 +52,8 @@ import {
 } from "@/components/TripShareCard";
 import { TripMapLoader } from "@/components/TripMapLoader";
 import { TripHero } from "@/components/trips/TripHero";
+import { HostedTripPage } from "@/components/group-trips/HostedTripPage";
+import { HostingBanner } from "@/components/group-trips/HostingBanner";
 import { TripTimeline } from "@/components/trips/TripTimeline";
 import { TripCostSummary } from "@/components/TripCostSummary";
 import { TripBudgetPanel } from "@/components/trips/TripBudgetPanel";
@@ -99,7 +101,14 @@ const VISIBILITY_BADGE_STYLES: Record<TripVisibility, string> = {
 // told apart once we know whether the viewer is signed in and a member).
 // The route's page.tsx wraps this to add per-trip <head> metadata, which
 // Next.js only generates from a Server Component.
-export function TripDetailClient({ id }: { id: string }) {
+export function TripDetailClient({
+  id,
+  publicView = false,
+}: {
+  id: string;
+  // "See it as travellers do" — skip the member workspace.
+  publicView?: boolean;
+}) {
   const t = useTranslations("trips");
   const tCommon = useTranslations("common");
   const tTrip = useTranslations("tripPage");
@@ -174,7 +183,7 @@ export function TripDetailClient({ id }: { id: string }) {
       if (!cancelled) setLoading(false);
     };
 
-    if (token) {
+    if (token && !publicView) {
       getItinerary(token, id)
         .then((result) => {
           if (!cancelled) setItinerary(result);
@@ -201,7 +210,7 @@ export function TripDetailClient({ id }: { id: string }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, token, id]);
+  }, [ready, token, id, publicView]);
 
   if (!ready || loading) {
     return (
@@ -282,6 +291,14 @@ export function TripDetailClient({ id }: { id: string }) {
   // browse and ask to join (Sections 5-6, 8, 17). `publicTrip` is
   // guaranteed set here (the loadError/not-found case returned above).
   const trip = publicTrip as PublicTripDetail;
+  // An organised trip people book spots on gets its poster page instead.
+  if (trip.hosting) {
+    return (
+      <HostedTripPage
+        trip={trip as PublicTripDetail & { hosting: NonNullable<PublicTripDetail["hosting"]> }}
+      />
+    );
+  }
   const isAdmin = user?.id === trip.admin?.id;
   // Only meaningful when the owner set a cap — see Itinerary.
   // maxParticipants's doc comment on the API side.
@@ -893,6 +910,8 @@ function MemberTripView({
           </p>
         )}
       </div>
+
+      <HostingBanner trip={itinerary} isOwner={isOwner} />
 
       <TripWorkspaceNav active={activeTab} onChange={setActiveTab} />
 

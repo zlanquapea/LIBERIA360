@@ -80,9 +80,21 @@ export interface PaginatedPublicTrips {
 
 // "Trips You Can Join" (Section 5/17) — unauthenticated by design, a
 // visitor with no account should be able to browse these same as anyone.
-export function getPublicTrips(params: { destinationPlaceId?: string; page?: number; limit?: number } = {}): Promise<PaginatedPublicTrips> {
+export function getPublicTrips(
+  params: {
+    destinationPlaceId?: string;
+    hosted?: boolean;
+    price?: 'free' | 'paid';
+    county?: string;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<PaginatedPublicTrips> {
   const query = new URLSearchParams();
   if (params.destinationPlaceId) query.set('destinationPlaceId', params.destinationPlaceId);
+  if (params.hosted) query.set('hosted', 'true');
+  if (params.price) query.set('price', params.price);
+  if (params.county) query.set('county', params.county);
   if (params.page) query.set('page', String(params.page));
   if (params.limit) query.set('limit', String(params.limit));
   const qs = query.toString();

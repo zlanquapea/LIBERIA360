@@ -129,6 +129,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         icon: ShoppingBagIcon,
       },
       {
+        href: "/account/trip-bookings",
+        label: "My Trip Bookings",
+        description: "Your spots and tickets on group trips",
+        icon: TicketIcon,
+      },
+      {
         href: "/account/rentals",
         label: "My Rentals",
         description: "Cars you've booked, from pickup to return",

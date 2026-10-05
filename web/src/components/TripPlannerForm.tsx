@@ -84,6 +84,18 @@ export function TripPlannerForm() {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<TripPreviewResponse | null>(null);
   const [resuming, setResuming] = useState(false);
+  // Came from "Host a group trip": after creating, go straight on to
+  // setting the price, spots and payments.
+  const [hostingNext, setHostingNext] = useState(false);
+  useEffect(() => {
+    setHostingNext(new URLSearchParams(window.location.search).has("host"));
+  }, []);
+  const tripHome = (id: string) =>
+    hostingNext ||
+    (typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("host"))
+      ? `/trips/${id}/host`
+      : `/trips/${id}`;
   const resumedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [invalidField, setInvalidField] = useState<string | null>(null);
@@ -137,7 +149,7 @@ export function TripPlannerForm() {
     generateTrip(token, input)
       .then((itinerary) => {
         recordTripCreated();
-        router.push(`/trips/${itinerary.id}`);
+        router.push(tripHome(itinerary.id));
       })
       .catch((err) => {
         setResuming(false);
@@ -211,7 +223,7 @@ export function TripPlannerForm() {
       if (user && token) {
         const itinerary = await generateTrip(token, input);
         recordTripCreated();
-        router.push(`/trips/${itinerary.id}`);
+        router.push(tripHome(itinerary.id));
         return;
       }
       const result = await previewTrip(input);
@@ -319,6 +331,13 @@ export function TripPlannerForm() {
   return (
     <>
       {header}
+      {hostingNext && (
+        <p className="mb-4 rounded-2xl bg-slate-950 px-4 py-3 text-sm text-white">
+          <span className="font-bold text-gold-300">Hosting a group trip.</span>{" "}
+          Name it, pick the destination and dates — next you&apos;ll set the
+          price (or make it free), the spots and how people pay.
+        </p>
+      )}
       <form
         ref={formRef}
         onSubmit={handleSubmit}
