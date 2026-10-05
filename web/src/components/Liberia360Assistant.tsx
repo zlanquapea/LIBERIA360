@@ -48,6 +48,11 @@ const QUICK_PROMPTS = [
   "How do I become a creator?",
   "What can I see in Creator Studio?",
   "How does the creator Reels feed work?",
+  "How does messaging work?",
+  "How do guides add experiences and photos?",
+  "How do I change my theme?",
+  "How do push notifications work?",
+  "How do I refresh the app on my phone?",
   "How do I order from a pharmacy?",
 ];
 
@@ -82,7 +87,7 @@ const welcomeMessage = (): ChatMessage => ({
   id: "welcome",
   role: "assistant",
   content:
-    "Hello! I’m the LIBERIA360 Assistant. Ask me how to find places, use Creator Studio and Reels, order from pharmacies, add a business, advertise, book, or plan a trip.",
+    "Hello! I’m the LIBERIA360 Assistant. Ask me how to find places, message guides and creators, manage guide experiences, use Creator Studio and Reels, change your theme, receive notifications, order from pharmacies, add a business, advertise, book, or plan a trip.",
 });
 
 function safeStoredMessages(value: string | null): ChatMessage[] {

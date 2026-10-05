@@ -402,6 +402,30 @@ ${matchedEntry.answer}`;
         "pharmacy-marketplace",
       ],
       [
+        /read receipt|unread.*(message|chat)|voice note|message reaction|chat attachment|messag\w*.*(guide|creator)|creator.*messag\w*|guide.*messag\w*|shared messaging|full.?screen.*(chat|messaging)/,
+        "shared-messaging",
+      ],
+      [
+        /add.*experience|experience.*(gallery|photo)|gallery.*experience|featured experience|feature.*experience|guide.*(profile|experience)/,
+        "guide-experiences",
+      ],
+      [
+        /phone.*(validation|number)|invalid.*phone|international.*phone|call.*(from|a).*chat|call.*(guide|creator)|tel link/,
+        "phone-validation-calling",
+      ],
+      [
+        /dark mode|light mode|system theme|theme.*(setting|option)|change.*(theme|appearance)|appearance.*(setting|option)/,
+        "theme-options",
+      ],
+      [
+        /push notification|notification.*(closed|permission|android|iphone)|android.*notification|home.?screen.*notification/,
+        "push-notifications",
+      ],
+      [
+        /pull.*(to )?refresh|swipe down.*(refresh|reload)|refresh.*(app|page).*phone|home.?screen.*(refresh|reload)/,
+        "pull-to-refresh",
+      ],
+      [
         /ticket.*(statistic|analytics|metric|performance)|event.*(insight|metric)|see.*ticket.*stat/,
         "event-ticket-analytics",
       ],

@@ -123,6 +123,18 @@ export const ASSISTANT_ACTIONS: Record<string, AssistantAction> = {
   },
   signup: { id: "signup", label: "Create an account", href: "/signup" },
   login: { id: "login", label: "Log in", href: "/login" },
+  messages: { id: "messages", label: "Open messages", href: "/messages" },
+  guides: { id: "guides", label: "Explore guides", href: "/guides" },
+  guideProfile: {
+    id: "guideProfile",
+    label: "Explore guide profiles",
+    href: "/guides",
+  },
+  settings: {
+    id: "settings",
+    label: "Open profile settings",
+    href: "/account",
+  },
 };
 
 export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
@@ -1120,6 +1132,127 @@ export const ASSISTANT_KNOWLEDGE: AssistantKnowledgeEntry[] = [
     ],
   },
   {
+    id: "shared-messaging",
+    title: "Shared messaging for guides and creators",
+    keywords: [
+      "messages",
+      "messaging",
+      "chat",
+      "conversation",
+      "message a guide",
+      "message a creator",
+      "unread messages",
+      "read receipt",
+      "voice note",
+      "chat attachment",
+      "message reaction",
+    ],
+    answer:
+      "LIBERIA360 uses one full-screen messaging system for conversations with guides, creators, businesses, and other supported features. Open Messages to see your conversations and unread counts. Chats support read receipts, reactions, media attachments, and voice notes where available. Guide and creator conversations use the other participant’s name, and signed-in users can use the phone action when a verified contact number is available. Keep messages respectful and never share passwords, verification codes, or payment credentials.",
+    actionIds: ["messages", "guides", "creators", "login"],
+    followUps: [
+      "How do I message a guide?",
+      "How do I call someone from a chat?",
+      "How do read receipts work?",
+    ],
+  },
+  {
+    id: "guide-experiences",
+    title: "Guide profiles, experiences, galleries, and featured experience",
+    keywords: [
+      "guide experience",
+      "add experience",
+      "guide gallery",
+      "experience photos",
+      "featured experience",
+      "feature experience",
+      "guide profile",
+      "tour guide profile",
+    ],
+    answer:
+      "Guides can manage experiences from their guide profile. Add an experience with its title, description, duration, price or booking details, and up to six gallery photos. A guide can edit or remove an experience and mark one experience as Featured so it is highlighted on the public profile. Travelers can browse verified guide profiles and message or request a booking when those options are available.",
+    actionIds: ["guides", "guideProfile", "bookings", "messages"],
+    followUps: [
+      "How do I become a guide?",
+      "How do travelers contact a guide?",
+    ],
+  },
+  {
+    id: "phone-validation-calling",
+    title: "Optional phone validation and calling from chat",
+    keywords: [
+      "phone number",
+      "telephone number",
+      "international phone",
+      "phone validation",
+      "invalid phone",
+      "call from chat",
+      "call a guide",
+      "call a creator",
+      "tel link",
+    ],
+    answer:
+      "Phone numbers are optional. When you add one in profile settings, LIBERIA360 validates the number, shows an error hint if it is invalid, and stores valid numbers in international E.164 format. In a conversation, the phone action opens your device’s native calling screen only when the other participant has a verified contact number. LIBERIA360 does not place the call for you.",
+    actionIds: ["settings", "messages", "account"],
+    followUps: [
+      "How do I update my phone number?",
+      "How do I message a guide?",
+    ],
+  },
+  {
+    id: "theme-options",
+    title: "Light, dark, and system themes",
+    keywords: [
+      "theme",
+      "dark mode",
+      "light mode",
+      "system theme",
+      "appearance",
+      "color mode",
+      "display theme",
+    ],
+    answer:
+      "LIBERIA360 has three appearance choices: Light, Dark, and System. System follows your phone or computer’s light/dark preference and is the default. Your choice is remembered, and the app applies it before the page loads to avoid a flash of the wrong theme.",
+    actionIds: ["account", "settings"],
+    followUps: ["Where can I change my theme?", "What does System theme do?"],
+  },
+  {
+    id: "push-notifications",
+    title: "Push notifications and device support",
+    keywords: [
+      "push notification",
+      "notifications when app closed",
+      "android notifications",
+      "iphone notifications",
+      "closed app notification",
+      "home screen notifications",
+      "notification permission",
+    ],
+    answer:
+      "LIBERIA360 can send supported push notifications for updates such as messages and account activity. On Android, the service worker is designed to receive notifications even when the browser tab is closed. Push requires browser permission and a supported browser; adding LIBERIA360 to the Home Screen can improve the app-like experience. Signing in again automatically reconnects the device to the correct account. You can manage notification settings from your device and the Notifications area.",
+    actionIds: ["notifications", "account", "messages"],
+    followUps: [
+      "Why did I not receive a notification?",
+      "How do I view my notifications?",
+    ],
+  },
+  {
+    id: "pull-to-refresh",
+    title: "Refreshing the mobile PWA",
+    keywords: [
+      "pull to refresh",
+      "swipe down refresh",
+      "refresh the app",
+      "refresh page on phone",
+      "home screen app refresh",
+      "reload content",
+    ],
+    answer:
+      "On supported mobile pages, go to the top of the page and pull down to refresh current content without closing the LIBERIA360 app. Release after the refresh indicator appears. Avoid starting the gesture inside a map, gallery, chat composer, or another inner scroll area; those areas keep their own touch behavior.",
+    actionIds: ["home"],
+    followUps: ["How do I use LIBERIA360 as a Home Screen app?", "What can I do on LIBERIA360?"],
+  },
+  {
     id: "support-safety",
     title: "Support, safety, and reports",
     keywords: [
@@ -1156,6 +1289,11 @@ export const ASSISTANT_QUICK_PROMPTS = [
   "Can I rent a car by the hour with a driver?",
   "Where are my saved places?",
   "How do I contact customer support?",
+  "How does messaging work?",
+  "How do guides add experiences and photos?",
+  "How do I change my theme?",
+  "How do push notifications work?",
+  "How do I refresh the app on my phone?",
 ];
 
 export const ASSISTANT_KNOWLEDGE_TEXT = ASSISTANT_KNOWLEDGE.map(

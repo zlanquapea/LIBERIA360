@@ -129,6 +129,36 @@ const auditCases: AuditCase[] = [
     expected: "LIBERIA360 Assistant",
   },
   {
+    name: "shared messaging",
+    message: "How does messaging work for guides and creators?",
+    expected: "full-screen messaging system",
+  },
+  {
+    name: "guide experiences",
+    message: "How do guides add experiences and photos?",
+    expected: "up to six gallery photos",
+  },
+  {
+    name: "phone validation",
+    message: "How are phone numbers validated?",
+    expected: "E.164",
+  },
+  {
+    name: "themes",
+    message: "How do I change my theme?",
+    expected: "Light, Dark, and System",
+  },
+  {
+    name: "push notifications",
+    message: "How do push notifications work when Android Chrome is closed?",
+    expected: "service worker",
+  },
+  {
+    name: "pull to refresh",
+    message: "How do I refresh the app on my phone?",
+    expected: "pull down to refresh",
+  },
+  {
     name: "safety",
     message: "Should I send you my password and payment details?",
     expected: "Never share your password",
