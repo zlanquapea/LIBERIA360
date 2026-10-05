@@ -5,7 +5,7 @@ import { MapPinIcon, TruckIcon } from "@heroicons/react/24/solid";
 import { ApiError, getCarListingById } from "@/lib/api";
 import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import { SafeImage } from "@/components/SafeImage";
-import { BookingRequestSection } from "@/components/BookingRequestSection";
+import { RentCar } from "@/components/rentals/RentCar";
 
 export async function generateMetadata({
   params,
@@ -15,9 +15,9 @@ export async function generateMetadata({
   const { id } = await params;
   const listing = await getCarListingById(id).catch(() => null);
   if (!listing) {
-    return { title: "Request a car rental — LIBERIA360" };
+    return { title: "Rent a car — LIBERIA360" };
   }
-  return { title: `Request to rent ${listing.title} — LIBERIA360` };
+  return { title: `Rent ${listing.title} — LIBERIA360` };
 }
 
 // Dedicated page for the "Request to book" CTA on a car listing's detail
@@ -96,24 +96,18 @@ export default async function BookCarListingPage({
         <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 dark:border-slate-800">
           <div>
             <h2 className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
-              Request to rent
+              Rent this car
             </h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Send your pickup and return dates —{" "}
-              {business?.name ?? listing.owner?.name ?? "the owner"} will
-              confirm or decline.
+              Choose your dates and extras.{" "}
+              {business?.name ?? listing.owner?.name ?? "The owner"} confirms,
+              then you collect the keys.
             </p>
           </div>
-          <BookingRequestSection
-            carListing={listing}
-            prominent
-            startExpanded
-            returnTo={`/car-rentals/${listing.id}/book`}
-            initialRentalDetails={{
-              pickupDate: first(rentalParams.pickupDate),
-              returnDate: first(rentalParams.returnDate),
-              pickupLocation: first(rentalParams.pickupLocation),
-            }}
+          <RentCar
+            listing={listing}
+            initialPickupDate={first(rentalParams.pickupDate)}
+            initialReturnDate={first(rentalParams.returnDate)}
           />
         </div>
       </section>

@@ -8,6 +8,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { CarListing } from "./entities/car-listing.entity";
 import { CarListingBlockedDate } from "./entities/car-listing-blocked-date.entity";
+import { CarRental } from "../rentals/entities/car-rental.entity";
+import { HOLDING_RENTAL_STATUSES } from "../rentals/entities/rental.enums";
 import { CarListingReviewStatus } from "./entities/car-listing.enums";
 import { Business } from "../businesses/entities/business.entity";
 import { County } from "../counties/entities/county.entity";
@@ -375,7 +377,7 @@ export class CarListingsService {
   async getAvailability(id: string): Promise<CarListingAvailability> {
     await this.findApprovedOne(id);
 
-    const [bookings, blocks] = await Promise.all([
+    const [bookings, blocks, rentals] = await Promise.all([
       this.bookingRepo.find({
         where: {
           carListingId: id,
@@ -383,6 +385,12 @@ export class CarListingsService {
         },
       }),
       this.blockedDateRepo.find({ where: { carListingId: id } }),
+      this.bookingRepo.manager.find(CarRental, {
+        where: {
+          carListingId: id,
+          status: In([...HOLDING_RENTAL_STATUSES]),
+        },
+      }),
     ]);
 
     return {
@@ -391,6 +399,11 @@ export class CarListingsService {
         ...bookings.map((booking) => ({
           startDate: booking.requestedDate,
           endDate: booking.requestedEndDate ?? booking.requestedDate,
+          source: "booking" as const,
+        })),
+        ...rentals.map((rental) => ({
+          startDate: rental.pickupDate,
+          endDate: rental.returnDate,
           source: "booking" as const,
         })),
         ...blocks.map((block) => ({

@@ -8,32 +8,58 @@ import {
   type ReservationMessage,
 } from '@/lib/stays-api';
 
+type ThreadMessage = Pick<ReservationMessage, 'id' | 'body' | 'mine' | 'createdAt' | 'readAt'>;
+
 const time = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 /** The guest and the front desk talking about one stay. */
 export function StayChat({
   reservationId,
-  otherName,
-  emptyHint,
-  canWrite = true,
+  ...props
 }: {
   reservationId: string;
   otherName: string;
   emptyHint: string;
   canWrite?: boolean;
 }) {
-  const [messages, setMessages] = useState<ReservationMessage[] | null>(null);
+  return (
+    <ThreadChat
+      threadId={reservationId}
+      load={getReservationMessages}
+      send={sendReservationMessage}
+      {...props}
+    />
+  );
+}
+
+/** A two-person conversation about one booking, polled while open. */
+export function ThreadChat({
+  threadId,
+  load: loadThread,
+  send: sendToThread,
+  otherName,
+  emptyHint,
+  canWrite = true,
+}: {
+  threadId: string;
+  load: (id: string) => Promise<ThreadMessage[]>;
+  send: (id: string, body: string) => Promise<ThreadMessage>;
+  otherName: string;
+  emptyHint: string;
+  canWrite?: boolean;
+}) {
+  const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
-    getReservationMessages(reservationId)
+    loadThread(threadId)
       .then(setMessages)
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not load messages.'));
-  }, [reservationId]);
+  }, [threadId, loadThread]);
 
   useEffect(() => {
     load();
@@ -51,7 +77,7 @@ export function StayChat({
     setSending(true);
     setError('');
     try {
-      const saved = await sendReservationMessage(reservationId, body);
+      const saved = await sendToThread(threadId, body);
       setMessages((m) => [...(m ?? []), saved]);
       setDraft('');
     } catch (e) {

@@ -21,6 +21,7 @@ import {
   BuildingOffice2Icon,
   ChatBubbleLeftRightIcon,
   HomeModernIcon,
+  KeyIcon,
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
@@ -128,6 +129,12 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
         icon: ShoppingBagIcon,
       },
       {
+        href: "/account/rentals",
+        label: "My Rentals",
+        description: "Cars you've booked, from pickup to return",
+        icon: KeyIcon,
+      },
+      {
         href: "/account/stays",
         label: "My Stays",
         description: "Hotel and lodge rooms you've booked",
@@ -164,8 +171,8 @@ const QUICK_ACTION_GROUPS: { heading: string; actions: QuickAction[] }[] = [
       },
       {
         href: "/account/my-car-listings",
-        label: "My Car Listings",
-        description: "Manage your rental fleet",
+        label: "My Fleet",
+        description: "Car rentals, calendar and payments",
         icon: TruckIcon,
       },
       {

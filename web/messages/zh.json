@@ -1032,7 +1032,7 @@
     "driverFee": "加配司机 {price}/天",
     "deposit": "可退押金 {price}",
     "instantNote": "预订即确认，无需等待车主批准。",
-    "noPaymentYet": "LIBERIA360 不收取任何款项，费用与车主直接结算。",
+    "noPaymentYet": "取车时付现金，或通过 MTN MoMo、Orange Money 支付。",
     "about": "车辆介绍",
     "features": "车内配置",
     "terms": "租车条款",

@@ -15,6 +15,7 @@ import { BrandLoader } from '@/components/BrandLoader';
 import { SafeImage } from '@/components/SafeImage';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { SuccessBanner } from '@/components/SuccessBanner';
+import { FleetCalendar, FleetDesk, RentalPaymentSettings } from '@/components/rentals/FleetDesk';
 import type { Business, County, CarListing } from '@/lib/types';
 
 const STATUS_BADGE: Record<CarListing['reviewStatus'], string> = {
@@ -48,6 +49,7 @@ export default function MyCarListingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [tab, setTab] = useState<'desk' | 'calendar' | 'cars' | 'payments' | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CarListing | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
@@ -57,13 +59,18 @@ export default function MyCarListingsPage() {
     Promise.all([getMyCarListings(token), getMyBusinesses(token), getCounties()])
       .then(([myListings, myBusinesses, allCounties]) => {
         setListings(myListings);
+        // Owners with cars land on today's rentals; newcomers on adding one.
+        setTab((t) => t ?? (myListings.length ? 'desk' : 'cars'));
         setEligibleBusinesses(
           myBusinesses.filter((b) => b.type === 'car_rental' && b.reviewStatus === 'approved'),
         );
         setCounties(allCounties);
       })
       .catch((err) => setLoadError(getFriendlyErrorMessage(err, { context: { action: 'load-my-car-listings' } })))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setTab((t) => t ?? 'cars');
+      });
   }, [token]);
 
   useEffect(() => {
@@ -138,15 +145,15 @@ export default function MyCarListingsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
+    <main className={`mx-auto flex flex-col gap-4 px-4 py-6 ${tab === 'calendar' || tab === 'desk' ? 'max-w-4xl' : 'max-w-2xl'}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My Car Listings</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">My fleet</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Your fleet — each vehicle is reviewed by our team before it&apos;s bookable.
+            Rentals, availability and your cars. Each vehicle is reviewed by our team before it&apos;s bookable.
           </p>
         </div>
-        {!creating && (
+        {!creating && tab === 'cars' && (
           <button
             type="button"
             onClick={() => setCreating(true)}
@@ -157,6 +164,36 @@ export default function MyCarListingsPage() {
         )}
       </div>
 
+      <div role="tablist" aria-label="Fleet" className="-mx-4 flex gap-1 overflow-x-auto px-4">
+        {(
+          [
+            ['desk', 'Rentals'],
+            ['calendar', 'Calendar'],
+            ['cars', `Cars · ${listings.length}`],
+            ['payments', 'Payments'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`min-h-10 shrink-0 rounded-full px-4 text-sm font-semibold transition ${
+              tab === id
+                ? 'bg-brand-700 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'desk' && <FleetDesk />}
+      {tab === 'calendar' && <FleetCalendar token={token} />}
+      {tab === 'payments' && <RentalPaymentSettings />}
+
       {successMessage && <SuccessBanner>{successMessage}</SuccessBanner>}
 
       {loadError && (
@@ -165,14 +202,14 @@ export default function MyCarListingsPage() {
         </p>
       )}
 
-      {!creating && listings.length === 0 && (
+      {tab === 'cars' && !creating && listings.length === 0 && (
         <p className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
           <TruckIcon aria-hidden className="h-6 w-6 text-slate-400 dark:text-slate-500" />
           Got a car? List it here — anyone can rent out a vehicle, no rental company required.
         </p>
       )}
 
-      {creating && (
+      {tab === 'cars' && creating && (
         <CarListingForm
           businesses={eligibleBusinesses}
           counties={counties}
@@ -185,7 +222,7 @@ export default function MyCarListingsPage() {
         />
       )}
 
-      {!creating && listings.length > 0 && (
+      {tab === 'cars' && !creating && listings.length > 0 && (
         <ul className="flex flex-col gap-3">
           {listings.map((listing) => (
             <li key={listing.id} className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 p-3">

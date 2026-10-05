@@ -14,6 +14,12 @@ import { Creator } from "../creators/entities/creator.entity";
 import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
 import { CarListingBlockedDate } from "../car-listings/entities/car-listing-blocked-date.entity";
+import { CarRental } from "../rentals/entities/car-rental.entity";
+import {
+  HOLDING_RENTAL_STATUSES,
+  RentalStatus,
+} from "../rentals/entities/rental.enums";
+import { heldWindow } from "../rentals/rental-time";
 import { CreateBookingDto } from "./dto/create-booking.dto";
 import { RespondBookingDto } from "./dto/respond-booking.dto";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -219,8 +225,26 @@ export class BookingsService {
           const blockedDates = await manager.find(CarListingBlockedDate, {
             where: { carListingId: carListing.id },
           });
+          // Rentals booked through the newer rent-a-car flow hold the car
+          // too (a car still out past its return keeps holding it).
+          const rentals = await manager.find(CarRental, {
+            where: {
+              carListingId: carListing.id,
+              status: In([...HOLDING_RENTAL_STATUSES]),
+            },
+          });
           const candidate = bookingInterval(candidateInterval);
           const overlapping =
+            rentals.some((rental) => {
+              const held = heldWindow(
+                rental,
+                rental.status === RentalStatus.ON_TRIP,
+              );
+              return (
+                candidate.start.getTime() <= held.end &&
+                candidate.end.getTime() >= held.start
+              );
+            }) ||
             existingBookings.some((existing) =>
               intervalsOverlap(candidate, bookingInterval(existing)),
             ) ||

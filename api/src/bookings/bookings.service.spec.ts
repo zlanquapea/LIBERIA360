@@ -16,9 +16,12 @@ import { CarListing } from "../car-listings/entities/car-listing.entity";
 import { CarListingReviewStatus } from "../car-listings/entities/car-listing.enums";
 import { CarListingBlockedDate } from "../car-listings/entities/car-listing-blocked-date.entity";
 import { NotificationsService } from "../notifications/notifications.service";
+import { CarRental } from "../rentals/entities/car-rental.entity";
+import { RentalStatus, RentalUnit } from "../rentals/entities/rental.enums";
 
 describe("BookingsService", () => {
   let service: BookingsService;
+  let rentalFind: jest.Mock;
   let bookingRepo: {
     findOne: jest.Mock;
     findOneOrFail: jest.Mock;
@@ -57,12 +60,15 @@ describe("BookingsService", () => {
     // transactional `manager` here just forwards each call to the same
     // bookingRepo/carListingBlockedDateRepo mocks below, keyed by entity
     // class, so every existing assertion against those mocks still holds.
+    rentalFind = jest.fn().mockResolvedValue([]);
     fakeManager = {
       query: jest.fn().mockResolvedValue(undefined),
       find: jest.fn((entity: unknown, opts: unknown) =>
         entity === CarListingBlockedDate
           ? carListingBlockedDateRepo.find(opts)
-          : bookingRepo.find(opts),
+          : entity === CarRental
+            ? rentalFind(opts)
+            : bookingRepo.find(opts),
       ),
       create: jest.fn((_entity: unknown, data: unknown) =>
         bookingRepo.create(data),
@@ -294,6 +300,28 @@ describe("BookingsService", () => {
           status: In([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
         },
       });
+    });
+
+    it("rejects a car request overlapping a rental from the rent-a-car flow", async () => {
+      carListingRepo.findOne.mockResolvedValue(approvedCarListing());
+      rentalFind.mockResolvedValue([
+        {
+          rentalUnit: RentalUnit.DAY,
+          pickupDate: "2099-01-02",
+          returnDate: "2099-01-04",
+          pickupTime: "09:00",
+          returnTime: "17:00",
+          status: RentalStatus.CONFIRMED,
+        },
+      ]);
+      await expect(
+        service.create("guest-1", {
+          carListingId: "car-1",
+          requestedDate: "2099-01-04",
+          requestedEndDate: "2099-01-06",
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(bookingRepo.save).not.toHaveBeenCalled();
     });
 
     it("rejects a car request overlapping an owner's manually blocked date range", async () => {
