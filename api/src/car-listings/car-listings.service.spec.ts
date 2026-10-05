@@ -55,7 +55,7 @@ describe("CarListingsService", () => {
     manager: { transaction: jest.Mock };
   };
   let fakeBlockedDateManager: { query: jest.Mock };
-  let bookingRepo: { find: jest.Mock };
+  let bookingRepo: { find: jest.Mock; manager: { find: jest.Mock } };
   let notificationsService: { createMany: jest.Mock };
   let usersService: { findAdminIds: jest.Mock };
 
@@ -117,7 +117,10 @@ describe("CarListingsService", () => {
           ),
         }),
     );
-    bookingRepo = { find: jest.fn().mockResolvedValue([]) };
+    bookingRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      manager: { find: jest.fn().mockResolvedValue([]) },
+    };
     notificationsService = {
       createMany: jest.fn().mockResolvedValue(undefined),
     };

@@ -1032,7 +1032,7 @@
     "driverFee": "أضف سائقًا مقابل {price}/يوم",
     "deposit": "تأمين مسترد {price}",
     "instantNote": "يُؤكَّد فور الحجز دون انتظار المالك.",
-    "noPaymentYet": "لا يتم أي دفع عبر LIBERIA360، بل تتم التسوية مع المالك مباشرة.",
+    "noPaymentYet": "ادفع نقدًا عند الاستلام أو عبر MTN MoMo أو Orange Money.",
     "about": "عن السيارة",
     "features": "ما في السيارة",
     "terms": "شروط الإيجار",
