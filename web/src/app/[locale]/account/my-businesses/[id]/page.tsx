@@ -6,6 +6,8 @@ import {
   BuildingStorefrontIcon,
   CalendarDaysIcon,
   ChartBarIcon,
+  HomeModernIcon,
+  KeyIcon,
   MapPinIcon,
   MegaphoneIcon,
   ShoppingBagIcon,
@@ -16,6 +18,8 @@ import { getBusinessBookings } from '@/lib/booking-api';
 import { getBusinessFoodOrders } from '@/lib/food-orders-api';
 import { dashboardHref } from '@/lib/business-dashboard-nav';
 import { businessHasMenu } from '@/lib/menu';
+import { businessHasRooms } from '@/lib/stays';
+import { getFrontDesk } from '@/lib/stays-api';
 
 // The dashboard's landing tab — an at-a-glance summary (what needs a
 // response right now) plus one-click links into every other section, so
@@ -25,6 +29,8 @@ export default function BusinessDashboardOverview() {
   const isRestaurant = businessHasMenu(business.type);
   const [pendingBookings, setPendingBookings] = useState<number | null>(null);
   const [pendingOrders, setPendingOrders] = useState<number | null>(null);
+  const isHotel = businessHasRooms(business.type);
+  const [desk, setDesk] = useState<{ requests: number; arrivals: number; left: number } | null>(null);
 
   useEffect(() => {
     getBusinessBookings(token, business.id).then((bookings) =>
@@ -35,7 +41,18 @@ export default function BusinessDashboardOverview() {
         setPendingOrders(orders.filter((o) => o.status === 'pending').length),
       );
     }
-  }, [token, business.id, isRestaurant]);
+    if (isHotel) {
+      getFrontDesk(business.id)
+        .then((d) =>
+          setDesk({
+            requests: d.requests.length,
+            arrivals: d.arrivals.length,
+            left: d.occupancy.reduce((n, o) => n + o.left, 0),
+          }),
+        )
+        .catch(() => setDesk(null));
+    }
+  }, [token, business.id, isRestaurant, isHotel]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -54,9 +71,16 @@ export default function BusinessDashboardOverview() {
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {isHotel && (
+          <>
+            <StatCard icon={KeyIcon} label="Room requests to answer" value={desk?.requests ?? null} href={dashboardHref(business.id, 'front-desk')} />
+            <StatCard icon={CalendarDaysIcon} label="Guests arriving" value={desk?.arrivals ?? null} href={dashboardHref(business.id, 'front-desk')} />
+            <StatCard icon={HomeModernIcon} label="Rooms left tonight" value={desk?.left ?? null} href={dashboardHref(business.id, 'front-desk')} />
+          </>
+        )}
         <StatCard
           icon={CalendarDaysIcon}
-          label="Pending booking requests"
+          label={isHotel ? 'Other booking requests' : 'Pending booking requests'}
           value={pendingBookings}
           href={dashboardHref(business.id, 'bookings')}
         />
@@ -101,6 +125,22 @@ export default function BusinessDashboardOverview() {
               label="Orders"
               description="Incoming food orders"
               href={dashboardHref(business.id, 'orders')}
+            />
+          )}
+          {isHotel && (
+            <QuickLink
+              icon={KeyIcon}
+              label="Front desk"
+              description="Arrivals, check-ins, calendar"
+              href={dashboardHref(business.id, 'front-desk')}
+            />
+          )}
+          {isHotel && (
+            <QuickLink
+              icon={HomeModernIcon}
+              label="Rooms & rates"
+              description="Room types, prices, payments"
+              href={dashboardHref(business.id, 'rooms')}
             />
           )}
           <QuickLink

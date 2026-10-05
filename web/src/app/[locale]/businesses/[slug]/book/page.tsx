@@ -6,6 +6,8 @@ import { ApiError, getBusinessBySlug } from "@/lib/api";
 import { resolveImageUrl, resolveThumbUrl } from "@/lib/images";
 import { SafeImage } from "@/components/SafeImage";
 import { BookingRequestSection } from "@/components/BookingRequestSection";
+import { StayBooking } from "@/components/stays/StayBooking";
+import { getStayForBusiness } from "@/lib/stays-server";
 
 export async function generateMetadata({
   params,
@@ -32,10 +34,13 @@ export async function generateMetadata({
 // component's `mode` prop.
 export default async function BookBusinessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ checkIn?: string; checkOut?: string }>;
 }) {
   const { slug } = await params;
+  const { checkIn, checkOut } = await searchParams;
 
   const business = await getBusinessBySlug(slug).catch((error) => {
     if (error instanceof ApiError && error.status === 404) return null;
@@ -45,13 +50,16 @@ export default async function BookBusinessPage({
     notFound();
   }
 
+  // Hotels and lodges with rooms set up get the full room picker instead
+  // of a plain "send us your dates" request.
+  const stay = await getStayForBusiness(business);
   const place = business.linkedPlace;
   const coverPath = business.images[0] ?? place.images[0] ?? null;
   const cover = coverPath ? resolveImageUrl(coverPath) : null;
   const coverThumb = coverPath ? resolveThumbUrl(coverPath) : null;
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-5 px-4 py-6 sm:py-10">
+    <main className={`mx-auto flex flex-col gap-5 px-4 py-6 sm:py-10 ${stay ? "max-w-3xl" : "max-w-xl"}`}>
       <Link
         href={`/businesses/${business.slug}`}
         className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
@@ -85,6 +93,19 @@ export default async function BookBusinessPage({
           </div>
         </div>
 
+        {stay ? (
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 dark:border-slate-800">
+            <h2 className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
+              Choose your room
+            </h2>
+            <StayBooking
+              business={{ id: business.id, name: business.name, slug: business.slug }}
+              stay={stay}
+              initialCheckIn={checkIn}
+              initialCheckOut={checkOut}
+            />
+          </div>
+        ) : (
         <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 dark:border-slate-800">
           <div>
             <h2 className="font-display text-lg font-bold text-slate-950 dark:text-slate-50">
@@ -101,6 +122,7 @@ export default async function BookBusinessPage({
             returnTo={`/businesses/${business.slug}/book`}
           />
         </div>
+        )}
       </section>
     </main>
   );

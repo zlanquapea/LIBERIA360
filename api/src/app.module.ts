@@ -76,6 +76,7 @@ import { BlogModule } from "./blog/blog.module";
 import { SavedPlacesModule } from "./saved-places/saved-places.module";
 import { PharmaciesModule } from "./pharmacies/pharmacies.module";
 import { ClinicsModule } from "./clinics/clinics.module";
+import { StaysModule } from "./stays/stays.module";
 import { SearchModule } from "./search/search.module";
 import { EventNotificationDelivery } from "./event-notifications/entities/event-notification-delivery.entity";
 import { EventNotificationsModule } from "./event-notifications/event-notifications.module";
@@ -214,6 +215,7 @@ import { ConversationsModule } from "./conversations/conversations.module";
     SavedPlacesModule,
     PharmaciesModule,
     ClinicsModule,
+    StaysModule,
     SearchModule,
     EventNotificationsModule,
     TripNotificationsModule,

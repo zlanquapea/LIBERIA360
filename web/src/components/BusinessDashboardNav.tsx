@@ -23,7 +23,7 @@ export function BusinessDashboardNav({ business }: { business: Business }) {
       >
         {items.map((item) => {
           const href = dashboardHref(business.id, item.segment);
-          const active = pathname === href;
+          const active = pathname === href || (item.segment !== null && pathname.startsWith(`${href}/`));
           const Icon = item.icon;
           return (
             <Link
@@ -49,7 +49,7 @@ export function BusinessDashboardNav({ business }: { business: Business }) {
       >
         {items.map((item) => {
           const href = dashboardHref(business.id, item.segment);
-          const active = pathname === href;
+          const active = pathname === href || (item.segment !== null && pathname.startsWith(`${href}/`));
           const Icon = item.icon;
           return (
             <Link
