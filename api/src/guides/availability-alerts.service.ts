@@ -160,7 +160,7 @@ export class AvailabilityAlertsService
       });
     } catch (error) {
       this.logger.warn(
-        "Availability alert check failed; it will retry on the next interval.",
+        `Availability alert check failed; it will retry on the next interval. ${String(error)}`,
       );
     } finally {
       this.running = false;

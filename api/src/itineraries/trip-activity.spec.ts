@@ -84,9 +84,9 @@ describe("Trip activity privacy and delivery", () => {
       recordTripActivity(m, "t", "u", "added", "Beach", "trip-stop-p"),
     ).rejects.toThrow("database unavailable");
   });
-  it.each([{inserted:[]}, {inserted:[{ id: "s" }]}])(
+  it.each([{ inserted: [] }, { inserted: [{ id: "s" }] }])(
     "records a suggestion only when newly inserted: %j",
-    async ({inserted}) => {
+    async ({ inserted }) => {
       query
         .mockResolvedValueOnce([{ user_id: "u", duration_days: 3 }])
         .mockResolvedValueOnce([{ title: "Beach" }])

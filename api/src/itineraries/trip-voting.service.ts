@@ -79,7 +79,15 @@ export class TripVotingService {
         `INSERT INTO trip_suggestions(trip_id,user_id,title,input) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(trip_id,input) DO NOTHING RETURNING id`,
         [id, user, item.title, JSON.stringify(clean)],
       );
-      if (inserted.length) await recordTripActivity(m,id,user,"suggested",item.title,`trip-suggestion-${inserted[0].id}`);
+      if (inserted.length)
+        await recordTripActivity(
+          m,
+          id,
+          user,
+          "suggested",
+          item.title,
+          `trip-suggestion-${inserted[0].id}`,
+        );
       return { ok: true };
     });
   }
@@ -124,7 +132,8 @@ export class TripVotingService {
   }
   async choose(user: string, id: string, suggestion: string) {
     const trip = await this.access(this.db.manager, user, id);
-    if (trip.cancelled_at) throw new BadRequestException("This trip is cancelled");
+    if (trip.cancelled_at)
+      throw new BadRequestException("This trip is cancelled");
     if (trip.user_id !== user)
       throw new ForbiddenException(
         "Only the trip owner can add a voted suggestion",
