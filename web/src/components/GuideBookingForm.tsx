@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/http";
 import { useAuth } from "@/hooks/useAuth";
 import { requestGuideBooking } from "@/lib/guides-api";
+import { WatchGuideDate } from "./GuideAvailabilityAlerts";
 
 export function GuideBookingForm({
   experienceId,
@@ -12,7 +13,7 @@ export function GuideBookingForm({
   experienceId: string;
   maxGroupSize: number;
 }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [availability, setAvailability] = useState<{
     enabled: boolean;
     weekdays: number[];
@@ -42,6 +43,10 @@ export function GuideBookingForm({
     };
   }, [experienceId]);
   const [requestedDate, setRequestedDate] = useState("");
+  useEffect(() => {
+    const date = new URLSearchParams(window.location.search).get("date");
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setRequestedDate(date);
+  }, [experienceId]);
   const [groupSize, setGroupSize] = useState(1);
   const [note, setNote] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "success" | "error">(
@@ -81,7 +86,9 @@ export function GuideBookingForm({
     }
     if (unavailable) {
       setState("error");
-      setMessage("The guide is unavailable on this date. Please choose another date.");
+      setMessage(
+        "The guide is unavailable on this date. Please choose another date.",
+      );
       return;
     }
     if (!reviewing) {
@@ -144,11 +151,18 @@ export function GuideBookingForm({
         {requestedDate && availability && (
           <p className="mt-2 font-semibold">
             {unavailable
-              ? "Unavailable — choose another date."
+              ? "Unavailable — choose another date or set an alert."
               : "Available to request. Final confirmation is still required."}
           </p>
         )}
       </div>
+      {unavailable && requestedDate >= minDate && (
+        <WatchGuideDate
+          key={`${experienceId}-${requestedDate}-${user?.id}`}
+          experienceId={experienceId}
+          date={requestedDate}
+        />
+      )}
       <ol
         aria-label="Booking progress"
         className="my-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold"

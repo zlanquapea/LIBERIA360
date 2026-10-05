@@ -1,3 +1,4 @@
+import { GuideViewTracker } from "@/components/GuideViewTracker";
 import Link from "next/link";
 import { getExperience } from "@/lib/api";
 import { GuideBookingForm } from "@/components/GuideBookingForm";
@@ -40,6 +41,7 @@ export default async function ExperiencePage({
   const experience = await getExperience(id);
   return (
     <main className="mx-auto max-w-5xl px-4 py-5 pb-12 sm:px-6 lg:px-10">
+      <GuideViewTracker experienceId={experience.id} />
       <div className="mb-5 flex items-center justify-between">
         <Link
           href={`/guides/${experience.guide.slug}`}

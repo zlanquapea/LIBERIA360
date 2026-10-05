@@ -11,6 +11,11 @@ import {
   MapPinIcon,
   StarIcon,
   XCircleIcon,
+  UsersIcon,
+  BanknotesIcon,
+  ClipboardDocumentCheckIcon,
+  BellIcon,
+  EllipsisHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -50,7 +55,10 @@ import { TripHero } from "@/components/trips/TripHero";
 import { TripTimeline } from "@/components/trips/TripTimeline";
 import { TripCostSummary } from "@/components/TripCostSummary";
 import { TripBudgetPanel } from "@/components/trips/TripBudgetPanel";
+import { TripVotingPanel } from "@/components/trips/TripVotingPanel";
+import { TripActivityPanel } from "@/components/trips/TripActivityPanel";
 import { TripPackingPanel } from "@/components/trips/TripPackingPanel";
+import { BeforeYouGo } from "@/components/trips/BeforeYouGo";
 import { TripDetailsEditor } from "@/components/trips/TripDetailsEditor";
 import { TripPlanChecks } from "@/components/trips/TripPlanChecks";
 import { TripShareLink } from "@/components/trips/TripShareLink";
@@ -244,6 +252,7 @@ export function TripDetailClient({ id }: { id: string }) {
   if (itinerary) {
     return (
       <MemberTripView
+        key={`${itinerary.id}-${user?.id}`}
         itinerary={itinerary}
         user={user}
         token={token}
@@ -321,7 +330,9 @@ export function TripDetailClient({ id }: { id: string }) {
           onClick={handleRequestToJoin}
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-700 px-6 text-base font-bold text-white hover:bg-brand-800 disabled:opacity-60"
         >
-          {joinRequestState === "sending" ? t("sendingRequest") : t("requestToJoin")}
+          {joinRequestState === "sending"
+            ? t("sendingRequest")
+            : t("requestToJoin")}
         </button>
       )
     ) : null;
@@ -358,12 +369,24 @@ export function TripDetailClient({ id }: { id: string }) {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <section aria-labelledby="trip-plan" className="flex min-w-0 flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card sm:p-7 dark:border-slate-800 dark:bg-slate-900">
+        <section
+          aria-labelledby="trip-plan"
+          className="flex min-w-0 flex-col gap-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card sm:p-7 dark:border-slate-800 dark:bg-slate-900"
+        >
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">{tTrip("planEyebrow")}</p>
-            <h2 id="trip-plan" className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50">{tTrip("planTitle")}</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+              {tTrip("planEyebrow")}
+            </p>
+            <h2
+              id="trip-plan"
+              className="mt-1 font-display text-2xl font-bold text-slate-950 dark:text-slate-50"
+            >
+              {tTrip("planTitle")}
+            </h2>
             {trip.description && (
-              <p className="mt-3 whitespace-pre-line leading-7 text-slate-700 dark:text-slate-200">{trip.description}</p>
+              <p className="mt-3 whitespace-pre-line leading-7 text-slate-700 dark:text-slate-200">
+                {trip.description}
+              </p>
             )}
           </div>
           <TripTimeline stops={trip.stops} startDate={trip.startDate} />
@@ -379,9 +402,17 @@ export function TripDetailClient({ id }: { id: string }) {
             <TripCostSummary stops={trip.stops} />
           </div>
           <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">{tTrip("whoGoing")}</p>
-            <p className="mt-1 font-display text-2xl font-black text-slate-950 dark:text-white">{t("goingCount", { count: trip.participantCount })}</p>
-            {trip.admin && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{t("organizedBy", { name: trip.admin.name })}</p>}
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              {tTrip("whoGoing")}
+            </p>
+            <p className="mt-1 font-display text-2xl font-black text-slate-950 dark:text-white">
+              {t("goingCount", { count: trip.participantCount })}
+            </p>
+            {trip.admin && (
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {t("organizedBy", { name: trip.admin.name })}
+              </p>
+            )}
           </div>
         </aside>
       </div>
@@ -473,8 +504,51 @@ function MemberTripView({
   const isOwner = itinerary.userId === user?.id;
   const isCollaborator = itinerary.collaborators.some((c) => c.id === user?.id);
   // Viewers see everything but can't change the plan.
-  const canEdit = isOwner || (isCollaborator && itinerary.myRole !== 'viewer');
+  const canEdit = isOwner || (isCollaborator && itinerary.myRole !== "viewer");
   const [duplicating, setDuplicating] = useState(false);
+  const [activeTab, setActiveTab] = useState("itinerary");
+  const [showSettings, setShowSettings] = useState(false);
+  const [budgetReady, setBudgetReady] = useState<boolean | null>(null);
+  const [packingReady, setPackingReady] = useState<boolean | null>(null);
+  const [offlineReady, setOfflineReady] = useState<boolean | null>(null);
+  const optionsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (
+        optionsRef.current &&
+        !optionsRef.current.contains(event.target as Node)
+      )
+        optionsRef.current.open = false;
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, []);
+  useEffect(() => {
+    const sync = () => {
+      const hash = window.location.hash;
+      const next =
+        hash.startsWith("#trip-stop-") || hash.startsWith("#trip-suggestion-")
+          ? "itinerary"
+          : hash === "#trip-activity"
+            ? "updates"
+            : hash.replace("#trip-tab-", "");
+      if (
+        ["itinerary", "people", "budget", "packing", "updates"].includes(next)
+      ) {
+        setActiveTab(next);
+        window.setTimeout(
+          () =>
+            document
+              .getElementById(hash.slice(1))
+              ?.scrollIntoView?.({ block: "center" }),
+          100,
+        );
+      }
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [itinerary.id]);
   const canFeature = isOwner && Boolean(user?.isAdmin);
   const [showFeatureForm, setShowFeatureForm] = useState(false);
   const [featuredCategoryInput, setFeaturedCategoryInput] = useState(
@@ -493,14 +567,19 @@ function MemberTripView({
     try {
       await setFeaturedTemplate(token, itinerary.id, {
         isFeaturedTemplate: next,
-        featuredCategory: next ? featuredCategoryInput.trim() || undefined : undefined,
+        featuredCategory: next
+          ? featuredCategoryInput.trim() || undefined
+          : undefined,
       });
       setShowFeatureForm(false);
       reload();
     } catch (err) {
       setFeatureError(
         getFriendlyErrorMessage(err, {
-          context: { action: "set-featured-template", itineraryId: itinerary.id },
+          context: {
+            action: "set-featured-template",
+            itineraryId: itinerary.id,
+          },
         }),
       );
     } finally {
@@ -604,8 +683,8 @@ function MemberTripView({
     collaboratorCount > 0;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">
-      <div>
+    <main className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-5 sm:gap-6 sm:py-6">
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/trips"
@@ -613,66 +692,101 @@ function MemberTripView({
           >
             ← {t("myTrips")}
           </Link>
-          <div className="flex items-center gap-2">
-            {canEdit && (
+          <details
+            ref={optionsRef}
+            className="relative"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.currentTarget.open = false;
+                e.currentTarget.querySelector("summary")?.focus();
+              }
+            }}
+          >
+            <summary
+              aria-label="Trip options"
+              className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 [&::-webkit-details-marker]:hidden"
+            >
+              <EllipsisHorizontalIcon aria-hidden="true" className="h-6 w-6" />
+            </summary>
+            <div
+              className="absolute end-0 top-12 z-20 flex w-64 max-w-[calc(100vw-4rem)] flex-col items-stretch gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl dark:border-neutral-700 dark:bg-neutral-900 [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:text-start [&>button]:text-sm"
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest("button"))
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+              }}
+            >
               <button
                 type="button"
-                disabled={duplicating}
-                onClick={handleDuplicate}
-                className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
+                onClick={() => setShowSettings((v) => !v)}
+                className="min-h-11 rounded-xl border px-3 text-start text-sm font-semibold"
               >
-                <DocumentDuplicateIcon aria-hidden className="h-3.5 w-3.5" />
-                {duplicating ? t("duplicating") : t("duplicateTrip")}
+                Trip settings & offline access
               </button>
-            )}
-            {isOwner &&
-              itinerary.status !== "cancelled" &&
-              itinerary.status !== "completed" && (
+              {canEdit && (
                 <button
                   type="button"
-                  onClick={() => setConfirmingCancel(true)}
-                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-flag-400 hover:text-flag-700 dark:border-slate-700 dark:text-slate-300"
+                  disabled={duplicating}
+                  onClick={handleDuplicate}
+                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-400 hover:text-brand-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
                 >
-                  <XCircleIcon aria-hidden className="h-3.5 w-3.5" />
-                  {t("cancelTrip")}
+                  <DocumentDuplicateIcon aria-hidden className="h-3.5 w-3.5" />
+                  {duplicating ? t("duplicating") : t("duplicateTrip")}
                 </button>
               )}
-            {isOwner && (
-              <button
-                type="button"
-                onClick={() => setConfirmingDelete(true)}
-                className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 dark:border-flag-600 dark:text-flag-300"
-              >
-                <TrashIcon aria-hidden className="h-3.5 w-3.5" />
-                {t("deleteTrip")}
-              </button>
-            )}
-            {canFeature &&
-              (itinerary.isFeaturedTemplate ? (
+              {isOwner &&
+                itinerary.status !== "cancelled" &&
+                itinerary.status !== "completed" && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingCancel(true)}
+                    className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-flag-400 hover:text-flag-700 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <XCircleIcon aria-hidden className="h-3.5 w-3.5" />
+                    {t("cancelTrip")}
+                  </button>
+                )}
+              {isOwner && (
                 <button
                   type="button"
-                  disabled={featuring}
-                  onClick={() => handleSetFeatured(false)}
-                  className="flex items-center gap-1 rounded-full border border-gold-400 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800 hover:bg-gold-100 disabled:opacity-60 dark:border-gold-700 dark:bg-gold-900/20 dark:text-gold-300"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="flex items-center gap-1 rounded-full border border-flag-300 px-3 py-1.5 text-xs font-semibold text-flag-700 hover:bg-flag-500/10 dark:border-flag-600 dark:text-flag-300"
                 >
-                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
-                  {featuring ? t("savingFeatured") : t("unfeatureStarterItinerary")}
+                  <TrashIcon aria-hidden className="h-3.5 w-3.5" />
+                  {t("deleteTrip")}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowFeatureForm((v) => !v)}
-                  className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-gold-400 hover:text-gold-700 dark:border-slate-700 dark:text-slate-300"
-                >
-                  <StarIcon aria-hidden className="h-3.5 w-3.5" />
-                  {t("featureAsStarterItinerary")}
-                </button>
-              ))}
-          </div>
+              )}
+              {canFeature &&
+                (itinerary.isFeaturedTemplate ? (
+                  <button
+                    type="button"
+                    disabled={featuring}
+                    onClick={() => handleSetFeatured(false)}
+                    className="flex items-center gap-1 rounded-full border border-gold-400 bg-gold-50 px-3 py-1.5 text-xs font-semibold text-gold-800 hover:bg-gold-100 disabled:opacity-60 dark:border-gold-700 dark:bg-gold-900/20 dark:text-gold-300"
+                  >
+                    <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                    {featuring
+                      ? t("savingFeatured")
+                      : t("unfeatureStarterItinerary")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowFeatureForm((v) => !v)}
+                    className="flex items-center gap-1 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-gold-400 hover:text-gold-700 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <StarIcon aria-hidden className="h-3.5 w-3.5" />
+                    {t("featureAsStarterItinerary")}
+                  </button>
+                ))}
+            </div>
+          </details>
         </div>
 
         {canFeature && featureError && !showFeatureForm && (
-          <p role="alert" className="mt-2 text-xs text-flag-700 dark:text-flag-300">
+          <p
+            role="alert"
+            className="mt-2 text-xs text-flag-700 dark:text-flag-300"
+          >
             {featureError}
           </p>
         )}
@@ -695,7 +809,10 @@ function MemberTripView({
               {featuring ? t("savingFeatured") : t("featureAsStarterItinerary")}
             </button>
             {featureError && (
-              <p role="alert" className="w-full text-xs text-flag-700 dark:text-flag-300">
+              <p
+                role="alert"
+                className="w-full text-xs text-flag-700 dark:text-flag-300"
+              >
                 {featureError}
               </p>
             )}
@@ -724,7 +841,9 @@ function MemberTripView({
 
         {!isOwner && isCollaborator && itinerary.myRole === "viewer" && (
           <p className="mb-2 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            {t("viewOnlyNotice", { name: itinerary.admin?.name ?? t("theOrganizer") })}
+            {t("viewOnlyNotice", {
+              name: itinerary.admin?.name ?? t("theOrganizer"),
+            })}
           </p>
         )}
 
@@ -752,27 +871,6 @@ function MemberTripView({
           </p>
         )}
 
-        <div className="mt-4">
-          <TripDetailsEditor
-            value={{
-              startingLocation: itinerary.startingLocation,
-              transportMode: itinerary.transportMode,
-              pace: itinerary.pace,
-              budgetBand: itinerary.budgetBand,
-            }}
-            editable={canEdit}
-            onSave={async (input) => {
-              if (!token) return;
-              await updateTripDetails(token, itinerary.id, input);
-              reload();
-            }}
-          />
-        </div>
-
-        <div className="mt-3">
-          <TripCostSummary stops={itinerary.stops} />
-        </div>
-
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <div className="h-10 w-10">
             <ShareMenu placeName={itinerary.title} contentType="trip" />
@@ -796,89 +894,219 @@ function MemberTripView({
         )}
       </div>
 
-      <OfflinePackControl trip={itinerary} />
+      <TripWorkspaceNav active={activeTab} onChange={setActiveTab} />
 
-      <TripBudgetPanel key={`${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
-      <TripPackingPanel key={`${itinerary.id}-${user?.id}`} tripId={itinerary.id} />
-
-      <TripShareLink
-        itineraryId={itinerary.id}
-        shareToken={itinerary.shareToken}
-        isOwner={isOwner}
-        token={token}
-        onChange={reload}
-      />
-
-      <TripPeoplePanel
-        itineraryId={itinerary.id}
-        admin={itinerary.admin}
-        collaborators={itinerary.collaborators}
-        collaboratorRoles={itinerary.collaboratorRoles}
-        isOwner={isOwner}
-        onChange={reload}
-      />
-
-      <Link
-        href={`/messages/context?type=trip&id=${itinerary.id}`}
-        className="flex min-h-12 items-center justify-center rounded-full bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
-      >
-        Open trip conversation in Messages
-      </Link>
-
-      {tripHasMapPins(itinerary.stops) && (
-        <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 sm:h-80">
-          <TripMapLoader stops={itinerary.stops} />
+      <div hidden={!showSettings} className="space-y-4 rounded-2xl border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-bold">Trip settings</h2>
+          <button
+            type="button"
+            onClick={() => setShowSettings(false)}
+            className="min-h-11 px-3 text-sm underline"
+          >
+            Close settings
+          </button>
         </div>
-      )}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
+          <TripDetailsEditor
+            value={{
+              startingLocation: itinerary.startingLocation,
+              transportMode: itinerary.transportMode,
+              pace: itinerary.pace,
+              budgetBand: itinerary.budgetBand,
+            }}
+            editable={canEdit}
+            onSave={async (input) => {
+              if (!token) return;
+              await updateTripDetails(token, itinerary.id, input);
+              reload();
+            }}
+          />
+          <TripCostSummary stops={itinerary.stops} />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)]">
+          <TripPlanChecks
+            stops={itinerary.stops}
+            durationDays={itinerary.durationDays}
+            transportMode={itinerary.transportMode}
+            pace={itinerary.pace}
+            startDate={itinerary.startDate}
+            endDate={itinerary.endDate}
+          />
+          <OfflinePackControl
+            trip={itinerary}
+            onReadyChange={setOfflineReady}
+          />
+        </div>
+        {tripHasMapPins(itinerary.stops) && (
+          <div className="h-64 overflow-hidden rounded-2xl border border-slate-200 shadow-sm dark:border-slate-800 sm:h-80">
+            <TripMapLoader stops={itinerary.stops} />
+          </div>
+        )}
+      </div>
 
-      <TripPlanChecks
-        stops={itinerary.stops}
-        durationDays={itinerary.durationDays}
-        transportMode={itinerary.transportMode}
-        pace={itinerary.pace}
-        startDate={itinerary.startDate}
-        endDate={itinerary.endDate}
-      />
-
-      <ItineraryStops
-        stops={itinerary.stops}
-        durationDays={itinerary.durationDays}
-        onReorder={
-          canEdit
-            ? async (itemId, position) => {
-                if (!token) return;
-                await updateItineraryStop(token, itinerary.id, itemId, { position });
-                reload();
-              }
-            : undefined
-        }
-        onRemove={
-          canEdit
-            ? async (itemId) => {
-                if (!token) return;
-                await removeItineraryStop(token, itinerary.id, itemId);
-                reload();
-              }
-            : undefined
-        }
-        onMove={
-          canEdit
-            ? async (itemId, day) => {
-                if (!token) return;
-                await updateItineraryStop(token, itinerary.id, itemId, { day });
-                reload();
-              }
-            : undefined
-        }
-      />
-
-      {canEdit && (
-        <AddTripStop
-          itineraryId={itinerary.id}
+      <div
+        role="tabpanel"
+        id="trip-tab-itinerary"
+        aria-labelledby="trip-label-itinerary"
+        hidden={activeTab !== "itinerary"}
+        className="space-y-5"
+      >
+        <BeforeYouGo
+          canAddPlace={canEdit}
+          datesSet={Boolean(itinerary.startDate && itinerary.endDate)}
+          hasPlaces={itinerary.stops.length > 0}
+          hasPartners={itinerary.collaborators.length > 0}
+          budgetReady={budgetReady}
+          packingReady={packingReady}
+          offlineReady={offlineReady}
+          onOpen={(destination) => {
+            if (destination === "offline") {
+              setShowSettings(true);
+              window.setTimeout(
+                () =>
+                  document
+                    .getElementById("offline-pack")
+                    ?.scrollIntoView?.({ block: "center" }),
+                50,
+              );
+            } else {
+              setActiveTab(destination);
+              setShowSettings(false);
+              window.setTimeout(
+                () =>
+                  document
+                    .getElementById(
+                      destination === "itinerary"
+                        ? "trip-add-place"
+                        : `trip-label-${destination}`,
+                    )
+                    ?.focus(),
+                50,
+              );
+            }
+          }}
+        />
+        {canEdit && (
+          <div id="trip-add-place" tabIndex={-1} className="scroll-mt-24">
+            <AddTripStop
+              itineraryId={itinerary.id}
+              durationDays={itinerary.durationDays}
+              onAdded={reload}
+            />
+          </div>
+        )}
+        <ItineraryStops
+          stops={itinerary.stops}
+          durationDays={itinerary.durationDays}
+          onReorder={
+            canEdit
+              ? async (itemId, position) => {
+                  if (!token) return;
+                  await updateItineraryStop(token, itinerary.id, itemId, {
+                    position,
+                  });
+                  reload();
+                }
+              : undefined
+          }
+          onRemove={
+            canEdit
+              ? async (itemId) => {
+                  if (!token) return;
+                  await removeItineraryStop(token, itinerary.id, itemId);
+                  reload();
+                }
+              : undefined
+          }
+          onMove={
+            canEdit
+              ? async (itemId, day) => {
+                  if (!token) return;
+                  await updateItineraryStop(token, itinerary.id, itemId, {
+                    day,
+                  });
+                  reload();
+                }
+              : undefined
+          }
+        />
+        <TripVotingPanel
+          key={`votes-${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
           durationDays={itinerary.durationDays}
           onAdded={reload}
         />
-      )}
+      </div>
+
+      <div
+        role="tabpanel"
+        id="trip-tab-budget"
+        aria-labelledby="trip-label-budget"
+        hidden={activeTab !== "budget"}
+      >
+        <TripBudgetPanel
+          onReadyChange={setBudgetReady}
+          key={`${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
+        />
+      </div>
+      <div
+        role="tabpanel"
+        id="trip-tab-packing"
+        aria-labelledby="trip-label-packing"
+        hidden={activeTab !== "packing"}
+      >
+        <TripPackingPanel
+          onReadyChange={setPackingReady}
+          key={`${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
+        />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="trip-tab-updates"
+        aria-labelledby="trip-label-updates"
+        hidden={activeTab !== "updates"}
+      >
+        <TripActivityPanel
+          key={`activity-${itinerary.id}-${user?.id}`}
+          tripId={itinerary.id}
+        />
+      </div>
+      <div
+        role="tabpanel"
+        id="trip-tab-people"
+        aria-labelledby="trip-label-people"
+        hidden={activeTab !== "people"}
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TripPeoplePanel
+            itineraryId={itinerary.id}
+            admin={itinerary.admin}
+            collaborators={itinerary.collaborators}
+            collaboratorRoles={itinerary.collaboratorRoles}
+            isOwner={isOwner}
+            onChange={reload}
+          />
+          <div className="flex flex-col gap-4">
+            <TripShareLink
+              itineraryId={itinerary.id}
+              shareToken={itinerary.shareToken}
+              isOwner={isOwner}
+              token={token}
+              onChange={reload}
+            />
+            <Link
+              href={`/messages/context?type=trip&id=${itinerary.id}`}
+              className="flex min-h-12 items-center justify-center rounded-2xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
+            >
+              Open trip conversation in Messages
+            </Link>
+          </div>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={confirmingCancel}
@@ -916,6 +1144,70 @@ function MemberTripView({
         }}
       />
     </main>
+  );
+}
+
+function TripWorkspaceNav({
+  active,
+  onChange,
+}: {
+  active: string;
+  onChange: (id: string) => void;
+}) {
+  const links = [
+    ["itinerary", "Itinerary", MapPinIcon],
+    ["people", "People", UsersIcon],
+    ["budget", "Budget", BanknotesIcon],
+    ["packing", "Packing", ClipboardDocumentCheckIcon],
+    ["updates", "Updates", BellIcon],
+  ] as const;
+  return (
+    <nav
+      aria-label="Trip sections"
+      className="sticky top-2 z-10 rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
+    >
+      <div
+        role="tablist"
+        aria-label="Trip features"
+        className="grid grid-cols-5 gap-1"
+      >
+        {links.map(([id, label, Icon], index) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`trip-label-${id}`}
+            aria-controls={`trip-tab-${id}`}
+            aria-selected={active === id}
+            tabIndex={active === id ? 0 : -1}
+            onClick={() => onChange(id)}
+            onKeyDown={(e) => {
+              const next =
+                e.key === "ArrowRight"
+                  ? (index + 1) % links.length
+                  : e.key === "ArrowLeft"
+                    ? (index + links.length - 1) % links.length
+                    : e.key === "Home"
+                      ? 0
+                      : e.key === "End"
+                        ? links.length - 1
+                        : null;
+              if (next !== null) {
+                e.preventDefault();
+                onChange(links[next][0]);
+                document
+                  .getElementById(`trip-label-${links[next][0]}`)
+                  ?.focus();
+              }
+            }}
+            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:flex-row sm:gap-2 sm:text-sm ${active === id ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:bg-brand-50 hover:text-brand-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"}`}
+          >
+            <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
+            <span className="break-words">{label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
   );
 }
 

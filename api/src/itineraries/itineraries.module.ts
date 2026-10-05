@@ -1,3 +1,7 @@
+import { TripVotingController } from "./trip-voting.controller";
+import { TripActivityController } from "./trip-activity.controller";
+import { TripActivityService } from "./trip-activity.service";
+import { TripVotingService } from "./trip-voting.service";
 import { Module } from "@nestjs/common";
 import { TripPackingController } from "./trip-packing.controller";
 import { TripPackingService } from "./trip-packing.service";
@@ -37,13 +41,21 @@ import { TripPreviewController } from "./trip-preview.controller";
     TripChatModule,
   ],
   controllers: [
+    TripActivityController,
+    TripVotingController,
     TripPackingController,
     TripBudgetController,
     ItinerariesController,
     TripInvitationsController,
     TripPreviewController,
   ],
-  providers: [ItinerariesService, TripBudgetService, TripPackingService],
+  providers: [
+    TripActivityService,
+    TripVotingService,
+    ItinerariesService,
+    TripBudgetService,
+    TripPackingService,
+  ],
   exports: [ItinerariesService],
 })
 export class ItinerariesModule {}

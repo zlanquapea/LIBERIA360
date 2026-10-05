@@ -19,7 +19,13 @@ const field =
   "mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950";
 const categories = ["essentials", "clothing", "toiletries", "gear", "other"];
 
-export function TripPackingPanel({ tripId }: { tripId: string }) {
+export function TripPackingPanel({
+  tripId,
+  onReadyChange,
+}: {
+  tripId: string;
+  onReadyChange?: (ready: boolean | null) => void;
+}) {
   const [data, setData] = useState<TripPackingList | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -31,6 +37,13 @@ export function TripPackingPanel({ tripId }: { tripId: string }) {
   const [filter, setFilter] = useState<"all" | "remaining" | "packed">("all");
   const [draft, setDraft] = useState<PackingItem | null>(null);
   const [removeId, setRemoveId] = useState<string | null>(null);
+  useEffect(() => {
+    onReadyChange?.(
+      data
+        ? data.items.length > 0 && data.items.every((item) => item.packed)
+        : null,
+    );
+  }, [data, onReadyChange]);
   useEffect(() => {
     let cancelled = false;
     setLoading(true);

@@ -1,3 +1,4 @@
+import { GuideViewTracker } from "@/components/GuideViewTracker";
 import Link from "next/link";
 import { getGuide, getExperiences } from "@/lib/api";
 import { ChevronRightIcon, MapPinIcon } from "@heroicons/react/24/solid";
@@ -36,6 +37,7 @@ export default async function GuidePage({
   const name = guide.slug.replaceAll("-", " ");
   return (
     <main className="mx-auto max-w-5xl px-4 py-5 pb-24 sm:px-6 lg:px-10">
+      <GuideViewTracker guideId={guide.id} />
       <div className="mb-5 flex items-center justify-between">
         <Link href="/guides" className="text-sm font-bold text-brand-700">
           ← All guides
