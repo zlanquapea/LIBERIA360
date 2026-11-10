@@ -9,6 +9,16 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
+  // Next keeps up to 50MB of rendered pages in the server's memory by
+  // default, on top of the copies it already has on disk in .next/. This
+  // app prerenders ~57MB of static HTML/RSC across its four locales, so a
+  // single crawler pass is enough to fill that cache and keep it full for
+  // the life of the process. Serving those pages from disk instead costs a
+  // file read per request and takes that whole allowance off the bill —
+  // measured: 161MB -> 137MB after requesting every static page once.
+  // (Every catalog fetch is already `cache: 'no-store'` — see lib/api.ts —
+  // so there is no data cache here to lose.)
+  cacheMaxMemorySize: 0,
   // next-intl and its whole ICU-formatting dependency chain ship ESM-only
   // builds. This isn't needed for Next's own build (webpack/Turbopack
   // already handle ESM packages fine), but next/jest's
@@ -33,6 +43,13 @@ const nextConfig = {
     'intl-messageformat',
   ],
   experimental: {
+    // By default the server loads every route's code into memory at boot —
+    // all ~150 pages, including the whole admin area and every account
+    // screen — to shave a few milliseconds off the first request to each.
+    // Loading a route the first time someone actually asks for it keeps
+    // the ones nobody visits between deploys out of memory entirely
+    // (measured: ~11MB lower at idle).
+    preloadEntriesOnStart: false,
     // The proxy rewrites below (added for the same-origin reverse-proxy —
     // see the /api rewrite) buffer the whole request body in memory, and
     // Next defaults that buffer to 10MB, silently truncating anything

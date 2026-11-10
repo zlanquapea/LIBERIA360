@@ -1,5 +1,6 @@
 import { apiRequest, HttpError } from "./http";
 import { serverApiOrigin } from "./server-api-origin";
+import { visitorHeaders } from "./visitor-headers";
 
 const MAX_PRESCRIPTION_FILE_SIZE_BYTES = 10 * 1024 * 1024; // matches api/src/pharmacies/pharmacies.service.ts
 const ALLOWED_PRESCRIPTION_MIME_TYPES = [
@@ -162,7 +163,10 @@ export type PharmacyReorder = {
 };
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { cache: "no-store" });
+  const r = await fetch(`${API}${path}`, {
+    cache: "no-store",
+    headers: await visitorHeaders(),
+  });
   if (!r.ok) throw new Error("Pharmacy service is unavailable");
   // A Nest controller returning `null` (getPharmacyByPlace, for the far
   // more common case of a place with no linked pharmacy) serializes to a

@@ -89,6 +89,13 @@ services:
         value: 7d
       - key: TWO_FACTOR_ENCRYPTION_KEY
         generateValue: true
+      # Shared with the web service below (fromService), which presents
+      # it alongside each visitor's address so the API rate-limits per
+      # visitor instead of treating the web service as one client — see
+      # DEPLOYMENT.md "Rate limiting behind the web server". Generated
+      # once by Render; nothing to fill in.
+      - key: INTERNAL_PROXY_SECRET
+        generateValue: true
       # Placeholder — replace with your actual web service URL, e.g.
       # https://liberia360-web.onrender.com (no trailing slash), once
       # Render assigns it after the first deploy.
@@ -162,5 +169,20 @@ services:
           type: web
           name: liberia360-api
           property: port
+      # Same value as the API's generated INTERNAL_PROXY_SECRET — lets the
+      # API trust the visitor address this service forwards (see above).
+      - key: INTERNAL_PROXY_SECRET
+        fromService:
+          type: web
+          name: liberia360-api
+          envVarKey: INTERNAL_PROXY_SECRET
+      # Reverse proxies between the visitor and this service; the visitor
+      # address is read that many entries from the right of
+      # X-Forwarded-For. 1 = Render's load balancer. Verify after the first
+      # deploy as DEPLOYMENT.md describes (Admin → Security → login
+      # activity should show your own public IP) and raise by one if it
+      # shows a proxy address instead.
+      - key: TRUST_PROXY_HOPS
+        value: "1"
       - key: NEXT_PUBLIC_SITE_URL
         value: https://REPLACE-WITH-YOUR-WEB-URL.onrender.com

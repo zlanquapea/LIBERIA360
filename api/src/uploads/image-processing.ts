@@ -30,6 +30,38 @@ const JPEG_QUALITY = 78;
 // More aggressive than the full rendition's quality — safe because a small
 // on-screen size hides compression artifacts a full-size render wouldn't.
 const THUMB_JPEG_QUALITY = 70;
+// Refuse to decode anything larger than this many pixels. sharp's own
+// default is ~268 megapixels, which lets a file comfortably under the
+// upload size limit (a mostly-flat PNG compresses extremely well) expand
+// to well over a gigabyte of raw pixels in this process. 64MP covers
+// every phone camera's normal output (12/48/50MP) with room to spare.
+const MAX_INPUT_PIXELS = 64_000_000;
+const INPUT_OPTIONS = { limitInputPixels: MAX_INPUT_PIXELS };
+
+// libvips keeps an operation cache (up to 50MB / 100 operations) so that
+// repeating the *same* operation on the *same* input is fast. Every
+// upload here is a different image processed exactly once, so that cache
+// is never hit — it only pins recent uploads' pixel buffers in memory
+// long after their requests finished.
+sharp.cache(false);
+
+// Only one upload is processed at a time; the rest wait their turn.
+// Decoding photos is by far the most memory-hungry thing this API does,
+// and the memory it takes is effectively permanent: the allocator keeps
+// most of a peak rather than handing it back to the OS, so the process
+// stays near its high-water mark until the next restart. Running several
+// uploads side by side multiplies that peak — measured with eight 12MP
+// phone photos sent four at a time, the process settled ~80MB higher
+// than it does with this queue. The cost is latency under a burst: each
+// photo takes under a second on its own, so the last of four sent
+// together now waits about three seconds instead of one. See
+// DEPLOYMENT.md, "Memory".
+let imageQueue: Promise<unknown> = Promise.resolve();
+function runExclusive<T>(task: () => Promise<T>): Promise<T> {
+  const run = imageQueue.then(task, task);
+  imageQueue = run.catch(() => undefined);
+  return run;
+}
 
 export interface ImageRendition {
   buffer: Buffer;
@@ -76,10 +108,12 @@ export class ImageTooSmallError extends Error {
  * frame. Acceptable for hotel/place photography — nothing in this app
  * needs an upload to stay an animation.
  */
-export async function processUploadedImage(
-  buffer: Buffer,
-): Promise<ProcessedImage> {
-  const metadata = await sharp(buffer).rotate().metadata();
+export function processUploadedImage(buffer: Buffer): Promise<ProcessedImage> {
+  return runExclusive(() => processImage(buffer));
+}
+
+async function processImage(buffer: Buffer): Promise<ProcessedImage> {
+  const metadata = await sharp(buffer, INPUT_OPTIONS).rotate().metadata();
   // .rotate() doesn't swap the reported dimensions; EXIF orientations 5–8
   // are 90° turns.
   const turned = (metadata.orientation ?? 1) >= 5;
@@ -113,7 +147,7 @@ export async function processUploadedImage(
   // A fresh sharp() per rendition keeps each pipeline independent.
   const full = encode(
     finish(
-      sharp(buffer).rotate().resize({
+      sharp(buffer, INPUT_OPTIONS).rotate().resize({
         width: MAX_DIMENSION_PX,
         height: MAX_DIMENSION_PX,
         fit: "inside",
@@ -139,12 +173,14 @@ export async function processUploadedImage(
     : null;
   const thumb = encode(
     finish(
-      (cropped ? sharp(cropped) : sharp(buffer).rotate()).resize({
-        width: THUMB_DIMENSION_PX,
-        height: THUMB_DIMENSION_PX,
-        fit: "inside",
-        withoutEnlargement: true,
-      }),
+      (cropped ? sharp(cropped) : sharp(buffer, INPUT_OPTIONS).rotate()).resize(
+        {
+          width: THUMB_DIMENSION_PX,
+          height: THUMB_DIMENSION_PX,
+          fit: "inside",
+          withoutEnlargement: true,
+        },
+      ),
     ),
     THUMB_JPEG_QUALITY,
   );

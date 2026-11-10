@@ -1,6 +1,10 @@
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppConfig } from "./configuration";
+import {
+  configuredProxySecret,
+  MIN_PROXY_SECRET_LENGTH,
+} from "../common/client-ip";
 
 const logger = new Logger("ConfigValidation");
 
@@ -105,6 +109,16 @@ export function validateProductionConfig(
   if (!webPush.publicKey) {
     logger.warn(
       "VAPID keys are not set in production — push notifications are disabled (this is safe, just a missing feature).",
+    );
+  }
+  // Not fatal: the API still works without it, but every visitor arriving
+  // through the web service is then rate-limited (and audit-logged) as the
+  // web service's single address — see common/client-ip.ts.
+  if (!configuredProxySecret()) {
+    logger.warn(
+      `INTERNAL_PROXY_SECRET is not set (or is shorter than ${MIN_PROXY_SECRET_LENGTH} characters) in production — the visitor address the web ` +
+        "service forwards is ignored, so all visitors share one rate-limit budget and can lock each other out of " +
+        "login. Set the same INTERNAL_PROXY_SECRET on the API and web services (see DEPLOYMENT.md).",
     );
   }
   if (!errorTracking.dsn) {

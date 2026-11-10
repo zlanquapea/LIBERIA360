@@ -2,10 +2,12 @@ import {
   ArgumentsHost,
   HttpException,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import * as Sentry from "@sentry/node";
 import { SentryExceptionsFilter } from "./sentry-exceptions.filter";
+import { initErrorTracking } from "./error-tracking";
 
 jest.mock("@sentry/node");
 
@@ -16,6 +18,13 @@ function buildHost() {
 }
 
 describe("SentryExceptionsFilter", () => {
+  // The SDK is only loaded (and exceptions only forwarded) once error
+  // tracking has been initialized with a DSN — see error-tracking.ts.
+  beforeAll(() => {
+    jest.spyOn(Logger.prototype, "log").mockImplementation();
+    initErrorTracking("https://key@sentry.example.com/1", "test");
+  });
+
   let httpAdapter: {
     isHeadersSent: jest.Mock;
     reply: jest.Mock;

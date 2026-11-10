@@ -4,7 +4,8 @@ import { CreatorGuidesModule } from "./creator-guides/creator-guides.module";
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { ThrottlerModule, ThrottlerGuard, seconds } from "@nestjs/throttler";
+import { ThrottlerModule, seconds } from "@nestjs/throttler";
+import { ClientIpThrottlerGuard } from "./common/client-ip-throttler.guard";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import configuration, { AppConfig } from "./config/configuration";
 import { HealthModule } from "./health/health.module";
@@ -106,6 +107,8 @@ import { ConversationsModule } from "./conversations/conversations.module";
     // Global default: generous enough not to bother normal browsing/API
     // use. Password- and code-guessing endpoints (login, 2fa/verify) get
     // a much stricter override via @Throttle — see auth.controller.ts.
+    // Counted per visitor address, not per connecting address — see
+    // common/client-ip-throttler.guard.ts.
     ThrottlerModule.forRoot([
       { name: "default", ttl: seconds(60), limit: 120 },
     ]),
@@ -231,7 +234,7 @@ import { ConversationsModule } from "./conversations/conversations.module";
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: ClientIpThrottlerGuard,
     },
   ],
 })

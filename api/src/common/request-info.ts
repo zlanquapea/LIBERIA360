@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import { resolveClientIp } from "./client-ip";
 
 /** IP + device, captured once per request for anything that needs "who did
  * this and from what" — the admin audit trail and the login-activity log
@@ -12,15 +13,13 @@ export interface RequestInfo {
   userAgent: string | null;
 }
 
-/** `req.ip` is Express's own client-IP resolution — accurate for a direct
- * connection, but only reflects `X-Forwarded-For` if the app has `trust
- * proxy` configured (it doesn't yet; see DEPLOYMENT.md's rate-limiting
- * caveat for the same underlying gap). Behind a reverse proxy without that
- * setting, every request appears to come from the proxy's own address —
- * a known, documented limitation, not a bug in this helper. */
+/** The address comes from resolveClientIp, not `req.ip` directly: behind the
+ * web service `req.ip` is the web service's own address for every request,
+ * so the visitor's address is taken from the header the web service sets
+ * (trusted only with INTERNAL_PROXY_SECRET — see common/client-ip.ts). */
 export function getRequestInfo(req: Request): RequestInfo {
   return {
-    ipAddress: req.ip ?? null,
+    ipAddress: resolveClientIp(req) ?? null,
     userAgent: req.headers["user-agent"] ?? null,
   };
 }

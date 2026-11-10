@@ -1,7 +1,14 @@
 import { Logger } from "@nestjs/common";
-import * as Sentry from "@sentry/node";
+import type * as SentryNode from "@sentry/node";
 
 const logger = new Logger("ErrorTracking");
+
+// Type-only import above, real `require` below: the Sentry SDK (and the
+// OpenTelemetry stack it brings with it) costs roughly 8MB of heap just
+// to load, whether or not it's ever initialized. A deployment with no
+// SENTRY_DSN shouldn't hold all of that in memory for the life of the
+// process, so the SDK is only loaded once there is a DSN to use it with.
+let sentry: typeof SentryNode | undefined;
 
 /**
  * Crash reporting via Sentry — same progressive-enhancement shape as
@@ -19,6 +26,8 @@ export function initErrorTracking(dsn: string, environment: string): void {
     );
     return;
   }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Sentry: typeof SentryNode = require("@sentry/node");
   Sentry.init({
     dsn,
     environment,
@@ -26,5 +35,16 @@ export function initErrorTracking(dsn: string, environment: string): void {
     // sampling config to reason about for what this integration is for.
     tracesSampleRate: 0,
   });
+  sentry = Sentry;
   logger.log("Error tracking (Sentry) initialized.");
+}
+
+/**
+ * Reports an exception to Sentry — a no-op until initErrorTracking() has
+ * run with a DSN (the same "silent unless configured" contract
+ * Sentry.captureException() itself had when this imported the SDK
+ * unconditionally).
+ */
+export function captureException(exception: unknown): void {
+  sentry?.captureException(exception);
 }

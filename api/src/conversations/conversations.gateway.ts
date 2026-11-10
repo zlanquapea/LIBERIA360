@@ -3,6 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import type { IncomingMessage } from "http";
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import type { Server as HttpServer } from "http";
+import { startHeartbeat } from "../common/ws-heartbeat";
 import { ConversationsService } from "./conversations.service";
 import { SendConversationMessageDto } from "./dto/conversation.dto";
 
@@ -47,6 +48,7 @@ export class ConversationsGateway {
       handleProtocols: (protocols) =>
         [...protocols].find((protocol) => protocol.startsWith("bearer.")) ?? "",
     });
+    startHeartbeat(this.wss);
     server.on("upgrade", (request, socket, head) => {
       const url = new URL(request.url ?? "/", "http://localhost");
       if (url.pathname !== "/api/v1/conversations/realtime") return;

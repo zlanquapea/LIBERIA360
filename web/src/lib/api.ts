@@ -40,6 +40,7 @@ import type {
   TravelerInfoSettings,
 } from "./types";
 import { serverApiOrigin } from "./server-api-origin";
+import { visitorHeaders } from "./visitor-headers";
 import { defaultMenuSettings } from "./food-ordering";
 
 export { serverApiOrigin };
@@ -141,7 +142,10 @@ async function apiFetch<T>(
       // `cache: 'no-store'` opts every catalog read out of Next's Data
       // Cache entirely — no window to wait out, on any topology.
       cache: "no-store",
-      headers: extraHeaders,
+      // Server-side, tell the API which visitor this page is being
+      // rendered for, so its per-IP rate limit applies to them rather
+      // than to this web server as a whole (see visitor-headers.ts).
+      headers: { ...(await visitorHeaders()), ...extraHeaders },
       signal,
     });
   } catch (err) {

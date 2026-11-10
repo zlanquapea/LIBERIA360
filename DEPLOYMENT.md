@@ -19,7 +19,9 @@ window. Two options, both fine for this:
   values for section 1's two secrets (Blueprint auto-generates those) and
   section 3's domain/CORS wiring (Blueprint leaves those as placeholders you
   fill in once Render assigns your `*.onrender.com` URLs). See `render.yaml`'s
-  own comments for the exact steps.
+  own comments for the exact steps. The Blueprint also generates
+  `INTERNAL_PROXY_SECRET` on the API and shares it with the web service
+  (section 3's per-visitor rate limiting) — nothing to fill in.
 - **Railway**: no blueprint file — deploy from the dashboard as two services
   from this same repo (one for `api`, one for `web`) plus a Postgres
   database, wiring `DB_HOST`/`DB_PORT`/etc. to the database's variables. The
@@ -31,6 +33,14 @@ window. Two options, both fine for this:
   service still needs an explicit custom Start Command set in Railway's UI
   (`npm run start --workspace=web -- -p $PORT`), since it's the second app
   in this repo and root auto-detection can only point at one.
+
+  Also set the same `INTERNAL_PROXY_SECRET` on **both** services (see
+  "Rate limiting behind the web server" in section 3) — without it the
+  whole site shares one rate-limit budget.
+  Railway bills for the memory each service actually uses, minute by
+  minute, so how these two processes are started matters — see
+  [Memory](#12-memory) below for the settings both start scripts apply and
+  the two optional Start Commands that trim a little more.
 
   Video thumbnail generation (`api/src/uploads/video-thumbnail.ts`) shells
   out to `ffmpeg`, which neither Railpack's auto-detected build nor Render's
@@ -80,6 +90,15 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"   # JWT
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # TWO_FACTOR_ENCRYPTION_KEY
 ```
 
+A third value, `INTERNAL_PROXY_SECRET`, must be set to the **same** string on
+the API and the web service — see "Rate limiting behind the web server" in
+section 3 for what it does. Not fatal if missing (the API logs a warning at
+boot instead), but don't launch without it:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # INTERNAL_PROXY_SECRET (both services)
+```
+
 You don't have to remember this: `validateProductionConfig` (`api/src/config/validate-production-config.ts`)
 runs at boot whenever `NODE_ENV=production` and **refuses to start** if
 either is still the committed dev placeholder — the two failure modes where
@@ -125,6 +144,64 @@ Existing Railway/Render web services that still define the former
 compatible. The web server uses it only when `API_ORIGIN` is absent and removes
 the legacy `/api/v1` suffix automatically. Set `API_ORIGIN` when convenient;
 if both variables exist, `API_ORIGIN` takes precedence.
+
+### Rate limiting behind the web server
+
+The API rate-limits per client address (`@nestjs/throttler`: 120
+requests/minute per endpoint by default, 5/minute on login, 2FA,
+password reset — see `api/src/auth/auth.controller.ts`). But browsers never
+call the API directly: their `/api/*` requests are reverse-proxied by the web
+server (`web/next.config.js` rewrites), and pages are rendered from
+server-side fetches made by the web server. Left alone, the API sees **the
+web server's address on every request** and the whole site shares one
+budget — a few dozen simultaneous visitors start getting HTTP 429s, and
+five bad logins from anyone lock everyone out of login for a minute.
+
+So the web server tells the API which visitor each request is for, and the
+API believes it only when the request also carries a secret the two services
+share:
+
+| Service | Variable | Value |
+|---|---|---|
+| `api` **and** `web` | `INTERNAL_PROXY_SECRET` | the same random string on both, at least 32 characters (section 1 has a generator). Server-only — never give it a `NEXT_PUBLIC_` name. |
+| `web` | `TRUST_PROXY_HOPS` | how many reverse proxies sit between the visitor and the **web** server. Defaults to `1` (one platform load balancer). |
+| `api` | `TRUST_PROXY_HOPS` | how many reverse proxies sit in front of the **API** itself. Only matters for clients that reach the API without going through the web server; defaults to `0`. |
+
+How it works, so the settings above make sense:
+
+- `web/src/proxy.ts` reads the visitor's address from `X-Forwarded-For` —
+  counting `TRUST_PROXY_HOPS` entries **from the right**, since only the
+  entries your own proxies appended can be trusted; anything further left is
+  whatever the client chose to send. It writes that address onto the request
+  as `X-Liberia360-Client-Ip` (overwriting any value the client sent), adds
+  `X-Liberia360-Proxy-Secret` on `/api/*` requests before they are rewritten
+  to the API, and `web/src/lib/visitor-headers.ts` adds the same pair to
+  server-side fetches.
+- The API (`api/src/common/client-ip.ts`) uses `X-Liberia360-Client-Ip` for
+  rate limiting, the login-activity log, the admin audit trail and
+  `ADMIN_LOGIN_IP_ALLOWLIST` **only** when the secret matches. Anyone
+  calling the API directly, without the secret, is attributed to the address
+  they connected from, exactly as before — the header alone is ignored, so it
+  can't be used to impersonate another visitor or to dodge the login limit.
+- If `INTERNAL_PROXY_SECRET` is missing on either side, nothing breaks: the
+  API falls back to the old shared-budget behaviour and warns about it at
+  boot.
+
+**Check `TRUST_PROXY_HOPS` on the web service after deploying.** Sign in,
+then look at Admin → Security → login activity: the address recorded for your
+login should be your own public IP. If it shows a load balancer / CDN
+address instead (the same one for every user), there is one more proxy in
+front of the web server than configured — raise `TRUST_PROXY_HOPS` on the
+web service by one and check again. Setting it too *high* is the unsafe
+direction: it makes the web server read an entry the client controls. Some
+platforms (Render among them, per its community forum) append to a
+client-supplied `X-Forwarded-For` rather than replacing it, which is exactly
+why the count is taken from the right.
+
+Keep the API reachable only through the web server where your platform
+allows it (a private/internal service). It isn't required — a direct caller
+can't forge a visitor address without the secret — but direct callers are
+all rate-limited as whatever address the API sees them connect from.
 
 ## 4. Object storage for uploaded photos
 
@@ -242,6 +319,9 @@ Takes effect on that user's very next request — no re-login needed (see
 
 ## 11. Known limitations, honestly listed
 
+- **Rate limiting is per visitor only when `INTERNAL_PROXY_SECRET` is set on
+  both services** (section 3). Without it every visitor shares the web
+  server's single budget.
 - **Rate limiting is per-instance, in-memory** (`@nestjs/throttler`'s
   default storage). Scale to N instances behind a load balancer and the
   *effective* limit on login/2FA/password-reset/uploads becomes roughly N×
@@ -278,6 +358,82 @@ Takes effect on that user's very next request — no re-login needed (see
   catalog's size this trades a bit of origin load for the public site never
   visibly disagreeing with an admin correction; revisit only if the catalog
   or traffic grows enough for that origin load to matter.
+
+## 12. Memory
+
+On usage-billed hosts (Railway) the bill is mostly resident memory × time,
+so the defaults below are chosen to keep both services' steady-state
+footprint down. Numbers are from running the production builds locally
+against Postgres with the same scripted traffic before and after.
+
+| | Before | After |
+|---|---|---|
+| `api` — peak while booting | 1,424 MB (29 s) | 140 MB (2 s) |
+| `api` — idle | 193 MB | 139 MB |
+| `api` — after ~500 catalog requests | 213 MB | 154 MB |
+| `api` — after 8 phone-photo uploads | 295 MB | 182 MB |
+| `web` — idle | 148 MB | 125 MB |
+| `web` — after ~190 page requests | 210–250 MB | 174 MB |
+
+What produces those numbers, and the knob for each:
+
+- **No TypeScript compile at boot.** The root `npm start` used to run
+  `migrate:api` first, which type-checks the whole API through `ts-node`
+  on every start — 1.4 GB and ~25 s even with nothing to migrate.
+  Migrations are applied by the API itself as it boots (`migrationsRun`
+  in `app.module.ts`, from the compiled `dist/database/migrations`), so
+  that step was pure overhead. `npm run migrate:api` still exists for
+  running them by hand.
+- **Heap ceilings** (`api/scripts/start-prod.sh`,
+  `web/scripts/start-prod.sh`). Node sizes its heap from the memory it is
+  allowed to use and is slow to collect below that, so both servers used
+  to hold 50–100 MB of already-dead objects after any burst of traffic.
+  Defaults: 256 MB old space, 8 MB semi-space, for each service. Override
+  with `API_MAX_OLD_SPACE_MB` / `WEB_MAX_OLD_SPACE_MB` (and
+  `*_MAX_SEMI_SPACE_MB`). The data each server really holds is 55–70 MB,
+  so 256 leaves about four times headroom; if either ever logs
+  `JavaScript heap out of memory`, raise its ceiling rather than removing
+  it.
+- **Allocator settings for the API** (`MALLOC_MMAP_THRESHOLD_`,
+  `MALLOC_TRIM_THRESHOLD_`, set in `api/scripts/start-prod.sh`). Without
+  them, memory used to decode an uploaded photo is kept by glibc instead
+  of being returned to the OS — one upload raised the process by ~100 MB
+  until the next restart.
+- **One photo processed at a time** (`uploads/image-processing.ts`), with
+  libvips' operation cache off and a 64-megapixel input limit. Trade-off:
+  four photos uploaded simultaneously now finish over ~3 s instead of ~1 s.
+- **Next.js** (`web/next.config.js`): `cacheMaxMemorySize: 0` (prerendered
+  pages are served from disk rather than also being held in a 50 MB
+  in-memory cache) and `experimental.preloadEntriesOnStart: false` (route
+  code is loaded on first use, not all ~150 routes at boot).
+- **Optional SDKs load only when configured**: Sentry without a
+  `SENTRY_DSN`, and the AWS SDK without `STORAGE_DRIVER=s3`, are no longer
+  loaded at all (about 6 MB each).
+
+Two things only the Railway dashboard can change:
+
+1. **Start Commands without `npm`.** Each `npm run ...` wrapper stays
+   alive beside the server for as long as it runs (~25–30 MB each). Set
+   each service's Custom Start Command (service Settings) to:
+   - `api`: `sh api/scripts/start-prod.sh`
+   - `web`: `sh web/scripts/start-prod.sh -p $PORT`
+2. **Resource limits.** Each service's settings let you cap its memory;
+   with the ceilings above, 512 MB per service is comfortable and
+   turns any future runaway into a visible restart instead of a larger
+   bill.
+
+Still open (not changed here, listed so they aren't a surprise):
+
+- **Video uploads are buffered whole, twice.** A 50 MB video is held in
+  memory by the web server (the `/api` rewrite buffers request bodies, see
+  `proxyClientMaxBodySize`) and again by the API (`multer` memory storage)
+  for the duration of the upload — roughly 110 MB per concurrent video.
+  With the allocator settings above it is released afterwards, but the
+  real fix is uploading straight to object storage with a presigned URL.
+- **Several list endpoints have no page size**, mostly admin queues and
+  per-owner lists (`admin.service.ts`, `admin-content.service.ts`,
+  message threads). They are small today and grow with the tables behind
+  them.
 
 ## CI
 

@@ -57,6 +57,7 @@ describe("validateProductionConfig", () => {
   let warnSpy: jest.SpyInstance;
 
   const originalTicketQrSecret = process.env.TICKET_QR_SECRET;
+  const originalProxySecret = process.env.INTERNAL_PROXY_SECRET;
 
   beforeEach(() => {
     exitSpy = jest
@@ -69,6 +70,7 @@ describe("validateProductionConfig", () => {
     // as EventTicketsService.getQrKey() — so default every test to a
     // secure baseline; the one test below that cares about it unsets it.
     process.env.TICKET_QR_SECRET = "a-real-random-secret";
+    process.env.INTERNAL_PROXY_SECRET = "p".repeat(48);
   });
 
   afterEach(() => {
@@ -77,6 +79,11 @@ describe("validateProductionConfig", () => {
       delete process.env.TICKET_QR_SECRET;
     } else {
       process.env.TICKET_QR_SECRET = originalTicketQrSecret;
+    }
+    if (originalProxySecret === undefined) {
+      delete process.env.INTERNAL_PROXY_SECRET;
+    } else {
+      process.env.INTERNAL_PROXY_SECRET = originalProxySecret;
     }
   });
 
@@ -236,4 +243,21 @@ describe("validateProductionConfig", () => {
       expect.stringContaining("TICKET_QR_SECRET"),
     );
   });
+
+  it.each([
+    ["unset", undefined],
+    ["too short to be trusted", "short"],
+  ])(
+    "warns but does not exit when INTERNAL_PROXY_SECRET is %s",
+    (_label, value) => {
+      if (value === undefined) delete process.env.INTERNAL_PROXY_SECRET;
+      else process.env.INTERNAL_PROXY_SECRET = value;
+      const configService = buildConfigService();
+      validateProductionConfig(configService);
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("INTERNAL_PROXY_SECRET"),
+      );
+    },
+  );
 });

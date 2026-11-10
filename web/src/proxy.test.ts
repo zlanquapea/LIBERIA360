@@ -211,4 +211,102 @@ describe("proxy", () => {
 
     expect(mockIntlMiddleware).toHaveBeenCalledTimes(1);
   });
+
+  // The API rate-limits per client address, and every request reaches it
+  // from this web server — so proxy() has to tell it who the visitor is
+  // (lib/visitor-ip.ts), in a way a visitor can't forge. NextResponse.next's
+  // request-header overrides surface as x-middleware-request-* headers on
+  // the response object, which is what these assert on.
+  describe("visitor address forwarding", () => {
+    const SECRET = "test-internal-proxy-secret-0123456789";
+    const forwarded = (response: Response, name: string) =>
+      response.headers.get(`x-middleware-request-${name}`);
+
+    beforeEach(() => {
+      process.env.INTERNAL_PROXY_SECRET = SECRET;
+    });
+
+    it("stamps rewritten /api requests with the visitor address and the shared secret", async () => {
+      const request = new NextRequest("https://app.example.com/api/v1/places", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+      });
+
+      const response = await proxy(request);
+
+      expect(forwarded(response, "x-liberia360-client-ip")).toBe("203.0.113.9");
+      expect(forwarded(response, "x-liberia360-proxy-secret")).toBe(SECRET);
+      // Straight through to the rewrite: no auth gate, no locale handling.
+      expect(response.headers.get("location")).toBeNull();
+      expect(mockIntlMiddleware).not.toHaveBeenCalled();
+    });
+
+    it("overwrites client-supplied values and ignores client-controlled X-Forwarded-For entries", async () => {
+      const request = new NextRequest("https://app.example.com/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "x-forwarded-for": "1.2.3.4, 203.0.113.9",
+          "x-liberia360-client-ip": "1.2.3.4",
+          "x-liberia360-proxy-secret": "a-guess",
+        },
+      });
+
+      const response = await proxy(request);
+
+      expect(forwarded(response, "x-liberia360-client-ip")).toBe("203.0.113.9");
+      expect(forwarded(response, "x-liberia360-proxy-secret")).toBe(SECRET);
+    });
+
+    it("exposes the visitor address, but not the secret, to page rendering", async () => {
+      const request = new NextRequest("https://app.example.com/places/some-place", {
+        headers: {
+          "x-forwarded-for": "203.0.113.9",
+          "x-liberia360-proxy-secret": "a-guess",
+        },
+      });
+
+      await proxy(request);
+
+      // next-intl receives (and forwards) the request as stamped.
+      expect(request.headers.get("x-liberia360-client-ip")).toBe("203.0.113.9");
+      expect(request.headers.has("x-liberia360-proxy-secret")).toBe(false);
+    });
+
+    it("forwards the visitor address on its own session check", async () => {
+      const fetchSpy = jest
+        .spyOn(global, "fetch")
+        .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+      const request = new NextRequest("https://app.example.com/account", {
+        headers: {
+          cookie: "liberia360_session=some-token",
+          "x-forwarded-for": "203.0.113.9",
+        },
+      });
+
+      await proxy(request);
+
+      const headers = fetchSpy.mock.calls[0][1]?.headers as Record<string, string>;
+      expect(headers["x-liberia360-client-ip"]).toBe("203.0.113.9");
+      expect(headers["x-liberia360-proxy-secret"]).toBe(SECRET);
+      expect(headers.cookie).toBe("liberia360_session=some-token");
+    });
+
+    it("strips both headers when no shared secret is configured", async () => {
+      delete process.env.INTERNAL_PROXY_SECRET;
+      const request = new NextRequest("https://app.example.com/api/v1/places", {
+        headers: {
+          "x-forwarded-for": "203.0.113.9",
+          "x-liberia360-client-ip": "1.2.3.4",
+          "x-liberia360-proxy-secret": "a-guess",
+        },
+      });
+
+      const response = await proxy(request);
+
+      expect(forwarded(response, "x-liberia360-client-ip")).toBeNull();
+      expect(forwarded(response, "x-liberia360-proxy-secret")).toBeNull();
+      expect(response.headers.get("x-middleware-override-headers")).not.toContain(
+        "x-liberia360",
+      );
+    });
+  });
 });

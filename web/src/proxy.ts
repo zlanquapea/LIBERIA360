@@ -2,13 +2,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { serverApiOrigin } from "./lib/server-api-origin";
+import {
+  CLIENT_IP_HEADER,
+  PROXY_SECRET_HEADER,
+  proxySecret,
+  visitorIpFromForwardedFor,
+} from "./lib/visitor-ip";
 
 // Next.js 16 renamed the `middleware.ts` file convention to `proxy.ts` (the
 // exported function is unaffected by that rename; see
 // node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md).
 //
-// This file does two unrelated jobs in one pass, since Next.js only allows
+// This file does three unrelated jobs in one pass, since Next.js only allows
 // a single proxy file:
+//   0. Stamps every request with the visitor's address so the API can
+//      rate-limit per visitor instead of per web server (see
+//      stampVisitorAddress below).
 //   1. Session-cookie auth gating for /account and /admin (pre-existing;
 //      see the regression note below — this predates i18n and must keep
 //      working exactly as before for every locale).
@@ -51,6 +60,39 @@ function isNoLocaleRoute(pathname: string): boolean {
   return NO_LOCALE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
+// The API sees this web server, not the visitor, as the client of every
+// request (see lib/visitor-ip.ts). Resolve the visitor's address once here
+// and write it onto the request itself — overwriting whatever the client
+// may have sent under the same names — so that:
+//   - /api/* requests, which next.config.js rewrites straight through to
+//     the API, arrive there carrying the address plus the shared secret
+//     that makes the API believe it;
+//   - page requests expose the address to server-side data fetching
+//     (lib/visitor-headers.ts), which adds the secret itself. The secret is
+//     deliberately not put on page requests: nothing rendering a page
+//     needs it from there.
+// Returns the visitor address headers for this function's own API call.
+function stampVisitorAddress(request: NextRequest): Record<string, string> {
+  const secret = proxySecret();
+  const ip = secret
+    ? visitorIpFromForwardedFor(request.headers.get("x-forwarded-for"))
+    : undefined;
+
+  request.headers.delete(CLIENT_IP_HEADER);
+  request.headers.delete(PROXY_SECRET_HEADER);
+  if (!secret || !ip) return {};
+
+  request.headers.set(CLIENT_IP_HEADER, ip);
+  if (isApiRoute(request.nextUrl.pathname)) {
+    request.headers.set(PROXY_SECRET_HEADER, secret);
+  }
+  return { [CLIENT_IP_HEADER]: ip, [PROXY_SECRET_HEADER]: secret };
+}
+
+function isApiRoute(pathname: string): boolean {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
 // This regression pins the fix itself: proxy() used to validate the session
 // cookie by fetching new URL("/api/v1/auth/me", request.url) — this app's
 // own public URL, which then has to round-trip back out through its own
@@ -62,6 +104,14 @@ function isNoLocaleRoute(pathname: string): boolean {
 // logged in but the account page bounces me to login" report this fixed.
 // proxy() must instead hit the API's real origin (serverApiOrigin()) directly.
 export async function proxy(request: NextRequest) {
+  const visitor = stampVisitorAddress(request);
+
+  // Rewritten to the API by next.config.js — nothing else in this file
+  // (auth gate, locale routing) applies to it.
+  if (isApiRoute(request.nextUrl.pathname)) {
+    return NextResponse.next({ request: { headers: request.headers } });
+  }
+
   const { prefix, rest } = stripLocalePrefix(request.nextUrl.pathname);
   const isProtected = rest.startsWith("/admin") || rest.startsWith("/account");
 
@@ -77,7 +127,7 @@ export async function proxy(request: NextRequest) {
 
     try {
       const response = await fetch(`${serverApiOrigin()}/api/v1/auth/me`, {
-        headers: { cookie: request.headers.get("cookie") ?? "" },
+        headers: { cookie: request.headers.get("cookie") ?? "", ...visitor },
         cache: "no-store",
       });
       if (!response.ok) return NextResponse.redirect(loginUrl);
@@ -97,18 +147,18 @@ export async function proxy(request: NextRequest) {
   // (no-locale) routes (admin/privacy/terms) never go through next-intl —
   // see isNoLocaleRoute's doc comment for why that would break them.
   if (isNoLocaleRoute(request.nextUrl.pathname)) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: request.headers } });
   }
 
   // Authenticated (or not a protected route at all) — hand off to
-  // next-intl for locale detection/redirect/rewrite.
+  // next-intl for locale detection/redirect/rewrite. It forwards
+  // request.headers (as stamped above) to the page on its own.
   return intlMiddleware(request);
 }
 
 export const config = {
-  // Runs on every route except: Next internals, the /api and /uploads
-  // proxy targets (next.config.js rewrites these to the backend — a
-  // locale rewrite in front of them would break the API calls), static
+  // Runs on every route except: Next internals, the /uploads proxy target
+  // (next.config.js rewrites it to the backend), static
   // files (anything with a dot, e.g. manifest.webmanifest, icons), and
   // the site's own service worker (sw.js must be served from the true
   // root, not from under a locale prefix, or its scope only covers that
@@ -117,5 +167,10 @@ export const config = {
   // needs to run on every tourist-facing page, not just the protected
   // ones — the auth check inside proxy() above still only *acts* on
   // /admin and /account (locale-prefix-aware), exactly as before.
-  matcher: ["/((?!api|uploads|_next|sw\\.js|.*\\..*).*)"],
+  //
+  // /api is matched by its own entry, unconditionally (an API path may
+  // legitimately contain a dot, which the first pattern would skip): those
+  // requests need the visitor address stamped on them before the rewrite,
+  // and proxy() returns early for them before any auth/locale handling.
+  matcher: ["/((?!api|uploads|_next|sw\\.js|.*\\..*).*)", "/api/:path*"],
 };

@@ -1,4 +1,5 @@
 import { serverApiOrigin } from './server-api-origin';
+import { visitorHeaders } from './visitor-headers';
 import type { PublicStay } from './stays-api';
 import { businessHasRooms } from './stays';
 
@@ -6,7 +7,10 @@ import { businessHasRooms } from './stays';
 export async function getStayForBusiness(business: { id: string; type: string }): Promise<PublicStay | null> {
   if (!businessHasRooms(business.type)) return null;
   try {
-    const res = await fetch(`${serverApiOrigin()}/api/v1/stays/${business.id}`, { cache: 'no-store' });
+    const res = await fetch(`${serverApiOrigin()}/api/v1/stays/${business.id}`, {
+      cache: 'no-store',
+      headers: await visitorHeaders(),
+    });
     if (!res.ok) return null;
     const stay = (await res.json()) as PublicStay;
     return stay.roomTypes.length ? stay : null;

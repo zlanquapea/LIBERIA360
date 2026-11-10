@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, HttpException, Logger } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
-import * as Sentry from "@sentry/node";
+import { captureException } from "./error-tracking";
 
 /**
  * Global exception filter — reports to Sentry before delegating to Nest's
@@ -13,8 +13,8 @@ import * as Sentry from "@sentry/node";
  * anywhere in the app) gets captured.
  *
  * Safe to register unconditionally, configured or not: captureException()
- * is a documented no-op when Sentry.init() was never called (see
- * initErrorTracking) — this filter doesn't need its own configured check.
+ * (error-tracking.ts) is a no-op until initErrorTracking() has run with a
+ * DSN — this filter doesn't need its own configured check.
  *
  * Security audit (Sep 4, 2026 — CVSS 8.2): a pentest flagged that
  * unhandled backend failures (e.g. a raw TypeORM/driver error escaping a
@@ -40,7 +40,7 @@ export class SentryExceptionsFilter extends BaseExceptionFilter {
     const isExpectedClientError =
       exception instanceof HttpException && exception.getStatus() < 500;
     if (!isExpectedClientError) {
-      Sentry.captureException(exception);
+      captureException(exception);
     }
 
     if (exception instanceof HttpException) {

@@ -54,7 +54,20 @@ export class UnifiedInboxService {
       sourceId: item.id,
     }));
 
-    const bookings = await this.bookingRepo.find();
+    // Only this user's bookings — as the guest, or as whoever owns the
+    // business/creator profile/car that was booked. This used to be a bare
+    // `find()`: every booking in the table (each with its eagerly joined
+    // business, creator, car and guest) was loaded into memory on every
+    // inbox open and then filtered below in JS, so the cost of one user
+    // opening their inbox grew with the whole platform's booking history.
+    const bookings = await this.bookingRepo.find({
+      where: [
+        { guestUserId: userId },
+        { business: { ownerUserId: userId } },
+        { creator: { userId } },
+        { carListing: { ownerUserId: userId } },
+      ],
+    });
     for (const booking of bookings) {
       const ownerId =
         booking.business?.ownerUserId ??
@@ -89,7 +102,11 @@ export class UnifiedInboxService {
       });
     }
 
-    const orders = await this.foodOrderRepo.find();
+    // Same scoping as bookings above (previously every food order ever
+    // placed, for every inbox open).
+    const orders = await this.foodOrderRepo.find({
+      where: [{ buyerUserId: userId }, { business: { ownerUserId: userId } }],
+    });
     for (const order of orders) {
       if (
         order.buyerUserId !== userId &&

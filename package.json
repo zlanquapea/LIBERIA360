@@ -20,7 +20,7 @@
     "seed:api": "npm run seed --workspace=api",
     "migrate:api": "npm run migration:run --workspace=api",
     "build": "npm run build:api",
-    "start": "npm run migrate:api && npm run start:prod --workspace=api"
+    "start": "exec sh api/scripts/start-prod.sh"
   },
   "engines": {
     "node": ">=20"

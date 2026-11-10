@@ -1,5 +1,6 @@
 import { apiRequest } from "./http";
 import { serverApiOrigin } from "./server-api-origin";
+import { visitorHeaders } from "./visitor-headers";
 
 export type ClinicStatus = "pending" | "approved" | "rejected" | "suspended";
 export type ClinicStaffRole = "admin" | "doctor" | "front_desk";
@@ -184,7 +185,10 @@ export type OrderDraft = {
 // ── Public (server components) ────────────────────────────────────────
 const API = `${serverApiOrigin()}/api/v1`;
 async function read<T>(path: string): Promise<T> {
-  const r = await fetch(`${API}${path}`, { cache: "no-store" });
+  const r = await fetch(`${API}${path}`, {
+    cache: "no-store",
+    headers: await visitorHeaders(),
+  });
   if (r.status === 404) throw new Error("not_found");
   if (!r.ok) throw new Error("Clinic service is unavailable");
   return (await r.json()) as T;
